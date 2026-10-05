@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { AnalyticsResponse, RangeOption } from "./types";
+import { btn } from "../_ui/recipes";
 
 const TrafficChart   = dynamic(() => import("./Charts").then((m) => m.TrafficChart),   { ssr: false });
 const DevicePie      = dynamic(() => import("./Charts").then((m) => m.DevicePie),      { ssr: false });
@@ -169,7 +170,7 @@ export default function AdminAnalyticsPage() {
           <button
             onClick={() => load(range)}
             disabled={loading}
-            className={`${pillCls(false)} disabled:opacity-50`}
+            className={btn("secondary")}
           >
             {loading ? "…" : "Refresh"}
           </button>

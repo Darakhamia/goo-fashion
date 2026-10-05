@@ -17,7 +17,12 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { useToast } from "@/components/admin/Toast";
+import { btn } from "@/app/goo-studio/_ui/recipes";
 
 interface Suspect {
   id: string;
@@ -140,6 +145,37 @@ const APPLIABLE = new Set(["category", "subcategory", "gender", "colour group", 
 /** Findings listed per section; the rest are counted, and said to be. */
 const LIMIT = 300;
 
+/** A section's title row, with what the check is behind its "?". */
+function SectionHeader({
+  sectionKey,
+  title,
+  note,
+  children,
+}: {
+  sectionKey: string;
+  title: string;
+  note: string;
+  children: ReactNode;
+}) {
+  const help = useHelp(`audit-${sectionKey}`);
+  return (
+    <header className="px-5 py-3.5 border-b border-[var(--border)]">
+      <div className="flex items-center gap-2">
+        <h2 className="text-sm text-[var(--foreground)]">{title}</h2>
+        {note && <HelpButton help={help} label={`About “${title}”`} />}
+        {children}
+      </div>
+      {note && help.open && (
+        <div className="mt-2">
+          <HelpPanel help={help}>
+            <p>{note}</p>
+          </HelpPanel>
+        </div>
+      )}
+    </header>
+  );
+}
+
 export default function AdminAuditPage() {
   const [report, setReport] = useState<AuditReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,16 +184,9 @@ export default function AdminAuditPage() {
   const [done, setDone] = useState<Set<string>>(new Set());
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [showDismissed, setShowDismissed] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
-
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => setToast({ msg, type });
-
-  // One timer per toast, so a second action's toast is not cut short by the first's.
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(t);
-  }, [toast]);
+  const confirm = useConfirm();
+  const toast = useToast();
+  const help = useHelp("audit");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -208,14 +237,23 @@ export default function AdminAuditPage() {
     setBusyKey(claimKey(s));
     const failed = await applyOne(s);
     setBusyKey(null);
-    showToast(failed ?? `${s.name.slice(0, 40)} → ${s.suggested}`, failed ? "err" : "ok");
+    if (failed) toast.err(failed);
+    else toast.ok(`${s.name.slice(0, 40)} → ${s.suggested}`);
   };
 
   /** A whole exact section, one product after another. */
   const applyAll = async (key: string, list: Suspect[]) => {
     const todo = list.filter((s) => !s.dismissed && !done.has(appliedKey(s)) && !hidden.has(claimKey(s)));
     if (!todo.length) return;
-    if (!confirm(`Apply ${todo.length} fix${todo.length === 1 ? "" : "es"} in this section? Each product is written separately.`)) return;
+    const fixes = `${todo.length} fix${todo.length === 1 ? "" : "es"}`;
+    if (
+      !(await confirm({
+        title: `Apply ${fixes} in this section?`,
+        body: "Each product is written separately.",
+        confirmLabel: `Apply ${fixes}`,
+      }))
+    )
+      return;
     setBusyKey(`section:${key}`);
     let fixed = 0;
     let refused = 0;
@@ -224,10 +262,8 @@ export default function AdminAuditPage() {
       else fixed++;
     }
     setBusyKey(null);
-    showToast(
-      refused ? `Fixed ${fixed}; ${refused} refused — re-check to see why` : `Fixed ${fixed}`,
-      refused ? "err" : "ok",
-    );
+    if (refused) toast.err(`Fixed ${fixed}; ${refused} refused — re-check to see why`);
+    else toast.ok(`Fixed ${fixed}`);
   };
 
   const claimBody = (s: Suspect) => ({
@@ -249,20 +285,19 @@ export default function AdminAuditPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        showToast(
+        toast.err(
           json.code === "TABLE_MISSING"
             ? "Dismissals need migration 012 — run it in Supabase first."
             : json.error ?? "Could not dismiss.",
-          "err",
         );
         return;
       }
       // Hidden rather than removed, so the row stays where it was until the
       // next re-check and the list does not jump under the cursor.
       setHidden((prev) => new Set(prev).add(key));
-      showToast(`Dismissed — "${s.stored} → ${s.suggested}" won't be raised again`);
+      toast.ok(`Dismissed — "${s.stored} → ${s.suggested}" won't be raised again`);
     } catch {
-      showToast("Could not reach the server.", "err");
+      toast.err("Could not reach the server.");
     } finally {
       setBusyKey(null);
     }
@@ -276,13 +311,13 @@ export default function AdminAuditPage() {
       const res = await fetch(`/api/admin/label-audit/dismiss?${q}`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) {
-        showToast(json.error ?? "Could not restore.", "err");
+        toast.err(json.error ?? "Could not restore.");
         return;
       }
       setHidden((prev) => new Set(prev).add(key));
-      showToast("Restored — it will be raised again on the next check.");
+      toast.ok("Restored — it will be raised again on the next check.");
     } catch {
-      showToast("Could not reach the server.", "err");
+      toast.err("Could not reach the server.");
     } finally {
       setBusyKey(null);
     }
@@ -295,12 +330,28 @@ export default function AdminAuditPage() {
     <div>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Audit</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Audit</h1>
+            <HelpButton help={help} label="How the audit works" />
+          </div>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
             {report
               ? `${total} thing${total === 1 ? "" : "s"} worth a second look across ${report.catalogue.products} products`
               : "Checking the catalogue's labelling…"}
           </p>
+          {help.open && (
+            <div className="mt-3">
+              <HelpPanel help={help}>
+                <p>
+                  A suggestion is not a verdict: where a rule disagrees with a label, either one of them can be the wrong one —
+                  a piece genuinely called &ldquo;Low Rise&rdquo; will be argued at by a rule that learned &ldquo;low&rdquo; from
+                  sneakers. Fixing a subcategory sets the category with it, since the tree already says where the label belongs.
+                  Re-check after a run of edits to see what is left. &ldquo;Fix categories&rdquo; on Products applies the same
+                  keyword table in bulk, but only to products with no subcategory.
+                </p>
+              </HelpPanel>
+            </div>
+          )}
         </div>
         <div className="shrink-0 flex items-center gap-2">
           <button
@@ -316,11 +367,7 @@ export default function AdminAuditPage() {
           >
             Dismissed{report ? ` (${report.dismissed})` : ""}
           </button>
-          <button
-            onClick={() => load()}
-            disabled={loading}
-            className="border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
-          >
+          <button onClick={() => load()} disabled={loading} className={btn("secondary")}>
             {loading ? "Checking…" : "Re-check"}
           </button>
         </div>
@@ -381,30 +428,26 @@ export default function AdminAuditPage() {
             const open = all.filter((s) => !s.dismissed && !done.has(appliedKey(s)) && !hidden.has(claimKey(s))).length;
             return (
               <section key={key} className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
-                <header className="px-5 py-3.5 border-b border-[var(--border)]">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm text-[var(--foreground)]">{title}</h2>
-                    <span className="text-[12px] text-[var(--foreground-muted)]">
-                      {openTotal}
-                      {showDismissed && dismissedTotal > 0 ? ` · ${dismissedTotal} dismissed` : ""}
+                <SectionHeader sectionKey={key} title={title} note={note}>
+                  <span className="text-[12px] text-[var(--foreground-muted)]">
+                    {openTotal}
+                    {showDismissed && dismissedTotal > 0 ? ` · ${dismissedTotal} dismissed` : ""}
+                  </span>
+                  {exact && (
+                    <span className="text-[11px] font-medium border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--foreground-muted)]">
+                      Exact
                     </span>
-                    {exact && (
-                      <span className="text-[11px] font-medium border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--foreground-muted)]">
-                        Exact
-                      </span>
-                    )}
-                    {bulk && open > 0 && (
-                      <button
-                        onClick={() => applyAll(key, list)}
-                        disabled={busyKey !== null}
-                        className="ml-auto shrink-0 whitespace-nowrap bg-[var(--foreground)] text-[var(--surface)] px-3 py-1.5 rounded-lg text-[13px] font-medium hover:opacity-80 transition-opacity disabled:opacity-40"
-                      >
-                        {busyKey === `section:${key}` ? "Fixing…" : `Apply all ${open}`}
-                      </button>
-                    )}
-                  </div>
-                  {note && <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed max-w-3xl">{note}</p>}
-                </header>
+                  )}
+                  {bulk && open > 0 && (
+                    <button
+                      onClick={() => applyAll(key, list)}
+                      disabled={busyKey !== null}
+                      className={`${btn("primary")} ml-auto shrink-0`}
+                    >
+                      {busyKey === `section:${key}` ? "Fixing…" : `Apply all ${open}`}
+                    </button>
+                  )}
+                </SectionHeader>
 
                 <ul>
                   {list.map((s, i) => {
@@ -460,7 +503,7 @@ export default function AdminAuditPage() {
                                 <button
                                   onClick={() => apply(s)}
                                   disabled={busyKey === rowKey}
-                                  className="border border-[var(--border-strong)] text-[var(--foreground)] px-3 py-1.5 rounded-lg text-[13px] font-medium hover:bg-[var(--fg-overlay-05)] transition-colors disabled:opacity-40"
+                                  className={btn("secondary", "sm")}
                                 >
                                   {busyKey === rowKey ? "…" : "Apply"}
                                 </button>
@@ -468,7 +511,7 @@ export default function AdminAuditPage() {
                               {!canApply && !s.dismissed && (
                                 <Link
                                   href={`/goo-studio/products?search=${encodeURIComponent(s.name)}`}
-                                  className="text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                                  className={btn("ghost", "sm")}
                                 >
                                   Edit by hand
                                 </Link>
@@ -481,7 +524,7 @@ export default function AdminAuditPage() {
                                     ? "Raise this again on future checks"
                                     : "This suggestion is wrong — stop raising it"
                                 }
-                                className="text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+                                className={btn("ghost", "sm")}
                               >
                                 {s.dismissed ? "Restore" : "Dismiss"}
                               </button>
@@ -502,28 +545,6 @@ export default function AdminAuditPage() {
           })}
       </div>
 
-      {report && (
-        <p className="mt-6 text-[11px] text-[var(--foreground-muted)] leading-relaxed max-w-3xl">
-          A suggestion is not a verdict: where a rule disagrees with a label, either one of them can be the wrong one —
-          a piece genuinely called &ldquo;Low Rise&rdquo; will be argued at by a rule that learned &ldquo;low&rdquo; from
-          sneakers. Fixing a subcategory sets the category with it, since the tree already says where the label belongs.
-          Re-check after a run of edits to see what is left. &ldquo;Fix categories&rdquo; on Products applies the same
-          keyword table in bulk, but only to products with no subcategory.
-        </p>
-      )}
-
-      {toast && (
-        <div
-          role={toast.type === "ok" ? "status" : "alert"}
-          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
-            toast.type === "ok"
-              ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-              : "bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]"
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
     </div>
   );
 }

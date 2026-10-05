@@ -6,6 +6,8 @@ import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/ty
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
 import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
 
 interface PendingLook {
   id: string;
@@ -84,6 +86,7 @@ const selectCls =
 const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
 
 export default function AdminOutfitsPage() {
+  const confirm = useConfirm();
   // A selection dragged out of the editor must not close it — see the hook.
   const lookBackdrop = useBackdropDismiss(() => setSelectedLook(null));
   const [adminTab, setAdminTab] = useState<"outfits" | "pending">("outfits");
@@ -262,7 +265,12 @@ export default function AdminOutfitsPage() {
   };
 
   const handleRejectLook = async (id: string) => {
-    if (!confirm("Reject this look? It leaves the queue and will not be published.")) return;
+    if (!(await confirm({
+      title: "Reject this look?",
+      body: "It leaves the queue and will not be published.",
+      confirmLabel: "Reject look",
+      tone: "danger",
+    }))) return;
     setApprovingId(id);
     setModerationError("");
     try {
@@ -493,7 +501,12 @@ export default function AdminOutfitsPage() {
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (!ids.length) return;
-    if (!confirm(`Delete ${ids.length} selected outfit${ids.length > 1 ? "s" : ""}?`)) return;
+    const what = `${ids.length} selected outfit${ids.length > 1 ? "s" : ""}`;
+    if (!(await confirm({
+      title: `Delete ${what}?`,
+      confirmLabel: `Delete ${ids.length} outfit${ids.length > 1 ? "s" : ""}`,
+      tone: "danger",
+    }))) return;
 
     setBulkDeleting(true);
     setActionError("");
@@ -544,7 +557,12 @@ export default function AdminOutfitsPage() {
   };
 
   const handleDelete = async (outfit: Outfit) => {
-    if (!confirm(`Delete "${outfit.name}"? This cannot be undone.`)) return;
+    if (!(await confirm({
+      title: `Delete "${outfit.name}"?`,
+      body: "This cannot be undone.",
+      confirmLabel: "Delete outfit",
+      tone: "danger",
+    }))) return;
     const id = outfit.id;
     setDeleteId(id);
     setActionError("");
@@ -644,7 +662,7 @@ export default function AdminOutfitsPage() {
             />
             <button
               onClick={openAddModal}
-              className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2.5 text-[13px] font-medium transition-opacity hover:opacity-80 rounded-lg"
+              className={btn("primary")}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -786,7 +804,7 @@ export default function AdminOutfitsPage() {
               <button
                 onClick={() => setSelectedLook(null)}
                 aria-label="Close"
-                className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                className={BTN_ICON}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -910,14 +928,14 @@ export default function AdminOutfitsPage() {
                 <button
                   onClick={() => handleApproveLook(selectedLook.id)}
                   disabled={approvingId === selectedLook.id}
-                  className="flex-1 h-10 rounded-lg text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 disabled:opacity-40 transition-opacity"
+                  className={`${btn("primary")} flex-1`}
                 >
                   {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
                 </button>
                 <button
                   onClick={() => handleRejectLook(selectedLook.id)}
                   disabled={approvingId === selectedLook.id}
-                  className="flex-1 h-10 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--err)] hover:text-[var(--err)] disabled:opacity-40 transition-colors"
+                  className={`${btn("danger")} flex-1`}
                 >
                   Reject
                 </button>
@@ -937,7 +955,7 @@ export default function AdminOutfitsPage() {
           <button
             onClick={() => setActionError("")}
             aria-label="Dismiss"
-            className="ml-4 opacity-60 hover:opacity-100 transition-opacity"
+            className={`${BTN_ICON} ml-4 shrink-0`}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -959,7 +977,7 @@ export default function AdminOutfitsPage() {
           <button
             onClick={() => setExportNote(null)}
             aria-label="Dismiss"
-            className="ml-4 opacity-60 hover:opacity-100 transition-opacity"
+            className={`${BTN_ICON} ml-4 shrink-0`}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -986,7 +1004,7 @@ export default function AdminOutfitsPage() {
           <button
             onClick={handleBulkDelete}
             disabled={bulkDeleting}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium border border-[var(--err)] text-[var(--err)] px-3 py-1.5 hover:bg-[var(--err-bg)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("danger")}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path
@@ -1001,7 +1019,7 @@ export default function AdminOutfitsPage() {
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors ml-auto"
+            className={`${btn("ghost")} ml-auto`}
           >
             Deselect all
           </button>
@@ -1187,7 +1205,7 @@ export default function AdminOutfitsPage() {
                       />
                       <button
                         onClick={() => openEditModal(outfit)}
-                        className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"
+                        className={BTN_ICON}
                         aria-label="Edit"
                       >
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -1197,7 +1215,7 @@ export default function AdminOutfitsPage() {
                       <button
                         onClick={() => handleDelete(outfit)}
                         disabled={deleteId === outfit.id}
-                        className="text-[var(--foreground-muted)] hover:text-[var(--err)] transition-colors p-1 disabled:opacity-40"
+                        className={BTN_ICON}
                         aria-label="Delete"
                         title="Delete outfit"
                       >
@@ -1241,7 +1259,7 @@ export default function AdminOutfitsPage() {
               <button
                 onClick={closeModal}
                 aria-label="Close"
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className={BTN_ICON}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -1404,7 +1422,7 @@ export default function AdminOutfitsPage() {
                               <button
                                 onClick={() => removeItem(item.product.id)}
                                 aria-label={`Remove ${item.product.name}`}
-                                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 p-1"
+                                className={`${BTN_ICON} shrink-0`}
                               >
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                                   <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -1626,13 +1644,13 @@ export default function AdminOutfitsPage() {
                   <button
                     onClick={handleSave}
                     disabled={!form.name.trim() || saving}
-                    className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                    className={`${btn("primary")} flex-1`}
                   >
                     {saving ? "Saving..." : editingId ? "Save changes" : "Create outfit"}
                   </button>
                   <button
                     onClick={closeModal}
-                    className="border border-[var(--border)] px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
+                    className={btn("ghost")}
                   >
                     Cancel
                   </button>

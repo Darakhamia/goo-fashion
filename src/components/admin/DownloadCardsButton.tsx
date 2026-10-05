@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useToast } from "@/components/admin/Toast";
+import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
 
 /**
  * Downloading cards out of the studio: one piece from its row, or everything in
@@ -32,7 +34,23 @@ interface Props {
   count: number;
   disabled?: boolean;
   title?: string;
+  /** Where the outcome is reported; the admin toast when left out. */
   onNotify?: (message: string, type: "ok" | "err") => void;
+}
+
+type Notify = (message: string, type: "ok" | "err") => void;
+
+/** The caller's `onNotify`, or the admin's one toast. */
+function useNotify(onNotify?: Notify): Notify {
+  const toast = useToast();
+  return useCallback<Notify>(
+    (message, type) => {
+      if (onNotify) onNotify(message, type);
+      else if (type === "err") toast.err(message);
+      else toast.ok(message);
+    },
+    [onNotify, toast],
+  );
 }
 
 const MB = 1024 * 1024;
@@ -140,6 +158,7 @@ async function saveCards(
 }
 
 export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotify }: Props) {
+  const notify = useNotify(onNotify);
   const [busy, setBusy] = useState(false);
   const [received, setReceived] = useState(0);
   const lastTick = useRef(0);
@@ -158,19 +177,19 @@ export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotif
           setReceived(total);
         }
       });
-      onNotify?.(
+      notify(
         zipped
           ? `Cards downloaded (${(bytes / MB).toFixed(1)} MB). See _export.txt inside for anything that failed.`
           : `Card downloaded (${(bytes / MB).toFixed(1)} MB).`,
         "ok",
       );
     } catch (e) {
-      onNotify?.(e instanceof Error ? e.message : "Export failed.", "err");
+      notify(e instanceof Error ? e.message : "Export failed.", "err");
     } finally {
       setBusy(false);
       setReceived(0);
     }
-  }, [busy, count, ids, kind, onNotify]);
+  }, [busy, count, ids, kind, notify]);
 
   const label = busy
     ? received
@@ -191,7 +210,7 @@ export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotif
           ? `Download the ${count} selected cards as pictures`
           : "Download every card here as a picture, in one ZIP")
       }
-      className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      className={btn("secondary")}
     >
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
         <path
@@ -211,6 +230,7 @@ interface RowProps {
   kind: Kind;
   /** The one card to draw. */
   id: string;
+  /** Where the outcome is reported; the admin toast when left out. */
   onNotify?: (message: string, type: "ok" | "err") => void;
 }
 
@@ -226,6 +246,7 @@ interface RowProps {
  * dims while the card is being drawn.
  */
 export function DownloadCardButton({ kind, id, onNotify }: RowProps) {
+  const notify = useNotify(onNotify);
   const [busy, setBusy] = useState(false);
 
   const handleClick = useCallback(async () => {
@@ -233,18 +254,18 @@ export function DownloadCardButton({ kind, id, onNotify }: RowProps) {
     setBusy(true);
     try {
       const { zipped } = await saveCards(kind, [id]);
-      onNotify?.(
+      notify(
         zipped
           ? "Card downloaded, with the cards of everything in it."
           : "Card downloaded.",
         "ok",
       );
     } catch (e) {
-      onNotify?.(e instanceof Error ? e.message : "Could not draw the card.", "err");
+      notify(e instanceof Error ? e.message : "Could not draw the card.", "err");
     } finally {
       setBusy(false);
     }
-  }, [busy, id, kind, onNotify]);
+  }, [busy, id, kind, notify]);
 
   return (
     <button
@@ -257,7 +278,7 @@ export function DownloadCardButton({ kind, id, onNotify }: RowProps) {
           ? "Download this look's card together with the card of every piece in it"
           : "Download this card as a PNG — photo, brand, name and price"
       }
-      className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40 disabled:cursor-wait"
+      className={BTN_ICON}
     >
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
         <path

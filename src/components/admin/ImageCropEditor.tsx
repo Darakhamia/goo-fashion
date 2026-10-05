@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { CropData } from "@/lib/types";
+import { btn } from "@/app/goo-studio/_ui/recipes";
 
 interface Props {
   imageUrl: string;
@@ -175,7 +176,7 @@ export function ImageCropEditor({
         <button
           type="button"
           onClick={handleReset}
-          className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
+          className={btn("ghost")}
         >
           Сбросить
         </button>
@@ -329,14 +330,14 @@ export function ImageCropEditor({
           type="button"
           onClick={() => onSave(crop)}
           disabled={saving}
-          className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-2.5 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 rounded-lg"
+          className={`${btn("primary")} flex-1`}
         >
           {saving ? "Сохранение…" : "Сохранить кадрирование"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+          className={btn("ghost")}
         >
           Отмена
         </button>

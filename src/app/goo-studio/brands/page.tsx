@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
+import { btn, BTN_ICON } from "../_ui/recipes";
 
 interface Brand {
   name: string;
@@ -12,10 +15,6 @@ const LOGO_MAX_BYTES = 5 * 1024 * 1024;
 
 const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)] w-full";
-const PRIMARY =
-  "shrink-0 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
-const GHOST =
-  "border border-[var(--border)] px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] disabled:opacity-40 transition-colors";
 
 const errorMessage = (e: unknown) => (e instanceof Error && e.message ? e.message : "Could not reach the server.");
 
@@ -31,16 +30,9 @@ export default function AdminBrandsPage() {
   const [logoBusyName, setLogoBusyName] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoTargetRef = useRef<string | null>(null);
-  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [search, setSearch] = useState("");
-
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ msg, type });
-    // Errors stay up long enough to read the fix they name.
-    toastTimer.current = setTimeout(() => setToast(null), type === "err" ? 6000 : 3000);
-  };
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const fetchBrands = async () => {
     setLoading(true);
@@ -68,7 +60,7 @@ export default function AdminBrandsPage() {
     const name = newName.trim();
     if (!name || savingRef.current) return;
     if (brands.some((b) => b.name.toLowerCase() === name.toLowerCase())) {
-      showToast("Brand already exists.", "err");
+      toast.err("Brand already exists.");
       return;
     }
     savingRef.current = true;
@@ -81,16 +73,16 @@ export default function AdminBrandsPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(json.error || `Could not add the brand (HTTP ${res.status}).`, "err");
+        toast.err(json.error || `Could not add the brand (HTTP ${res.status}).`);
         return;
       }
       setBrands((prev) =>
         [...prev, { name: json.name ?? name, logoUrl: null }].sort((a, b) => a.name.localeCompare(b.name))
       );
       setNewName("");
-      showToast("Brand added.");
+      toast.ok("Brand added.");
     } catch (e) {
-      showToast(errorMessage(e), "err");
+      toast.err(errorMessage(e));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -98,19 +90,19 @@ export default function AdminBrandsPage() {
   };
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete brand "${name}"?`)) return;
+    if (!(await confirm({ title: `Delete brand "${name}"?`, confirmLabel: "Delete brand", tone: "danger" }))) return;
     setDeletingName(name);
     try {
       const res = await fetch(`/api/brands/${encodeURIComponent(name)}`, { method: "DELETE" });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        showToast(json.error || `Could not delete the brand (HTTP ${res.status}).`, "err");
+        toast.err(json.error || `Could not delete the brand (HTTP ${res.status}).`);
         return;
       }
       setBrands((prev) => prev.filter((b) => b.name !== name));
-      showToast("Brand deleted.");
+      toast.ok("Brand deleted.");
     } catch (e) {
-      showToast(errorMessage(e), "err");
+      toast.err(errorMessage(e));
     } finally {
       setDeletingName(null);
     }
@@ -127,11 +119,11 @@ export default function AdminBrandsPage() {
 
   const handleLogoUpload = async (name: string, file: File) => {
     if (!file.type.startsWith("image/")) {
-      showToast("The logo must be an image file.", "err");
+      toast.err("The logo must be an image file.");
       return;
     }
     if (file.size > LOGO_MAX_BYTES) {
-      showToast("The logo must be 5 MB or smaller.", "err");
+      toast.err("The logo must be 5 MB or smaller.");
       return;
     }
     setLogoBusyName(name);
@@ -142,32 +134,38 @@ export default function AdminBrandsPage() {
       const res = await fetch("/api/admin/brand-logo", { method: "POST", body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(json.error || `Could not upload the logo (HTTP ${res.status}).`, "err");
+        toast.err(json.error || `Could not upload the logo (HTTP ${res.status}).`);
         return;
       }
       setBrands((prev) => prev.map((b) => (b.name === name ? { ...b, logoUrl: json.logoUrl ?? null } : b)));
-      showToast("Logo updated.");
+      toast.ok("Logo updated.");
     } catch (e) {
-      showToast(errorMessage(e), "err");
+      toast.err(errorMessage(e));
     } finally {
       setLogoBusyName(null);
     }
   };
 
   const handleLogoRemove = async (name: string) => {
-    if (!confirm(`Remove the logo of "${name}"? The storefront falls back to the store's site icon.`)) return;
+    const ok = await confirm({
+      title: `Remove the logo of "${name}"?`,
+      body: "The storefront falls back to the store's site icon.",
+      confirmLabel: "Remove logo",
+      tone: "danger",
+    });
+    if (!ok) return;
     setLogoBusyName(name);
     try {
       const res = await fetch(`/api/admin/brand-logo?name=${encodeURIComponent(name)}`, { method: "DELETE" });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        showToast(json.error || `Could not remove the logo (HTTP ${res.status}).`, "err");
+        toast.err(json.error || `Could not remove the logo (HTTP ${res.status}).`);
         return;
       }
       setBrands((prev) => prev.map((b) => (b.name === name ? { ...b, logoUrl: null } : b)));
-      showToast("Logo removed.");
+      toast.ok("Logo removed.");
     } catch (e) {
-      showToast(errorMessage(e), "err");
+      toast.err(errorMessage(e));
     } finally {
       setLogoBusyName(null);
     }
@@ -196,7 +194,7 @@ export default function AdminBrandsPage() {
       {loadError && (
         <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3">
           <p className="text-[13px] text-[var(--err)] leading-relaxed">{loadError}</p>
-          <button onClick={fetchBrands} className={`${GHOST} mt-3`}>
+          <button onClick={fetchBrands} className={`${btn("secondary")} mt-3`}>
             Retry
           </button>
         </div>
@@ -217,7 +215,7 @@ export default function AdminBrandsPage() {
           <button
             onClick={handleAdd}
             disabled={saving || !newName.trim()}
-            className={PRIMARY}
+            className={`${btn("primary")} shrink-0`}
           >
             {saving ? "…" : "Add"}
           </button>
@@ -299,7 +297,7 @@ export default function AdminBrandsPage() {
                     <button
                       onClick={() => pickLogo(brand.name)}
                       disabled={logoBusy}
-                      className={GHOST}
+                      className={btn("secondary", "sm")}
                     >
                       {logoBusy ? "Working…" : brand.logoUrl ? "Replace logo" : "Upload logo"}
                     </button>
@@ -307,7 +305,7 @@ export default function AdminBrandsPage() {
                       <button
                         onClick={() => handleLogoRemove(brand.name)}
                         disabled={logoBusy}
-                        className={`${GHOST} hover:text-[var(--err)] hover:border-[var(--err)]`}
+                        className={btn("danger", "sm")}
                       >
                         Remove logo
                       </button>
@@ -317,7 +315,7 @@ export default function AdminBrandsPage() {
                       disabled={deletingName === brand.name}
                       title="Delete brand"
                       aria-label={`Delete brand ${brand.name}`}
-                      className="ml-1 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+                      className={`${BTN_ICON} ml-1`}
                     >
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                         <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -330,20 +328,6 @@ export default function AdminBrandsPage() {
           </ul>
         )}
       </div>
-
-      {/* Toast */}
-      {toast && (
-        <div
-          role={toast.type === "err" ? "alert" : "status"}
-          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 md:max-w-md px-4 py-3 text-xs tracking-wide rounded-xl border ${
-            toast.type === "ok"
-              ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-              : "bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]"
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
     </div>
   );
 }

@@ -29,6 +29,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CrawlItemResult } from "@/lib/server/parser/types";
+import { btn } from "../../_ui/recipes";
 
 // ── Wire protocol ────────────────────────────────────────────────────────────
 
@@ -49,8 +50,6 @@ interface ExtMessage {
 
 /** Inline label that leads a row of facts (robots.txt, Looking for ours). */
 const labelCls = "text-[12px] font-medium text-[var(--foreground-muted)]";
-const btnGhost =
-  "px-4 py-2 text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors rounded-lg";
 const cardCls = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 
 const Spinner = () => (
@@ -376,12 +375,12 @@ export default function CollectPage() {
         )}
         <div className="ml-auto flex items-center gap-2">
           {running ? (
-            <button onClick={stop} className={btnGhost} aria-label="Stop the run">
+            <button onClick={stop} className={btn("secondary")} aria-label="Stop the run">
               Stop
             </button>
           ) : (
             results.length > 0 && (
-              <button onClick={reset} className={btnGhost}>
+              <button onClick={reset} className={btn("ghost")}>
                 Clear
               </button>
             )

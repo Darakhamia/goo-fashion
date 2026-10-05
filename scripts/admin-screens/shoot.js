@@ -98,7 +98,7 @@ function lookup(method, u) {
         await page.waitForTimeout(pg.wait ?? 1200);
         if (pg.after) { await pg.after(page); await page.waitForTimeout(800); }
         // Hide Next dev overlay badge
-        await page.addStyleTag({ content: "nextjs-portal{display:none!important}" + (pg.fullPage !== false ? ".h-dvh{height:auto!important;overflow:visible!important} main{overflow:visible!important}" : "") });
+        await page.addStyleTag({ content: "nextjs-portal{display:none!important}" + (pg.fullPage !== false ? ".h-dvh{height:auto!important;min-height:100dvh!important;overflow:visible!important} main{overflow:visible!important}" : "") });
         const kept = errors.filter((e) => !/Failed to load resource|favicon|posthog/i.test(e));
         if ("axe" in args) {
           await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });

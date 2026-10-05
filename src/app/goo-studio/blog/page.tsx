@@ -5,6 +5,8 @@ import Image from "@/components/ui/Image";
 import type { BlogPost } from "@/lib/types";
 import { estimateReadTime, slugify } from "@/lib/blog-render";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
 
 interface BlogFormState {
   slug: string;
@@ -72,6 +74,7 @@ function formatDate(iso: string): string {
 }
 
 export default function AdminBlogPage() {
+  const confirm = useConfirm();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -236,7 +239,12 @@ export default function AdminBlogPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this post? This cannot be undone.")) return;
+    if (!(await confirm({
+      title: "Delete this post?",
+      body: "This cannot be undone.",
+      confirmLabel: "Delete post",
+      tone: "danger",
+    }))) return;
     setDeleteId(id);
     setDeleteError("");
     try {
@@ -339,7 +347,7 @@ export default function AdminBlogPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={openAiModal}
-            className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--foreground)] px-4 py-2.5 text-[13px] font-medium transition-colors hover:bg-[var(--background)] rounded-lg"
+            className={btn("secondary")}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
@@ -350,7 +358,7 @@ export default function AdminBlogPage() {
           </button>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2.5 text-[13px] font-medium transition-opacity hover:opacity-80 rounded-lg"
+            className={btn("primary")}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path
@@ -382,7 +390,7 @@ export default function AdminBlogPage() {
           {!loadError && (
             <button
               onClick={() => setDeleteError("")}
-              className="text-[var(--err)] hover:opacity-70 transition-opacity shrink-0"
+              className={`${BTN_ICON} shrink-0`}
               aria-label="Dismiss"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -522,7 +530,7 @@ export default function AdminBlogPage() {
                       </a>
                       <button
                         onClick={() => openEditModal(post)}
-                        className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"
+                        className={BTN_ICON}
                         aria-label="Edit"
                       >
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -537,7 +545,7 @@ export default function AdminBlogPage() {
                       <button
                         onClick={() => handleDelete(post.id)}
                         disabled={deleteId === post.id}
-                        className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40"
+                        className={BTN_ICON}
                         aria-label="Delete"
                       >
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -582,7 +590,7 @@ export default function AdminBlogPage() {
               <button
                 onClick={() => setShowAiModal(false)}
                 disabled={aiLoading}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className={BTN_ICON}
                 aria-label="Close"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -666,14 +674,14 @@ export default function AdminBlogPage() {
               <button
                 onClick={handleAiGenerate}
                 disabled={!aiInputReady || aiLoading}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className={`${btn("primary")} flex-1`}
               >
                 {aiLoading ? "Generating..." : "Generate post"}
               </button>
               <button
                 onClick={() => setShowAiModal(false)}
                 disabled={aiLoading}
-                className="border border-[var(--border)] px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 rounded-lg"
+                className={btn("ghost")}
               >
                 Cancel
               </button>
@@ -704,7 +712,7 @@ export default function AdminBlogPage() {
               </div>
               <button
                 onClick={closeModal}
-                className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className={`${BTN_ICON} shrink-0`}
                 aria-label="Close"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -994,7 +1002,7 @@ export default function AdminBlogPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.title.trim() || saving}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className={`${btn("primary")} flex-1`}
               >
                 {saving
                   ? "Saving..."
@@ -1006,7 +1014,7 @@ export default function AdminBlogPage() {
               </button>
               <button
                 onClick={closeModal}
-                className="border border-[var(--border)] px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
+                className={btn("ghost")}
               >
                 Cancel
               </button>

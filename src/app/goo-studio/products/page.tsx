@@ -11,6 +11,9 @@ import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { CURRENCIES, useCurrency } from "@/lib/context/currency-context";
 import { storeFaviconUrl } from "@/lib/stores";
 import { bareHost, pastedUrl } from "@/lib/url";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
+import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -236,6 +239,7 @@ function deriveColors(raw: string): string[] {
   return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+/** A confirm body that keeps the line breaks it was written with. */
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function ImageList({
@@ -349,7 +353,7 @@ function ImageList({
               type="button"
               onClick={() => removeRow(i)}
               aria-label="Remove image"
-              className="md:mt-2 flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+              className={`${BTN_ICON} md:mt-0.5`}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -361,7 +365,7 @@ function ImageList({
       <button
         type="button"
         onClick={addRow}
-        className="self-start text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5 mt-1"
+        className={`${btn("ghost")} self-start mt-1`}
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -537,7 +541,7 @@ function RetailerList({
       <button
         type="button"
         onClick={add}
-        className="self-start text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
+        className={`${btn("ghost")} self-start`}
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -651,7 +655,8 @@ export default function AdminProductsPage() {
   const [deleting, setDeleting] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [filterGroup, setFilterGroup] = useState<string>("");
   const [filterSubcategory, setFilterSubcategory] = useState<string>("");
@@ -682,16 +687,16 @@ export default function AdminProductsPage() {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        showToast(`Не удалось сохранить кадрирование${json.error ? `: ${json.error}` : ""}`, "err");
+        toast.err(`Не удалось сохранить кадрирование${json.error ? `: ${json.error}` : ""}`);
         return;
       }
       setProducts((prev) =>
         prev.map((p) => (p.id === cropProduct.id ? { ...p, cropData } : p))
       );
-      showToast("Кадрирование сохранено.");
+      toast.ok("Кадрирование сохранено.");
       setCropProduct(null);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Не удалось сохранить кадрирование", "err");
+      toast.err(e instanceof Error ? e.message : "Не удалось сохранить кадрирование");
     } finally {
       setCropSaving(false);
     }
@@ -707,15 +712,15 @@ export default function AdminProductsPage() {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        showToast(`Ошибка сброса${json.error ? `: ${json.error}` : ""}`, "err");
+        toast.err(`Ошибка сброса${json.error ? `: ${json.error}` : ""}`);
         return;
       }
       setProducts((prev) =>
         prev.map((p) => (p.id === product.id ? { ...p, cropData: undefined } : p))
       );
-      showToast("Кадрирование сброшено.");
+      toast.ok("Кадрирование сброшено.");
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Ошибка сброса", "err");
+      toast.err(e instanceof Error ? e.message : "Ошибка сброса");
     }
   };
 
@@ -723,28 +728,6 @@ export default function AdminProductsPage() {
   const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false, entries: [] });
   const [grouping, setGrouping] = useState(false);
   const [variantSearch, setVariantSearch] = useState("");
-
-  // One timer for whichever toast is showing: a new toast cancels the old
-  // one's timer, so a stale timer can't blank a fresh message early. Errors
-  // stay up longer — they are the ones worth reading — and any toast can be
-  // dismissed by hand.
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dismissToast = () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = null;
-    setToast(null);
-  };
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ msg, type });
-    toastTimer.current = setTimeout(() => {
-      toastTimer.current = null;
-      setToast(null);
-    }, type === "err" ? 10000 : 3500);
-  };
-  useEffect(() => () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-  }, []);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -760,7 +743,7 @@ export default function AdminProductsPage() {
     } catch (e) {
       const message = e instanceof Error ? e.message : "Could not load products";
       setLoadError(message);
-      showToast(message, "err");
+      toast.err(message);
     } finally {
       setLoading(false);
     }
@@ -771,7 +754,7 @@ export default function AdminProductsPage() {
     // refetch (GET is read-only).
     fetch("/api/products/seed")
       .then((r) => setDbConfigured(r.status !== 501))
-      .catch(() => showToast("Could not check the database connection — reload the page.", "err"));
+      .catch(() => toast.err("Could not check the database connection — reload the page."));
     fetchProducts();
     fetch("/api/color-groups")
       .then((r) => r.json())
@@ -840,10 +823,10 @@ export default function AdminProductsPage() {
         );
       } else {
         const json = await res.json().catch(() => ({}));
-        showToast(json.error || `Could not add the brand (HTTP ${res.status})`, "err");
+        toast.err(json.error || `Could not add the brand (HTTP ${res.status})`);
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not add the brand", "err");
+      toast.err(e instanceof Error ? e.message : "Could not add the brand");
     } finally {
       setAddingBrand(false);
     }
@@ -1157,7 +1140,7 @@ export default function AdminProductsPage() {
       });
       const saved = await res.json().catch(() => null);
       if (!res.ok || !saved?.id) {
-        showToast(saved?.error || `Failed to save (HTTP ${res.status})`, "err");
+        toast.err(saved?.error || `Failed to save (HTTP ${res.status})`);
         return;
       }
       if (editingProduct) {
@@ -1181,26 +1164,27 @@ export default function AdminProductsPage() {
       }
       if (variants.error) problems.push(`Saved, but the colour variants were not updated: ${variants.error}`);
 
-      if (problems.length) showToast(problems.join(" · "), "err");
-      else showToast(editingProduct ? "Product updated." : "Product added.");
+      if (problems.length) toast.err(problems.join(" · "));
+      else toast.ok(editingProduct ? "Product updated." : "Product added.");
 
       if (variants.changed) await fetchProducts();
       closeModal();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Failed to save", "err");
+      toast.err(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!canWrite || !confirm("Delete this product?")) return;
+    if (!canWrite) return;
+    if (!(await confirm({ title: "Delete this product?", confirmLabel: "Delete product", tone: "danger" }))) return;
     try {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       if (!res.ok) {
         // 409 names the outfits that still use it; the row stays.
         const json = await res.json().catch(() => ({}));
-        showToast(json.error || `Failed to delete (HTTP ${res.status})`, "err");
+        toast.err(json.error || `Failed to delete (HTTP ${res.status})`);
         return;
       }
       setProducts((prev) => prev.filter((p) => p.id !== id));
@@ -1210,9 +1194,9 @@ export default function AdminProductsPage() {
         next.delete(id);
         return next;
       });
-      showToast("Deleted.");
+      toast.ok("Deleted.");
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Failed to delete", "err");
+      toast.err(e instanceof Error ? e.message : "Failed to delete");
     }
   };
 
@@ -1277,7 +1261,14 @@ export default function AdminProductsPage() {
       bulk.nameSuffix && `suffix "${bulk.nameSuffix}"`,
     ].filter(Boolean).join("\n  ");
 
-    if (!confirm(`Apply to ${ids.length} product${ids.length === 1 ? "" : "s"}?\n\n  ${summary}\n\nFields left blank are not touched.`)) return;
+    if (
+      !(await confirm({
+        title: `Apply these changes to ${ids.length} product${ids.length === 1 ? "" : "s"}?`,
+        body: `  ${summary}\n\nFields left blank are not touched.`,
+        confirmLabel: `Apply to ${ids.length} product${ids.length === 1 ? "" : "s"}`,
+        tone: "danger",
+      }))
+    ) return;
 
     setBulkSaving(true);
     try {
@@ -1297,20 +1288,19 @@ export default function AdminProductsPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) { showToast(json.error ?? "Bulk edit failed.", "err"); return; }
+      if (!res.ok) { toast.err(json.error ?? "Bulk edit failed."); return; }
       const failed = (json.failures ?? []).length;
-      showToast(
+      (failed ? toast.err : toast.ok)(
         failed
           ? `Updated ${json.updated} of ${json.requested} — ${failed} failed`
           : `Updated ${json.updated} product${json.updated === 1 ? "" : "s"}`,
-        failed ? "err" : "ok",
       );
       setBulkOpen(false);
       resetBulk();
       setSelectedIds(new Set());
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Bulk edit failed.", "err");
+      toast.err(e instanceof Error ? e.message : "Bulk edit failed.");
     } finally {
       setBulkSaving(false);
     }
@@ -1332,7 +1322,7 @@ export default function AdminProductsPage() {
   const [chosen, setChosen] = useState<Set<string>>(new Set());
 
   const runSuggest = async () => {
-    if (!form.name.trim()) { showToast("Give it a name first — that is what the suggestions read.", "err"); return; }
+    if (!form.name.trim()) { toast.err("Give it a name first — that is what the suggestions read."); return; }
     setSuggesting(true);
     try {
       const res = await fetch("/api/admin/suggest-fields", {
@@ -1352,15 +1342,15 @@ export default function AdminProductsPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) { showToast(json.error ?? "Could not suggest anything.", "err"); return; }
+      if (!res.ok) { toast.err(json.error ?? "Could not suggest anything."); return; }
       const found = (json.suggestions ?? []) as FieldSuggestion[];
       setSuggestions(found);
       // Only the confident ones start ticked. A low-confidence field left
       // empty is obviously unfinished; one filled in wrongly is not.
       setChosen(new Set(found.filter((s) => s.confidence === "high").map((s) => s.field)));
-      if (!found.length) showToast("Nothing to suggest — either it is already filled in or the name says too little.");
+      if (!found.length) toast.ok("Nothing to suggest — either it is already filled in or the name says too little.");
     } catch {
-      showToast("Could not reach the server.", "err");
+      toast.err("Could not reach the server.");
     } finally {
       setSuggesting(false);
     }
@@ -1390,7 +1380,7 @@ export default function AdminProductsPage() {
       }
       return next;
     });
-    showToast(`Filled ${taking.length} field${taking.length === 1 ? "" : "s"} — nothing saved yet.`);
+    toast.ok(`Filled ${taking.length} field${taking.length === 1 ? "" : "s"} — nothing saved yet.`);
     setSuggestions(null);
     setChosen(new Set());
   };
@@ -1404,7 +1394,7 @@ export default function AdminProductsPage() {
     try {
       const dryRes = await fetch("/api/admin/recategorize?scope=all", { cache: "no-store" });
       const dry = await dryRes.json();
-      if (!dryRes.ok) { showToast(dry.error || "Recategorize failed", "err"); return; }
+      if (!dryRes.ok) { toast.err(dry.error || "Recategorize failed"); return; }
 
       // Products the classifier left alone, and why. Worth stating up front:
       // the whole worry about this button is that it overwrites hand-filed work,
@@ -1416,12 +1406,12 @@ export default function AdminProductsPage() {
         .join("\n");
 
       if (!dry.wouldChange) {
-        showToast(
+        toast.ok(
           dry.protected
             ? `Nothing to change · ${dry.protected} product${dry.protected === 1 ? "" : "s"} protected`
             : "Nothing to recategorize — every product looks correct",
         );
-        if (guardNote) window.alert(`No changes to make.\n\n${guardNote}`);
+        if (guardNote) toast.info(`No changes to make.\n\n${guardNote}`);
         return;
       }
 
@@ -1429,10 +1419,13 @@ export default function AdminProductsPage() {
         .sort((a, b) => b[1] - a[1])
         .map(([k, n]) => `  ${k}: ${n}`)
         .join("\n");
-      const ok = window.confirm(
-        `Recategorize ${dry.wouldChange} of ${dry.scanned} products?\n\n${summary}\n\n${guardNote}\n\n` +
-        `Only products with no subcategory can be changed. This can be undone.`,
-      );
+      const ok = await confirm({
+        title: `Recategorize ${dry.wouldChange} of ${dry.scanned} products?`,
+        body:
+          `${summary}\n\n${guardNote ? `${guardNote}\n\n` : ""}` +
+          `Only products with no subcategory can be changed. This can be undone.`,
+        confirmLabel: `Recategorize ${dry.wouldChange} products`,
+      });
       if (!ok) return;
 
       const applyRes = await fetch("/api/admin/recategorize", {
@@ -1441,16 +1434,15 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ apply: true, scope: "all" }),
       });
       const applied = await applyRes.json();
-      if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
-      showToast(
+      if (!applyRes.ok) { toast.err(applied.error || "Apply failed"); return; }
+      (applied.undoable ? toast.ok : toast.err)(
         applied.undoable
           ? `Recategorized ${applied.applied} · use Undo to revert`
           : `Recategorized ${applied.applied} — NOT recorded, so it cannot be undone`,
-        applied.undoable ? "ok" : "err",
       );
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Recategorize failed", "err");
+      toast.err(e instanceof Error ? e.message : "Recategorize failed");
     } finally {
       setRecategorizing(false);
     }
@@ -1458,7 +1450,13 @@ export default function AdminProductsPage() {
 
   /** Puts back whatever the last "Fix categories" run changed. */
   const handleUndoRecategorize = async () => {
-    if (!confirm("Undo the last category fix?\n\nProducts edited since that run are left as they are.")) return;
+    if (
+      !(await confirm({
+        title: "Undo the last category fix?",
+        body: "Products edited since that run are left as they are.",
+        confirmLabel: "Undo category fix",
+      }))
+    ) return;
     setRecategorizing(true);
     try {
       const res = await fetch("/api/admin/recategorize", {
@@ -1467,15 +1465,15 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ undo: true }),
       });
       const json = await res.json();
-      if (!res.ok) { showToast(json.error || "Nothing to undo", "err"); return; }
-      showToast(
+      if (!res.ok) { toast.err(json.error || "Nothing to undo"); return; }
+      toast.ok(
         json.movedSince
           ? `Restored ${json.restored} · ${json.movedSince} changed since and left alone`
           : `Restored ${json.restored} product${json.restored === 1 ? "" : "s"}`,
       );
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Undo failed", "err");
+      toast.err(e instanceof Error ? e.message : "Undo failed");
     } finally {
       setRecategorizing(false);
     }
@@ -1490,11 +1488,11 @@ export default function AdminProductsPage() {
     try {
       const dryRes = await fetch("/api/admin/restyle", { cache: "no-store" });
       const dry = await dryRes.json();
-      if (!dryRes.ok) { showToast(dry.error || "Style reset failed", "err"); return; }
+      if (!dryRes.ok) { toast.err(dry.error || "Style reset failed"); return; }
 
       const would = dry.wouldChange as { products: number; outfits: number };
       if (!would.products && !would.outfits) {
-        showToast("Nothing to change — every product already has only its basic styles");
+        toast.ok("Nothing to change — every product already has only its basic styles");
         return;
       }
 
@@ -1505,16 +1503,20 @@ export default function AdminProductsPage() {
         .sort((a, b) => b[1] - a[1])
         .map(([style, n]) => `${style} ${n}`)
         .join(", ");
-      const ok = window.confirm(
-        `Reset styles on ${would.products} of ${dry.scanned.products} products` +
-        (would.outfits ? ` and clear them on ${would.outfits} outfits` : "") + `?\n\n` +
-        `Every old tag is removed. Products get only casual, minimal, classic, streetwear or sporty: ` +
-        `from their description first, and from the brand where the description says little ` +
-        `(Adidas sporty, Gucci classic). A product with neither is left without a style.\n\n` +
-        `Products per style after the reset:\n${after}\n\n` +
-        (removed ? `Tags removed: ${removed}\n\n` : "") +
-        `This can be undone.`,
-      );
+      const ok = await confirm({
+        title:
+          `Reset styles on ${would.products} of ${dry.scanned.products} products` +
+          (would.outfits ? ` and clear them on ${would.outfits} outfits` : "") + `?`,
+        body:
+          `Every old tag is removed. Products get only casual, minimal, classic, streetwear or sporty: ` +
+          `from their description first, and from the brand where the description says little ` +
+          `(Adidas sporty, Gucci classic). A product with neither is left without a style.\n\n` +
+          `Products per style after the reset:\n${after}\n\n` +
+          (removed ? `Tags removed: ${removed}\n\n` : "") +
+          `This can be undone.`,
+        confirmLabel: `Reset styles on ${would.products} products`,
+        tone: "danger",
+      });
       if (!ok) return;
 
       const applyRes = await fetch("/api/admin/restyle", {
@@ -1523,17 +1525,16 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ apply: true }),
       });
       const applied = await applyRes.json();
-      if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
+      if (!applyRes.ok) { toast.err(applied.error || "Apply failed"); return; }
       const failed = (applied.failures ?? []).length;
-      showToast(
+      (applied.undoable && !failed ? toast.ok : toast.err)(
         applied.undoable
           ? `Reset styles on ${applied.applied}${failed ? ` · ${failed} failed` : ""} · use Undo styles to revert`
           : `Reset styles on ${applied.applied} — NOT recorded, so it cannot be undone`,
-        applied.undoable && !failed ? "ok" : "err",
       );
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Style reset failed", "err");
+      toast.err(e instanceof Error ? e.message : "Style reset failed");
     } finally {
       setRestyling(false);
     }
@@ -1541,7 +1542,13 @@ export default function AdminProductsPage() {
 
   /** Puts back the tags the last style reset replaced. */
   const handleUndoResetStyles = async () => {
-    if (!confirm("Undo the last style reset?\n\nProducts and outfits whose styles were edited since are left as they are.")) return;
+    if (
+      !(await confirm({
+        title: "Undo the last style reset?",
+        body: "Products and outfits whose styles were edited since are left as they are.",
+        confirmLabel: "Undo style reset",
+      }))
+    ) return;
     setRestyling(true);
     try {
       const res = await fetch("/api/admin/restyle", {
@@ -1550,15 +1557,15 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ undo: true }),
       });
       const json = await res.json();
-      if (!res.ok) { showToast(json.error || "Nothing to undo", "err"); return; }
-      showToast(
+      if (!res.ok) { toast.err(json.error || "Nothing to undo"); return; }
+      toast.ok(
         json.changedSince
           ? `Restored ${json.restored} · ${json.changedSince} changed since and left alone`
           : `Restored styles on ${json.restored}`,
       );
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Undo failed", "err");
+      toast.err(e instanceof Error ? e.message : "Undo failed");
     } finally {
       setRestyling(false);
     }
@@ -1592,9 +1599,9 @@ export default function AdminProductsPage() {
       if (!chosenIds.length) {
         const progressRes = await fetch("/api/admin/product-bg-color", { cache: "no-store" });
         const p = await progressRes.json();
-        if (!progressRes.ok) { showToast(p.error || "Could not read progress", "err"); return; }
+        if (!progressRes.ok) { toast.err(p.error || "Could not read progress"); return; }
         if (p.progress.total && !p.progress.unmeasured) {
-          showToast(
+          toast.ok(
             `All ${p.progress.total} measured · ${p.progress.measured} have a backdrop, ` +
             `${p.progress.declined} have none`,
           );
@@ -1604,9 +1611,9 @@ export default function AdminProductsPage() {
 
       const dryRes = await post({ limit: BACKDROP_SAMPLE, ids: chosenIds });
       const dry = await dryRes.json();
-      if (!dryRes.ok) { showToast(dry.error || "Sampling failed", "err"); return; }
+      if (!dryRes.ok) { toast.err(dry.error || "Sampling failed"); return; }
 
-      if (!dry.scanned) { showToast("Nothing left to measure"); return; }
+      if (!dry.scanned) { toast.ok("Nothing left to measure"); return; }
 
       const examples = (dry.measuredSample as { name: string; color: string }[])
         .slice(0, 6)
@@ -1625,18 +1632,22 @@ export default function AdminProductsPage() {
         .join("\n");
 
       const remaining = (dry.progress?.unmeasured ?? dry.scanned) as number;
-      const ok = window.confirm(
-        `Measured ${dry.scanned} photo${dry.scanned === 1 ? "" : "s"} without saving:\n\n` +
-        `  ${dry.measured} have a single backdrop\n` +
-        `  ${dry.declined} have none — those keep the white box\n` +
-        (dry.failed ? `  ${dry.failed} could not be downloaded — will be retried later\n` : "") +
-        (examples ? `\n${examples}\n` : "") +
-        (whyNotNote ? `\nWhy the rest were declined:\n${whyNotNote}\n` : "") +
-        `\n${chosenIds.length
-          ? `Save these ${dry.scanned} now?`
-          : `Save, and keep going until all ${remaining} unmeasured products are done?`}\n\n` +
-        `This can be undone.`,
-      );
+      const ok = await confirm({
+        title: chosenIds.length
+          ? `Save the backdrops of these ${dry.scanned} photo${dry.scanned === 1 ? "" : "s"} now?`
+          : `Save, and keep going until all ${remaining} unmeasured products are done?`,
+        body:
+          `Measured ${dry.scanned} photo${dry.scanned === 1 ? "" : "s"} without saving:\n\n` +
+          `  ${dry.measured} have a single backdrop\n` +
+          `  ${dry.declined} have none — those keep the white box\n` +
+          (dry.failed ? `  ${dry.failed} could not be downloaded — will be retried later\n` : "") +
+          (examples ? `\n${examples}\n` : "") +
+          (whyNotNote ? `\nWhy the rest were declined:\n${whyNotNote}\n` : "") +
+          `\nThis can be undone.`,
+        confirmLabel: chosenIds.length
+          ? `Save ${dry.scanned} backdrop${dry.scanned === 1 ? "" : "s"}`
+          : `Save and measure all ${remaining}`,
+      });
       if (!ok) return;
 
       // One click works through the catalogue rather than one batch of it. The
@@ -1688,11 +1699,11 @@ export default function AdminProductsPage() {
 
         if (chosenIds.length || left === undefined || left === 0 || applied === 0) break;
 
-        showToast(`${totalApplied} saved · ${left} left…`);
+        toast.ok(`${totalApplied} saved · ${left} left…`);
       }
 
       const failedWrites = totalWriteFailures > 0;
-      showToast(
+      (roundError || notRecorded || failedWrites ? toast.err : toast.ok)(
         (roundError ? `Stopped: ${roundError} · ` : "") +
         `${totalApplied} saved (${totalMeasured} with a backdrop, ${totalDeclined} without)` +
         (totalFailed ? ` · ${totalFailed} to retry` : "") +
@@ -1702,11 +1713,10 @@ export default function AdminProductsPage() {
         // is the difference between a minute and an hour on a large catalogue.
         (totalMeasured && !thumbnails ? " — full-size photos, no Storage renditions" : "") +
         (notRecorded ? " — NOT recorded, cannot be undone" : ""),
-        roundError || notRecorded || failedWrites ? "err" : "ok",
       );
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Sampling failed", "err");
+      toast.err(e instanceof Error ? e.message : "Sampling failed");
     } finally {
       setSampling(false);
     }
@@ -1714,7 +1724,13 @@ export default function AdminProductsPage() {
 
   /** Clears whatever the last backdrop run wrote. */
   const handleUndoBackdrops = async () => {
-    if (!confirm("Undo the last photo-backdrop run?\n\nProducts changed since that run are left as they are.")) return;
+    if (
+      !(await confirm({
+        title: "Undo the last photo-backdrop run?",
+        body: "Products changed since that run are left as they are.",
+        confirmLabel: "Undo backdrop run",
+      }))
+    ) return;
     setSampling(true);
     try {
       const res = await fetch("/api/admin/product-bg-color", {
@@ -1723,15 +1739,15 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ undo: true }),
       });
       const json = await res.json();
-      if (!res.ok) { showToast(json.error || "Nothing to undo", "err"); return; }
-      showToast(
+      if (!res.ok) { toast.err(json.error || "Nothing to undo"); return; }
+      toast.ok(
         json.changedSince
           ? `Cleared ${json.restored} · ${json.changedSince} changed since and left alone`
           : `Cleared ${json.restored} product${json.restored === 1 ? "" : "s"}`,
       );
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Undo failed", "err");
+      toast.err(e instanceof Error ? e.message : "Undo failed");
     } finally {
       setSampling(false);
     }
@@ -1858,22 +1874,29 @@ export default function AdminProductsPage() {
         // Includes a database without the variant columns: the message says
         // which columns to add.
         const err = await res.json().catch(() => ({}));
-        showToast(err.error || `Failed to group products (HTTP ${res.status})`, "err");
+        toast.err(err.error || `Failed to group products (HTTP ${res.status})`);
         return;
       }
-      showToast(`${entries.length} products grouped as variants.`);
+      toast.ok(`${entries.length} products grouped as variants.`);
       setGroupModal({ open: false, entries: [] });
       setSelectedIds(new Set());
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Failed to group products", "err");
+      toast.err(e instanceof Error ? e.message : "Failed to group products");
     } finally {
       setGrouping(false);
     }
   };
 
   const handleUngroup = async (groupId: string) => {
-    if (!canWrite || !confirm("Unlink all variants in this group?")) return;
+    if (!canWrite) return;
+    if (
+      !(await confirm({
+        title: "Unlink all variants in this group?",
+        confirmLabel: "Unlink variants",
+        tone: "danger",
+      }))
+    ) return;
     try {
       const res = await fetch("/api/products/group", {
         method: "DELETE",
@@ -1882,13 +1905,13 @@ export default function AdminProductsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        showToast(err.error || `Failed to unlink (HTTP ${res.status})`, "err");
+        toast.err(err.error || `Failed to unlink (HTTP ${res.status})`);
         return;
       }
-      showToast("Variants unlinked.");
+      toast.ok("Variants unlinked.");
       await fetchProducts();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Failed to unlink", "err");
+      toast.err(e instanceof Error ? e.message : "Failed to unlink");
     }
   };
 
@@ -1902,7 +1925,14 @@ export default function AdminProductsPage() {
     if (!selectedIds.size || !canWrite) return;
     const ids = [...selectedIds];
     const count = ids.length;
-    if (!confirm(`Delete ${count} selected product${count > 1 ? "s" : ""}?\n\nProducts used in an outfit are kept.`)) return;
+    if (
+      !(await confirm({
+        title: `Delete ${count} selected product${count > 1 ? "s" : ""}?`,
+        body: "Products used in an outfit are kept.",
+        confirmLabel: `Delete ${count} product${count > 1 ? "s" : ""}`,
+        tone: "danger",
+      }))
+    ) return;
     setDeleting(true);
     try {
       const failures: { id: string; error: string }[] = [];
@@ -1926,16 +1956,15 @@ export default function AdminProductsPage() {
       if (failures.length) {
         const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
         const shown = failures.slice(0, 3).map((f) => `${nameOf(f.id)}: ${f.error}`).join(" · ");
-        showToast(
+        toast.err(
           `Deleted ${deleted.length} of ${count}. Not deleted — ${shown}` +
           (failures.length > 3 ? ` (+${failures.length - 3} more, still selected)` : ""),
-          "err",
         );
       } else {
-        showToast(`Deleted ${count} product${count > 1 ? "s" : ""}.`);
+        toast.ok(`Deleted ${count} product${count > 1 ? "s" : ""}.`);
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Bulk delete failed", "err");
+      toast.err(e instanceof Error ? e.message : "Bulk delete failed");
     } finally {
       setDeleting(false);
     }
@@ -1973,7 +2002,7 @@ export default function AdminProductsPage() {
             onClick={handleRecategorize}
             disabled={recategorizing || !canWrite}
             title={canWrite ? "Re-classify products that have no subcategory. Anything filed by hand is left alone." : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("secondary")}
           >
             {recategorizing ? "Sorting…" : "Fix categories"}
           </button>
@@ -1983,7 +2012,7 @@ export default function AdminProductsPage() {
             onClick={handleUndoRecategorize}
             disabled={recategorizing || !canWrite}
             title={canWrite ? "Put back what the last category fix changed" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("ghost")}
           >
             Undo fix
           </button>
@@ -1991,7 +2020,7 @@ export default function AdminProductsPage() {
             onClick={handleResetStyles}
             disabled={restyling || !canWrite}
             title={canWrite ? "Remove every style tag and give products only the five basic styles: from the description first, then the brand" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("secondary")}
           >
             {restyling ? "Restyling…" : "Reset styles"}
           </button>
@@ -1999,7 +2028,7 @@ export default function AdminProductsPage() {
             onClick={handleUndoResetStyles}
             disabled={restyling || !canWrite}
             title={canWrite ? "Put back the tags the last style reset replaced" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("ghost")}
           >
             Undo styles
           </button>
@@ -2016,7 +2045,7 @@ export default function AdminProductsPage() {
                   : "Measure photo backdrops so cards pad with the photo's own colour"
                 : "Requires Supabase"
             }
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("secondary")}
           >
             {sampling
               ? "Measuring…"
@@ -2028,7 +2057,7 @@ export default function AdminProductsPage() {
             onClick={handleUndoBackdrops}
             disabled={sampling || !canWrite}
             title={canWrite ? "Clear what the last backdrop run wrote" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("ghost")}
           >
             Undo backdrops
           </button>
@@ -2039,7 +2068,6 @@ export default function AdminProductsPage() {
             kind="products"
             ids={exportIds}
             count={exportIds ? exportIds.length : products.length}
-            onNotify={showToast}
             title={
               selectedIds.size
                 ? `Download the ${selectedIds.size} selected cards as pictures, in one ZIP`
@@ -2050,7 +2078,7 @@ export default function AdminProductsPage() {
             onClick={openAddModal}
             disabled={!canWrite}
             title={canWrite ? undefined : "Requires Supabase"}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 text-[13px] font-medium transition-opacity hover:opacity-80 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("primary")}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -2251,7 +2279,7 @@ export default function AdminProductsPage() {
                   Anything left blank is not touched.
                 </p>
               </div>
-              <button onClick={() => setBulkOpen(false)} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={() => setBulkOpen(false)} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
@@ -2379,13 +2407,13 @@ export default function AdminProductsPage() {
                 {bulkChangeCount ? `${bulkChangeCount} field${bulkChangeCount === 1 ? "" : "s"} will change` : "Nothing to change yet"}
               </span>
               <div className="flex items-center gap-3">
-                <button onClick={() => { setBulkOpen(false); resetBulk(); }} className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                <button onClick={() => { setBulkOpen(false); resetBulk(); }} className={btn("ghost")}>
                   Cancel
                 </button>
                 <button
                   onClick={applyBulkEdit}
                   disabled={bulkSaving || !bulkChangeCount || !canWrite}
-                  className="bg-[var(--foreground)] text-[var(--surface)] px-5 py-2 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                  className={btn("primary")}
                 >
                   {bulkSaving ? "Applying…" : `Apply to ${selectedIds.size}`}
                 </button>
@@ -2405,7 +2433,7 @@ export default function AdminProductsPage() {
             <button
               onClick={openGroupModal}
               disabled={!canWrite}
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--background)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              className={btn("secondary")}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <circle cx="3" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
@@ -2418,7 +2446,7 @@ export default function AdminProductsPage() {
           <button
             onClick={() => setBulkOpen(true)}
             disabled={!canWrite}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--background)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("secondary")}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M8.5 1.5l2 2-6 6-2.5.5.5-2.5 6-6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -2428,7 +2456,7 @@ export default function AdminProductsPage() {
           <button
             onClick={handleBulkDelete}
             disabled={deleting || !canWrite}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium border border-[var(--err-line)] text-[var(--err)] px-3 py-1.5 hover:bg-[var(--err-bg)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className={btn("danger")}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2437,7 +2465,7 @@ export default function AdminProductsPage() {
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors ml-auto"
+            className={`${btn("ghost")} ml-auto`}
           >
             Deselect all
           </button>
@@ -2501,7 +2529,7 @@ export default function AdminProductsPage() {
                         <p className="text-[var(--err)] break-words">{loadError}</p>
                         <button
                           onClick={fetchProducts}
-                          className="text-[13px] font-medium border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
+                          className={btn("secondary")}
                         >
                           Retry
                         </button>
@@ -2600,7 +2628,7 @@ export default function AdminProductsPage() {
                           <button
                             onClick={() => handleUngroup(product.variantGroupId!)}
                             title="Unlink from variant group"
-                            className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors p-1"
+                            className={BTN_ICON}
                             aria-label="Unlink variants"
                           >
                             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
@@ -2613,14 +2641,10 @@ export default function AdminProductsPage() {
                           onClick={() => setCropProduct(product)}
                           disabled={!canWrite}
                           title={product.cropData ? "Изменить кадрирование" : "Настроить кадрирование"}
-                          className={`transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed ${
-                            product.cropData
-                              ? "text-[var(--foreground)] opacity-90"
-                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                          }`}
+                          className={BTN_ICON}
                           aria-label="Crop image"
                         >
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={product.cropData ? "text-[var(--foreground)]" : undefined}>
                             <path d="M3 1v9a1 1 0 001 1h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                             <path d="M1 3h9a1 1 0 011 1v9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                             {product.cropData && <circle cx="7" cy="7" r="1.5" fill="currentColor"/>}
@@ -2628,19 +2652,19 @@ export default function AdminProductsPage() {
                         </button>
                         {/* This one piece's card, as a PNG, without going
                             through the selection and the toolbar. */}
-                        <DownloadCardButton kind="products" id={product.id} onNotify={showToast} />
-                        <button onClick={() => openEditModal(product)} disabled={!canWrite} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Edit">
+                        <DownloadCardButton kind="products" id={product.id} />
+                        <button onClick={() => openEditModal(product)} disabled={!canWrite} className={BTN_ICON} aria-label="Edit">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                           </svg>
                         </button>
-                        <button onClick={() => openDuplicateModal(product)} disabled={!canWrite} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Duplicate" title="Duplicate product">
+                        <button onClick={() => openDuplicateModal(product)} disabled={!canWrite} className={BTN_ICON} aria-label="Duplicate" title="Duplicate product">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <rect x="1.5" y="4.5" width="7" height="8" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
                             <path d="M5 4.5V3a1 1 0 011-1h5a1 1 0 011 1v7a1 1 0 01-1 1H9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                           </svg>
                         </button>
-                        <button onClick={() => handleDelete(product.id)} disabled={!canWrite} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Delete">
+                        <button onClick={() => handleDelete(product.id)} disabled={!canWrite} className={BTN_ICON} aria-label="Delete">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                           </svg>
@@ -2672,12 +2696,12 @@ export default function AdminProductsPage() {
                   onClick={runSuggest}
                   disabled={suggesting || !canWrite}
                   title="Work out category, subcategory, gender and colour filters from the name, using how the rest of the catalogue is filed"
-                  className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className={btn("secondary")}
                 >
                   {suggesting ? "Reading…" : "Suggest fields"}
                 </button>
               </div>
-              <button onClick={closeModal} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={closeModal} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
@@ -2694,11 +2718,11 @@ export default function AdminProductsPage() {
                   </p>
                   <div className="flex items-center gap-3">
                     <button onClick={applySuggestions} disabled={!chosen.size}
-                      className="border border-[var(--foreground)] text-[var(--foreground)] rounded-lg px-3 py-1.5 text-[13px] font-medium hover:bg-[var(--foreground)] hover:text-[var(--surface)] transition-colors disabled:opacity-40">
+                      className={btn("secondary")}>
                       Fill {chosen.size || ""} selected
                     </button>
                     <button onClick={() => { setSuggestions(null); setChosen(new Set()); }}
-                      className="text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
+                      className={btn("ghost")}>
                       Dismiss
                     </button>
                   </div>
@@ -2936,7 +2960,7 @@ export default function AdminProductsPage() {
                               <div className="flex items-center gap-2">
                                 <input type="text" value={form.sizes} onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))} placeholder="XS, S, M, L, XL" className={`${inputCls} flex-1`} />
                                 {selected.length > 0 && (
-                                  <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className="text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0">Clear</button>
+                                  <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className={`${btn("ghost")} shrink-0`}>Clear</button>
                                 )}
                               </div>
                             </>
@@ -3116,7 +3140,7 @@ export default function AdminProductsPage() {
                                   <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
                                   <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
                                   <span className="text-[12px] text-[var(--foreground-subtle)] shrink-0">{fmtPrice(lp.priceMin)}</span>
-                                  <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0 ml-1" aria-label="Remove">
+                                  <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className={`${BTN_ICON} shrink-0 ml-1`} aria-label="Remove">
                                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                                   </button>
                                 </div>
@@ -3182,13 +3206,13 @@ export default function AdminProductsPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.name.trim() || saving || !canWrite}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className={`${btn("primary")} flex-1`}
               >
                 {saving ? "Saving…" : editingProduct ? "Save changes" : "Add product"}
               </button>
               <button
                 onClick={closeModal}
-                className="border border-[var(--border)] rounded-lg px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+                className={btn("ghost")}
               >
                 Cancel
               </button>
@@ -3211,7 +3235,7 @@ export default function AdminProductsPage() {
                 {cropProduct.cropData && canWrite && (
                   <button
                     onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
-                    className="text-[13px] font-medium text-[var(--err)] hover:text-[var(--err)] underline transition-colors"
+                    className={btn("danger")}
                   >
                     Удалить кадрирование
                   </button>
@@ -3219,7 +3243,7 @@ export default function AdminProductsPage() {
                 <button
                   onClick={() => setCropProduct(null)}
                   aria-label="Close"
-                  className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className={BTN_ICON}
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -3259,7 +3283,7 @@ export default function AdminProductsPage() {
               <button
                 onClick={() => setGroupModal({ open: false, entries: [] })}
                 aria-label="Close"
-                className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors shrink-0"
+                className={`${BTN_ICON} shrink-0`}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -3357,48 +3381,17 @@ export default function AdminProductsPage() {
               <button
                 onClick={handleGroupSave}
                 disabled={grouping || !canWrite}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className={`${btn("primary")} flex-1`}
               >
                 {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
               </button>
               <button
                 onClick={() => setGroupModal({ open: false, entries: [] })}
-                className="border border-[var(--border)] rounded-lg px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+                className={btn("ghost")}
               >
                 Cancel
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div
-          role={toast.type === "err" ? "alert" : "status"}
-          // The status tints are translucent; the solid backing keeps the
-          // toast legible over the table in either admin theme.
-          className="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-[100] md:max-w-md rounded-xl overflow-hidden"
-          style={{ background: "var(--surface)" }}
-        >
-          <div
-            className={`flex items-start gap-3 pl-5 pr-3 py-3 text-sm border rounded-xl ${
-              toast.type === "ok"
-                ? "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]"
-                : "bg-[var(--err-bg)] text-[var(--err)] border-[var(--err-line)]"
-            }`}
-          >
-            <span className="flex-1 break-words">{toast.msg}</span>
-            <button
-              type="button"
-              onClick={dismissToast}
-              aria-label="Dismiss"
-              className="shrink-0 mt-0.5 opacity-70 hover:opacity-100 transition-opacity"
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
-            </button>
           </div>
         </div>
       )}

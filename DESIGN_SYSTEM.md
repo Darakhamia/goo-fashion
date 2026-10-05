@@ -866,7 +866,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | Подзаголовок страницы | `text-xs` или `text-[13px] text-[var(--foreground-muted)] mt-1` | |
 | Заголовок секции или карточки | `text-[15px] leading-[22px] font-medium text-[var(--foreground)]`, без трекинга | «System health», «Recent signups»; модалка Customize `layout.tsx:935` |
 | **Служебная подпись — единственный капс** | `text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]` (+ `font-normal` в `<th>`) | шапки таблиц `subscriptions/page.tsx:104`, `waitlist/page.tsx:15`; подписи KPI на дашборде, в Users, Analytics; группы меню `layout.tsx:602` |
-| Кнопка, вкладка, пункт меню | `text-[13px] font-medium`, обычный регистр, без трекинга | `settings/recipes.tsx:4-7`, пункты меню `layout.tsx:638` |
+| Кнопка, вкладка, пункт меню | `text-[13px] font-medium`, обычный регистр, без трекинга | рецепты `_ui/recipes.ts`, пункты меню `layout.tsx:638` |
 | Чип, фильтр-пилюля, сегмент | `text-[12px]`, обычный регистр | `analytics/page.tsx:23-28` |
 | Бейдж | `text-[11px] font-medium`, обычный регистр («Exact», «12 missing») | |
 | Подпись поля | `block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5` | `parser/page.tsx:114`, `catalogue-check/page.tsx:121`, `blog/page.tsx:49` |
@@ -896,18 +896,31 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
   - **Ещё нет:** поиска ⌘K (GS6-14) и колокольчика «Требует внимания» (GS1-2) из `ADMIN_DESIGN.md` 5.1.
 - **Логотип** — «GOO» и рядом `Studio` 12px muted (`layout.tsx:679`).
 
+### Общие компоненты и рецепты (GS4-3)
+
+С 2026-10-05 у админки есть общие куски интерфейса. Новый код берёт их, а не пишет свои.
+
+| Что | Где | Как пользоваться |
+|---|---|---|
+| Рецепты кнопок и полей | `src/app/goo-studio/_ui/recipes.ts` | `btn(kind, size)`: `primary` — одно главное действие страницы или блока; `secondary` — остальные кнопки (канон Р14: рамка `--border-strong`, текст `--foreground`); `ghost` — тихие действия (Cancel, Dismiss, Undo); `danger` — удаление среди других действий; `dangerSolid` — только подтверждающая кнопка опасного `ConfirmDialog`. Размер `md` — `h-8 px-3`, `sm` — `h-7 px-2.5` для строки таблицы. Плюс `BTN_ICON` (иконка 32px, обязательно `aria-label`), `INPUT`, `SELECT`, `FIELD_LABEL`. Это строки классов, а не компонент: общий примитив кнопки запрещён `CLAUDE.md` |
+| Подтверждение | `src/components/admin/ConfirmDialog.tsx` | `const confirm = useConfirm(); if (!(await confirm({ title, body, confirmLabel, tone })))`. Заголовок называет объект и последствие, кнопка — действие («Delete post», не «OK»). `tone: "danger"` — для удаления, блокировки и всего необратимого: фокус встаёт на Cancel, кнопка красная. Escape и клик мимо — «нет». `confirm()` браузера в админке не используется |
+| Тост | `src/components/admin/Toast.tsx` | `const toast = useToast(); toast.ok(…)`, `toast.err(…)`, `toast.info(…)`. Панель `--surface` справа внизу, точка статуса, кнопка закрытия; успех 5 с, ошибка 8 с, пауза под курсором и фокусом; новый тост заменяет старый. `alert()` и свои тосты в страницах не заводятся |
+| Пояснение за «?» | `src/components/admin/HelpToggle.tsx` | `const help = useHelp("id")`, `<HelpButton help label />` рядом с заголовком, `<HelpPanel help>` под ним. Открытость хранится в `localStorage` (`goo-admin-help-<id>`). Абзацы «как это работает» уходят сюда, видимой остаётся строка с числами и состоянием |
+| Настройки админки | `src/app/goo-studio/_ui/settings.ts` | `useSetting(key)` / `writeSetting(key, value)` поверх `localStorage` через `useSyncExternalStore`; так хранятся тема, порядок и свёрнутые группы меню, открытые пояснения |
+
+`ConfirmProvider` и `ToastProvider` стоят в `layout.tsx` внутри корня с темой, поэтому диалог и тост берут тему админки.
+
+Ещё нет (придут с первым экраном, который их использует): `PageHeader`, `Badge`, `KpiStrip`, `Tabs`, `EmptyState`, `RowMenu`, `AttentionList` из `ADMIN_DESIGN.md` 5.2–5.9.
+
 ### Статусы, баннеры и тосты — как в коде сейчас
 
 | Что | Рецепт | Где |
 |---|---|---|
-| Базовая тройка | `bg-[var(--X-bg)] text-[var(--X)] border border-[var(--X-line)]`, X — `ok` / `warn` / `err` | константы `statusOk` / `statusWarn` / `statusErr` в `email/page.tsx:52-54`, `import/page.tsx:59-61`, `waitlist/page.tsx:12-13` |
-| Баннер | `rounded-xl border border-[var(--X-line)] bg-[var(--X-bg)] px-4 py-3` + текст `text-xs text-[var(--X)]`; у баннера ошибки `role="alert"` | `catalogue-check/page.tsx:351`, `activity/page.tsx:368`, `parser/page.tsx:120` |
+| Базовая тройка | `bg-[var(--X-bg)] text-[var(--X)] border border-[var(--X-line)]`, X — `ok` / `warn` / `err` | константы `statusOk` / `statusWarn` / `statusErr` в `email/page.tsx:54-56`, `import/page.tsx:54-56`, `waitlist/page.tsx:14-15` |
+| Баннер | `rounded-xl border border-[var(--X-line)] bg-[var(--X-bg)] px-4 py-3` + текст `text-xs text-[var(--X)]`; у баннера ошибки `role="alert"` | `catalogue-check/page.tsx:369`, `activity/page.tsx:369`, `parser/page.tsx:118` |
 | Бейдж | базовая тройка + `text-[11px] font-medium px-2 py-0.5 rounded-full`, обычный регистр | бейдж Super admin в меню аккаунта; радиусы ещё гуляют, см. раздел 11 |
 | Точка состояния | `w-2 h-2 rounded-full bg-[var(--X)]` | дашборд, «System health» |
-| Тост | `fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border`. Успех — инверсия `bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]` (`role="status"`). Ошибка — `bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]` (`role="alert"`) | `audit/page.tsx:516-525`, `categories/page.tsx:614`, `duplicates/page.tsx:718`, `brands/page.tsx:338`, `catalogue-check/page.tsx:634` |
-| Тост со статусной заливкой (второй вариант) | непрозрачная подложка + базовая тройка, кнопка закрытия, `z-[100]`, `md:max-w-md` | только `products/page.tsx:3381` |
-
-Канон тоста выбран (Р14: `ADMIN_DESIGN.md` 5.12 — панель `--surface`, точка статуса, кнопка ✕, 5 с). В код он придёт компонентом `Toast` в GS4-3. До тех пор живут оба варианта из таблицы.
+| Тост | компонент `Toast` (`useToast()`): `fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 md:w-[380px] z-[100]`, панель `--surface` с границей и тенью плавающего слоя `shadow-[0_8px_24px_rgba(0,0,0,0.12)]`, точка статуса `--ok` / `--err` / `--foreground-muted`, текст 13px `--foreground`, кнопка закрытия; `role="status"`, у ошибки `role="alert"` | `src/components/admin/Toast.tsx`; своих тостов в страницах нет с GS4-3 |
 
 ### Мобильная версия админки
 
@@ -946,25 +959,26 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
    - Строка шапки — `border-b border-[var(--border)]`.
    - Ячейки шапки — `text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal` (`subscriptions/page.tsx:104`).
    - Числа — справа (`text-right`).
-5. **Инпут и подпись.**
-   - Инпут: `rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors` (`settings/recipes.tsx:8-9`).
-   - У `select` вместо `bg-transparent` — фон панели. Две заливки на одном элементе не ставить: см. урок ниже.
-   - Подпись — `block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5`.
-6. **Primary-кнопка:** `bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed` (`settings/recipes.tsx:4-5`). Одна заливная кнопка на экран или блок. Действия в строках — контурные или ghost, не заливные (Audit, AI check, Duplicates).
-7. **Контурная (второстепенная) кнопка** сейчас: `px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40` (`settings/recipes.tsx:6-7`).
-   - Канон выбран (Р14, `ADMIN_DESIGN.md` 5.3): `h-8 px-3`, рамка `--border-strong`, текст `--foreground`, наведение `--fg-overlay-05`.
-   - В код он придёт рецептами в `src/app/goo-studio/_ui/recipes.ts` в GS4-3. Новый общий примитив кнопки не заводить (`CLAUDE.md`).
-8. **Ghost-кнопка** (Dismiss, Edit by hand, Undo, Rename): `text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)]`. Это настоящий `<button>` или `<a>`, а не `<span>`.
-9. **Фильтр-пилюля:** `px-2.5 py-1 text-[12px] border rounded-full transition-colors` (`analytics/page.tsx:23-28`).
+5. **Инпут и подпись** — `INPUT`, `SELECT` и `FIELD_LABEL` из `_ui/recipes.ts`.
+   - `INPUT`: `rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors bg-transparent`.
+   - `SELECT` — то же, но с фоном панели `bg-[var(--surface)]`, иначе сквозь него видна системная выпадашка. Две заливки на одном элементе не ставить: см. урок ниже.
+   - `FIELD_LABEL` — `block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5`.
+6. **Кнопки — только рецепты `_ui/recipes.ts`** (подраздел «Общие компоненты и рецепты» выше): `btn("primary")`, `btn("secondary")`, `btn("ghost")`, `btn("danger")`, `BTN_ICON`; в строке таблицы — размер `sm`.
+   - Одна заливная кнопка на экран или блок. Действия в строках — `secondary` или `ghost`, не заливные (Audit, AI check, Duplicates).
+   - Поверх рецепта на месте вызова добавляется только раскладка (`flex-1`, `ml-auto`, `shrink-0`, `self-start`). Своя высота, отступы, размер текста или цвет поверх рецепта — нарушение правила 18.
+   - Новый общий примитив кнопки не заводить (`CLAUDE.md`).
+7. **Подтверждение — только `useConfirm()`**, тост — только `useToast()`. `confirm()`, `alert()` и `prompt()` браузера в админке не используются: системные окна не берут тему, не называют действие на кнопке и не дают фокус-ловушку.
+8. **Пояснение длиннее одного предложения — за «?»** (`HelpToggle`). Короткая подсказка к одному полю остаётся под полем.
+9. **Фильтр-пилюля:** `px-2.5 py-1 text-[12px] border rounded-full transition-colors` (`analytics/page.tsx:24-29`).
    - Активная — `bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]`.
    - Неактивная — `border-[var(--border)] text-[var(--foreground-muted)]`.
-10. **Переключатель:** `button role="switch" aria-checked`, дорожка `w-9 h-5 rounded-full`, бегунок `w-4 h-4 rounded-full bg-[var(--surface)]` (`parser/page.tsx:580-590`).
+10. **Переключатель:** `button role="switch" aria-checked`, дорожка `w-9 h-5 rounded-full`, бегунок `w-4 h-4 rounded-full bg-[var(--surface)]` (`parser/page.tsx:576-588`).
     - Включён — дорожка `bg-[var(--foreground)]`.
     - Выключен — `bg-[var(--border-strong)]`. С `--border` выключенный переключатель на белой панели был не виден (GS1-0).
 11. **Заголовок страницы:** `font-display text-2xl font-light text-[var(--foreground)]` + подзаголовок muted.
-12. **Карточка:** `rounded-xl border border-[var(--border)] p-4 md:p-5` на `--surface` (`analytics/page.tsx:58`). Без тени и без декоративных цветных полос: глубина передаётся границей.
+12. **Карточка:** `rounded-xl border border-[var(--border)] p-4 md:p-5` на `--surface` (`analytics/page.tsx:59`). Без тени и без декоративных цветных полос: глубина передаётся границей.
 13. **Иконки** — инлайновый SVG, 12–16px, `strokeWidth` 1.2–1.5 (1.2 — в 119 из 172 атрибутов). По `ADMIN_DESIGN.md` 4.5 в меню и кнопках действий целевое значение — 1.5.
-14. **Модалка.**
+14. **Модалка.** Для «да / нет» — `ConfirmDialog`, своя модалка только для формы или просмотра.
     - Скрим — `fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4`.
     - Панель — `rounded-2xl border border-[var(--border)] w-full max-w-* max-h-[90dvh]` на `--surface`, `role="dialog" aria-modal="true"`.
     - Закрытие по скриму и Escape.
@@ -1017,7 +1031,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 - **◐ частично** — часть строки исправлена, остаток описан.
 - **актуально** — расхождение в коде есть. У таких строк в первой колонке уже **текущие** номера строк (2026-09-26); у исправленных и удалённых — исходные, для истории.
 - **✓ исправлено (GS4-1, 2026-10-05)** — исправлено основой редизайна админки (`docs/ADMIN_ROADMAP.md`, этап 4): глубина, статусные токены, один уровень капса, пол 11px.
-- **решено CEO, внедряется в GS4-…** — развилка закрыта решением CEO 2026-10-05, код придёт с указанной задачей.
+- **✓ исправлено (GS4-3, 2026-10-05)** — исправлено общими компонентами и рецептами админки.
 - **✓ файл удалён (ревью 2026-09)** — файл был мёртв (его никто не импортировал; страницы `/coming-soon` и `goo-studio/image-tools` были недостижимы из интерфейса) и удалён 2026-09-27 с разрешения CEO (коммит `7898c3f`). Строка оставлена для истории.
 
 Сортировка внутри таблиц: high → medium → low.
@@ -1145,10 +1159,10 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/globals.css:10` и `:29` | Токен `--ease-drawer` объявлен через самого себя: `--ease-drawer: var(--ease-drawer)` (и в `@theme inline`, и в `:root`; так же в собранном CSS). Циклическая переменная недействительна, поэтому `.animate-slide-up` (`:577`, нижние листы билдера `builder/page.tsx:2414,2804,2945`) и переход `.ov-rise` (`:719-723`, баннер cookies `CookieConsentBanner.tsx:38`) теряют анимацию входа: лист и баннер появляются рывком. Похоже на артефакт замены литералов токеном 2026-09-12. Найдено при сверке документа; стоит глазами проверить в браузере | Задать токену значение. До 2026-09-12 `.animate-slide-up` шёл на `cubic-bezier(0.32, 0.72, 0, 1)` — вероятно, это и есть задуманная «кривая Ionic/iOS» из комментария `globals.css:25` | ✓ исправлено (ревью 2026-09): токену задано `cubic-bezier(0.32, 0.72, 0, 1)` в обоих блоках |
 | `src/app/goo-studio/analytics/page.tsx:66` (также `:84`, `analytics/Charts.tsx:252`, `goo-studio/page.tsx:233`) | Текст успеха `text-emerald-600` вместо `text-emerald-500` из статус-рецепта админки; то же с `text-amber-600` (`goo-studio/page.tsx:311`, `products/page.tsx:2036,2571,2573`) и hover `text-red-600` / `-700` (`users/page.tsx:1139`, `products/page.tsx:3060`) | Оттенки рецепта: текст `-500`, фон и рамка `-400` | low · ✓ исправлено (GS4-1, 2026-10-05): статусы на токенах `--ok` / `--warn` / `--err` (раздел 9), сырых `emerald` / `amber` / `red` в админке ноль |
 | `src/app/goo-studio/page.tsx:211` (и `:231-234`) | Карточки дашборда — `rounded-2xl` и `hover:shadow-md`, хотя карточка админки `rounded-xl`, а глубина передаётся границей; чип динамики — `bg-emerald-500/12 text-emerald-600 border-emerald-500/20` вместо базовой тройки. Ревью решило тень пока не трогать | Рецепт карточки и статус-бейджа раздела 9 | low · ✓ исправлено (GS4-1, 2026-10-05): карточки `rounded-xl` без тени, чип динамики на токенах |
-| `src/app/goo-studio/settings/recipes.tsx:6-7`, `parser/page.tsx:79-80`, `import/page.tsx:52`, `email/page.tsx:391,434,670`, `parser/collect/page.tsx:52-53`, `brands/page.tsx:17-18`, `retailers/page.tsx:61-62`, `duplicates/page.tsx:59-60`, `audit/page.tsx:291`, `users/page.tsx:460` (и `:467,483,702,709`), `products/page.tsx:1853` (и `:1863,1880,1892`), `products/page.tsx:2522`, `products/page.tsx:3037,3212`, `ImageCropEditor.tsx:339` | Контурная кнопка админки без канона: радиус у всех уже `rounded-lg`, но форм не меньше восьми, основные — `text-xs`/`0.12em`/`px-4 py-2` (settings, parser, import; в email с `px-5 py-2.5`); `11px`/`0.12em`/`px-4 py-2` (collect); `11px`/`0.08em`/`px-3 py-1.5` (brands, retailers); `11px`/`0.1em`/`px-3 py-2` (duplicates, audit); `9px`/`0.14em`/`px-3`–`px-4 py-2` (users); `text-xs`/`0.1em`/`px-3 py-2` (тулбар products); `10px`/`0.1em`/`px-3 py-1.5` (products, модалка; в email `10px`/`0.12em`/`px-2.5 py-1`); `text-xs`/`0.12em`/`px-4 py-2.5`–`px-5 py-3` с заливкой по hover (ImageCropEditor, products, email). Трекинги `0.08em` и `0.1em` вне шкалы раздела 2 | Выбрать одну форму (решение CEO) и завести её в §9 рядом с primary; кандидат — самая частая, `settings/recipes.tsx:6-7` | low · ◐: регистр и трекинг сведены в GS4-1 (13px medium, без трекинга, `0.08em` и `0.1em` ушли); форма решена CEO 2026-10-05 (Р14, `ADMIN_DESIGN.md` 5.3), внедряется в GS4-3 |
+| `src/app/goo-studio/settings/recipes.tsx:6-7`, `parser/page.tsx:79-80`, `import/page.tsx:52`, `email/page.tsx:391,434,670`, `parser/collect/page.tsx:52-53`, `brands/page.tsx:17-18`, `retailers/page.tsx:61-62`, `duplicates/page.tsx:59-60`, `audit/page.tsx:291`, `users/page.tsx:460` (и `:467,483,702,709`), `products/page.tsx:1853` (и `:1863,1880,1892`), `products/page.tsx:2522`, `products/page.tsx:3037,3212`, `ImageCropEditor.tsx:339` | Контурная кнопка админки без канона: радиус у всех уже `rounded-lg`, но форм не меньше восьми, основные — `text-xs`/`0.12em`/`px-4 py-2` (settings, parser, import; в email с `px-5 py-2.5`); `11px`/`0.12em`/`px-4 py-2` (collect); `11px`/`0.08em`/`px-3 py-1.5` (brands, retailers); `11px`/`0.1em`/`px-3 py-2` (duplicates, audit); `9px`/`0.14em`/`px-3`–`px-4 py-2` (users); `text-xs`/`0.1em`/`px-3 py-2` (тулбар products); `10px`/`0.1em`/`px-3 py-1.5` (products, модалка; в email `10px`/`0.12em`/`px-2.5 py-1`); `text-xs`/`0.12em`/`px-4 py-2.5`–`px-5 py-3` с заливкой по hover (ImageCropEditor, products, email). Трекинги `0.08em` и `0.1em` вне шкалы раздела 2 | Выбрать одну форму (решение CEO) и завести её в §9 рядом с primary; кандидат — самая частая, `settings/recipes.tsx:6-7` | low · ✓ исправлено (GS4-1 и GS4-3, 2026-10-05): регистр и трекинг сведены в GS4-1; форма решена CEO (Р14) и введена рецептами `_ui/recipes.ts` — локальных констант кнопок в админке не осталось |
 | `src/app/goo-studio/activity/page.tsx:298` (также `:388,392,418`) и по админке (`users/page.tsx:152-153,476,605-614`, `parser/page.tsx:474,505`, `audit/page.tsx:360,392`, `products/page.tsx:337,2176,2203`, `outfits/page.tsx:734,779,1150`, `goo-studio/page.tsx:231,309`) | Бейджи и подписи 9px с трекингом `0.16em` / `0.14em` / `0.12em` / `0.1em`; `0.1em` вне шкалы раздела 2 (при этом тот же `0.1em` стоит в канонической фильтр-пилюле админки, §9 п.6). Сам 9px в разделе 2 записан как «микро-подпись, чип», но там же пол шкалы назван 10px, а чеклист §10 п.6 требует «ничего меньше 10px» — документ противоречит сам себе. Ревью решило 9px не трогать | Решить, допустим ли 9px (CEO); tracking свести к `0.12` / `0.14` / `0.16` / `0.18em` | low · ✓ исправлено (GS4-1, 2026-10-05): CEO выбрал пол 11px и один уровень капса (Р4); в админке ноль текста меньше 11px, трекинг в квадратных скобках остался только `0.12em` у служебных подписей (и `0.2em` у вордмарка) |
 | `src/app/goo-studio/analytics/page.tsx:490` (и `prompts/page.tsx:224`) | Текст 8px — ниже любой трактовки шкалы (подписи часов на тепловой карте, бейдж на Prompts); `parser/page.tsx:189` — eyebrow 9px с `tracking-[0.22em]` | `text-[10px]` (или 9px, если CEO его разрешит), `tracking-[0.18em]` | low · ✓ исправлено (GS4-1, 2026-10-05): подписи тепловой карты 11px, бейдж Prompts и eyebrow Parser — обычным регистром 11–12px |
-| `src/app/goo-studio/products/page.tsx:3221-3250` | Второй рецепт тоста: статусная заливка на непрозрачной подложке, кнопка закрытия, `z-[100]`; на duplicates / brands / audit / categories — инверсная заливка без кнопки, `z-50` (раздел 9) | Выбрать один рецепт тоста админки | low · решено CEO 2026-10-05 (Р14, `ADMIN_DESIGN.md` 5.12), внедряется в GS4-3 |
+| `src/app/goo-studio/products/page.tsx:3221-3250` | Второй рецепт тоста: статусная заливка на непрозрачной подложке, кнопка закрытия, `z-[100]`; на duplicates / brands / audit / categories — инверсная заливка без кнопки, `z-50` (раздел 9) | Выбрать один рецепт тоста админки | low · ✓ исправлено (GS4-3, 2026-10-05): один компонент `Toast` (`useToast()`), своих тостов в страницах нет |
 | `src/app/goo-studio/products/page.tsx:2100` (также `:2507,3048,3091`) | Четыре модалки products без `role="dialog"` / `aria-modal` (у остальных модалок админки они есть); у bulk-модалки `shadow-xl` (`:2102`); бейдж «New» в таблице без радиуса (`:2434`) | Рецепт модалки §9 п.11; бейдж `rounded-full` | low |
 | `src/app/goo-studio/users/page.tsx:1192-1208` (и `blog/page.tsx:801-813`) | Переключатель в users — вся строка-кнопка без `role="switch"` / `aria-checked`; в blog переключатель другого размера (`h-6 w-11` против `w-9 h-5` у `parser/page.tsx:522-533`) | Рецепт переключателя §9 п.7 | low |
 | `src/app/not-found.tsx:28` (также `error.tsx:41`, `MyLooksPanel.tsx:1049`, `HeroSection.tsx:59`, `builder/page.tsx:1676`, `StylistPersonalizationModal.tsx:92`) | Модификатор непрозрачности на переменной расползся: `border-[var(--foreground)]/20`, `hover:bg-[var(--foreground)]/5`, `bg-[var(--background)]/85`, `/80`, `bg-[var(--surface)]/50` — вопреки договорённости раздела 1 (на Tailwind v4 технически работает) | Предвычисленные `--bg-overlay-*` / `--fg-overlay-*` или `opacity-*` на элементе | low |

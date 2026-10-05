@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "@/components/ui/Image";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { btn } from "./_ui/recipes";
 
 type HealthItem = { ok: boolean; detail: string };
 
@@ -158,7 +159,7 @@ export default function AdminDashboardPage() {
           <span className="min-w-0 break-words">{error}</span>
           <button
             onClick={load}
-            className="shrink-0 text-[13px] font-medium border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
+            className={`shrink-0 ${btn("secondary")}`}
           >
             Retry
           </button>
@@ -180,7 +181,7 @@ export default function AdminDashboardPage() {
         <button
           onClick={load}
           disabled={loading}
-          className="text-[13px] font-medium border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50 rounded-lg"
+          className={btn("secondary")}
         >
           {loading ? "Refreshing…" : "Refresh"}
         </button>

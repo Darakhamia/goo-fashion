@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { btn } from "@/app/goo-studio/_ui/recipes";
 
 interface PromptItem {
   key: string;
@@ -24,6 +26,7 @@ function PromptCard({ item, onSave, onReset }: {
   onSave: (key: string, value: string) => Promise<"saved" | "reset">;
   onReset: (key: string) => Promise<void>;
 }) {
+  const confirm = useConfirm();
   const [text, setText] = useState(item.value ?? item.default);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -54,7 +57,12 @@ function PromptCard({ item, onSave, onReset }: {
   }
 
   async function handleReset() {
-    if (!confirm("Сбросить до дефолтного промта?")) return;
+    if (!(await confirm({
+      title: `Сбросить «${item.label}» до дефолтного промта?`,
+      confirmLabel: "Сбросить промт",
+      cancelLabel: "Отмена",
+      tone: "danger",
+    }))) return;
     setResetting(true); setErr("");
     try {
       await onReset(item.key);
@@ -120,7 +128,7 @@ function PromptCard({ item, onSave, onReset }: {
         <button
           onClick={handleSave}
           disabled={!isDirty || saving || missing.length > 0}
-          className="px-3 py-1.5 rounded-lg text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          className={btn("primary")}
         >
           {saving && <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />}
           {saving ? "Сохранение…" : "Сохранить"}
@@ -128,7 +136,7 @@ function PromptCard({ item, onSave, onReset }: {
         {isDirty && !saving && (
           <button
             onClick={() => setText(item.value ?? item.default)}
-            className="px-3 py-1.5 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
+            className={btn("ghost")}
           >
             Отмена
           </button>
@@ -137,7 +145,7 @@ function PromptCard({ item, onSave, onReset }: {
           <button
             onClick={handleReset}
             disabled={resetting}
-            className="ml-auto text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors disabled:opacity-30"
+            className={`${btn("ghost")} ml-auto`}
           >
             {resetting ? "Сброс…" : "Сброс"}
           </button>

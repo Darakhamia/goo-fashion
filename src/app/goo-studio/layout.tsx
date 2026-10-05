@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/auth-context";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSetting, writeSetting } from "./_ui/settings";
+import { ConfirmProvider } from "@/components/admin/ConfirmDialog";
+import { ToastProvider } from "@/components/admin/Toast";
 
 const NAV_ORDER_KEY = "goo-admin-nav-order";
 const NAV_COLLAPSED_KEY = "goo-admin-nav-collapsed";
@@ -297,56 +300,6 @@ function navItemFor(pathname: string): NavItem | undefined {
     if (hit && (!match || item.href.length > match.href.length)) match = item;
   }
   return match;
-}
-
-/*
- * Admin preferences (theme, menu order) live in localStorage and are read
- * through useSyncExternalStore: the server render and hydration use the
- * defaults, the saved values apply right after, and there is no hydration
- * mismatch. The one exception is the dark theme, which THEME_BOOT_SCRIPT puts
- * on the admin root before the first paint. When storage is blocked (private
- * mode, quota) a written value is kept in memory, so it still applies until
- * reload.
- */
-const settingListeners = new Set<() => void>();
-const memorySettings = new Map<string, string | null>();
-
-function readSetting(key: string): string | null {
-  if (memorySettings.has(key)) return memorySettings.get(key) ?? null;
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeSetting(key: string, value: string | null) {
-  try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
-    memorySettings.delete(key);
-  } catch {
-    memorySettings.set(key, value);
-  }
-  settingListeners.forEach((notify) => notify());
-}
-
-function subscribeSettings(onChange: () => void) {
-  settingListeners.add(onChange);
-  // Another admin tab changed a preference.
-  window.addEventListener("storage", onChange);
-  return () => {
-    settingListeners.delete(onChange);
-    window.removeEventListener("storage", onChange);
-  };
-}
-
-function useSetting(key: string): string | null {
-  return useSyncExternalStore(
-    subscribeSettings,
-    () => readSetting(key),
-    () => null
-  );
 }
 
 const DEFAULT_NAV_ORDER = NAV_ITEMS.map((i) => i.href);
@@ -856,7 +809,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        <main className="flex-1 overflow-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8">{children}</main>
+        <main className="flex-1 overflow-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8">
+          <ConfirmProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </ConfirmProvider>
+        </main>
       </div>
 
       {/* ── Phone menu drawer ── */}

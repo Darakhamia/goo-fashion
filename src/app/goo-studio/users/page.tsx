@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "@/components/ui/Image";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
+import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
 
 const PAGE_SIZE = 25;
 
@@ -153,7 +156,7 @@ const PAST_DUE_NOTE = "Its last renewal failed and is not retried, so nothing pu
 
 function deleteSubscriptionWarning(s: UserSubscription | null | undefined): string {
   if (!liveSubscription(s)) return "";
-  return `\n\nThis user has an active subscription (${describeSubscription(s)}). ` +
+  return ` This user has an active subscription (${describeSubscription(s)}). ` +
     "Auto-renew is turned off before the account is deleted, so the saved card is not charged again.";
 }
 
@@ -182,6 +185,8 @@ const filterBtnCls = (active: boolean) =>
   }`;
 
 export default function AdminUsersPage() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [currentIsSuperAdmin, setCurrentIsSuperAdmin] = useState(false);
 
   useEffect(() => {
@@ -343,7 +348,13 @@ export default function AdminUsersPage() {
   const bulkBan = async (ban: boolean) => {
     const rows = safeSelected();
     if (!rows.length) return;
-    if (!confirm(`${ban ? "Ban" : "Unban"} ${rows.length} user(s)?`)) return;
+    const verb = ban ? "Ban" : "Unban";
+    const who = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
+    if (!(await confirm({
+      title: `${verb} ${who}?`,
+      confirmLabel: `${verb} ${who}`,
+      tone: ban ? "danger" : undefined,
+    }))) return;
     await runBulk(ban ? "Ban" : "Unban", rows, patchUser({ banned: ban }));
   };
 
@@ -353,10 +364,15 @@ export default function AdminUsersPage() {
     const paying = rows.filter((u) => liveSubscription(u.subscription));
     const renewing = paying.some((u) => renewsAutomatically(u.subscription));
     const warn = paying.length
-      ? `\n\n${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
+      ? `${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
         `${PLAN_BILLING_NOTE}${renewing ? ` ${RENEWAL_NOTE}` : ""}`
       : "";
-    if (!confirm(`Set plan to "${bulkPlan}" for ${rows.length} user(s)?${warn}`)) return;
+    const who = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
+    if (!(await confirm({
+      title: `Set plan to "${bulkPlan}" for ${who}?`,
+      body: warn || undefined,
+      confirmLabel: `Set plan for ${who}`,
+    }))) return;
     await runBulk(`Plan → ${bulkPlan}`, rows, patchUser({ plan: bulkPlan }));
   };
 
@@ -365,18 +381,29 @@ export default function AdminUsersPage() {
     if (!rows.length) return;
     const paying = rows.filter((u) => liveSubscription(u.subscription));
     const warn = paying.length
-      ? `\n\n${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
+      ? ` ${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
         "Auto-renew is turned off before each account is deleted, so saved cards are not charged again."
       : "";
-    if (!confirm(`Permanently delete ${rows.length} user(s)? This cannot be undone.${warn}`)) return;
+    const who = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
+    if (!(await confirm({
+      title: `Permanently delete ${who}?`,
+      body: `This cannot be undone.${warn}`,
+      confirmLabel: `Delete ${who}`,
+      tone: "danger",
+    }))) return;
     await runBulk("Delete", rows, (id) => fetch(`/api/admin/users/${id}`, { method: "DELETE" }));
   };
 
   const handleDelete = async (u: UserRow) => {
-    if (!confirm(`Delete ${rowLabel(u)}? This permanently removes the Clerk account.${deleteSubscriptionWarning(u.subscription)}`)) return;
+    if (!(await confirm({
+      title: `Delete ${rowLabel(u)}?`,
+      body: `This permanently removes the Clerk account.${deleteSubscriptionWarning(u.subscription)}`,
+      confirmLabel: "Delete user",
+      tone: "danger",
+    }))) return;
     const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
     if (!res.ok) {
-      alert((await res.json().catch(() => ({}))).error || "Failed to delete");
+      toast.err((await res.json().catch(() => ({}))).error || "Failed to delete");
       return;
     }
     setSelected((prev) => { const next = new Map(prev); next.delete(u.id); return next; });
@@ -404,7 +431,7 @@ export default function AdminUsersPage() {
         <button
           onClick={refresh}
           disabled={loading}
-          className="text-[13px] font-medium border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
+          className={btn("secondary")}
         >
           {loading ? "Loading…" : "Refresh"}
         </button>
@@ -482,14 +509,14 @@ export default function AdminUsersPage() {
           <button
             onClick={() => bulkBan(true)}
             disabled={bulkLoading}
-            className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+            className={btn("secondary")}
           >
             Ban
           </button>
           <button
             onClick={() => bulkBan(false)}
             disabled={bulkLoading}
-            className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+            className={btn("secondary")}
           >
             Unban
           </button>
@@ -505,7 +532,7 @@ export default function AdminUsersPage() {
             <button
               onClick={bulkSetPlan}
               disabled={bulkLoading}
-              className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+              className={btn("secondary")}
             >
               Apply
             </button>
@@ -514,13 +541,13 @@ export default function AdminUsersPage() {
           <button
             onClick={bulkDelete}
             disabled={bulkLoading}
-            className="text-[13px] font-medium border border-[var(--err-line)] rounded-lg px-3 py-2 text-[var(--err)] hover:bg-[var(--err-bg)] transition-colors disabled:opacity-40"
+            className={btn("danger")}
           >
             Delete
           </button>
           <button
             onClick={() => setSelected(new Map())}
-            className="ml-auto text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+            className={`${btn("ghost")} ml-auto`}
           >
             Clear
           </button>
@@ -544,7 +571,7 @@ export default function AdminUsersPage() {
             </p>
             <button
               onClick={() => setBulkResult(null)}
-              className="text-[13px] opacity-70 hover:opacity-100 transition-opacity"
+              className={`${BTN_ICON} shrink-0`}
               aria-label="Dismiss"
             >
               ×
@@ -677,7 +704,7 @@ export default function AdminUsersPage() {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); setSelectedId(u.id); }}
-                            className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                            className={BTN_ICON}
                             title="Edit"
                             aria-label="Edit user"
                           >
@@ -687,7 +714,7 @@ export default function AdminUsersPage() {
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(u); }}
-                            className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--err)] transition-colors"
+                            className={BTN_ICON}
                             title="Delete"
                             aria-label="Delete user"
                           >
@@ -724,14 +751,14 @@ export default function AdminUsersPage() {
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className={btn("secondary")}
             >
               ← Prev
             </button>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className={btn("secondary")}
             >
               Next →
             </button>
@@ -769,6 +796,7 @@ function UserDrawer({
   onUpdated: (u: UserRow) => void;
   onDeleted: (id: string) => void;
 }) {
+  const confirm = useConfirm();
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -835,10 +863,13 @@ function UserDrawer({
 
   const resetStylistUsage = async (scope: "today" | "all") => {
     if (resetting) return;
-    if (scope === "all" && !confirm(
-      "Delete this user's entire AI Stylist message history? It also disappears from the AI-usage chart in Analytics and cannot be undone.\n\n" +
-      "To lift today's limit, \"Reset today's limit\" is enough."
-    )) return;
+    if (scope === "all" && !(await confirm({
+      title: "Delete this user's entire AI Stylist message history?",
+      body: "It also disappears from the AI-usage chart in Analytics and cannot be undone. " +
+        "To lift today's limit, \"Reset today's limit\" is enough.",
+      confirmLabel: "Delete message history",
+      tone: "danger",
+    }))) return;
     setResetting(true);
     try {
       const res = await fetch(`/api/admin/users/${userId}/stylist-usage`, {
@@ -896,7 +927,12 @@ function UserDrawer({
 
   const del = async () => {
     if (!detail) return;
-    if (!confirm(`Delete ${rowLabel(detail)}? This permanently removes the Clerk account.${deleteSubscriptionWarning(detail.subscription)}`)) return;
+    if (!(await confirm({
+      title: `Delete ${rowLabel(detail)}?`,
+      body: `This permanently removes the Clerk account.${deleteSubscriptionWarning(detail.subscription)}`,
+      confirmLabel: "Delete user",
+      tone: "danger",
+    }))) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
@@ -931,7 +967,7 @@ function UserDrawer({
           </div>
           <button
             onClick={onClose}
-            className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            className={`${BTN_ICON} shrink-0`}
             aria-label="Close"
           >
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
@@ -1068,14 +1104,14 @@ function UserDrawer({
                   <button
                     onClick={() => resetStylistUsage("today")}
                     disabled={resetting || stats.stylistMsgToday === 0}
-                    className="text-[13px] font-medium border border-[var(--border)] hover:border-[var(--foreground)] rounded-full px-3 py-1.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={btn("secondary")}
                   >
                     {resetting ? "Resetting…" : "Reset today's limit"}
                   </button>
                   <button
                     onClick={() => resetStylistUsage("all")}
                     disabled={resetting}
-                    className="text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={btn("ghost")}
                   >
                     Reset all-time
                   </button>
@@ -1163,7 +1199,7 @@ function UserDrawer({
                 <button
                   onClick={del}
                   disabled={saving}
-                  className="text-[13px] font-medium text-[var(--err)] hover:text-[var(--err)] transition-colors disabled:opacity-50"
+                  className={btn("danger")}
                 >
                   Delete user
                 </button>
@@ -1171,7 +1207,7 @@ function UserDrawer({
               <div className="flex gap-2 ml-auto">
                 <button
                   onClick={onClose}
-                  className="text-[13px] font-medium border border-[var(--border)] rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] px-4 py-2 transition-colors"
+                  className={btn("ghost")}
                 >
                   Cancel
                 </button>
@@ -1179,7 +1215,7 @@ function UserDrawer({
                   <button
                     onClick={save}
                     disabled={!hasChanges || saving}
-                    className="text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-40"
+                    className={btn("primary")}
                   >
                     {saving ? "Saving…" : "Save changes"}
                   </button>

@@ -23,6 +23,9 @@ import {
   type CategoryGroup,
 } from "@/lib/categories";
 import { invalidateCategoryTree } from "@/lib/hooks/useCategoryTree";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
+import { btn, BTN_ICON } from "../_ui/recipes";
 
 interface Counts {
   byLabel: Record<string, number>;
@@ -40,11 +43,7 @@ interface TreeResponse {
 
 const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
-const btnCls =
-  "shrink-0 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
 const warnBoxCls = "mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3";
-const ghostBtnCls =
-  "text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40";
 
 /** Sentinel option that swaps the picker for a free-text field. */
 const NEW_BUCKET = "\u0000new-bucket";
@@ -133,7 +132,8 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   /** Which row is open for editing: `sub:12` or `group:footwear`. */
   const [editing, setEditing] = useState<string | null>(null);
@@ -147,15 +147,6 @@ export default function AdminCategoriesPage() {
   const [newLabel, setNewLabel] = useState("");
   const [newValue, setNewValue] = useState("");
   const [newGroupLabel, setNewGroupLabel] = useState("");
-
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => setToast({ msg, type });
-
-  // One timer per toast, so a second toast is not cut short by the first's.
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   /**
    * Reloads the tree in place. The list stays mounted while it does — only
@@ -191,14 +182,14 @@ export default function AdminCategoriesPage() {
       const res = await fetch(init.url ?? "/api/categories", init);
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(String(json.error ?? "Something went wrong."), "err");
+        toast.err(String(json.error ?? "Something went wrong."));
         return null;
       }
       invalidateCategoryTree();
       await load();
       return json;
     } catch {
-      showToast("Network error.", "err");
+      toast.err("Network error.");
       return null;
     } finally {
       setBusy(false);
@@ -253,23 +244,28 @@ export default function AdminCategoriesPage() {
     const json = await patch(body);
     if (json) {
       const moved = Number(json.productsUpdated ?? 0);
-      if (json.warning) showToast(String(json.warning), "err");
-      else showToast(moved ? `Saved — ${moved} product${moved === 1 ? "" : "s"} updated.` : "Saved.");
+      if (json.warning) toast.err(String(json.warning));
+      else toast.ok(moved ? `Saved — ${moved} product${moved === 1 ? "" : "s"} updated.` : "Saved.");
       setEditing(null);
     }
   };
 
   const deleteSub = async (id: number, label: string) => {
     const n = counts?.byLabel[label] ?? 0;
-    const warning = n
-      ? `Delete "${label}"?\n\n${n} product${n === 1 ? "" : "s"} carr${n === 1 ? "ies" : "y"} this label. They keep their category and stay in the catalog, but lose the label and answer to their whole group again.`
-      : `Delete "${label}"?`;
-    if (!confirm(warning)) return;
+    const ok = await confirm({
+      title: `Delete the "${label}" subcategory?`,
+      body: n
+        ? `${n} product${n === 1 ? "" : "s"} carr${n === 1 ? "ies" : "y"} this label. They keep their category and stay in the catalog, but lose the label and answer to their whole group again.`
+        : undefined,
+      confirmLabel: "Delete subcategory",
+      tone: "danger",
+    });
+    if (!ok) return;
     const json = await send({ url: `/api/categories?kind=subcategory&id=${id}`, method: "DELETE" });
     if (json) {
       const cleared = Number(json.productsUpdated ?? 0);
-      if (json.warning) showToast(String(json.warning), "err");
-      else showToast(cleared ? `Deleted — ${cleared} product${cleared === 1 ? "" : "s"} cleared.` : "Deleted.");
+      if (json.warning) toast.err(String(json.warning));
+      else toast.ok(cleared ? `Deleted — ${cleared} product${cleared === 1 ? "" : "s"} cleared.` : "Deleted.");
     }
   };
 
@@ -287,7 +283,7 @@ export default function AdminCategoriesPage() {
     // No sort order sent: the server puts it after the group's highest one.
     const json = await post({ kind: "subcategory", groupId, label, value });
     if (json) {
-      showToast(`"${label}" added.`);
+      toast.ok(`"${label}" added.`);
       setNewLabel("");
       setAddingIn(null);
     }
@@ -301,7 +297,7 @@ export default function AdminCategoriesPage() {
     if (!label) return;
     const json = await post({ kind: "group", label });
     if (json) {
-      showToast(`"${label}" added.`);
+      toast.ok(`"${label}" added.`);
       setNewGroupLabel("");
     }
   };
@@ -315,15 +311,15 @@ export default function AdminCategoriesPage() {
     }
     const json = await patch({ kind: "group", id, label });
     if (json) {
-      showToast("Saved.");
+      toast.ok("Saved.");
       setEditing(null);
     }
   };
 
   const deleteGroup = async (id: string, label: string) => {
-    if (!confirm(`Delete the "${label}" group?`)) return;
+    if (!(await confirm({ title: `Delete the "${label}" group?`, confirmLabel: "Delete group", tone: "danger" }))) return;
     const json = await send({ url: `/api/categories?kind=group&id=${encodeURIComponent(id)}`, method: "DELETE" });
-    if (json) showToast("Group deleted.");
+    if (json) toast.ok("Group deleted.");
   };
 
   /* ── Render ── */
@@ -352,7 +348,7 @@ export default function AdminCategoriesPage() {
             {loadError}
             {tree ? " What is shown may be out of date." : ""}
           </p>
-          <button onClick={() => load()} disabled={loading} className={`${ghostBtnCls} shrink-0`}>
+          <button onClick={() => load()} disabled={loading} className={`${btn("ghost")} shrink-0`}>
             {loading ? "Retrying…" : "Retry"}
           </button>
         </div>
@@ -384,7 +380,7 @@ export default function AdminCategoriesPage() {
             Couldn&apos;t read the category tables, so this is the built-in tree, read-only
             {tree?.detail ? `: ${tree.detail}` : "."}
           </p>
-          <button onClick={() => load()} disabled={loading} className={`${ghostBtnCls} shrink-0`}>
+          <button onClick={() => load()} disabled={loading} className={`${btn("ghost")} shrink-0`}>
             {loading ? "Retrying…" : "Retry"}
           </button>
         </div>
@@ -428,8 +424,8 @@ export default function AdminCategoriesPage() {
                         }}
                         className={`${inputCls} flex-1 min-w-[160px]`}
                       />
-                      <button onClick={() => saveGroup(group.id, group.label)} disabled={busy} className={btnCls}>Save</button>
-                      <button onClick={() => setEditing(null)} className={ghostBtnCls}>Cancel</button>
+                      <button onClick={() => saveGroup(group.id, group.label)} disabled={busy} className={`${btn("primary")} shrink-0`}>Save</button>
+                      <button onClick={() => setEditing(null)} className={btn("ghost")}>Cancel</button>
                     </div>
                   ) : (
                     <>
@@ -446,12 +442,12 @@ export default function AdminCategoriesPage() {
                       </div>
                       {!readOnly && (
                         <div className="flex items-center gap-3 shrink-0">
-                          <button onClick={() => { setEditing(`group:${group.id}`); setDraftLabel(group.label); }} className={ghostBtnCls}>Rename</button>
+                          <button onClick={() => { setEditing(`group:${group.id}`); setDraftLabel(group.label); }} className={btn("ghost")}>Rename</button>
                           <button
                             onClick={() => deleteGroup(group.id, group.label)}
                             disabled={busy || items.length > 0}
                             title={items.length > 0 ? "Move or delete its subcategories first" : undefined}
-                            className={ghostBtnCls}
+                            className={btn("ghost")}
                           >
                             Delete
                           </button>
@@ -481,8 +477,8 @@ export default function AdminCategoriesPage() {
                             />
                             <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Stored as</span>
                             <BucketPicker value={draftValue} known={knownBuckets} onChange={setDraftValue} />
-                            <button onClick={() => saveSub(group.id, item)} disabled={busy} className={btnCls}>Save</button>
-                            <button onClick={() => setEditing(null)} className={ghostBtnCls}>Cancel</button>
+                            <button onClick={() => saveSub(group.id, item)} disabled={busy} className={`${btn("primary")} shrink-0`}>Save</button>
+                            <button onClick={() => setEditing(null)} className={btn("ghost")}>Cancel</button>
                             <CustomBucketNote value={draftValue} />
                             <div className="basis-full flex items-center gap-2 flex-wrap pt-1">
                               <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Group</span>
@@ -518,10 +514,10 @@ export default function AdminCategoriesPage() {
                             </span>
                             {!readOnly && item.id !== undefined && (
                               <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                                <button onClick={() => moveSub(item.id!, -1)} disabled={busy || i === 0} title="Move up" aria-label={`Move ${item.label} up`} className={ghostBtnCls}>↑</button>
-                                <button onClick={() => moveSub(item.id!, 1)} disabled={busy || i === items.length - 1} title="Move down" aria-label={`Move ${item.label} down`} className={ghostBtnCls}>↓</button>
-                                <button onClick={() => startEditSub(group.id, item)} className={ghostBtnCls}>Edit</button>
-                                <button onClick={() => deleteSub(item.id!, item.label)} disabled={busy} className={ghostBtnCls}>Delete</button>
+                                <button onClick={() => moveSub(item.id!, -1)} disabled={busy || i === 0} title="Move up" aria-label={`Move ${item.label} up`} className={BTN_ICON}>↑</button>
+                                <button onClick={() => moveSub(item.id!, 1)} disabled={busy || i === items.length - 1} title="Move down" aria-label={`Move ${item.label} down`} className={BTN_ICON}>↓</button>
+                                <button onClick={() => startEditSub(group.id, item)} className={btn("ghost", "sm")}>Edit</button>
+                                <button onClick={() => deleteSub(item.id!, item.label)} disabled={busy} className={btn("ghost", "sm")}>Delete</button>
                               </div>
                             )}
                           </>
@@ -548,8 +544,8 @@ export default function AdminCategoriesPage() {
                         />
                         <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Stored as</span>
                         <BucketPicker value={newValue} known={knownBuckets} onChange={setNewValue} />
-                        <button onClick={() => addSub(group.id)} disabled={busy || !newLabel.trim() || !newValue} className={btnCls}>Add</button>
-                        <button onClick={() => setAddingIn(null)} className={ghostBtnCls}>Cancel</button>
+                        <button onClick={() => addSub(group.id)} disabled={busy || !newLabel.trim() || !newValue} className={`${btn("primary")} shrink-0`}>Add</button>
+                        <button onClick={() => setAddingIn(null)} className={btn("ghost")}>Cancel</button>
                         <CustomBucketNote value={newValue} />
                       </div>
                     ) : (
@@ -561,7 +557,7 @@ export default function AdminCategoriesPage() {
                           // the common case is one field and a click.
                           setNewValue(items[0]?.value ?? CATEGORY_VALUES[0]);
                         }}
-                        className={ghostBtnCls}
+                        className={btn("ghost")}
                       >
                         + Add subcategory
                       </button>
@@ -581,7 +577,7 @@ export default function AdminCategoriesPage() {
                 placeholder="New group — e.g. Swimwear"
                 className={`${inputCls} flex-1 min-w-[160px]`}
               />
-              <button onClick={addGroup} disabled={busy || !newGroupLabel.trim()} className={btnCls}>Add group</button>
+              <button onClick={addGroup} disabled={busy || !newGroupLabel.trim()} className={`${btn("primary")} shrink-0`}>Add group</button>
             </div>
           )}
         </div>
@@ -607,19 +603,6 @@ export default function AdminCategoriesPage() {
           fine, it just gets none of that.
         </p>
       </div>
-
-      {toast && (
-        <div
-          role={toast.type === "ok" ? "status" : "alert"}
-          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
-            toast.type === "ok"
-              ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-              : "bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]"
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
     </div>
   );
 }

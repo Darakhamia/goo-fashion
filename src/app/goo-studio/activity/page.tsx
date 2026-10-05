@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdminAction } from "@/lib/server/audit";
+import { btn } from "@/app/goo-studio/_ui/recipes";
 
 interface AuditEntry {
   id: number;
@@ -324,7 +325,7 @@ export default function AdminActivityPage() {
         <button
           onClick={() => fetchPage(0)}
           disabled={loading}
-          className="text-[13px] font-medium border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
+          className={btn("secondary")}
         >
           {loading ? "Loading…" : "Refresh"}
         </button>
@@ -447,7 +448,7 @@ export default function AdminActivityPage() {
           <button
             onClick={() => fetchPage(entries.length)}
             disabled={loading}
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors disabled:opacity-40"
+            className={btn("secondary")}
           >
             {loading ? "Loading…" : `Load more · ${entries.length.toLocaleString()} of ${total.toLocaleString()}`}
           </button>
