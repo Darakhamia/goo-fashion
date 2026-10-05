@@ -343,9 +343,20 @@ module.exports = {
       },
     },
     {
+      name: "outfits-bulk", url: "/goo-studio/outfits", fullPage: false,
+      after: async (page) => {
+        // Row boxes by place, not by label: the label is in the admin's language.
+        const boxes = page.locator('tbody input[type="checkbox"]');
+        await boxes.first().waitFor({ timeout: 15000 });
+        await boxes.nth(0).check();
+        await boxes.nth(1).check();
+        await page.waitForTimeout(300);
+      },
+    },
+    {
       name: "outfits-pending", url: "/goo-studio/outfits",
       after: async (page) => {
-        await page.getByRole("button", { name: /^Pending/ }).click();
+        await page.getByRole("tab", { name: /^Pending/ }).click();
         await page.waitForSelector('img[alt="Look"]', { timeout: 15000 });
         await unclip(page);
       },
@@ -353,7 +364,7 @@ module.exports = {
     {
       name: "outfits-pending-review", url: "/goo-studio/outfits", fullPage: false,
       after: async (page) => {
-        await page.getByRole("button", { name: /^Pending/ }).click();
+        await page.getByRole("tab", { name: /^Pending/ }).click();
         await page.locator('img[alt="Look"]').first().click();
         await page.getByRole("dialog", { name: "Review submitted look" }).waitFor();
       },

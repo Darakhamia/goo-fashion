@@ -359,6 +359,21 @@ module.exports = {
         await page.waitForTimeout(600);
       },
     },
+    // GS4-4: two users ticked and the plan menu of the selection bar open.
+    {
+      name: "users-bulk",
+      url: "/goo-studio/users",
+      fullPage: false,
+      after: async (page) => {
+        // Row boxes by place, not by label: the label is in the admin's language.
+        const boxes = page.locator('tbody input[type="checkbox"]');
+        await boxes.first().waitFor({ timeout: 15000 });
+        await boxes.nth(0).check();
+        await boxes.nth(1).check();
+        await page.getByRole("toolbar").locator('button[aria-haspopup="menu"]').click();
+        await page.waitForTimeout(300);
+      },
+    },
     {
       name: "email-confirm",
       url: "/goo-studio/email",
