@@ -26,7 +26,7 @@ NODE_PATH=/tmp/goo-admin-screens/pw/node_modules \
 **Параметры:**
 - `--only` — имена страниц через запятую; без него снимаются все.
 - `--theme` — `light` | `dark` | `both`.
-- `--vp` — `desktop` | `mobile` | `both`.
+- `--vp` — `desktop` | `mobile` | `both` | `wide` (2560×1440: админка во всю ширину монитора) | `all` (все три).
 - `--out` — папка для снимков; по умолчанию `$TMPDIR/goo-admin-screens/shots`.
 - `--lang` — `en` (по умолчанию) | `ru`: язык админки (GS4-8). У снимков на русском в имени суффикс `-ru`.
 - `--axe` — вместо снимков проверка axe-core на каждой странице. Печатает число нарушений и первые десять элементов с правилом в скобках. По умолчанию — контраст (`color-contrast`, DoD GS4-1); `--axe-rules=color-contrast,button-name,aria-dialog-name,link-name` — ещё кнопки и ссылки без имени и диалоги без названия (DoD GS4-9).
@@ -49,6 +49,7 @@ NODE_PATH=/tmp/goo-admin-screens/pw/node_modules \
   - `products-editor` … `products-editor-4`, `products-bulk`, `products-filter`, `products-row-menu`, `products-maintenance`;
   - `outfits-bulk`, `outfits-pending`, `outfits-pending-review`;
   - `brands-confirm`, `brands-toast`, `retailers-help`, `retailers-rule`;
+  - `dashboard-fix` («How to fix» открыт), `dashboard-healthy` («All good»), `dashboard-payments-off` (оплата выключена);
   - `users-drawer`, `users-bulk`, `email-confirm`, `account-menu`;
   - `catalogue-check-ready`;
   - `import-merchants`, `import-preview`;
