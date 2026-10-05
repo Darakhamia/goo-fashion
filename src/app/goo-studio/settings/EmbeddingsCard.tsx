@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { PRIMARY_BTN, SECONDARY_BTN, Spinner, LoadingLine } from "./recipes";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { btn } from "../_ui/recipes";
+import { Spinner, LoadingLine } from "./recipes";
 
 interface EmbeddingCoverage {
   total: number;
@@ -22,6 +25,8 @@ const EMBED_BATCH = 100;
  * progress and can be stopped between batches.
  */
 export default function EmbeddingsCard() {
+  const confirm = useConfirm();
+  const help = useHelp("settings-embeddings");
   const [coverage, setCoverage] = useState<EmbeddingCoverage | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -67,10 +72,13 @@ export default function EmbeddingsCard() {
     if (!coverage) return;
     // A mass operation billed to the OpenAI key: say how much before starting.
     const batches = Math.ceil(coverage.missing / EMBED_BATCH);
+    const noun = `product${coverage.missing === 1 ? "" : "s"}`;
     if (
-      !confirm(
-        `Embed ${coverage.missing} product${coverage.missing === 1 ? "" : "s"}?\n\nThis sends ${batches} request${batches === 1 ? "" : "s"} to OpenAI, billed to the key above. You can stop between batches.`
-      )
+      !(await confirm({
+        title: `Embed ${coverage.missing} ${noun}?`,
+        body: `This sends ${batches} request${batches === 1 ? "" : "s"} to OpenAI, billed to the key above. You can stop between batches.`,
+        confirmLabel: `Embed ${coverage.missing} ${noun}`,
+      }))
     ) return;
     stopRequested.current = false;
     setStopping(false);
@@ -147,13 +155,20 @@ export default function EmbeddingsCard() {
           <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
             Embeddings
           </p>
+          <HelpButton help={help} label="How embeddings work" />
         </div>
-        <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-          Vectors behind the stylist&apos;s semantic search and the <span className="font-mono">?knn=1</span> mode of
-          field mining. Imports don&apos;t create them, so new products stay without one until a backfill runs here. The
-          chat searches by meaning only when the server has <code className="font-mono text-[11px]">STYLIST_SEMANTIC_SEARCH</code>{" "}
-          on; otherwise it uses keyword search. Uses the OpenAI key above.
-        </p>
+        {help.open && (
+          <div className="mt-3">
+            <HelpPanel help={help}>
+              <p>
+                Vectors behind the stylist&apos;s semantic search and the <span className="font-mono">?knn=1</span> mode of
+                field mining. Imports don&apos;t create them, so new products stay without one until a backfill runs here. The
+                chat searches by meaning only when the server has <code className="font-mono text-[11px]">STYLIST_SEMANTIC_SEARCH</code>{" "}
+                on; otherwise it uses keyword search. Uses the OpenAI key above.
+              </p>
+            </HelpPanel>
+          </div>
+        )}
       </div>
 
       <div className="px-5 py-4">
@@ -203,7 +218,7 @@ export default function EmbeddingsCard() {
         <button
           onClick={backfill}
           disabled={running || !coverage || coverage.missing === 0}
-          className={PRIMARY_BTN}
+          className={btn("primary")}
         >
           {running && <Spinner />}
           {running ? "Embedding…" : "Backfill missing"}
@@ -212,12 +227,12 @@ export default function EmbeddingsCard() {
           <button
             onClick={() => { stopRequested.current = true; setStopping(true); }}
             disabled={stopping}
-            className={SECONDARY_BTN}
+            className={btn("secondary")}
           >
             {stopping ? "Stopping after this batch…" : "Stop after this batch"}
           </button>
         ) : (
-          <button onClick={loadCoverage} disabled={loading} className={SECONDARY_BTN}>
+          <button onClick={loadCoverage} disabled={loading} className={btn("secondary")}>
             {loading ? "Checking…" : "Refresh"}
           </button>
         )}

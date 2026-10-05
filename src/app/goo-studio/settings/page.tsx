@@ -3,8 +3,11 @@
 import { useState, useEffect } from "react";
 import { SUPPORTED_STORES, storeFaviconUrl } from "@/lib/stores";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { btn, BTN_ICON, INPUT } from "../_ui/recipes";
 import EmbeddingsCard from "./EmbeddingsCard";
-import { PRIMARY_BTN, SECONDARY_BTN, INPUT, Spinner, LoadingLine } from "./recipes";
+import { Spinner, LoadingLine } from "./recipes";
 
 interface KeyStatus {
   configured: boolean;
@@ -97,7 +100,7 @@ function SelectionLoadFailed({ message, onRetry }: { message: string; onRetry: (
       <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed">
         Saving is off until the current selection loads, so the live homepage is not overwritten with an empty one.
       </p>
-      <button onClick={onRetry} className={`mt-3 ${SECONDARY_BTN}`}>
+      <button onClick={onRetry} className={`mt-3 ${btn("secondary")}`}>
         Retry
       </button>
     </div>
@@ -227,7 +230,7 @@ function PickerModal({
           </div>
           <button
             onClick={onClose}
-            className="ml-auto px-3 py-1.5 rounded-lg text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 transition-opacity"
+            className={`ml-auto ${btn("primary")}`}
           >
             Done
           </button>
@@ -300,6 +303,13 @@ function PickerModal({
 }
 
 export default function SettingsPage() {
+  const confirm = useConfirm();
+  const schemaHelp = useHelp("settings-schema");
+  const showcaseHelp = useHelp("settings-showcase");
+  const stylistHelp = useHelp("settings-stylist");
+  const storesHelp = useHelp("settings-stylist-stores");
+  const openaiHelp = useHelp("settings-openai");
+
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -677,9 +687,12 @@ export default function SettingsPage() {
   // ── Clear key ─────────────────────────────────────────────────────────────
   async function clearKey() {
     if (
-      !confirm(
-        "Remove the stored OpenAI API key?\n\nUntil a new key is added, these stop working: blog post generation, AI-written emails, AI extraction in the parser, bug reports, and the stylist's semantic search."
-      )
+      !(await confirm({
+        title: "Remove the stored OpenAI API key?",
+        body: "Until a new key is added, these stop working: blog post generation, AI-written emails, AI extraction in the parser, bug reports, and the stylist's semantic search.",
+        confirmLabel: "Remove key",
+        tone: "danger",
+      }))
     ) return;
     setClearing(true);
     setClearError("");
@@ -746,10 +759,17 @@ export default function SettingsPage() {
             <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               Database schema
             </p>
+            <HelpButton help={schemaHelp} label="How the schema check works" />
           </div>
-          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Tables and optional columns the code relies on. A missing column is never an error — the row saves without it — so the feature it carries just stops working quietly.
-          </p>
+          {schemaHelp.open && (
+            <div className="mt-3">
+              <HelpPanel help={schemaHelp}>
+                <p>
+                  Tables and optional columns the code relies on. A missing column is never an error — the row saves without it — so the feature it carries just stops working quietly.
+                </p>
+              </HelpPanel>
+            </div>
+          )}
         </div>
 
         <div className="px-5 py-4">
@@ -807,7 +827,7 @@ export default function SettingsPage() {
           {/* Re-check stays reachable after a failed check too — that is when
               it is needed. */}
           {(schema || schemaError) && (
-            <button onClick={loadSchema} disabled={schemaLoading} className={`mt-4 ${PRIMARY_BTN}`}>
+            <button onClick={loadSchema} disabled={schemaLoading} className={`mt-4 ${btn("primary")}`}>
               {schemaLoading ? "Checking…" : "Re-check"}
             </button>
           )}
@@ -831,11 +851,18 @@ export default function SettingsPage() {
             <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               Homepage showcase
             </p>
+            <HelpButton help={showcaseHelp} label="How the homepage showcase works" />
           </div>
-          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Pick which products appear in the four “How it works” cards on the homepage.
-            Empty slots fall back to the default artwork.
-          </p>
+          {showcaseHelp.open && (
+            <div className="mt-3">
+              <HelpPanel help={showcaseHelp}>
+                <p>
+                  Pick which products appear in the four “How it works” cards on the homepage.
+                  Empty slots fall back to the default artwork.
+                </p>
+              </HelpPanel>
+            </div>
+          )}
         </div>
 
         <div className="px-5 py-4 space-y-5">
@@ -877,7 +904,7 @@ export default function SettingsPage() {
           <button
             onClick={saveShowcase}
             disabled={showcaseSaving || showcaseLoad !== "ready"}
-            className={PRIMARY_BTN}
+            className={btn("primary")}
           >
             {showcaseSaving && <Spinner />}
             {showcaseSaving ? "Saving…" : "Save showcase"}
@@ -897,12 +924,19 @@ export default function SettingsPage() {
             <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               AI Stylist showcase
             </p>
+            <HelpButton help={stylistHelp} label="How the AI Stylist showcase works" />
           </div>
-          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Controls the “Your style. Found by AI.” section. Pick up to two looks shown as
-            cards in the chat preview, and one product featured below with its “Where to buy”
-            list. Empty slots fall back to the latest catalog items.
-          </p>
+          {stylistHelp.open && (
+            <div className="mt-3">
+              <HelpPanel help={stylistHelp}>
+                <p>
+                  Controls the “Your style. Found by AI.” section. Pick up to two looks shown as
+                  cards in the chat preview, and one product featured below with its “Where to buy”
+                  list. Empty slots fall back to the latest catalog items.
+                </p>
+              </HelpPanel>
+            </div>
+          )}
         </div>
 
         <div className="px-5 py-4 space-y-5">
@@ -960,17 +994,24 @@ export default function SettingsPage() {
 
               {/* Stores shown in "Where to buy" */}
               <div>
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
                   <span className="text-[12px] font-medium text-[var(--foreground)]">Where to buy — extra stores</span>
+                  <HelpButton help={storesHelp} label="How extra stores work" />
                   <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">
                     Up to {MAX_SHOWCASE_STORES}
                   </span>
                 </div>
-                <p className="text-[12px] text-[var(--foreground-subtle)] mb-3 leading-relaxed">
-                  The item’s own stores (and prices) always show automatically. Add extra stores here —
-                  the logo and store link are pulled from the library; set an optional price tag for each.
-                  Clicking a row opens that store’s link.
-                </p>
+                {storesHelp.open && (
+                  <div className="mb-3">
+                    <HelpPanel help={storesHelp}>
+                      <p>
+                        The item’s own stores (and prices) always show automatically. Add extra stores here —
+                        the logo and store link are pulled from the library; set an optional price tag for each.
+                        Clicking a row opens that store’s link.
+                      </p>
+                    </HelpPanel>
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-2">
                   {stylist.extraStores.map(({ name, price }) => {
@@ -1013,8 +1054,9 @@ export default function SettingsPage() {
                         </div>
                         <button
                           onClick={() => removeShowcaseStore(name)}
-                          className="w-5 h-5 rounded-full hover:bg-[var(--surface)] text-[var(--foreground-subtle)] hover:text-[var(--err)] flex items-center justify-center transition-colors shrink-0"
+                          className={`shrink-0 ${BTN_ICON}`}
                           aria-label={`Remove ${name}`}
+                          title={`Remove ${name}`}
                         >
                           <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
                             <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -1045,7 +1087,7 @@ export default function SettingsPage() {
           <button
             onClick={saveStylist}
             disabled={stylistSaving || stylistLoad !== "ready"}
-            className={PRIMARY_BTN}
+            className={btn("primary")}
           >
             {stylistSaving && <Spinner />}
             {stylistSaving ? "Saving…" : "Save stylist"}
@@ -1070,12 +1112,19 @@ export default function SettingsPage() {
             <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               OpenAI API key
             </p>
+            <HelpButton help={openaiHelp} label="What the OpenAI key is used for" />
           </div>
-          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Shared key for everything on the site that calls OpenAI: blog post generation, AI-written emails,
-            AI extraction in the parser, bug reports and the stylist&apos;s semantic search. The AI Stylist chat itself
-            runs on Replicate and does not use it. Stored server-side and never sent to the browser.
-          </p>
+          {openaiHelp.open && (
+            <div className="mt-3">
+              <HelpPanel help={openaiHelp}>
+                <p>
+                  Shared key for everything on the site that calls OpenAI: blog post generation, AI-written emails,
+                  AI extraction in the parser, bug reports and the stylist&apos;s semantic search. The AI Stylist chat itself
+                  runs on Replicate and does not use it. Stored server-side and never sent to the browser.
+                </p>
+              </HelpPanel>
+            </div>
+          )}
         </div>
 
         {/* Status body */}
@@ -1088,7 +1137,7 @@ export default function SettingsPage() {
           {loadError && (
             <div>
               <p className="text-[11px] text-[var(--err)]">{loadError}</p>
-              <button onClick={loadStatus} className={`mt-3 ${SECONDARY_BTN}`}>
+              <button onClick={loadStatus} className={`mt-3 ${btn("secondary")}`}>
                 Retry
               </button>
             </div>
@@ -1234,7 +1283,7 @@ export default function SettingsPage() {
               <button
                 onClick={saveKey}
                 disabled={!inputKey.trim() || saving}
-                className={PRIMARY_BTN}
+                className={btn("primary")}
               >
                 {saving && <Spinner />}
                 {saving ? "Saving…" : "Save key"}
@@ -1245,7 +1294,7 @@ export default function SettingsPage() {
             {editingKey && status.configured && (
               <button
                 onClick={() => { setShowInput(false); setInputKey(""); setSaveError(""); }}
-                className={SECONDARY_BTN}
+                className={btn("ghost")}
               >
                 Cancel
               </button>
@@ -1257,7 +1306,7 @@ export default function SettingsPage() {
                 <button
                   onClick={testKey}
                   disabled={testing}
-                  className={SECONDARY_BTN}
+                  className={btn("secondary")}
                 >
                   {testing && <Spinner />}
                   {testing ? "Testing…" : "Test key"}
@@ -1267,7 +1316,7 @@ export default function SettingsPage() {
                 {status.source === "database" && (
                   <button
                     onClick={() => { setShowInput(true); setTestResult(null); }}
-                    className={SECONDARY_BTN}
+                    className={btn("secondary")}
                   >
                     Update
                   </button>
@@ -1280,7 +1329,7 @@ export default function SettingsPage() {
               <button
                 onClick={clearKey}
                 disabled={clearing}
-                className="ml-auto text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`ml-auto ${btn("danger")}`}
               >
                 {clearing ? "Clearing…" : "Clear"}
               </button>

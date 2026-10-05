@@ -14,6 +14,8 @@ import type {
 import type { Category, Gender } from "@/lib/types";
 import { bookmarkletHref, readPastedPage } from "@/lib/parser-bookmarklet";
 import { pastedUrl } from "@/lib/url";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { btn, BTN_ICON } from "../_ui/recipes";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -112,10 +114,6 @@ const inputCls = `${fieldBase} text-sm bg-transparent`;
 const monoInputCls = `${fieldBase} font-mono text-[11px] bg-transparent`;
 const selectCls = `${fieldBase} text-sm bg-[var(--surface)]`;
 const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
-const btnPrimary =
-  "px-4 py-2 text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
-const btnGhost =
-  "px-4 py-2 text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
 /** Status plaques: the admin's three semantic colours, always in this shape. */
 const errorBoxCls = "rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[12px] text-[var(--err)] break-words";
 const warnBoxCls = "rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)] break-words";
@@ -392,9 +390,9 @@ function CollectTab({
             />
           </div>
           {running ? (
-            <button onClick={() => { stopRef.current = true; }} className={btnGhost}>Stop</button>
+            <button onClick={() => { stopRef.current = true; }} className={btn("secondary")}>Stop</button>
           ) : (
-            <button onClick={start} disabled={!url.trim()} className={btnPrimary}>Collect</button>
+            <button onClick={start} disabled={!url.trim()} className={btn("primary")}>Collect</button>
           )}
         </div>
 
@@ -443,7 +441,7 @@ function CollectTab({
               here. Install steps are on its page.
             </span>
           </p>
-          <Link href={EXTENSION_PAGE} className={btnGhost}>Collect with the extension</Link>
+          <Link href={EXTENSION_PAGE} className={btn("secondary")}>Collect with the extension</Link>
         </div>
 
         <p className="text-[12px] text-[var(--foreground-subtle)] leading-relaxed">
@@ -459,10 +457,10 @@ function CollectTab({
           {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
           {refused && (
             <div className="pt-1.5 flex items-center gap-2 flex-wrap">
-              <Link href={EXTENSION_PAGE} className={btnGhost}>
+              <Link href={EXTENSION_PAGE} className={btn("secondary")}>
                 Collect with the extension
               </Link>
-              <button onClick={() => onPastePage(refused)} className={btnGhost}>
+              <button onClick={() => onPastePage(refused)} className={btn("secondary")}>
                 Paste page instead
               </button>
             </div>
@@ -735,7 +733,7 @@ function ParseTab({
             className={inputCls}
           />
         </div>
-        <button onClick={() => runParse()} disabled={busy || !url.trim()} className={btnPrimary}>
+        <button onClick={() => runParse()} disabled={busy || !url.trim()} className={btn("primary")}>
           {parsing && <Spinner />} {parsing ? "Fetching…" : "Parse"}
         </button>
       </div>
@@ -760,7 +758,7 @@ function ParseTab({
           {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
           {hint && (
             <div className="pt-1.5">
-              <Link href={EXTENSION_PAGE} className={btnGhost}>
+              <Link href={EXTENSION_PAGE} className={btn("secondary")}>
                 Collect with the extension
               </Link>
             </div>
@@ -885,7 +883,7 @@ function PastePagePanel({
                   setCopied(false);
                 }
               }}
-              className={btnGhost}
+              className={btn("secondary")}
             >
               {copied ? "Copied" : "Copy as text"}
             </button>
@@ -911,12 +909,12 @@ function PastePagePanel({
               </p>
               <div className="flex items-center gap-2">
                 {text && (
-                  <button onClick={() => setText("")} className={btnGhost}>Clear</button>
+                  <button onClick={() => setText("")} className={btn("ghost")}>Clear</button>
                 )}
                 <button
                   onClick={() => pasted && onParse(pasted)}
                   disabled={parsing || !ready}
-                  className={btnPrimary}
+                  className={btn("primary")}
                 >
                   {parsing && <Spinner />} Parse pasted page
                 </button>
@@ -1060,7 +1058,7 @@ function SingleProductEditor({
 
       {/* Footer */}
       <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3 flex-wrap">
-        <button onClick={runImport} disabled={importing || !product.name} className={btnPrimary}>
+        <button onClick={runImport} disabled={importing || !product.name} className={btn("primary")}>
           {importing && <Spinner />} {importing ? "Importing…" : "Import product"}
         </button>
         {error && <span className="text-[12px] text-[var(--err)]">{error}</span>}
@@ -1147,8 +1145,8 @@ function ProductGrid({
         <p className="text-[13px] font-medium text-[var(--foreground)]">
           {products.length} products found · {selected.size} selected
         </p>
-        <button onClick={onSelectAllValid} className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)]">Select valid</button>
-        <button onClick={onClear} className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)]">Clear</button>
+        <button onClick={onSelectAllValid} className={btn("ghost")}>Select valid</button>
+        <button onClick={onClear} className={btn("ghost")}>Clear</button>
         <div className="ml-auto flex flex-wrap items-center gap-3">
           {importing && <span className="text-[11px] text-[var(--foreground-muted)]">{progress.done}/{progress.total}…</span>}
           {result && (
@@ -1160,7 +1158,7 @@ function ProductGrid({
               <a href="/goo-studio/products" className="underline hover:no-underline ml-2">View →</a>
             </span>
           )}
-          <button onClick={importSelected} disabled={importing || !selected.size} className={btnPrimary}>
+          <button onClick={importSelected} disabled={importing || !selected.size} className={btn("primary")}>
             {importing && <Spinner />} Import {selected.size || ""} selected
           </button>
         </div>
@@ -1256,7 +1254,7 @@ function LinksPanel({
           No full product data was embedded on this page. Parse each link to pull name, price and images, then select which to import.
         </p>
       </div>
-      <button onClick={onParseAll} disabled={parsing} className={btnPrimary}>
+      <button onClick={onParseAll} disabled={parsing} className={btn("primary")}>
         {parsing ? <><Spinner /> Parsing {progress.done}/{progress.total}…</> : `Parse first ${cap}`}
       </button>
     </div>
@@ -1375,7 +1373,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
         <p className="text-[11px] text-[var(--foreground-muted)]">
           Recipes match by hostname. Overrides and regex rules apply on top of the generic JSON-LD/OpenGraph extractor.
         </p>
-        <button onClick={addRecipe} className={btnGhost}>+ Add recipe</button>
+        <button onClick={addRecipe} className={btn("secondary")}>+ Add recipe</button>
       </div>
 
       <div className="space-y-2">
@@ -1402,10 +1400,10 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
                 aria-label="Domain"
                 className="bg-transparent text-[12px] font-mono text-[var(--foreground-muted)] outline-none order-last basis-full md:order-none md:basis-auto flex-1 min-w-0 border-b border-transparent focus:border-[var(--border-strong)]"
               />
-              <button onClick={() => setExpanded(expanded === c.id ? null : c.id)} className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)]">
+              <button onClick={() => setExpanded(expanded === c.id ? null : c.id)} className={btn("ghost", "sm")}>
                 {expanded === c.id ? "Hide" : "Edit"}
               </button>
-              <button onClick={() => remove(c.id)} aria-label={`Delete the ${c.name || c.domain || "new"} recipe`} className="flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors" title="Delete">
+              <button onClick={() => remove(c.id)} aria-label={`Delete the ${c.name || c.domain || "new"} recipe`} className={BTN_ICON} title="Delete">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
               </button>
             </div>
@@ -1460,7 +1458,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
       </div>
 
       <div className="flex flex-wrap items-center gap-3 pt-1">
-        <button onClick={save} disabled={saving} className={btnPrimary}>
+        <button onClick={save} disabled={saving} className={btn("primary")}>
           {saving && <Spinner />} {saving ? "Saving…" : "Save recipes"}
         </button>
         {dirty && !saving && <UnsavedNote />}
@@ -1474,6 +1472,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
 // ── Fetch & anti-bot tab ─────────────────────────────────────────────────────
 
 function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: ConfigState) => void }) {
+  const confirm = useConfirm();
   const [settings, setSettings] = useState<ParserFetchSettings>(config.fetchSettings);
   const [ai, setAi] = useState<ParserAiSettings>(config.aiSettings);
   const [keyInput, setKeyInput] = useState("");
@@ -1520,7 +1519,13 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
   }
 
   async function clearKey() {
-    if (!confirm("Remove the stored fetch API key?")) return;
+    if (
+      !(await confirm({
+        title: "Remove the stored fetch API key?",
+        confirmLabel: "Remove key",
+        tone: "danger",
+      }))
+    ) return;
     setSaving(true); setError("");
     try {
       const res = await fetch("/api/admin/parser/config", {
@@ -1666,7 +1671,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
                 </button>
               </div>
               {config.key.configured && config.key.source === "database" && (
-                <button onClick={clearKey} className="text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors">
+                <button onClick={clearKey} className={btn("danger")}>
                   Clear stored key
                 </button>
               )}
@@ -1676,7 +1681,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button onClick={save} disabled={saving} className={btnPrimary}>
+        <button onClick={save} disabled={saving} className={btn("primary")}>
           {saving && <Spinner />} {saving ? "Saving…" : "Save settings"}
         </button>
         {dirty && !saving && <UnsavedNote />}

@@ -16,6 +16,7 @@ import {
   type MerchantSummary,
 } from "@/lib/csv-import";
 import type { Category } from "@/lib/types";
+import { btn } from "../_ui/recipes";
 
 const CATEGORIES: Category[] = [
   "outerwear","blazers","tops","shirts","knitwear","bottoms","jeans",
@@ -47,12 +48,6 @@ const isSelectable = (row: CSVMappedRow) => row._valid || canRefreshOnly(row);
 
 // ── Styled primitives (goo-studio recipes, DESIGN_SYSTEM.md §9) ──────────────
 
-const btnPrimary =
-  "inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--foreground)] text-[var(--surface)] text-[13px] font-medium hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed";
-const btnOutline =
-  "inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] text-[13px] font-medium text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
-const btnText =
-  "text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40";
 const thCls =
   "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal whitespace-nowrap";
 const chipCls = "inline-block text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap";
@@ -344,7 +339,7 @@ export default function CSVImportPage() {
           <span className={phase === "done" ? "text-[var(--ok)]" : importing || phase === "stopped" ? "text-[var(--foreground)]" : ""}>
             3. Import
           </span>
-          <button onClick={reset} disabled={importing} className={`ml-4 ${btnText}`}>
+          <button onClick={reset} disabled={importing} className={`ml-4 ${btn("ghost")}`}>
             ← Start over
           </button>
         </div>
@@ -437,11 +432,11 @@ export default function CSVImportPage() {
             <div className="flex gap-4">
               <button
                 onClick={() => setSelectedMerchants(new Set<string>(merchants.map((m) => m.name)))}
-                className={btnText}
+                className={btn("ghost")}
               >
                 Select all
               </button>
-              <button onClick={() => setSelectedMerchants(new Set<string>())} className={btnText}>
+              <button onClick={() => setSelectedMerchants(new Set<string>())} className={btn("ghost")}>
                 Clear
               </button>
             </div>
@@ -499,7 +494,7 @@ export default function CSVImportPage() {
                 <p className="text-xs text-[var(--foreground-muted)]">Select at least one merchant</p>
               )}
             </div>
-            <button onClick={applyMerchantFilter} disabled={!selectedMerchants.size} className={btnPrimary}>
+            <button onClick={applyMerchantFilter} disabled={!selectedMerchants.size} className={btn("primary")}>
               Preview {selValid > 0 ? `${selValid.toLocaleString()} products →` : "→"}
             </button>
           </div>
@@ -531,7 +526,7 @@ export default function CSVImportPage() {
                   <span className="text-[var(--err)]">{totals.errors.length.toLocaleString()} failed</span>
                 )}
                 {importing && (
-                  <button onClick={() => { stopRef.current = true; }} className={btnOutline}>Stop</button>
+                  <button onClick={() => { stopRef.current = true; }} className={btn("secondary")}>Stop</button>
                 )}
               </div>
             </div>
@@ -573,15 +568,15 @@ export default function CSVImportPage() {
 
               {finished && (
                 <div className="flex gap-3 flex-wrap">
-                  <Link href="/goo-studio/products" className={btnPrimary}>
+                  <Link href="/goo-studio/products" className={btn("primary")}>
                     View products
                   </Link>
                   {partial && (
-                    <button onClick={runImport} className={btnOutline}>
+                    <button onClick={runImport} className={btn("secondary")}>
                       Run again
                     </button>
                   )}
-                  <button onClick={reset} className={btnOutline}>
+                  <button onClick={reset} className={btn("secondary")}>
                     Import another file
                   </button>
                 </div>
@@ -610,25 +605,25 @@ export default function CSVImportPage() {
               <button
                 onClick={() => setSelected(new Set<number>(previewRows.flatMap((r, i) => (isSelectable(r) ? [i] : []))))}
                 disabled={importing}
-                className={btnText}
+                className={btn("ghost")}
               >
                 Select all
               </button>
               {selected.size > 0 && (
-                <button onClick={() => setSelected(new Set<number>())} disabled={importing} className={btnText}>
+                <button onClick={() => setSelected(new Set<number>())} disabled={importing} className={btn("ghost")}>
                   Clear
                 </button>
               )}
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button onClick={backToMerchants} disabled={importing} className={btnOutline}>
+              <button onClick={backToMerchants} disabled={importing} className={btn("secondary")}>
                 ← Merchants
               </button>
               {selected.size > 0 && (
                 <button
                   onClick={runImport}
                   disabled={importing || !!checking || !plan.groups.length}
-                  className={btnPrimary}
+                  className={btn("primary")}
                 >
                   {importing ? (
                     <><Spinner /> Importing…</>
@@ -682,7 +677,7 @@ export default function CSVImportPage() {
                 Could not check which products are already in the catalogue: {checkError}. The import still updates
                 what it finds, but the new / updated split is unknown.
               </p>
-              <button onClick={() => void checkCatalogue(previewRows)} disabled={importing} className={btnOutline}>
+              <button onClick={() => void checkCatalogue(previewRows)} disabled={importing} className={btn("secondary")}>
                 Check again
               </button>
             </div>
@@ -812,7 +807,7 @@ export default function CSVImportPage() {
 
           {previewRows.length > PREVIEW_LIMIT && !showAll && (
             <div className="text-center py-2">
-              <button onClick={() => setShowAll(true)} className={btnText}>
+              <button onClick={() => setShowAll(true)} className={btn("ghost")}>
                 Showing first {PREVIEW_LIMIT} rows — show all {previewRows.length.toLocaleString()} →
               </button>
             </div>
