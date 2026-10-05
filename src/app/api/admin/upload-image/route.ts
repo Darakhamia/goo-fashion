@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { isAlreadyMirrored, mirrorImageUrl } from "@/lib/server/storage/product-images";
+import { isAlreadyMirrored, mirrorImageUrl, uploadToStorage } from "@/lib/server/storage/product-images";
 import { validateTargetUrl } from "@/lib/server/parser/fetch";
 
 /**
  * POST /api/admin/upload-image { url } → { url, mirrored }
+ *
+ * POST multipart { file } → { url, mirrored: true }
  *
  * Copies a pasted product photo into our own storage, so the product does not
  * hotlink a retailer CDN. A URL that already points at our storage comes back
@@ -16,13 +18,36 @@ import { validateTargetUrl } from "@/lib/server/parser/fetch";
  * Referer (Farfetch and friends refuse bare requests), a timeout and a size
  * cap. A failure answers with the reason, so the editor can say the photo is
  * still external instead of pretending it was stored.
+ *
+ * A file from the admin's computer (the product page's "Upload", GS6-1) goes
+ * straight into the same bucket: an image, at most MAX_FILE_BYTES.
  */
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const FILE_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif", "image/gif": "gif" };
+
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 501 });
+  }
+
+  if ((req.headers.get("content-type") ?? "").startsWith("multipart/form-data")) {
+    const form = await req.formData().catch(() => null);
+    const file = form?.get("file");
+    if (!(file instanceof File)) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    const ext = FILE_EXT[file.type];
+    if (!ext) return NextResponse.json({ error: "Must be a JPEG, PNG, WebP, AVIF or GIF image" }, { status: 400 });
+    if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "Max 10 MB" }, { status: 400 });
+    try {
+      const stored = await uploadToStorage(Buffer.from(await file.arrayBuffer()), ext, file.type);
+      return NextResponse.json({ url: stored, mirrored: true });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "unknown error";
+      return NextResponse.json({ error: `Could not store the photo (${reason})` }, { status: 502 });
+    }
   }
 
   let body: { url?: string };

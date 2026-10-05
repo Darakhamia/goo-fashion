@@ -487,6 +487,29 @@ async function readProductsByIds(ids: string[]): Promise<{ products: Product[]; 
   return { products, error: null };
 }
 
+/**
+ * One product and the other colours of its group, ungrouped, for the admin's
+ * product page (GS6-1). `product` is null when the id is not in the catalogue.
+ * The group read failing leaves `group` empty and says so in `error`; the
+ * product itself still comes back.
+ */
+export async function readProductWithGroup(
+  id: string,
+): Promise<{ product: Product | null; group: Product[]; error: string | null }> {
+  const { products, error } = await readProductsByIds([id]);
+  const product = products[0] ?? null;
+  if (error || !product?.variantGroupId) return { product, group: [], error };
+  if (!isSupabaseConfigured || !supabase) {
+    return { product, group: staticProducts.filter((p) => p.variantGroupId === product.variantGroupId && p.id !== id), error: null };
+  }
+  const read = await selectProducts((columns) =>
+    supabase!.from("products").select(columns).eq("variant_group_id", product.variantGroupId!),
+  );
+  if (read.error) return { product, group: [], error: read.error.message };
+  const group = ((read.data ?? []) as DbProduct[]).map(dbToProduct).filter((p) => p.id !== id);
+  return { product, group, error: null };
+}
+
 /** Id → product for the ids given; what outfits and looks hydrate against. */
 async function loadProductMap(ids: string[]): Promise<Map<string, Product>> {
   const { products, error } = await readProductsByIds(ids);
