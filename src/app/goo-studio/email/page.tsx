@@ -5,6 +5,7 @@ import type { EmailTemplate } from "@/app/api/admin/email/templates/route";
 import { buildHtml, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { AdminPage } from "@/components/admin/AdminPage";
 
 type Audience = "all" | "free" | "basic" | "pro" | "premium" | "custom";
 
@@ -270,7 +271,7 @@ export default function AdminEmailPage() {
   const failedBatches = result?.errors?.length ?? 0;
 
   return (
-    <div className="max-w-5xl">
+    <AdminPage layout="form">
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Email</h1>
@@ -750,6 +751,6 @@ export default function AdminEmailPage() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPage>
   );
 }

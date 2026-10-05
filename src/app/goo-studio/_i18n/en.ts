@@ -21,6 +21,9 @@ export const en = {
   "common.loading": "Loading…",
   "common.networkError": "Network error",
   "common.retry": "Retry",
+  "save.bar": "Save changes",
+  "save.unsaved": "Unsaved changes",
+  "save.discard": "Discard",
 
   // ── Menu ──────────────────────────────────────────────────────────────────
   "nav.group.overview": "Overview",

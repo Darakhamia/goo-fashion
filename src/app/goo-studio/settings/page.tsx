@@ -4,7 +4,12 @@ import { useState, useEffect } from "react";
 import { SUPPORTED_STORES, storeFaviconUrl } from "@/lib/stores";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { AdminPage, SectionNav, useScrollSpy } from "@/components/admin/AdminPage";
+import { FormPanel, FormSection } from "@/components/admin/FormSection";
+import { SaveBar } from "@/components/admin/SaveBar";
+import { Badge } from "@/components/admin/Badge";
 import { btn, BTN_ICON, INPUT } from "../_ui/recipes";
 import EmbeddingsCard from "./EmbeddingsCard";
 import { Spinner, LoadingLine } from "./recipes";
@@ -325,8 +330,12 @@ function PickerModal({
   );
 }
 
+const SECTION_IDS = ["schema", "showcase", "stylist", "openai", "embeddings"];
+
 export default function SettingsPage() {
   const confirm = useConfirm();
+  const toast = useToast();
+  const currentSection = useScrollSpy(SECTION_IDS);
   const schemaHelp = useHelp("settings-schema");
   const showcaseHelp = useHelp("settings-showcase");
   const stylistHelp = useHelp("settings-stylist");
@@ -341,9 +350,7 @@ export default function SettingsPage() {
   const [inputKey, setInputKey] = useState("");
   const [showInput, setShowInput] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [saveOk, setSaveOk] = useState(false);
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"ok" | "fail" | null>(null);
@@ -359,21 +366,22 @@ export default function SettingsPage() {
 
   // ── Homepage showcase state ───────────────────────────────────────────────
   const [showcase, setShowcase] = useState<ShowcaseIds>(EMPTY_SHOWCASE);
+  /** What is live: the last loaded or saved copy, for the SaveBar to compare with. */
+  const [savedShowcase, setSavedShowcase] = useState<ShowcaseIds>(EMPTY_SHOWCASE);
   const [showcaseLoad, setShowcaseLoad] = useState<LoadState>("loading");
   const [showcaseLoadError, setShowcaseLoadError] = useState("");
   const [pickerStep, setPickerStep] = useState<StepKey | null>(null);
-  const [showcaseSaving, setShowcaseSaving] = useState(false);
-  const [showcaseOk, setShowcaseOk] = useState(false);
   const [showcaseError, setShowcaseError] = useState("");
 
   // ── AI Stylist showcase state ─────────────────────────────────────────────
   const [stylist, setStylist] = useState<StylistIds>(EMPTY_STYLIST);
+  const [savedStylist, setSavedStylist] = useState<StylistIds>(EMPTY_STYLIST);
   const [stylistLoad, setStylistLoad] = useState<LoadState>("loading");
   const [stylistLoadError, setStylistLoadError] = useState("");
   const [stylistPicker, setStylistPicker] = useState<StylistPickerKind | null>(null);
-  const [stylistSaving, setStylistSaving] = useState(false);
-  const [stylistOk, setStylistOk] = useState(false);
   const [stylistError, setStylistError] = useState("");
+  /** The SaveBar's one save is running. */
+  const [savingAll, setSavingAll] = useState(false);
 
   // ── Database schema state ─────────────────────────────────────────────────
   const [schema, setSchema] = useState<SchemaReport | null>(null);
@@ -445,11 +453,13 @@ export default function SettingsPage() {
             )
             .slice(0, MAX_SHOWCASE_STORES)
         : [];
-      setStylist({
+      const loaded: StylistIds = {
         chatOutfits: Array.isArray(data.chatOutfits) ? data.chatOutfits.slice(0, 2) : [],
         featuredProduct: typeof data.featuredProduct === "string" ? data.featuredProduct : null,
         extraStores,
-      });
+      };
+      setStylist(loaded);
+      setSavedStylist(loaded);
       setStylistLoad("ready");
     } catch {
       setStylistLoadError("Could not reach the server to load the saved stylist showcase.");
@@ -458,7 +468,6 @@ export default function SettingsPage() {
   }
 
   function toggleChatOutfit(id: string) {
-    setStylistOk(false);
     setStylist((prev) => {
       if (prev.chatOutfits.includes(id)) {
         return { ...prev, chatOutfits: prev.chatOutfits.filter((x) => x !== id) };
@@ -468,7 +477,6 @@ export default function SettingsPage() {
   }
 
   function setFeaturedProduct(id: string) {
-    setStylistOk(false);
     setStylist((prev) => ({
       ...prev,
       featuredProduct: prev.featuredProduct === id ? null : id,
@@ -477,7 +485,6 @@ export default function SettingsPage() {
 
   // Add a store (from the library picker) if not already present.
   function toggleShowcaseStore(name: string) {
-    setStylistOk(false);
     setStylist((prev) => {
       if (prev.extraStores.some((s) => s.name === name)) {
         return { ...prev, extraStores: prev.extraStores.filter((s) => s.name !== name) };
@@ -490,23 +497,20 @@ export default function SettingsPage() {
   }
 
   function removeShowcaseStore(name: string) {
-    setStylistOk(false);
     setStylist((prev) => ({ ...prev, extraStores: prev.extraStores.filter((s) => s.name !== name) }));
   }
 
   function setShowcaseStorePrice(name: string, price: string) {
-    setStylistOk(false);
     setStylist((prev) => ({
       ...prev,
       extraStores: prev.extraStores.map((s) => (s.name === name ? { ...s, price } : s)),
     }));
   }
 
-  async function saveStylist() {
-    if (stylistLoad !== "ready") return;
-    setStylistSaving(true);
+  /** Saves the stylist showcase; true when it is live. */
+  async function saveStylist(): Promise<boolean> {
+    if (stylistLoad !== "ready") return false;
     setStylistError("");
-    setStylistOk(false);
     try {
       const payload = {
         chatOutfits: stylist.chatOutfits,
@@ -522,13 +526,12 @@ export default function SettingsPage() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) { setStylistError(json.error ?? "Save failed"); return; }
-      setStylistOk(true);
-      setTimeout(() => setStylistOk(false), 3000);
+      if (!res.ok) { setStylistError(json.error ?? "Save failed"); return false; }
+      setSavedStylist(stylist);
+      return true;
     } catch {
       setStylistError("Network error. Try again.");
-    } finally {
-      setStylistSaving(false);
+      return false;
     }
   }
 
@@ -545,12 +548,14 @@ export default function SettingsPage() {
         setShowcaseLoad("error");
         return;
       }
-      setShowcase({
+      const loaded: ShowcaseIds = {
         step1: Array.isArray(data.step1) ? data.step1 : [],
         step2: Array.isArray(data.step2) ? data.step2 : [],
         step3: Array.isArray(data.step3) ? data.step3 : [],
         step4: Array.isArray(data.step4) ? data.step4 : [],
-      });
+      };
+      setShowcase(loaded);
+      setSavedShowcase(loaded);
       setShowcaseLoad("ready");
     } catch {
       setShowcaseLoadError("Could not reach the server to load the saved showcase.");
@@ -606,7 +611,6 @@ export default function SettingsPage() {
   const lookupItem = (step: StepKey, id: string) => itemsForStep(step).find((p) => p.id === id);
 
   function toggleItem(step: StepKey, id: string) {
-    setShowcaseOk(false);
     const meta = STEP_META.find((m) => m.key === step)!;
     setShowcase((prev) => {
       const current = prev[step];
@@ -620,15 +624,13 @@ export default function SettingsPage() {
   }
 
   function removeItem(step: StepKey, id: string) {
-    setShowcaseOk(false);
     setShowcase((prev) => ({ ...prev, [step]: prev[step].filter((x) => x !== id) }));
   }
 
-  async function saveShowcase() {
-    if (showcaseLoad !== "ready") return;
-    setShowcaseSaving(true);
+  /** Saves the homepage showcase; true when it is live. */
+  async function saveShowcase(): Promise<boolean> {
+    if (showcaseLoad !== "ready") return false;
     setShowcaseError("");
-    setShowcaseOk(false);
     try {
       const res = await fetch("/api/admin/homepage-showcase", {
         method: "POST",
@@ -636,13 +638,12 @@ export default function SettingsPage() {
         body: JSON.stringify(showcase),
       });
       const json = await res.json();
-      if (!res.ok) { setShowcaseError(json.error ?? "Save failed"); return; }
-      setShowcaseOk(true);
-      setTimeout(() => setShowcaseOk(false), 3000);
+      if (!res.ok) { setShowcaseError(json.error ?? "Save failed"); return false; }
+      setSavedShowcase(showcase);
+      return true;
     } catch {
       setShowcaseError("Network error. Try again.");
-    } finally {
-      setShowcaseSaving(false);
+      return false;
     }
   }
 
@@ -662,12 +663,11 @@ export default function SettingsPage() {
   }
 
   // ── Save new key ──────────────────────────────────────────────────────────
-  async function saveKey() {
+  /** Saves the typed key; true when it is stored. */
+  async function saveKey(): Promise<boolean> {
     const value = inputKey.trim();
-    if (!value) return;
-    setSaving(true);
+    if (!value) return false;
     setSaveError("");
-    setSaveOk(false);
     setTestResult(null);
     try {
       const res = await fetch("/api/admin/settings", {
@@ -676,16 +676,14 @@ export default function SettingsPage() {
         body: JSON.stringify({ key: "openai_api_key", value }),
       });
       const json = await res.json();
-      if (!res.ok) { setSaveError(json.error ?? "Save failed."); return; }
+      if (!res.ok) { setSaveError(json.error ?? "Save failed."); return false; }
       setStatus({ configured: true, source: "database", maskedKey: json.maskedKey });
       setInputKey("");
       setShowInput(false);
-      setSaveOk(true);
-      setTimeout(() => setSaveOk(false), 3000);
+      return true;
     } catch {
       setSaveError("Network error. Try again.");
-    } finally {
-      setSaving(false);
+      return false;
     }
   }
 
@@ -740,7 +738,7 @@ export default function SettingsPage() {
 
   if (unauthorized) {
     return (
-      <div className="max-w-lg">
+      <AdminPage layout="form">
         <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Settings</h1>
         <div className="mt-6 rounded-xl border border-[var(--border)] px-5 py-4">
           <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
@@ -750,7 +748,7 @@ export default function SettingsPage() {
             Add your Clerk user ID to the <code className="font-mono text-[11px]">ADMIN_USER_IDS</code> environment variable to gain access.
           </p>
         </div>
-      </div>
+      </AdminPage>
     );
   }
 
@@ -759,43 +757,83 @@ export default function SettingsPage() {
   const editingKey =
     status !== null && status.source !== "env" && (!status.configured || showInput);
 
+  // ── One Save for the page (GS4-5) ─────────────────────────────────────────
+  // The homepage selections and a new key are saved together from the
+  // SaveBar; what is unsaved is told apart from what is live by comparing
+  // with the last loaded or saved copy.
+  const showcaseDirty = showcaseLoad === "ready" && JSON.stringify(showcase) !== JSON.stringify(savedShowcase);
+  const stylistDirty = stylistLoad === "ready" && JSON.stringify(stylist) !== JSON.stringify(savedStylist);
+  const keyDirty = editingKey && inputKey.trim() !== "";
+  const dirty = showcaseDirty || stylistDirty || keyDirty;
+
+  async function saveAll() {
+    setSavingAll(true);
+    const results: boolean[] = [];
+    if (showcaseDirty) results.push(await saveShowcase());
+    if (stylistDirty) results.push(await saveStylist());
+    if (keyDirty) results.push(await saveKey());
+    setSavingAll(false);
+    if (results.every(Boolean)) {
+      toast.ok(showcaseDirty || stylistDirty ? "Saved. The homepage shows it on its next load." : "Saved.");
+    } else {
+      toast.err("Not everything was saved. The section that failed says why.");
+    }
+  }
+
+  function discardAll() {
+    setShowcase(savedShowcase);
+    setStylist(savedStylist);
+    setShowcaseError("");
+    setStylistError("");
+    setInputKey("");
+    setSaveError("");
+    if (status?.configured) setShowInput(false);
+  }
+
+  const missingColumns = schema ? schema.checks.filter((c) => !c.present).length : 0;
+
   return (
-    <div className="max-w-lg">
+    <AdminPage
+      layout="form"
+      nav={
+        <SectionNav
+          label="Settings sections"
+          current={currentSection}
+          items={[
+            { id: "schema", label: "Database", badge: missingColumns ? <Badge tone="warn">{missingColumns}</Badge> : undefined },
+            { id: "showcase", label: "Homepage showcase" },
+            { id: "stylist", label: "AI Stylist showcase" },
+            { id: "openai", label: "OpenAI key" },
+            { id: "embeddings", label: "Embeddings" },
+          ]}
+        />
+      }
+    >
       <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Settings</h1>
-      <p className="text-xs text-[var(--foreground-muted)] mt-1 mb-8">
-        Configure the homepage showcase and API keys.
+      <p className="text-[13px] text-[var(--foreground-muted)] mt-1 mb-6">
+        The database, the homepage showcases, the OpenAI key and embeddings.
       </p>
 
-      {/* ── Database schema ──
-          The app and its migrations deploy separately, and several write paths
-          drop an unknown column rather than lose the row — so a migration that
-          was never run costs a feature silently. This says out loud what the
-          database actually has. */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
-        <div className="px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <ellipse cx="7" cy="3.5" rx="4.75" ry="2" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M2.25 3.5V10.5C2.25 11.6 4.38 12.5 7 12.5C9.62 12.5 11.75 11.6 11.75 10.5V3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              <path d="M2.25 7C2.25 8.1 4.38 9 7 9C9.62 9 11.75 8.1 11.75 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
-            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
-              Database schema
-            </p>
-            <HelpButton help={schemaHelp} label="How the schema check works" />
-          </div>
+      <FormPanel>
+        {/* ── Database schema ──
+            The app and its migrations deploy separately, and several write paths
+            drop an unknown column rather than lose the row — so a migration that
+            was never run costs a feature silently. This says out loud what the
+            database actually has. */}
+        <FormSection
+          id="schema"
+          title="Database schema"
+          description="Tables and columns the code relies on. A missing one quietly switches a feature off."
+          extra={<HelpButton help={schemaHelp} label="How the schema check works" />}
+        >
           {schemaHelp.open && (
-            <div className="mt-3">
-              <HelpPanel help={schemaHelp}>
-                <p>
-                  Tables and optional columns the code relies on. A missing column is never an error — the row saves without it — so the feature it carries just stops working quietly.
-                </p>
-              </HelpPanel>
-            </div>
+            <HelpPanel help={schemaHelp}>
+              <p>
+                Tables and optional columns the code relies on. A missing column is never an error — the row saves without it — so the feature it carries just stops working quietly.
+              </p>
+            </HelpPanel>
           )}
-        </div>
-
-        <div className="px-5 py-4">
+          <div>
           {schemaLoading && !schema && <LoadingLine label="Checking…" />}
 
           {schemaError && <p className="text-[11px] text-[var(--err)]">{schemaError}</p>}
@@ -851,41 +889,30 @@ export default function SettingsPage() {
               {schemaLoading ? "Checking…" : "Re-check"}
             </button>
           )}
-        </div>
-      </div>
-
-      {catalogError && (
-        <p className="text-[11px] text-[var(--err)] mb-4 leading-relaxed">
-          {catalogError} Previews below may read “missing” and the pickers may be empty; saved selections are not affected.
-        </p>
-      )}
-
-      {/* ── Homepage showcase ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
-        <div className="px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <rect x="1.5" y="2" width="11" height="10" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
-              <path d="M1.5 5H12.5" stroke="currentColor" strokeWidth="1.1" />
-            </svg>
-            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
-              Homepage showcase
-            </p>
-            <HelpButton help={showcaseHelp} label="How the homepage showcase works" />
           </div>
-          {showcaseHelp.open && (
-            <div className="mt-3">
-              <HelpPanel help={showcaseHelp}>
-                <p>
-                  Pick which products appear in the four “How it works” cards on the homepage.
-                  Empty slots fall back to the default artwork.
-                </p>
-              </HelpPanel>
-            </div>
-          )}
-        </div>
+        </FormSection>
 
-        <div className="px-5 py-4 space-y-5">
+        {/* ── Homepage showcase ── */}
+        <FormSection
+          id="showcase"
+          title="Homepage showcase"
+          description="The products in the four “How it works” cards. Empty slots show the default artwork."
+          extra={<HelpButton help={showcaseHelp} label="How the homepage showcase works" />}
+        >
+          {showcaseHelp.open && (
+            <HelpPanel help={showcaseHelp}>
+              <p>
+                Pick which products appear in the four “How it works” cards on the homepage.
+                Empty slots fall back to the default artwork.
+              </p>
+            </HelpPanel>
+          )}
+          {catalogError && (
+            <p className="text-[12px] text-[var(--err)] leading-relaxed">
+              {catalogError} Previews below may read “missing” and the pickers may be empty; saved selections are not affected.
+            </p>
+          )}
+          <div className="space-y-5">
           {showcaseLoad === "loading" && <LoadingLine label="Loading the saved showcase…" />}
           {showcaseLoad === "error" && (
             <SelectionLoadFailed message={showcaseLoadError} onRetry={loadShowcase} />
@@ -918,48 +945,27 @@ export default function SettingsPage() {
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex flex-wrap items-center gap-3">
-          <button
-            onClick={saveShowcase}
-            disabled={showcaseSaving || showcaseLoad !== "ready"}
-            className={btn("primary")}
-          >
-            {showcaseSaving && <Spinner />}
-            {showcaseSaving ? "Saving…" : "Save showcase"}
-          </button>
-          {showcaseOk && <p className="text-[11px] text-[var(--ok)]">Saved — changes go live on next homepage load.</p>}
-          {showcaseError && <p className="text-[11px] text-[var(--err)]">{showcaseError}</p>}
-        </div>
-      </div>
-
-      {/* ── AI Stylist showcase ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
-        <div className="px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M7 1.5l1.1 3 3.2.2-2.5 2 .8 3.1L7 8.3 4.4 9.8l.8-3.1-2.5-2 3.2-.2L7 1.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-            </svg>
-            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
-              AI Stylist showcase
-            </p>
-            <HelpButton help={stylistHelp} label="How the AI Stylist showcase works" />
           </div>
-          {stylistHelp.open && (
-            <div className="mt-3">
-              <HelpPanel help={stylistHelp}>
-                <p>
-                  Controls the “Your style. Found by AI.” section. Pick up to two looks shown as
-                  cards in the chat preview, and one product featured below with its “Where to buy”
-                  list. Empty slots fall back to the latest catalog items.
-                </p>
-              </HelpPanel>
-            </div>
-          )}
-        </div>
+          {showcaseError && <p role="alert" className="text-[12px] text-[var(--err)]">{showcaseError}</p>}
+        </FormSection>
 
-        <div className="px-5 py-4 space-y-5">
+        {/* ── AI Stylist showcase ── */}
+        <FormSection
+          id="stylist"
+          title="AI Stylist showcase"
+          description="The “Your style. Found by AI.” section: two looks in the chat and one product with where to buy it."
+          extra={<HelpButton help={stylistHelp} label="How the AI Stylist showcase works" />}
+        >
+          {stylistHelp.open && (
+            <HelpPanel help={stylistHelp}>
+              <p>
+                Controls the “Your style. Found by AI.” section. Pick up to two looks shown as
+                cards in the chat preview, and one product featured below with its “Where to buy”
+                list. Empty slots fall back to the latest catalog items.
+              </p>
+            </HelpPanel>
+          )}
+          <div className="space-y-5">
           {stylistLoad === "loading" && <LoadingLine label="Loading the saved stylist showcase…" />}
           {stylistLoad === "error" && (
             <SelectionLoadFailed message={stylistLoadError} onRetry={loadStylist} />
@@ -1101,55 +1107,27 @@ export default function SettingsPage() {
               </div>
             </>
           )}
-        </div>
-
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex flex-wrap items-center gap-3">
-          <button
-            onClick={saveStylist}
-            disabled={stylistSaving || stylistLoad !== "ready"}
-            className={btn("primary")}
-          >
-            {stylistSaving && <Spinner />}
-            {stylistSaving ? "Saving…" : "Save stylist"}
-          </button>
-          {stylistOk && <p className="text-[11px] text-[var(--ok)]">Saved — changes go live on next homepage load.</p>}
-          {stylistError && <p className="text-[11px] text-[var(--err)]">{stylistError}</p>}
-        </div>
-      </div>
-
-      {/* ── OpenAI section ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path
-                d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5C3.5 5.37 3.56 5.73 3.67 6.06C2.57 6.38 1.75 7.39 1.75 8.58C1.75 9.8 2.61 10.83 3.76 11.09C3.97 12.04 4.81 12.75 5.83 12.75C6.27 12.75 6.68 12.62 7 12.4C7.32 12.62 7.73 12.75 8.17 12.75C9.19 12.75 10.03 12.04 10.24 11.09C11.39 10.83 12.25 9.8 12.25 8.58C12.25 7.39 11.43 6.38 10.33 6.06C10.44 5.73 10.5 5.37 10.5 5C10.5 3.07 8.93 1.5 7 1.5Z"
-                stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"
-              />
-            </svg>
-            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
-              OpenAI API key
-            </p>
-            <HelpButton help={openaiHelp} label="What the OpenAI key is used for" />
           </div>
+          {stylistError && <p role="alert" className="text-[12px] text-[var(--err)]">{stylistError}</p>}
+        </FormSection>
+
+        {/* ── OpenAI key ── */}
+        <FormSection
+          id="openai"
+          title="OpenAI API key"
+          description="Shared by blog drafts, AI emails, the parser’s AI extraction and semantic search. Never sent to the browser."
+          extra={<HelpButton help={openaiHelp} label="What the OpenAI key is used for" />}
+        >
           {openaiHelp.open && (
-            <div className="mt-3">
-              <HelpPanel help={openaiHelp}>
-                <p>
-                  Shared key for everything on the site that calls OpenAI: blog post generation, AI-written emails,
-                  AI extraction in the parser, bug reports and the stylist&apos;s semantic search. The AI Stylist chat itself
-                  runs on Replicate and does not use it. Stored server-side and never sent to the browser.
-                </p>
-              </HelpPanel>
-            </div>
+            <HelpPanel help={openaiHelp}>
+              <p>
+                Shared key for everything on the site that calls OpenAI: blog post generation, AI-written emails,
+                AI extraction in the parser, bug reports and the stylist&apos;s semantic search. The AI Stylist chat itself
+                runs on Replicate and does not use it. Stored server-side and never sent to the browser.
+              </p>
+            </HelpPanel>
           )}
-        </div>
-
-        {/* Status body */}
-        <div className="px-5 py-4">
-
+          <div>
           {/* Loading */}
           {status === null && !loadError && <LoadingLine label="Loading…" />}
 
@@ -1213,9 +1191,6 @@ export default function SettingsPage() {
               <p className="text-[11px] text-[var(--foreground-subtle)] mb-4">
                 Stored in database. Raw key is never returned to the browser.
               </p>
-              {saveOk && (
-                <p className="text-[11px] text-[var(--ok)] mb-3">Key saved successfully.</p>
-              )}
             </div>
           )}
 
@@ -1292,25 +1267,12 @@ export default function SettingsPage() {
           {clearError && (
             <p className="text-[11px] text-[var(--err)] mt-3">{clearError}</p>
           )}
-        </div>
+          </div>
 
-        {/* Action footer */}
-        {status !== null && (
-          <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2 flex-wrap">
-
-            {/* Save — whenever the key can be typed in */}
-            {editingKey && (
-              <button
-                onClick={saveKey}
-                disabled={!inputKey.trim() || saving}
-                className={btn("primary")}
-              >
-                {saving && <Spinner />}
-                {saving ? "Saving…" : "Save key"}
-              </button>
-            )}
-
-            {/* Cancel — only shown in update mode (key already configured) */}
+          {/* The key's own actions. Saving a typed key is the page's SaveBar. */}
+          {status !== null && (status.configured || editingKey) && (
+            <div className="flex items-center gap-2 flex-wrap">
+            {/* Cancel — only in update mode (a key is already configured) */}
             {editingKey && status.configured && (
               <button
                 onClick={() => { setShowInput(false); setInputKey(""); setSaveError(""); }}
@@ -1354,12 +1316,20 @@ export default function SettingsPage() {
                 {clearing ? "Clearing…" : "Clear"}
               </button>
             )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </FormSection>
 
-      {/* ── Embeddings ── */}
-      <EmbeddingsCard />
+        {/* ── Embeddings ── */}
+        <EmbeddingsCard />
+      </FormPanel>
+
+      <SaveBar
+        dirty={dirty}
+        saving={savingAll}
+        onSave={() => void saveAll()}
+        onDiscard={discardAll}
+      />
 
       {/* ── Pickers ── */}
       {pickerStep && (() => {
@@ -1422,6 +1392,6 @@ export default function SettingsPage() {
           noImageText="No logo"
         />
       )}
-    </div>
+    </AdminPage>
   );
 }

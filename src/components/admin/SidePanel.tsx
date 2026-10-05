@@ -1,0 +1,140 @@
+"use client";
+
+import { useEffect, useId, useRef } from "react";
+import type { ReactNode } from "react";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
+import { useScrollLock } from "@/lib/hooks/useScrollLock";
+import { BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
+
+/*
+ * The admin's side panel (docs/ADMIN_DESIGN.md 5.10, GS4-5): the details of a
+ * row (a user, a retailer rule) and short forms ("Add rule"). It slides in from
+ * the right, 480px wide, the whole screen on a phone.
+ *
+ *   <SidePanel open={!!rule} onClose={close} title="Edit farfetch.com"
+ *     footer={<><button className={btn("ghost")}>Cancel</button><button className={btn("primary")}>Save</button></>}>
+ *     …fields…
+ *   </SidePanel>
+ *
+ * A header with the title and ✕, a body that scrolls, and the buttons at the
+ * bottom, on the right. It is a modal dialog: Escape and a click on the dimmed
+ * page close it, Tab stays inside, and focus goes back to whatever opened it.
+ * A ConfirmDialog or a menu opened from inside keeps its own Escape and focus.
+ */
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+export function SidePanel({
+  open,
+  onClose,
+  title,
+  subtitle,
+  footer,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: ReactNode;
+  /** One quiet line under the title: an email, a domain. */
+  subtitle?: ReactNode;
+  /** The buttons: Cancel (ghost) and the main one, right-aligned. A destructive one goes first, `mr-auto`. */
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
+  const t = useT();
+  const ov = useOverlayPresence(open);
+  const titleId = useId();
+  const panelRef = useRef<HTMLElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  useScrollLock(open);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    // The first field, so a form can be typed into at once; else the ✕.
+    const first = bodyRef.current?.querySelector<HTMLElement>("input:not([disabled]), select:not([disabled]), textarea:not([disabled])");
+    (first ?? closeRef.current)?.focus();
+
+    // On window, so a dialog or a menu opened on top (they listen on the
+    // document and mark the key handled) answers its own Escape first.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      const panel = panelRef.current;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      // Tab is kept inside only while focus is inside: a dialog on top keeps its own.
+      if (e.key !== "Tab" || !panel || !panel.contains(document.activeElement)) return;
+      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+      if (items.length === 0) return;
+      const firstItem = items[0];
+      const lastItem = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === firstItem) {
+        e.preventDefault();
+        lastItem.focus();
+      } else if (!e.shiftKey && document.activeElement === lastItem) {
+        e.preventDefault();
+        firstItem.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (opener && document.contains(opener)) opener.focus({ preventScroll: true });
+    };
+  }, [open]);
+
+  if (!ov.rendered) return null;
+
+  return (
+    <div
+      className={ov.cls("ov-scrim fixed inset-0 z-[90] flex justify-end bg-black/60")}
+      onTransitionEnd={ov.onTransitionEnd}
+      // Only a press that starts on the dimmed page closes it: a text
+      // selection dragged out of a field ends here too.
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <section
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="ov-slide flex flex-col h-full w-full md:w-[480px] border-l border-[var(--border)] shadow-[-16px_0_40px_rgba(0,0,0,0.12)]"
+        style={{ background: "var(--surface)" }}
+      >
+        <header className="flex items-center gap-3 min-h-16 pl-4 md:pl-6 pr-3 py-3 border-b border-[var(--border)]">
+          <div className="flex-1 min-w-0">
+            <h2 id={titleId} className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] truncate">
+              {title}
+            </h2>
+            {subtitle && <p className="text-[12px] leading-[18px] text-[var(--foreground-muted)] truncate">{subtitle}</p>}
+          </div>
+          <button ref={closeRef} type="button" onClick={onClose} className={BTN_ICON} aria-label={t("common.close")} title={t("common.close")}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        </header>
+        <div ref={bodyRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 md:px-6 py-5">
+          {children}
+        </div>
+        {footer && (
+          <footer className="flex flex-wrap items-center justify-end gap-2 px-4 md:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-[var(--border)]">
+            {footer}
+          </footer>
+        )}
+      </section>
+    </div>
+  );
+}

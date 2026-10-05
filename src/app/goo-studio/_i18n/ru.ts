@@ -19,6 +19,9 @@ export const ru: Partial<Record<Key, Message>> = {
   "common.loading": "Загрузка…",
   "common.networkError": "Ошибка сети",
   "common.retry": "Повторить",
+  "save.bar": "Сохранение изменений",
+  "save.unsaved": "Есть несохранённые изменения",
+  "save.discard": "Отменить",
 
   // ── Menu ──────────────────────────────────────────────────────────────────
   "nav.group.overview": "Обзор",

@@ -846,7 +846,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <main className="flex-1 overflow-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8">
           <ConfirmProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              {/* Every page stops at 1600px; a page picks its own layout inside
+                  with AdminPage (GS4-5), never a root max-w-*. */}
+              <div className="max-w-[1600px]">{children}</div>
+            </ToastProvider>
           </ConfirmProvider>
         </main>
       </div>
