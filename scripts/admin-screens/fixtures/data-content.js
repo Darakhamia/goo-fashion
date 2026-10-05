@@ -419,7 +419,13 @@ const pages = [
     after: async (page) => {
       // The newest published post (Linen guide) — has SEO fields filled.
       const row = page.locator("tr", { hasText: "Linen, done right" });
-      await row.getByRole("button", { name: "Edit" }).click();
+      // On a phone the Edit icon is hidden and Edit heads the row's "…".
+      const edit = row.getByRole("button", { name: /^Edit / });
+      if (await edit.isVisible()) await edit.click();
+      else {
+        await row.locator('button[aria-haspopup="menu"]').click();
+        await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+      }
       await page.getByRole("dialog").waitFor();
     },
   },

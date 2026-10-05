@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "@/components/ui/Image";
+import { useState, useEffect, useCallback } from "react";
 import type { BlogPost } from "@/lib/types";
 import { estimateReadTime, slugify } from "@/lib/blog-render";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
-import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { useToast } from "@/components/admin/Toast";
+import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
+import type { Key } from "@/app/goo-studio/_i18n";
+import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
+import type { Column } from "@/components/admin/DataTable";
+import { ActiveFilters, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
+import { RowMenu } from "@/components/admin/Menu";
+import type { MenuItem } from "@/components/admin/Menu";
+import { Badge } from "@/components/admin/Badge";
 
 interface BlogFormState {
   slug: string;
@@ -43,6 +51,17 @@ const defaultForm: BlogFormState = {
 /** Modes of the AI draft modal — a URL to rewrite, or a brief to announce. */
 type AiMode = "url" | "brief";
 
+type StatusFilter = "" | "published" | "draft";
+type SortKey = "newest" | "oldest" | "title";
+const SORT_OPTIONS: { value: SortKey; label: Key }[] = [
+  { value: "newest", label: "blog.sort.newest" },
+  { value: "oldest", label: "blog.sort.oldest" },
+  { value: "title", label: "blog.sort.titleAsc" },
+];
+
+/** A draft has no publication date yet; it sorts by when it was written. */
+const postTime = (p: BlogPost) => Date.parse(p.isPublished ? p.publishedAt : p.createdAt) || 0;
+
 /** The field without its text size, so a call site can pick one without a clash. */
 const fieldBase =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
@@ -74,7 +93,9 @@ function formatDate(iso: string): string {
 }
 
 export default function AdminBlogPage() {
+  const t = useT();
   const confirm = useConfirm();
+  const toast = useToast();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -83,9 +104,9 @@ export default function AdminBlogPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [loadError, setLoadError] = useState("");
-  const [deleteError, setDeleteError] = useState("");
 
   const [autoSlug, setAutoSlug] = useState(true);
   const [autoReadTime, setAutoReadTime] = useState(true);
@@ -100,7 +121,9 @@ export default function AdminBlogPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
 
-  useEffect(() => {
+  const loadPosts = useCallback(() => {
+    setLoading(true);
+    setLoadError("");
     fetch("/api/blog")
       .then(async (r) => {
         const data = await r.json().catch(() => null);
@@ -119,6 +142,10 @@ export default function AdminBlogPage() {
       .catch((e) => setLoadError(e instanceof Error ? e.message : "Network error."))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadPosts();
+  }, [loadPosts]);
 
   const openAddModal = () => {
     setEditingId(null);
@@ -238,29 +265,23 @@ export default function AdminBlogPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (post: BlogPost) => {
     if (!(await confirm({
-      title: "Delete this post?",
-      body: "This cannot be undone.",
-      confirmLabel: "Delete post",
+      title: t("blog.confirm.delete", { name: post.title }),
+      body: t("blog.confirm.deleteBody"),
+      confirmLabel: t("blog.confirm.deleteAction"),
       tone: "danger",
     }))) return;
-    setDeleteId(id);
-    setDeleteError("");
     try {
-      const res = await fetch(`/api/blog/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/blog/${post.id}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setDeleteError(`Could not delete the post: ${err.error ?? `HTTP ${res.status}`}`);
+        toast.err(t("blog.deleteFailed", { error: err.error ?? `HTTP ${res.status}` }));
         return;
       }
-      setPosts((prev) => prev.filter((p) => p.id !== id));
+      setPosts((prev) => prev.filter((p) => p.id !== post.id));
     } catch (e) {
-      setDeleteError(
-        `Could not delete the post: ${e instanceof Error ? e.message : "network error"}`
-      );
-    } finally {
-      setDeleteId(null);
+      toast.err(t("blog.deleteFailed", { error: e instanceof Error ? e.message : t("common.networkError") }));
     }
   };
 
@@ -321,250 +342,226 @@ export default function AdminBlogPage() {
     }
   };
 
-  const filteredPosts = posts.filter(
-    (p) =>
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const q = searchQuery.trim().toLowerCase();
+  const filteredPosts = posts
+    .filter((p) => (statusFilter === "" ? true : statusFilter === "published" ? p.isPublished : !p.isPublished))
+    .filter(
+      (p) =>
+        !q ||
+        p.title.toLowerCase().includes(q) ||
+        p.slug.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+    )
+    .sort((a, b) =>
+      sortKey === "title" ? a.title.localeCompare(b.title) : sortKey === "oldest" ? postTime(a) - postTime(b) : postTime(b) - postTime(a)
+    );
+
+  const publishedCount = posts.filter((p) => p.isPublished).length;
+  const draftCount = posts.length - publishedCount;
+
+  const rowItems = (post: BlogPost): MenuItem[] => [
+    // Also an icon beside the menu; on a phone the icon gives its room to the title.
+    { label: t("blog.row.editShort"), onSelect: () => openEditModal(post) },
+    {
+      // A draft has no public page yet.
+      label: t("blog.row.view"),
+      onSelect: () => window.open(`/blog/${post.slug}`, "_blank", "noopener,noreferrer"),
+      disabled: !post.isPublished,
+    },
+    { kind: "separator" },
+    { label: t("blog.row.delete"), onSelect: () => void handleDelete(post), tone: "danger" },
+  ];
+
+  const columns: Column<BlogPost>[] = [
+    {
+      key: "post",
+      header: t("blog.col.post"),
+      grow: true,
+      cell: (p) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <Thumb src={p.coverImageUrl} fit="cover" />
+          <div className="min-w-0">
+            <div className="font-medium truncate" title={p.title}>
+              {p.title}
+            </div>
+            <div className="text-[12px] text-[var(--foreground-muted)] truncate" title={`/blog/${p.slug}`}>
+              {p.category || `/${p.slug}`}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: t("blog.col.status"),
+      cell: (p) =>
+        p.isPublished ? (
+          <Badge tone="ok" dot>
+            {t("blog.status.published")}
+          </Badge>
+        ) : (
+          <Badge dot>{t("blog.status.draft")}</Badge>
+        ),
+    },
+    {
+      // Only the meta description itself counts: the excerpt standing in for it
+      // is not one (GS4-10).
+      key: "seo",
+      header: t("blog.col.seo"),
+      hide: "lg",
+      cell: (p) =>
+        p.metaDescription?.trim() ? (
+          <span className="inline-flex items-center gap-1 text-[12px] text-[var(--ok)]">
+            {t("blog.seo.ok")}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6.5L5 9l4.5-5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        ) : (
+          <Badge tone="warn" title={t("blog.seo.missingHint")}>
+            {t("blog.seo.missing")}
+          </Badge>
+        ),
+    },
+    {
+      key: "published",
+      header: t("blog.col.published"),
+      hide: "md",
+      cell: (p) => <span className="text-[var(--foreground-muted)]">{p.isPublished ? formatDate(p.publishedAt) : "—"}</span>,
+    },
+  ];
 
   const previewSlug = form.slug.trim() || slugify(form.title) || "your-post-slug";
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
-            Blog
-          </h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">{t("nav.blog")}</h1>
+          <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
             {loading
-              ? "Loading..."
-              : `${posts.length} posts · ${filteredPosts.length} shown`}
+              ? t("common.loading")
+              : loadError
+                ? "—"
+                : [
+                    t("blog.summary.count", { count: posts.length }),
+                    t("blog.summary.published", { count: publishedCount }),
+                    t("blog.summary.drafts", { count: draftCount }),
+                  ].join(" · ")}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={openAiModal}
-            className={btn("secondary")}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <button onClick={openAiModal} className={btn("secondary")}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
               <path d="M4 6C4 4.9 4.9 4 6 4C7.1 4 8 4.9 8 6C8 7.1 7.1 8 6 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               <circle cx="6" cy="6" r="1" fill="currentColor" />
             </svg>
-            AI Draft
+            {t("blog.aiDraft")}
           </button>
-          <button
-            onClick={openAddModal}
-            className={btn("primary")}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path
-                d="M6 1V11M1 6H11"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
+          <button onClick={openAddModal} className={btn("primary")}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            New Post
+            {t("blog.new")}
           </button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-5">
-        <input
-          type="search"
-          placeholder="Search by title, slug, category..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={`${inputCls} max-w-sm`}
+      {/* Search, the state as chips with counts, the count and the sort. */}
+      <div className="mb-4 flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={t("blog.search.placeholder")}
+            label={t("blog.search.label")}
+          />
+          <FilterChips
+            label={t("blog.f.status")}
+            value={statusFilter}
+            options={[
+              { value: "", label: t("filter.all"), count: posts.length },
+              { value: "published", label: t("blog.chip.published"), count: publishedCount },
+              { value: "draft", label: t("blog.chip.drafts"), count: draftCount },
+            ]}
+            onChange={(v) => setStatusFilter(v as StatusFilter)}
+          />
+        </div>
+        <ActiveFilters
+          filters={[]}
+          onClearAll={() => setStatusFilter("")}
+          count={loading || loadError ? null : t("filter.count", { shown: filteredPosts.length, total: posts.length })}
+          trailing={
+            <FilterMenu
+              label={t("filter.sort")}
+              value={sortKey}
+              options={SORT_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))}
+              onChange={(v) => setSortKey(v as SortKey)}
+              variant="ghost"
+              align="end"
+            />
+          }
         />
       </div>
 
-      {(loadError || deleteError) && (
-        <div className="mb-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 flex items-start justify-between gap-4">
-          <p className="text-xs text-[var(--err)] leading-relaxed">{loadError || deleteError}</p>
-          {!loadError && (
+      <DataTable
+        label={t("nav.blog")}
+        rows={filteredPosts}
+        rowKey={(p) => p.id}
+        columns={columns}
+        loading={loading}
+        resetKey={[q, statusFilter, sortKey].join("|")}
+        actions={(post) => (
+          <>
             <button
-              onClick={() => setDeleteError("")}
-              className={`${BTN_ICON} shrink-0`}
-              aria-label="Dismiss"
+              onClick={() => openEditModal(post)}
+              className={`${BTN_ICON_SM} max-md:hidden`}
+              aria-label={t("blog.row.edit", { name: post.title })}
+              title={t("blog.row.edit", { name: post.title })}
             >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M11 2.5L13.5 5 6 12.5l-3 .5.5-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
               </svg>
             </button>
-          )}
-        </div>
-      )}
-
-      {/* Table */}
-      <div
-        className="rounded-xl border border-[var(--border)] overflow-x-auto"
-        style={{ background: "var(--surface)" }}
-      >
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
-              {["Cover", "Title", "Slug", "Category", "Status", "Published", "Actions"].map(
-                (h, i) => (
-                  <th
-                    key={h}
-                    className={`${i === 6 ? "text-right" : "text-left"} px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal${
-                      i === 3 || i === 5 ? " hidden lg:table-cell" : ""
-                    }${
-                      i === 2 || i === 4 ? " hidden md:table-cell" : ""
-                    }`}
-                  >
-                    {h}
-                  </th>
-                )
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]"
+            <RowMenu size="sm" label={t("menu.moreFor", { name: post.title })} items={rowItems(post)} />
+          </>
+        )}
+        empty={
+          loadError ? (
+            <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+              <p className="text-[13px] text-[var(--err)] break-words">{loadError}</p>
+              <button onClick={loadPosts} className={btn("secondary")}>
+                {t("common.retry")}
+              </button>
+            </div>
+          ) : posts.length > 0 ? (
+            <EmptyState
+              text={t("blog.empty.filtered")}
+              action={
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("");
+                  }}
+                  className={btn("secondary")}
                 >
-                  Loading...
-                </td>
-              </tr>
-            ) : filteredPosts.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]"
-                >
-                  {loadError
-                    ? "Posts could not be loaded."
-                    : posts.length > 0
-                    ? <>Nothing matches &ldquo;{searchQuery}&rdquo;.</>
-                    : <>No posts yet. Click &quot;New Post&quot; to create one.</>}
-                </td>
-              </tr>
-            ) : (
-              filteredPosts.map((post) => (
-                <tr
-                  key={post.id}
-                  className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--background)] transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div className="relative w-12 h-12 overflow-hidden flex-shrink-0 rounded-lg bg-[var(--background)]">
-                      {post.coverImageUrl && (
-                        <Image
-                          src={post.coverImageUrl}
-                          alt={post.title}
-                          fill
-                          className="object-cover"
-                          sizes="48px"
-                        />
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-[var(--foreground)]">
-                      {post.title}
-                    </span>
-                    {/* The Status column starts at md — below it, a draft is
-                        marked here so a phone still tells it from a live post. */}
-                    {!post.isPublished && (
-                      <span className="md:hidden block w-fit mt-1 text-[11px] font-medium px-2 py-0.5 rounded-full border text-[var(--foreground-subtle)] border-[var(--border)]">
-                        Draft
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="font-mono text-[11px] text-[var(--foreground-muted)]">
-                      /{post.slug}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    {post.category ? (
-                      <span className="text-[11px] font-medium text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">
-                        {post.category}
-                      </span>
-                    ) : (
-                      <span className="text-[12px] text-[var(--foreground-subtle)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <span
-                      className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${
-                        post.isPublished
-                          ? "text-[var(--foreground)] border-[var(--foreground)]"
-                          : "text-[var(--foreground-subtle)] border-[var(--border)]"
-                      }`}
-                    >
-                      {post.isPublished ? "Published" : "Draft"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-xs text-[var(--foreground-muted)]">
-                      {formatDate(post.publishedAt)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <a
-                        href={`/blog/${post.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"
-                        aria-label="View"
-                        title="Open public page"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path
-                            d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                          />
-                          <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.2" />
-                        </svg>
-                      </a>
-                      <button
-                        onClick={() => openEditModal(post)}
-                        className={BTN_ICON}
-                        aria-label="Edit"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path
-                            d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(post.id)}
-                        disabled={deleteId === post.id}
-                        className={BTN_ICON}
-                        aria-label="Delete"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path
-                            d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  {t("filter.clearFilters")}
+                </button>
+              }
+            />
+          ) : (
+            <EmptyState
+              text={t("blog.empty.none")}
+              action={
+                <button onClick={openAddModal} className={btn("primary")}>
+                  {t("blog.new")}
+                </button>
+              }
+            />
+          )
+        }
+      />
 
       {/* AI Generate Modal */}
       {showAiModal && (
@@ -609,21 +606,21 @@ export default function AdminBlogPage() {
                 {([
                   { id: "url" as const, label: "From URL" },
                   { id: "brief" as const, label: "From brief" },
-                ]).map((t) => (
+                ]).map((m) => (
                   <button
-                    key={t.id}
+                    key={m.id}
                     role="tab"
-                    aria-selected={aiMode === t.id}
-                    onClick={() => { setAiMode(t.id); setAiError(""); }}
+                    aria-selected={aiMode === m.id}
+                    onClick={() => { setAiMode(m.id); setAiError(""); }}
                     disabled={aiLoading}
                     className="px-5 py-2 text-[13px] font-medium rounded-full transition-colors duration-200 disabled:opacity-40"
                     style={
-                      aiMode === t.id
+                      aiMode === m.id
                         ? { background: "var(--foreground)", color: "var(--surface)" }
                         : { color: "var(--foreground-muted)" }
                     }
                   >
-                    {t.label}
+                    {m.label}
                   </button>
                 ))}
               </div>

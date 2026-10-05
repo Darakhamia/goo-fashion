@@ -275,7 +275,7 @@
 
 - **Форма:** `inline-flex items-center gap-1 h-5 px-2 rounded-full text-[11px] font-medium`.
 - **Тона:**
-  - neutral — `--fg-overlay-08`, текст `--foreground-muted`;
+  - neutral — `--fg-overlay-08`, текст `--foreground` (приглушённый на этой подложке не проходит AA: 4.47:1 в светлой теме, 4.29:1 в тёмной; проверено axe в GS4-4);
   - ok, warn, err — `--*-bg` и `--*`;
   - inverse — заливка `--foreground`.
 - **Вариант с точкой** — для статусов в строке.

@@ -157,39 +157,56 @@ async function saveCards(
   return { bytes: blob.size, zipped: !type.startsWith("image/") };
 }
 
-export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotify }: Props) {
+/**
+ * The download behind DownloadCardsButton, for callers that start it from
+ * somewhere else — a menu item or the selection bar. `received` counts the
+ * bytes as they arrive while `busy`.
+ */
+export function useDownloadCards(kind: Kind, onNotify?: Notify) {
   const notify = useNotify(onNotify);
   const [busy, setBusy] = useState(false);
   const [received, setReceived] = useState(0);
   const lastTick = useRef(0);
 
-  const handleClick = useCallback(async () => {
-    if (busy || !count) return;
-    setBusy(true);
-    setReceived(0);
-    lastTick.current = 0;
-
-    try {
-      const { bytes, zipped } = await saveCards(kind, ids, (total) => {
-        const now = Date.now();
-        if (now - lastTick.current > TICK) {
-          lastTick.current = now;
-          setReceived(total);
-        }
-      });
-      notify(
-        zipped
-          ? `Cards downloaded (${(bytes / MB).toFixed(1)} MB). See _export.txt inside for anything that failed.`
-          : `Card downloaded (${(bytes / MB).toFixed(1)} MB).`,
-        "ok",
-      );
-    } catch (e) {
-      notify(e instanceof Error ? e.message : "Export failed.", "err");
-    } finally {
-      setBusy(false);
+  const download = useCallback(
+    async (ids: string[] | null) => {
+      if (busy) return;
+      setBusy(true);
       setReceived(0);
-    }
-  }, [busy, count, ids, kind, notify]);
+      lastTick.current = 0;
+
+      try {
+        const { bytes, zipped } = await saveCards(kind, ids, (total) => {
+          const now = Date.now();
+          if (now - lastTick.current > TICK) {
+            lastTick.current = now;
+            setReceived(total);
+          }
+        });
+        notify(
+          zipped
+            ? `Cards downloaded (${(bytes / MB).toFixed(1)} MB). See _export.txt inside for anything that failed.`
+            : `Card downloaded (${(bytes / MB).toFixed(1)} MB).`,
+          "ok",
+        );
+      } catch (e) {
+        notify(e instanceof Error ? e.message : "Export failed.", "err");
+      } finally {
+        setBusy(false);
+        setReceived(0);
+      }
+    },
+    [busy, kind, notify],
+  );
+
+  return { busy, received, download };
+}
+
+export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotify }: Props) {
+  const { busy, received, download } = useDownloadCards(kind, onNotify);
+  const handleClick = useCallback(() => {
+    if (count) void download(ids);
+  }, [count, download, ids]);
 
   const label = busy
     ? received

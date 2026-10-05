@@ -111,6 +111,10 @@
   --err: #B91C1C;
   --err-bg: rgba(248, 113, 113, 0.14);
   --err-line: rgba(185, 28, 28, 0.3);
+  /* On an inverse panel (the selection bar): a hover wash and a red that
+     reads on near-black. */
+  --inverse-hover: rgba(244, 242, 238, 0.12);
+  --err-on-inverse: #F87171;
 }
 .admin-theme-dark {
   --foreground-subtle: #80807C;
@@ -123,6 +127,8 @@
   --err: #F87171;
   --err-bg: rgba(248, 113, 113, 0.12);
   --err-line: rgba(248, 113, 113, 0.3);
+  --inverse-hover: rgba(10, 10, 10, 0.08);
+  --err-on-inverse: #B91C1C;
 }
 
 /* Keyboard focus in goo-studio is always visible. In the base layer, so a

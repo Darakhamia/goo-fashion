@@ -1,20 +1,25 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import Link from "next/link";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, styleLabel } from "@/lib/style-keywords";
 import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
-import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
+import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
+import { DataTable, EmptyState, Thumb, type Column } from "@/components/admin/DataTable";
+import { ActiveFilters, FilterMenu, SearchField, type ActiveFilter } from "@/components/admin/FilterBar";
+import { BulkBar } from "@/components/admin/BulkBar";
+import { RowMenu, type MenuItem } from "@/components/admin/Menu";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { CURRENCIES, useCurrency } from "@/lib/context/currency-context";
 import { storeFaviconUrl } from "@/lib/stores";
 import { bareHost, pastedUrl } from "@/lib/url";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
-import { useT } from "@/app/goo-studio/_i18n";
+import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
+import { useT, type Key } from "@/app/goo-studio/_i18n";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -24,15 +29,24 @@ const fmtDate = (iso?: string) =>
 // Sort options shown in the admin toolbar dropdown. Each maps to a (key, direction) pair
 // that drives the same sortKey/sortDir state used by the clickable column headers.
 type SortColumn = "name" | "brand" | "category" | "priceMin" | "createdAt";
-const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: "createdAt:desc", label: "Newest first" },
-  { value: "createdAt:asc", label: "Oldest first" },
-  { value: "name:asc", label: "Name A–Z" },
-  { value: "name:desc", label: "Name Z–A" },
-  { value: "brand:asc", label: "Brand A–Z" },
-  { value: "priceMin:asc", label: "Price: low → high" },
-  { value: "priceMin:desc", label: "Price: high → low" },
+const SORT_OPTIONS: { value: string; label: Key }[] = [
+  { value: "createdAt:desc", label: "products.sort.newest" },
+  { value: "createdAt:asc", label: "products.sort.oldest" },
+  { value: "name:asc", label: "products.sort.nameAsc" },
+  { value: "name:desc", label: "products.sort.nameDesc" },
+  { value: "brand:asc", label: "products.sort.brandAsc" },
+  { value: "priceMin:asc", label: "products.sort.priceAsc" },
+  { value: "priceMin:desc", label: "products.sort.priceDesc" },
 ];
+
+/** A column's name, for a sort set from a header that has no named preset. */
+const SORT_COLUMN_LABEL: Record<SortColumn, Key> = {
+  name: "products.col.product",
+  brand: "products.f.brand",
+  category: "products.col.category",
+  priceMin: "products.col.price",
+  createdAt: "products.col.added",
+};
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -85,22 +99,22 @@ function categoryPath(category: string, subcategory: string | undefined, tree: C
  * list that only lets you filter by what a product *has*. Each entry answers
  * "which pieces are still missing this?".
  */
-const MISSING_FILTERS: { value: string; label: string; test: (p: Product) => boolean }[] = [
-  { value: "subcategory", label: "No subcategory", test: (p) => !p.subcategory },
-  { value: "colorGroups", label: "No colour filter", test: (p) => !p.colorGroupIds?.length },
-  { value: "colors", label: "No colours", test: (p) => !p.colors?.length },
-  { value: "style", label: "No style keywords", test: (p) => !p.styleKeywords?.length },
-  { value: "gender", label: "No gender", test: (p) => !p.gender },
-  { value: "description", label: "No description", test: (p) => !p.description?.trim() },
-  { value: "sizes", label: "No sizes", test: (p) => !p.sizes?.length },
-  { value: "image", label: "No image", test: (p) => !p.imageUrl?.trim() },
+const MISSING_FILTERS: { value: string; label: Key; test: (p: Product) => boolean }[] = [
+  { value: "subcategory", label: "products.missing.subcategory", test: (p) => !p.subcategory },
+  { value: "colorGroups", label: "products.missing.colorGroups", test: (p) => !p.colorGroupIds?.length },
+  { value: "colors", label: "products.missing.colors", test: (p) => !p.colors?.length },
+  { value: "style", label: "products.missing.style", test: (p) => !p.styleKeywords?.length },
+  { value: "gender", label: "products.missing.gender", test: (p) => !p.gender },
+  { value: "description", label: "products.missing.description", test: (p) => !p.description?.trim() },
+  { value: "sizes", label: "products.missing.sizes", test: (p) => !p.sizes?.length },
+  { value: "image", label: "products.missing.image", test: (p) => !p.imageUrl?.trim() },
 ];
 
-// Border and text colour are not part of the base: the "Missing" select swaps
-// both for the warning pair, and two of each on one element is a coin toss.
-const filterSelectBaseCls =
-  "rounded-full border bg-[var(--surface)] text-[12px] px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[180px]";
-const filterSelectCls = `${filterSelectBaseCls} border-[var(--border)] text-[var(--foreground)]`;
+const GENDERS: { value: string; label: Key }[] = [
+  { value: "women", label: "products.gender.women" },
+  { value: "men", label: "products.gender.men" },
+  { value: "unisex", label: "products.gender.unisex" },
+];
 
 
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
@@ -553,16 +567,6 @@ function RetailerList({
   );
 }
 
-/** Column-header sort arrows; `dir` is the active direction on this column, if any. */
-function SortIcon({ dir }: { dir: "asc" | "desc" | null }) {
-  return (
-    <span className="inline-flex flex-col ml-1 gap-[1px] opacity-50 group-hover:opacity-100">
-      <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-b-[4px] ${dir === "asc" ? "border-b-[var(--foreground)] opacity-100" : "border-b-[var(--foreground-muted)]"}`} />
-      <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-t-[4px] ${dir === "desc" ? "border-t-[var(--foreground)] opacity-100" : "border-t-[var(--foreground-muted)]"}`} />
-    </span>
-  );
-}
-
 function Chevron({ open }: { open: boolean }) {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform ${open ? "rotate-180" : ""}`}>
@@ -913,6 +917,73 @@ export default function AdminProductsPage() {
     if (filtered.length === products.length) return null;
     return filtered.map((p) => p.id);
   }, [filtered, products, selectedIds]);
+
+  const cards = useDownloadCards("products");
+
+  /** Added in the last 30 days, for the header line. */
+  const addedRecently = useMemo(() => {
+    const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return products.filter((p) => p.createdAt && Date.parse(p.createdAt) >= since).length;
+  }, [products]);
+
+  /**
+   * Category and subcategory are one filter with two levels, as in the
+   * catalog: "g:<group>" or "s:<group>:<subcategory>".
+   */
+  const categoryValue = filterSubcategory
+    ? `s:${filterGroup}:${filterSubcategory}`
+    : filterGroup
+      ? `g:${filterGroup}`
+      : "";
+  const categoryOptions = useMemo(
+    () =>
+      categoryGroups.flatMap((g) => [
+        { value: `g:${g.id}`, label: g.label },
+        ...g.items.map((item) => ({ value: `s:${g.id}:${item.label}`, label: item.label, nested: true })),
+      ]),
+    [categoryGroups],
+  );
+  const setCategoryValue = (v: string) => {
+    if (!v) {
+      setFilterGroup("");
+      setFilterSubcategory("");
+    } else if (v.startsWith("g:")) {
+      setFilterGroup(v.slice(2));
+      setFilterSubcategory("");
+    } else {
+      const [, group, ...sub] = v.split(":");
+      setFilterGroup(group);
+      setFilterSubcategory(sub.join(":"));
+    }
+  };
+
+  const clearFilters = () => {
+    setFilterGroup(""); setFilterSubcategory("");
+    setFilterBrand(""); setFilterColorGroup(""); setFilterStyle(""); setFilterGender("");
+    setFilterMissing(""); setFilterNew(null);
+  };
+
+  /** What narrows the list right now, as chips that each remove themselves. */
+  const activeFilters: ActiveFilter[] = [
+    ...(categoryValue
+      ? [{ key: "category", label: `${t("products.f.category")}: ${categoryOptions.find((o) => o.value === categoryValue)?.label ?? filterSubcategory}`, onRemove: () => setCategoryValue("") }]
+      : []),
+    ...(filterBrand ? [{ key: "brand", label: `${t("products.f.brand")}: ${filterBrand}`, onRemove: () => setFilterBrand("") }] : []),
+    ...(filterColorGroup
+      ? [{ key: "color", label: `${t("products.f.color")}: ${colorGroups.find((g) => String(g.id) === filterColorGroup)?.name ?? filterColorGroup}`, onRemove: () => setFilterColorGroup("") }]
+      : []),
+    ...(filterStyle ? [{ key: "style", label: `${t("products.f.style")}: ${styleLabel(filterStyle as StyleKeyword)}`, onRemove: () => setFilterStyle("") }] : []),
+    ...(filterGender
+      ? [{ key: "gender", label: `${t("products.f.gender")}: ${t(GENDERS.find((g) => g.value === filterGender)?.label ?? "products.gender.unisex")}`, onRemove: () => setFilterGender("") }]
+      : []),
+    ...(filterNew ? [{ key: "status", label: `${t("products.f.status")}: ${t("products.badge.new")}`, onRemove: () => setFilterNew(null) }] : []),
+    ...(filterMissing
+      ? [{ key: "missing", label: `${t("products.f.missing")}: ${t(MISSING_FILTERS.find((m) => m.value === filterMissing)?.label ?? "products.missing.image")}`, onRemove: () => setFilterMissing("") }]
+      : []),
+  ];
+
+  /** Back to the first page whenever the list itself changes. */
+  const tableResetKey = [searchQuery, categoryValue, filterBrand, filterColorGroup, filterStyle, filterGender, filterMissing, String(filterNew), sortKey, sortDir].join("|");
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
@@ -1772,16 +1843,17 @@ export default function AdminProductsPage() {
   };
 
   const allSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
-  const someSelected = selectedIds.size > 0;
 
   // Keep the Sort dropdown in sync with column-header clicks. If a header produced a
   // (key, dir) combo that isn't a named preset (e.g. Category ↓), surface it as an option
   // so the <select> always reflects the active sort instead of falling back to the first item.
   const currentSortValue = `${sortKey}:${sortDir}`;
-  const isDefaultSort = currentSortValue === "createdAt:desc";
-  const sortOptions = SORT_OPTIONS.some((o) => o.value === currentSortValue)
-    ? SORT_OPTIONS
-    : [...SORT_OPTIONS, { value: currentSortValue, label: `${sortKey} (${sortDir})` }];
+  const sortOptions = [
+    ...SORT_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) })),
+    ...(SORT_OPTIONS.some((o) => o.value === currentSortValue)
+      ? []
+      : [{ value: currentSortValue, label: `${t(SORT_COLUMN_LABEL[sortKey])} ${sortDir === "asc" ? "↑" : "↓"}` }]),
+  ];
 
   /**
    * Select a row, and with Shift held, everything between it and the row
@@ -1975,6 +2047,137 @@ export default function AdminProductsPage() {
   /** Which way a column header's arrows point: its direction when it is the sort. */
   const sortDirFor = (col: SortColumn) => (sortKey === col ? sortDir : null);
 
+  // ── Header menu, row menu, columns ─────────────────────────────────────────
+
+  /** What a maintenance run is busy with, shown beside the header buttons. */
+  const maintenanceBusy = recategorizing
+    ? t("products.busy.categories")
+    : restyling
+      ? t("products.busy.styles")
+      : sampling
+        ? t("products.busy.backdrops")
+        : cards.busy
+          ? cards.received
+            ? t("products.busy.downloadMb", { mb: (cards.received / (1024 * 1024)).toFixed(1) })
+            : t("products.busy.download")
+          : null;
+
+  const maintenanceItems: MenuItem[] = [
+    { kind: "label", label: t("products.maintenance") },
+    {
+      label: t("products.mt.fixCategories"),
+      hint: t("products.mt.fixCategoriesHint"),
+      onSelect: handleRecategorize,
+      disabled: recategorizing || !canWrite,
+    },
+    { label: t("products.mt.undoFix"), onSelect: handleUndoRecategorize, disabled: recategorizing || !canWrite },
+    { kind: "separator" },
+    {
+      label: t("products.mt.resetStyles"),
+      hint: t("products.mt.resetStylesHint"),
+      onSelect: handleResetStyles,
+      disabled: restyling || !canWrite,
+    },
+    { label: t("products.mt.undoStyles"), onSelect: handleUndoResetStyles, disabled: restyling || !canWrite },
+    { kind: "separator" },
+    {
+      label: t("products.mt.backdrops"),
+      // Works on the selection when there is one, otherwise on the next batch
+      // of never-measured products.
+      hint: selectedIds.size
+        ? t("products.mt.backdropsSelected", { count: selectedIds.size })
+        : t("products.mt.backdropsHint"),
+      onSelect: handleSampleBackdrops,
+      disabled: sampling || !canWrite,
+    },
+    { label: t("products.mt.undoBackdrops"), onSelect: handleUndoBackdrops, disabled: sampling || !canWrite },
+    { kind: "separator" },
+    {
+      label: t("products.mt.download"),
+      // The selection, else what the filters left, else the whole catalogue.
+      hint: t("products.mt.downloadHint", { count: exportIds ? exportIds.length : products.length }),
+      onSelect: () => void cards.download(exportIds),
+      disabled: cards.busy || (exportIds ? exportIds.length : products.length) === 0,
+    },
+  ];
+
+  const rowItems = (product: Product): MenuItem[] => [
+    // Also an icon beside the menu; on a phone the icon gives its room to the name.
+    { label: t("products.row.editShort"), onSelect: () => openEditModal(product), disabled: !canWrite },
+    { label: t(product.cropData ? "crop.edit" : "crop.setUp"), onSelect: () => setCropProduct(product), disabled: !canWrite },
+    { label: t("products.row.download"), onSelect: () => void cards.download([product.id]), disabled: cards.busy },
+    { label: t("products.row.duplicate"), onSelect: () => openDuplicateModal(product), disabled: !canWrite },
+    ...(product.variantGroupId && canWrite
+      ? [{ label: t("products.row.unlink"), onSelect: () => handleUngroup(product.variantGroupId!) }]
+      : []),
+    { kind: "separator" },
+    { label: t("products.row.delete"), onSelect: () => handleDelete(product.id), tone: "danger", disabled: !canWrite },
+  ];
+
+  const sortFor = (col: SortColumn) => ({ dir: sortDirFor(col), onToggle: () => toggleSort(col) });
+
+  const productColumns: Column<Product>[] = [
+    {
+      key: "product",
+      header: t("products.col.product"),
+      grow: true,
+      sort: sortFor("name"),
+      cell: (p) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <Thumb src={p.imageUrl} bg={p.bgColor} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-medium truncate" title={p.name}>
+                {p.name}
+              </span>
+              {/* Badges only from md: on a phone the name needs the room. */}
+              {p.isNew && (
+                <span className="hidden md:inline-block flex-shrink-0 h-[18px] px-1.5 rounded-full text-[11px] leading-[18px] font-medium bg-[var(--fg-overlay-08)]">
+                  {t("products.badge.new")}
+                </span>
+              )}
+              {p.variantGroupId && (
+                <span className="hidden md:inline-flex flex-shrink-0 items-center gap-1 h-[18px] px-1.5 rounded-full text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-muted)]">
+                  {t(p.isGroupPrimary ? "products.badge.primary" : "products.badge.variant")}
+                  {p.colorHex && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.colorHex }} aria-hidden="true" />}
+                </span>
+              )}
+            </div>
+            <div className="text-[12px] text-[var(--foreground-muted)] truncate">{p.brand}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "category",
+      header: t("products.col.category"),
+      hide: "md",
+      sort: sortFor("category"),
+      cell: (p) => <span className="text-[var(--foreground-muted)]">{categoryPath(p.category, p.subcategory, categoryGroups)}</span>,
+    },
+    {
+      key: "price",
+      header: t("products.col.price"),
+      align: "right",
+      sort: sortFor("priceMin"),
+      cell: (p) => `${fmtPrice(p.priceMin)}${p.priceMax !== p.priceMin ? `–${fmtPrice(p.priceMax)}` : ""}`,
+    },
+    {
+      key: "stores",
+      header: t("products.col.stores"),
+      align: "right",
+      hide: "lg",
+      cell: (p) => <span className="text-[var(--foreground-muted)]">{p.retailers?.length ?? 0}</span>,
+    },
+    {
+      key: "added",
+      header: t("products.col.added"),
+      hide: "md",
+      sort: sortFor("createdAt"),
+      cell: (p) => <span className="text-[var(--foreground-muted)]">{fmtDate(p.createdAt)}</span>,
+    },
+  ];
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -1989,279 +2192,128 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Products</h1>
-          {!loadError && (
-            <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-              {products.length} total &middot; {filtered.length} shown
+      {/* Header: what there is, the one main action, and the rest under "…".
+          The catalogue maintenance runs (GS1-12) live in that menu; each one
+          still does its dry run and asks with the number it will touch. */}
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">{t("nav.products")}</h1>
+          {!loadError && !loading && (
+            <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
+              {t("products.count", { count: products.length })} · {t("products.recent", { count: addedRecently })}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={handleRecategorize}
-            disabled={recategorizing || !canWrite}
-            title={canWrite ? "Re-classify products that have no subcategory. Anything filed by hand is left alone." : "Requires Supabase"}
-            className={btn("secondary")}
-          >
-            {recategorizing ? "Sorting…" : "Fix categories"}
-          </button>
-          {/* Always available, not just after a run in this tab: the run to
-              regret is usually the one from before the page was reloaded. */}
-          <button
-            onClick={handleUndoRecategorize}
-            disabled={recategorizing || !canWrite}
-            title={canWrite ? "Put back what the last category fix changed" : "Requires Supabase"}
-            className={btn("ghost")}
-          >
-            Undo fix
-          </button>
-          <button
-            onClick={handleResetStyles}
-            disabled={restyling || !canWrite}
-            title={canWrite ? "Remove every style tag and give products only the five basic styles: from the description first, then the brand" : "Requires Supabase"}
-            className={btn("secondary")}
-          >
-            {restyling ? "Restyling…" : "Reset styles"}
-          </button>
-          <button
-            onClick={handleUndoResetStyles}
-            disabled={restyling || !canWrite}
-            title={canWrite ? "Put back the tags the last style reset replaced" : "Requires Supabase"}
-            className={btn("ghost")}
-          >
-            Undo styles
-          </button>
-          {/* Reads the colour each photo was shot on, so cards stop framing
-              off-white photos in a white box. Works on the selection when there
-              is one, otherwise on the next batch of never-measured products. */}
-          <button
-            onClick={handleSampleBackdrops}
-            disabled={sampling || !canWrite}
-            title={
-              canWrite
-                ? selectedIds.size
-                  ? `Re-measure the photo backdrop of ${selectedIds.size} selected`
-                  : "Measure photo backdrops so cards pad with the photo's own colour"
-                : "Requires Supabase"
-            }
-            className={btn("secondary")}
-          >
-            {sampling
-              ? "Measuring…"
-              : selectedIds.size
-                ? `Backdrops (${selectedIds.size})`
-                : "Photo backdrops"}
-          </button>
-          <button
-            onClick={handleUndoBackdrops}
-            disabled={sampling || !canWrite}
-            title={canWrite ? "Clear what the last backdrop run wrote" : "Requires Supabase"}
-            className={btn("ghost")}
-          >
-            Undo backdrops
-          </button>
-          {/* The cards themselves, drawn as pictures, as one ZIP. Works on the
-              selection when there is one, otherwise on everything the filters
-              have left in the table. */}
-          <DownloadCardsButton
-            kind="products"
-            ids={exportIds}
-            count={exportIds ? exportIds.length : products.length}
-            title={
-              selectedIds.size
-                ? `Download the ${selectedIds.size} selected cards as pictures, in one ZIP`
-                : "Download the card of every product shown as a picture, in one ZIP"
-            }
-          />
+        <div className="flex items-center gap-2">
+          {maintenanceBusy && (
+            <span role="status" className="text-[12px] text-[var(--foreground-muted)] tabular-nums">
+              {maintenanceBusy}
+            </span>
+          )}
+          <Link href="/goo-studio/import" className={btn("secondary")}>
+            {t("products.import")}
+          </Link>
           <button
             onClick={openAddModal}
             disabled={!canWrite}
-            title={canWrite ? undefined : "Requires Supabase"}
+            title={canWrite ? undefined : t("products.needsDb")}
             className={btn("primary")}
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            Add product
+            {t("products.add")}
           </button>
+          <RowMenu label={t("products.maintenance")} outline items={maintenanceItems} />
         </div>
       </div>
 
-      {/* Search + Filters */}
-      <div className="mb-5 flex flex-col gap-3">
-        <input
-          type="search"
-          placeholder="Search by name, brand or category…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={`${inputCls} max-w-sm`}
-        />
-
-        {/* Filter chips */}
+      {/* Search and filters (FilterBar): one button per field, the active ones
+          again as chips under the row, and the count. */}
+      <div className="mb-4 flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[12px] text-[var(--foreground-muted)] mr-1">Filter:</span>
-
-          {/* Group chips, then the active group's subcategories — the same two
-              levels the edit form and the catalog filters use. */}
-          {categoryGroups.map((g) => (
-            <button
-              key={g.id}
-              onClick={() => {
-                setFilterGroup((prev) => (prev === g.id ? "" : g.id));
-                setFilterSubcategory("");
-              }}
-              className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
-                filterGroup === g.id
-                  ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {g.label}
-            </button>
-          ))}
-          {filterGroup && (
-            <>
-              <span className="text-[var(--foreground-subtle)] mx-1">·</span>
-              {(categoryGroups.find((g) => g.id === filterGroup)?.items ?? []).map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => setFilterSubcategory((prev) => (prev === item.label ? "" : item.label))}
-                  className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
-                    filterSubcategory === item.label
-                      ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </>
-          )}
-
-          {/* Divider */}
-          <span className="w-px h-4 bg-[var(--border)]" />
-
-          {/* The rest of a product's fields, as dropdowns — too many values for
-              chips, and each one narrows the list independently of the others. */}
-          <select
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={t("products.search.placeholder")}
+            label={t("products.search.label")}
+          />
+          <FilterMenu
+            label={t("products.f.category")}
+            value={categoryValue}
+            options={categoryOptions}
+            onChange={setCategoryValue}
+            allLabel={t("filter.all")}
+            searchable
+          />
+          <FilterMenu
+            label={t("products.f.brand")}
             value={filterBrand}
-            onChange={(e) => setFilterBrand(e.target.value)}
-            className={filterSelectCls}
-            title="Brand"
-          >
-            <option value="">All brands</option>
-            {brandsInCatalogue.map((b) => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-
-          <select
+            options={brandsInCatalogue.map((b) => ({ value: b, label: b }))}
+            onChange={setFilterBrand}
+            allLabel={t("filter.all")}
+            searchable
+          />
+          <FilterMenu
+            label={t("products.f.color")}
             value={filterColorGroup}
-            onChange={(e) => setFilterColorGroup(e.target.value)}
-            className={filterSelectCls}
-            title="Colour filter group"
-          >
-            <option value="">All colours</option>
-            {colorGroups.map((g) => (
-              <option key={g.id} value={String(g.id)}>{g.name}</option>
-            ))}
-          </select>
-
-          <select
+            options={colorGroups.map((g) => ({ value: String(g.id), label: g.name }))}
+            onChange={setFilterColorGroup}
+            allLabel={t("filter.all")}
+          />
+          <FilterMenu
+            label={t("products.f.style")}
             value={filterStyle}
-            onChange={(e) => setFilterStyle(e.target.value)}
-            className={filterSelectCls}
-            title="Style keyword"
-          >
-            <option value="">All styles</option>
-            {STYLE_KEYWORDS.map((s) => (
-              <option key={s} value={s}>{styleLabel(s)}</option>
-            ))}
-          </select>
-
-          <select
+            options={STYLE_KEYWORDS.map((s) => ({ value: s, label: styleLabel(s) }))}
+            onChange={setFilterStyle}
+            allLabel={t("filter.all")}
+          />
+          <FilterMenu
+            label={t("products.f.gender")}
             value={filterGender}
-            onChange={(e) => setFilterGender(e.target.value)}
-            className={filterSelectCls}
-            title="Gender"
-          >
-            <option value="">All genders</option>
-            <option value="women">Women</option>
-            <option value="men">Men</option>
-            <option value="unisex">Unisex</option>
-          </select>
-
-          {/* Divider */}
-          <span className="w-px h-4 bg-[var(--border)]" />
-
-          {/* The gaps. Filtering by what a product HAS cannot find what it is
+            options={GENDERS.map((g) => ({ value: g.value, label: t(g.label) }))}
+            onChange={setFilterGender}
+            allLabel={t("filter.all")}
+          />
+          <FilterMenu
+            label={t("products.f.status")}
+            value={filterNew ? "new" : ""}
+            options={[{ value: "new", label: t("products.badge.new") }]}
+            onChange={(v) => setFilterNew(v === "new" ? true : null)}
+            allLabel={t("filter.all")}
+          />
+          {/* The gaps: filtering by what a product has cannot find what it is
               missing, which is most of the work when tidying a catalogue. */}
-          <select
+          <FilterMenu
+            label={t("products.f.missing")}
             value={filterMissing}
-            onChange={(e) => setFilterMissing(e.target.value)}
-            className={`${filterSelectBaseCls} ${filterMissing ? "border-[var(--warn-line)] text-[var(--warn)]" : "border-[var(--border)] text-[var(--foreground)]"}`}
-            title="Show only products missing a field"
-          >
-            <option value="">Missing: anything</option>
-            {MISSING_FILTERS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-
-          {/* Divider */}
-          <span className="w-px h-4 bg-[var(--border)]" />
-
-          {/* New chip */}
-          <button
-            onClick={() => setFilterNew((prev) => (prev === true ? null : true))}
-            className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
-              filterNew === true
-                ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-                : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-            }`}
-          >
-            New only
-          </button>
-
-          {/* Divider */}
-          <span className="w-px h-4 bg-[var(--border)]" />
-
-          {/* Sort dropdown */}
-          <label className="inline-flex items-center gap-1.5">
-            <span className="text-[12px] text-[var(--foreground-muted)]">Sort:</span>
-            <select
-              value={currentSortValue}
-              onChange={(e) => {
-                const [key, dir] = e.target.value.split(":") as [SortColumn, "asc" | "desc"];
-                setSortKey(key);
-                setSortDir(dir);
-              }}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[12px] px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer"
-            >
-              {sortOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </label>
-
-          {/* Clear filters */}
-          {(filterGroup || filterSubcategory || filterBrand || filterColorGroup || filterStyle || filterGender || filterMissing || filterNew !== null || !isDefaultSort) && (
-            <button
-              onClick={() => {
-                setFilterGroup(""); setFilterSubcategory("");
-                setFilterBrand(""); setFilterColorGroup(""); setFilterStyle(""); setFilterGender("");
-                setFilterMissing(""); setFilterNew(null);
-                setSortKey("createdAt"); setSortDir("desc");
-              }}
-              className="ml-1 text-[12px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
-            >
-              Clear
-            </button>
-          )}
+            options={MISSING_FILTERS.map((m) => ({ value: m.value, label: t(m.label) }))}
+            onChange={setFilterMissing}
+            allLabel={t("products.f.missingNone")}
+            tone="warn"
+          />
         </div>
+        {!loading && !loadError && (
+          <ActiveFilters
+            filters={activeFilters}
+            onClearAll={clearFilters}
+            count={t("filter.count", { shown: filtered.length, total: products.length })}
+            trailing={
+              <FilterMenu
+                label={t("filter.sort")}
+                value={currentSortValue}
+                options={sortOptions}
+                onChange={(v) => {
+                  const [key, dir] = v.split(":") as [SortColumn, "asc" | "desc"];
+                  setSortKey(key);
+                  setSortDir(dir);
+                }}
+                variant="ghost"
+                align="end"
+              />
+            }
+          />
+        )}
       </div>
 
       {/* Bulk edit modal */}
@@ -2425,261 +2477,77 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Bulk action bar */}
-      {someSelected && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--background)]">
-          <span className="text-xs text-[var(--foreground)]">
-            {selectedIds.size} selected
-          </span>
-          {selectedIds.size >= 2 && (
+      <DataTable
+        label={t("nav.products")}
+        rows={filtered}
+        rowKey={(p) => p.id}
+        loading={loading}
+        resetKey={tableResetKey}
+        selection={{
+          selected: selectedIds,
+          onToggle: toggleSelect,
+          onToggleAll: toggleSelectAll,
+          allSelected,
+          rowLabel: (p) => p.name,
+        }}
+        columns={productColumns}
+        actions={(product) => (
+          <>
             <button
-              onClick={openGroupModal}
+              onClick={() => openEditModal(product)}
               disabled={!canWrite}
-              className={btn("secondary")}
+              className={`${BTN_ICON_SM} max-md:hidden`}
+              aria-label={t("products.row.edit", { name: product.name })}
+              title={t("products.row.edit", { name: product.name })}
             >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <circle cx="3" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
-                <circle cx="9" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
-                <path d="M5 6h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M11 2.5L13.5 5 6 12.5l-3 .5.5-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
               </svg>
-              Group variants
             </button>
-          )}
-          <button
-            onClick={() => setBulkOpen(true)}
-            disabled={!canWrite}
-            className={btn("secondary")}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M8.5 1.5l2 2-6 6-2.5.5.5-2.5 6-6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-            </svg>
-            Edit {selectedIds.size}
-          </button>
-          <button
-            onClick={handleBulkDelete}
-            disabled={deleting || !canWrite}
-            className={btn("danger")}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {deleting ? "Deleting…" : `Delete ${selectedIds.size}`}
-          </button>
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className={`${btn("ghost")} ml-auto`}
-          >
-            Deselect all
-          </button>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
-        {loading ? (
-          <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
-                {/* Checkbox */}
-                <th className="px-3 py-3 w-10">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleSelectAll}
-                    className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-                    title="Select all"
-                  />
-                </th>
-                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal w-16">Image</th>
-                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">
-                  <button onClick={() => toggleSort("name")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Name <SortIcon dir={sortDirFor("name")} />
-                  </button>
-                </th>
-                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">
-                  <button onClick={() => toggleSort("brand")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Brand <SortIcon dir={sortDirFor("brand")} />
-                  </button>
-                </th>
-                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
-                  <button onClick={() => toggleSort("category")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Category <SortIcon dir={sortDirFor("category")} />
-                  </button>
-                </th>
-                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">
-                  <button onClick={() => toggleSort("priceMin")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Price <SortIcon dir={sortDirFor("priceMin")} />
-                  </button>
-                </th>
-                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden sm:table-cell">New</th>
-                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
-                  <button onClick={() => toggleSort("createdAt")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Added <SortIcon dir={sortDirFor("createdAt")} />
-                  </button>
-                </th>
-                <th className="text-right px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal sticky right-0 bg-[var(--background)] md:static md:bg-transparent">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                    {loadError ? (
-                      <div role="alert" className="flex flex-col items-center gap-3">
-                        <p className="text-[var(--err)] break-words">{loadError}</p>
-                        <button
-                          onClick={fetchProducts}
-                          className={btn("secondary")}
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    ) : (
-                      "No products found."
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((product) => (
-                  <tr
-                    key={product.id}
-                    className={`border-b border-[var(--border)] last:border-b-0 transition-colors ${
-                      selectedIds.has(product.id) ? "bg-[var(--background)]" : "hover:bg-[var(--background)]"
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <td className="px-3 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(product.id)}
-                        // Shift-click selects the whole run since the last box
-                        // ticked. React routes a checkbox's onChange from the
-                        // underlying click event, so the modifier keys are on
-                        // the native event — and a keyboard Space, which is
-                        // also a click here, simply arrives with shiftKey
-                        // false and toggles the one row.
-                        onChange={(e) =>
-                          toggleSelect(product.id, (e.nativeEvent as MouseEvent).shiftKey === true)
-                        }
-                        // Shift-clicking otherwise selects the text between the
-                        // two rows as well, which looks like a bug. Suppressed
-                        // only while Shift is down, so normal clicks still take
-                        // focus as they should.
-                        onMouseDown={(e) => { if (e.shiftKey) e.preventDefault(); }}
-                        className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="relative w-10 h-[52px] overflow-hidden">
-                        {product.imageUrl ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-[var(--background)]" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-2 py-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm text-[var(--foreground)]">{product.name}</span>
-                        {product.variantGroupId && (
-                          <span
-                            className="inline-flex items-center gap-1 text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] rounded-full px-1.5 py-0.5 leading-none"
-                          >
-                            {product.isGroupPrimary ? "Primary" : "Variant"}
-                            {product.colorHex && (
-                              <span
-                                className="inline-block w-2 h-2 rounded-full shrink-0"
-                                style={{ backgroundColor: product.colorHex }}
-                              />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-2 py-3 hidden md:table-cell">
-                      <span className="text-sm text-[var(--foreground-muted)]">{product.brand}</span>
-                    </td>
-                    <td className="px-2 py-3 hidden lg:table-cell">
-                      <span className="text-[12px] text-[var(--foreground-subtle)]">{categoryPath(product.category, product.subcategory, categoryGroups)}</span>
-                    </td>
-                    <td className="px-2 py-3">
-                      <span className="text-sm text-[var(--foreground)]">
-                        {fmtPrice(product.priceMin)}{product.priceMax !== product.priceMin ? `–${fmtPrice(product.priceMax)}` : ""}
-                      </span>
-                    </td>
-                    <td className="px-2 py-3 hidden sm:table-cell">
-                      {product.isNew ? (
-                        <span className="text-[11px] font-medium border border-[var(--foreground)] text-[var(--foreground)] px-1.5 py-0.5">New</span>
-                      ) : (
-                        <span className="text-[var(--foreground-subtle)]">—</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-3 hidden lg:table-cell">
-                      <span className="text-xs text-[var(--foreground-subtle)] whitespace-nowrap">{fmtDate(product.createdAt)}</span>
-                    </td>
-                    {/* Pinned to the right edge on phones: the table is wider
-                        than the screen and the actions used to sit past it. */}
-                    <td className="px-2 md:px-4 py-3 sticky right-0 bg-[var(--surface)] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)] md:static md:bg-transparent md:shadow-none">
-                      {/* Three icons to a row on phones keeps the table close
-                          to the screen width. */}
-                      <div className="flex flex-wrap md:flex-nowrap items-center justify-end gap-1 md:gap-2 w-[128px] md:w-auto ml-auto">
-                        {product.variantGroupId && canWrite && (
-                          <button
-                            onClick={() => handleUngroup(product.variantGroupId!)}
-                            title="Unlink from variant group"
-                            className={BTN_ICON}
-                            aria-label="Unlink variants"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                              <path d="M5 4H3a3 3 0 000 6h2M9 4h2a3 3 0 010 6H9M2 7h10M5 2l2 2-2 2M9 2l-2 2 2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </button>
-                        )}
-                        {/* Crop button */}
-                        <button
-                          onClick={() => setCropProduct(product)}
-                          disabled={!canWrite}
-                          title={t(product.cropData ? "crop.edit" : "crop.setUp")}
-                          className={BTN_ICON}
-                          aria-label={t("crop.title")}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={product.cropData ? "text-[var(--foreground)]" : undefined}>
-                            <path d="M3 1v9a1 1 0 001 1h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                            <path d="M1 3h9a1 1 0 011 1v9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                            {product.cropData && <circle cx="7" cy="7" r="1.5" fill="currentColor"/>}
-                          </svg>
-                        </button>
-                        {/* This one piece's card, as a PNG, without going
-                            through the selection and the toolbar. */}
-                        <DownloadCardButton kind="products" id={product.id} />
-                        <button onClick={() => openEditModal(product)} disabled={!canWrite} className={BTN_ICON} aria-label="Edit">
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <path d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                        <button onClick={() => openDuplicateModal(product)} disabled={!canWrite} className={BTN_ICON} aria-label="Duplicate" title="Duplicate product">
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <rect x="1.5" y="4.5" width="7" height="8" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
-                            <path d="M5 4.5V3a1 1 0 011-1h5a1 1 0 011 1v7a1 1 0 01-1 1H9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                          </svg>
-                        </button>
-                        <button onClick={() => handleDelete(product.id)} disabled={!canWrite} className={BTN_ICON} aria-label="Delete">
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <path d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+            <RowMenu size="sm" label={t("menu.moreFor", { name: product.name })} items={rowItems(product)} />
+          </>
         )}
-      </div>
+        empty={
+          loadError ? (
+            <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+              <p className="text-[13px] text-[var(--err)] break-words">{loadError}</p>
+              <button onClick={fetchProducts} className={btn("secondary")}>
+                {t("products.retry")}
+              </button>
+            </div>
+          ) : (
+            <EmptyState
+              text={t(products.length ? "products.empty.filtered" : "products.empty.none")}
+              action={
+                activeFilters.length > 0 || searchQuery ? (
+                  <button
+                    onClick={() => {
+                      clearFilters();
+                      setSearchQuery("");
+                    }}
+                    className={btn("secondary")}
+                  >
+                    {t("products.clearFilters")}
+                  </button>
+                ) : undefined
+              }
+            />
+          )
+        }
+      />
+
+      <BulkBar
+        count={selectedIds.size}
+        onClear={() => setSelectedIds(new Set())}
+        actions={[
+          { key: "edit", label: t("products.bulk.edit"), onClick: () => setBulkOpen(true), disabled: !canWrite },
+          ...(selectedIds.size >= 2
+            ? [{ key: "group", label: t("products.bulk.group"), onClick: openGroupModal, disabled: !canWrite }]
+            : []),
+          { key: "cards", label: t("products.bulk.download"), onClick: () => void cards.download(exportIds), disabled: cards.busy },
+          { key: "delete", label: t(deleting ? "products.bulk.deleting" : "products.bulk.delete"), onClick: handleBulkDelete, disabled: deleting || !canWrite, tone: "danger" as const },
+        ]}
+      />
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
