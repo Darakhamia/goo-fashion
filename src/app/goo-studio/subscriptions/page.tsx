@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useFormat } from "@/app/goo-studio/_i18n";
 
 // ── Types (mirror /api/admin/subscriptions) ───────────────────────────────────
 interface ByPlan { plan: string; count: number; mrrUah: number }
@@ -52,15 +53,7 @@ interface TxItem {
 interface Payload { summary: Summary; subscriptions: SubItem[]; transactions: TxItem[] }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const uah = (n: number) => `${n.toLocaleString("uk-UA")} ₴`;
-const approxUsd = (n: number, rate: number) => `≈ $${Math.round(n / rate).toLocaleString()}`;
-function fmtDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-}
+// Hryvnia amounts and dates go through useFormat (GS4-6): "₴1,224", "Oct 5, 2026".
 
 // Admin status recipe (DESIGN_SYSTEM.md §9): bg-X-400/15 text-X-500 border-X-400/30.
 const OK = "text-[var(--ok)] border-[var(--ok-line)] bg-[var(--ok-bg)]";
@@ -139,6 +132,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 
 /** Active subscribers and MRR per plan. */
 function ByPlanCard({ rows }: { rows: ByPlan[] }) {
+  const f = useFormat();
   return (
     <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
       <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">By plan</p>
@@ -149,7 +143,7 @@ function ByPlanCard({ rows }: { rows: ByPlan[] }) {
           {rows.map((p) => (
             <li key={p.plan} className="flex flex-wrap items-baseline justify-between gap-x-3 text-xs">
               <span className="capitalize text-[var(--foreground)]">{p.count} {p.plan}</span>
-              <span className="text-[var(--foreground-muted)]">{uah(p.mrrUah)}/mo</span>
+              <span className="text-[var(--foreground-muted)]">{f.money(p.mrrUah, "UAH")}/mo</span>
             </li>
           ))}
         </ul>
@@ -160,6 +154,9 @@ function ByPlanCard({ rows }: { rows: ByPlan[] }) {
 
 // ── Page ────────────────────────────────────────────────────────────────────
 export default function SubscriptionsPage() {
+  const f = useFormat();
+  const uah = (n: number) => f.money(n, "UAH");
+  const approxUsd = (n: number, rate: number) => `≈ ${f.money(Math.round(n / rate))}`;
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -233,12 +230,12 @@ export default function SubscriptionsPage() {
         <StatCard label="Total earned" value={uah(summary.earnedTotalUah)} sub={approxUsd(summary.earnedTotalUah, rate)} />
         <StatCard label="Earned this month" value={uah(summary.earnedThisMonthUah)} sub={`${summary.paymentsTotal} payment${summary.paymentsTotal === 1 ? "" : "s"} total`} />
         <StatCard label="MRR" value={uah(summary.mrrUah)} sub={approxUsd(summary.mrrUah, rate)} />
-        <StatCard label="Active subscribers" value={summary.activeSubscriptions.toLocaleString()} sub={summary.autoRenewOff > 0 ? `${summary.autoRenewOff} won't renew` : "all auto-renew"} />
+        <StatCard label="Active subscribers" value={f.number(summary.activeSubscriptions)} sub={summary.autoRenewOff > 0 ? `${summary.autoRenewOff} won't renew` : "all auto-renew"} />
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Past due" value={summary.pastDue.toLocaleString()} />
-        <StatCard label="Canceled" value={summary.canceled.toLocaleString()} />
-        <StatCard label="Pending checkout" value={summary.pending.toLocaleString()} />
+        <StatCard label="Past due" value={f.number(summary.pastDue)} />
+        <StatCard label="Canceled" value={f.number(summary.canceled)} />
+        <StatCard label="Pending checkout" value={f.number(summary.pending)} />
         <ByPlanCard rows={summary.byPlan} />
       </div>
 
@@ -250,25 +247,25 @@ export default function SubscriptionsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <HealthCard
             label="Renewal cron"
-            value={!eventsReadable ? "unknown" : summary.hoursSinceCronRun === null ? "never ran" : summary.hoursSinceCronRun < 1 ? "just now" : `${summary.hoursSinceCronRun}h ago`}
+            value={!eventsReadable ? "unknown" : summary.hoursSinceCronRun === null ? "never ran" : f.when(summary.lastCronRunAt)}
             bad={!eventsReadable || summary.hoursSinceCronRun === null || summary.hoursSinceCronRun >= 36}
-            note={!summary.eventsAvailable ? "billing_events table missing" : !eventsReadable ? "billing_events unreadable" : summary.lastCronRunAt ? fmtDateTime(summary.lastCronRunAt) : "no heartbeat recorded"}
+            note={!summary.eventsAvailable ? "billing_events table missing" : !eventsReadable ? "billing_events unreadable" : summary.lastCronRunAt ? f.dateTime(summary.lastCronRunAt) : "no heartbeat recorded"}
           />
           <HealthCard
             label="Active without card"
-            value={summary.activeWithoutCard.toLocaleString()}
+            value={f.number(summary.activeWithoutCard)}
             bad={summary.activeWithoutCard > 0}
             note="never come up for renewal"
           />
           <HealthCard
             label="Overdue"
-            value={summary.overdue.toLocaleString()}
+            value={f.number(summary.overdue)}
             bad={summary.overdue > 0}
             note="paid period ended, not renewed"
           />
           <HealthCard
             label="Failed charges"
-            value={summary.failedCharges.toLocaleString()}
+            value={f.number(summary.failedCharges)}
             bad={summary.failedCharges > 0}
             note="consecutive, active & past-due only"
           />
@@ -336,12 +333,12 @@ export default function SubscriptionsPage() {
                     <td className="px-4 py-3 text-[var(--foreground-muted)]">
                       {s.overdue ? (
                         <span className="text-[var(--err)]" title="Paid period ended and the renewal has not gone through">
-                          overdue — {fmtDate(s.currentPeriodEnd)}
+                          overdue — {f.date(s.currentPeriodEnd)}
                         </span>
                       ) : s.autoRenew ? (
-                        fmtDate(s.currentPeriodEnd)
+                        f.date(s.currentPeriodEnd)
                       ) : (
-                        <span className="text-[var(--foreground-subtle)]">ends {fmtDate(s.currentPeriodEnd)}</span>
+                        <span className="text-[var(--foreground-subtle)]">ends {f.date(s.currentPeriodEnd)}</span>
                       )}
                       {s.failedCharges > 0 && (
                         <span className="ml-2 text-[12px] text-[var(--warn)]" title="Consecutive failed charges; three downgrades to free">
@@ -380,7 +377,7 @@ export default function SubscriptionsPage() {
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--foreground-subtle)]">No transactions logged yet.</td></tr>
                 ) : transactions.map((t) => (
                   <tr key={t.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--background)]">
-                    <td className="px-4 py-3 text-[var(--foreground-muted)] whitespace-nowrap">{fmtDateTime(t.createdAt)}</td>
+                    <td className="px-4 py-3 text-[var(--foreground-muted)] whitespace-nowrap">{f.dateTime(t.createdAt)}</td>
                     <td className="px-4 py-3 text-[var(--foreground)]">{t.email}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5">

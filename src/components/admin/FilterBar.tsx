@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useT } from "@/app/goo-studio/_i18n";
+import { useFormat, useT } from "@/app/goo-studio/_i18n";
 import { POPOVER_PANEL, usePopover } from "./Menu";
 
 /*
@@ -220,6 +220,7 @@ export function FilterChips({
   options: ChipOption[];
   onChange: (v: string) => void;
 }) {
+  const f = useFormat();
   return (
     <div role="group" aria-label={label} className="flex flex-wrap items-center gap-1.5">
       {options.map((o) => {
@@ -237,7 +238,7 @@ export function FilterChips({
             }`}
           >
             {o.label}
-            {o.count !== undefined && <span className="text-[12px] font-normal opacity-70 tabular-nums">{o.count.toLocaleString("en-US")}</span>}
+            {o.count !== undefined && <span className="text-[12px] font-normal opacity-70 tabular-nums">{f.number(o.count)}</span>}
           </button>
         );
       })}

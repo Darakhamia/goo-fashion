@@ -3,8 +3,9 @@
 //   NODE_PATH=<work>/pw/node_modules node shoot.js [--only=products,users]
 //     [--theme=light|dark|both] [--vp=desktop|mobile|both] [--lang=en|ru] [--out=DIR] [--axe]
 // --lang=ru shoots the admin in Russian (files get a -ru suffix).
-// --axe skips screenshots and runs the axe-core colour-contrast check on each
-// page instead (needs axe-core next to playwright-core, see README.md).
+// --axe skips screenshots and runs axe-core on each page instead (needs axe-core
+// next to playwright-core, see README.md): colour contrast, or the rules given
+// with --axe-rules=color-contrast,button-name,aria-dialog-name,link-name.
 // See README.md.
 const fs = require("fs");
 const os = require("os");
@@ -15,6 +16,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/
 const OUT = args.out || process.env.ADMIN_SCREENS_OUT || path.join(os.tmpdir(), "goo-admin-screens", "shots");
 const BASE = process.env.ADMIN_SCREENS_URL || "http://localhost:3100";
 const CHROMIUM = process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium";
+const AXE_RULES = (args["axe-rules"] || "color-contrast").split(",");
 fs.mkdirSync(OUT, { recursive: true });
 
 // Load fixtures fresh each run.
@@ -108,10 +110,12 @@ function lookup(method, u) {
         const kept = errors.filter((e) => !/Failed to load resource|favicon|posthog/i.test(e));
         if ("axe" in args) {
           await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
-          const contrast = await page.evaluate(async () => {
-            const res = await window.axe.run(document, { runOnly: ["color-contrast"] });
-            return res.violations.flatMap((v) => v.nodes.map((n) => `${(n.any[0] || {}).message} — ${n.html.slice(0, 120)}`));
-          });
+          const contrast = await page.evaluate(async (rules) => {
+            const res = await window.axe.run(document, { runOnly: rules });
+            return res.violations.flatMap((v) =>
+              v.nodes.map((n) => `[${v.id}] ${((n.any[0] || n.all[0] || n.none[0]) || {}).message || v.help} — ${n.html.slice(0, 120)}`)
+            );
+          }, AXE_RULES);
           report.push({ page: pg.name, theme, vp, contrast, unmatched: [...unmatched], errors: kept });
         } else {
           const file = path.join(OUT, `${pg.name}--${theme}-${vp}${LANG === "en" ? "" : `-${LANG}`}.png`);
@@ -127,7 +131,11 @@ function lookup(method, u) {
   }
   await browser.close();
   for (const r of report) {
-    const verdict = r.fail ? "FAIL " + r.fail : r.contrast ? `${r.contrast.length} contrast violations` : "ok";
+    const verdict = r.fail
+      ? "FAIL " + r.fail
+      : r.contrast
+        ? `${r.contrast.length} ${AXE_RULES.length === 1 && AXE_RULES[0] === "color-contrast" ? "contrast" : "axe"} violations`
+        : "ok";
     console.log(`\n## ${r.page} [${r.theme}/${r.vp}] ${verdict}`);
     if (r.contrast && r.contrast.length) console.log("  " + r.contrast.slice(0, 10).join("\n  "));
     if (r.unmatched.length) console.log("  unmatched:", r.unmatched.join(" | "));

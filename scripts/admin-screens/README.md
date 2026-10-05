@@ -29,7 +29,7 @@ NODE_PATH=/tmp/goo-admin-screens/pw/node_modules \
 - `--vp` — `desktop` | `mobile` | `both`.
 - `--out` — папка для снимков; по умолчанию `$TMPDIR/goo-admin-screens/shots`.
 - `--lang` — `en` (по умолчанию) | `ru`: язык админки (GS4-8). У снимков на русском в имени суффикс `-ru`.
-- `--axe` — вместо снимков проверка контраста axe-core (`color-contrast`) на каждой странице. Печатает число нарушений и первые десять элементов. Так проверяется DoD GS4-1 из `docs/ADMIN_ROADMAP.md`.
+- `--axe` — вместо снимков проверка axe-core на каждой странице. Печатает число нарушений и первые десять элементов с правилом в скобках. По умолчанию — контраст (`color-contrast`, DoD GS4-1); `--axe-rules=color-contrast,button-name,aria-dialog-name,link-name` — ещё кнопки и ссылки без имени и диалоги без названия (DoD GS4-9).
 
 Имена файлов: `<страница>--<тема>-<экран>.png`.
 
@@ -47,12 +47,12 @@ NODE_PATH=/tmp/goo-admin-screens/pw/node_modules \
 - **Состояния** (открытая модалка, вкладка, шаг) — их объявляют фикстуры через `pages`:
   - `products-editor` … `products-editor-4`, `products-bulk`, `products-filter`, `products-row-menu`, `products-maintenance`;
   - `outfits-bulk`, `outfits-pending`, `outfits-pending-review`;
-  - `brands-confirm`, `brands-toast`, `retailers-help`;
+  - `brands-confirm`, `brands-toast`, `retailers-help`, `retailers-rule`;
   - `users-drawer`, `users-bulk`, `email-confirm`, `account-menu`;
   - `catalogue-check-ready`;
   - `import-merchants`, `import-preview`;
   - `parser-parse`, `parser-recipes`, `parser-fetch`, `parser-crawl`, `parser-collect-run`;
-  - `blog-editor`, `prompts-image`, `analytics-30d`.
+  - `blog-editor`, `prompts-image`, `analytics-30d`, `settings-savebar`.
 
 ## Добавить страницу или состояние
 

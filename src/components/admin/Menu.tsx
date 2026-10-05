@@ -109,9 +109,9 @@ export function usePopover(align: PopoverAlign = "end") {
   return { open, toggle, close, triggerRef, panelRef, panelId, style, portal };
 }
 
-/** The panel recipe: a floating layer, like the account menu. */
+/** The panel recipe: a floating layer, like the account menu. Above a SidePanel (z-90), below ConfirmDialog. */
 export const POPOVER_PANEL =
-  "z-[60] min-w-[200px] max-w-[min(360px,calc(100vw-16px))] overflow-y-auto overscroll-contain rounded-xl border border-[var(--border)] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]";
+  "z-[95] min-w-[200px] max-w-[min(360px,calc(100vw-16px))] overflow-y-auto overscroll-contain rounded-xl border border-[var(--border)] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]";
 
 export type MenuItem =
   | {

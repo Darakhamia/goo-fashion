@@ -5,8 +5,9 @@ import Image from "@/components/ui/Image";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
-import { useT } from "@/app/goo-studio/_i18n";
-import type { Key, T } from "@/app/goo-studio/_i18n";
+import { useFormat, useT } from "@/app/goo-studio/_i18n";
+import type { Format, Key, T } from "@/app/goo-studio/_i18n";
+import { formatMoney } from "@/lib/admin-format";
 import { DataTable, EmptyState } from "@/components/admin/DataTable";
 import type { Column } from "@/components/admin/DataTable";
 import { ActiveFilters, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
@@ -14,6 +15,7 @@ import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
 import { Badge } from "@/components/admin/Badge";
+import { SidePanel } from "@/components/admin/SidePanel";
 
 const PAGE_SIZE = 25;
 
@@ -90,24 +92,6 @@ function initials(first: string | null, last: string | null, email: string | nul
   return "—";
 }
 
-function fmtDate(ts: number | null | undefined) {
-  if (!ts) return "—";
-  return new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
-function fmtRelative(ts: number | null | undefined) {
-  if (!ts) return "Never";
-  const diff = Date.now() - ts;
-  const mins  = Math.round(diff / 60_000);
-  const hours = Math.round(diff / 3_600_000);
-  const days  = Math.round(diff / 86_400_000);
-  if (mins  < 1)  return "just now";
-  if (mins  < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days  < 30) return `${days}d ago`;
-  return fmtDate(ts);
-}
-
 /** "3 mo", "12 d" — how long since `iso`. */
 function fmtDuration(iso: string): string {
   const days = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
@@ -138,7 +122,7 @@ function renewsAutomatically(s: UserSubscription | null | undefined): boolean {
 }
 
 function describeSubscription(s: UserSubscription): string {
-  return `${s.plan}, ${s.amountUah} ₴/mo, ${s.status.replace("_", " ")}, auto-renew ${s.autoRenew ? "on" : "off"}`;
+  return `${s.plan}, ${formatMoney(s.amountUah, "UAH")}/mo, ${s.status.replace("_", " ")}, auto-renew ${s.autoRenew ? "on" : "off"}`;
 }
 
 /** "a@b.c, d@e.f and 3 more" — for confirm dialogs. */
@@ -182,13 +166,6 @@ function isOverdue(s: UserSubscription | null | undefined): s is UserSubscriptio
   return !!s && s.status === "active" && !!s.currentPeriodEnd && Date.parse(s.currentPeriodEnd) < Date.now();
 }
 
-/** "Sep 10" this year, "Sep 10, 2025" before it. */
-function fmtShortDate(iso: string): string {
-  const d = new Date(iso);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
-}
-
 /** The state worth a badge (ADMIN_DESIGN 5.4): none for an active account in good standing. */
 function statusBadge(u: UserRow, t: T) {
   if (u.banned) return <Badge tone="err">{t("users.badge.banned")}</Badge>;
@@ -199,11 +176,11 @@ function statusBadge(u: UserRow, t: T) {
 }
 
 /**
- * The plan in one line: "Free", "Basic · 399 ₴/mo", "Basic · 399 ₴/mo ·
+ * The plan in one line: "Free", "Basic · ₴399/mo", "Basic · ₴399/mo ·
  * overdue since Sep 10". A paid plan with no subscription behind it was set by
  * hand and says so.
  */
-function PlanCell({ u, t }: { u: UserRow; t: T }) {
+function PlanCell({ u, t, f }: { u: UserRow; t: T; f: Format }) {
   const s = u.subscription;
   const name = PLAN_LABEL[u.plan] ?? u.plan;
   const billed = s && s.status !== "canceled" ? s : null;
@@ -225,9 +202,9 @@ function PlanCell({ u, t }: { u: UserRow; t: T }) {
     billed.status === "past_due"
       ? { text: t("users.sub.pastDue"), tone: "text-[var(--err)]" }
       : billed.status === "pending"
-        ? { text: t("users.sub.pending", { date: fmtShortDate(billed.startedAt) }), tone: "" }
+        ? { text: t("users.sub.pending", { date: f.date(billed.startedAt) }), tone: "" }
         : isOverdue(billed)
-          ? { text: t("users.sub.overdue", { date: fmtShortDate(billed.currentPeriodEnd!) }), tone: "text-[var(--warn)]" }
+          ? { text: t("users.sub.overdue", { date: f.date(billed.currentPeriodEnd) }), tone: "text-[var(--warn)]" }
           : null;
   // On a phone the column keeps to the plan's name, and the badge under the
   // user's name carries the problem.
@@ -236,7 +213,7 @@ function PlanCell({ u, t }: { u: UserRow; t: T }) {
       {billedName}
       <span className="hidden md:inline">
         {" "}
-        · {t("users.sub.perMonth", { amount: billed.amountUah })}
+        · {t("users.sub.perMonth", { amount: f.money(billed.amountUah, "UAH") })}
         {problem && <> · {problem.text}</>}
       </span>
     </span>
@@ -265,6 +242,7 @@ const PENCIL = (
 
 export default function AdminUsersPage() {
   const t = useT();
+  const f = useFormat();
   const confirm = useConfirm();
   const toast = useToast();
   const [currentIsSuperAdmin, setCurrentIsSuperAdmin] = useState(false);
@@ -581,18 +559,18 @@ export default function AdminUsersPage() {
         );
       },
     },
-    { key: "plan", header: t("users.col.plan"), cell: (u) => <PlanCell u={u} t={t} /> },
+    { key: "plan", header: t("users.col.plan"), cell: (u) => <PlanCell u={u} t={t} f={f} /> },
     {
       key: "joined",
       header: t("users.col.joined"),
       hide: "md",
-      cell: (u) => <span className="text-[var(--foreground-muted)]">{fmtDate(u.createdAt)}</span>,
+      cell: (u) => <span className="text-[var(--foreground-muted)]">{f.date(u.createdAt)}</span>,
     },
     {
       key: "active",
       header: t("users.col.lastActive"),
       hide: "md",
-      cell: (u) => <span className="text-[var(--foreground-muted)]">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</span>,
+      cell: (u) => <span className="text-[var(--foreground-muted)]">{f.when(u.lastActiveAt ?? u.lastSignInAt, t("users.never"))}</span>,
     },
   ];
 
@@ -773,6 +751,7 @@ function UserDrawer({
   onDeleted: (id: string) => void;
 }) {
   const confirm = useConfirm();
+  const f = useFormat();
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -794,13 +773,6 @@ function UserDrawer({
   }
   const [stats, setStats] = useState<UserStats | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
-
-  // Escape closes the drawer, like the other modal layers.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -925,283 +897,255 @@ function UserDrawer({
 
   const isSuperAdmin = detail?.isSuperAdmin ?? false;
 
+  // The details in the admin's side panel (GS4-5): the header names the user,
+  // the buttons sit at the bottom — Delete on its own on the left.
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60" />
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="user-drawer-title"
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md h-full overflow-y-auto overscroll-contain border-l border-[var(--border)] pb-[env(safe-area-inset-bottom)]"
-        style={{ background: "var(--surface)" }}
-      >
-        <div className="px-4 md:px-6 py-4 md:py-5 border-b border-[var(--border)] flex items-center justify-between gap-3 sticky top-0 z-10" style={{ background: "var(--surface)" }}>
-          <div className="min-w-0">
-            <p className="text-[12px] text-[var(--foreground-muted)]">User detail</p>
-            <h2 id="user-drawer-title" className="font-display text-lg font-light text-[var(--foreground)] truncate max-w-[280px]">{displayName}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className={`${BTN_ICON} shrink-0`}
-            aria-label="Close"
-          >
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-              <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
+    <SidePanel
+      open
+      onClose={onClose}
+      title={displayName}
+      subtitle={detail?.email ?? undefined}
+      footer={
+        detail && !loading ? (
+          <>
+            {!isSuperAdmin && (
+              <button onClick={del} disabled={saving} className={`${btn("danger")} mr-auto`}>
+                Delete user
+              </button>
+            )}
+            <button onClick={onClose} className={btn("ghost")}>
+              Cancel
+            </button>
+            {!isSuperAdmin && (
+              <button onClick={save} disabled={!hasChanges || saving} className={btn("primary")}>
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            )}
+          </>
+        ) : undefined
+      }
+    >
+      {loading && (
+        <div className="py-10 text-xs text-[var(--foreground-subtle)]">Loading…</div>
+      )}
 
-        {loading && (
-          <div className="px-6 py-10 text-xs text-[var(--foreground-subtle)]">Loading…</div>
-        )}
+      {error && (
+        <div className="my-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-3 py-2">{error}</div>
+      )}
 
-        {error && (
-          <div className="mx-6 my-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-3 py-2">{error}</div>
-        )}
-
-        {detail && !loading && (
-          <div className="px-4 md:px-6 py-5 space-y-6">
-            {isSuperAdmin && (
-              <div className="flex items-center gap-3 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[var(--warn)] flex-shrink-0">
-                  <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                </svg>
-                <p className="text-[12px] text-[var(--warn)]">
-                  Super admin — this account is protected and cannot be modified.
-                </p>
+      {detail && !loading && (
+        <div className="space-y-6">
+          {isSuperAdmin && (
+            <div className="flex items-center gap-3 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[var(--warn)] flex-shrink-0">
+                <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+              </svg>
+              <p className="text-[12px] text-[var(--warn)]">
+                Super admin — this account is protected and cannot be modified.
+              </p>
+            </div>
+          )}
+          <div className="flex items-center gap-4">
+            {detail.imageUrl ? (
+              <Image src={detail.imageUrl} alt="" width={56} height={56} className="w-14 h-14 rounded-full object-cover" />
+            ) : (
+              <div className="w-14 h-14 flex items-center justify-center text-sm font-medium text-[var(--surface)] bg-[var(--foreground-muted)] rounded-full">
+                {initials(detail.firstName, detail.lastName, detail.email)}
               </div>
             )}
-            <div className="flex items-center gap-4">
-              {detail.imageUrl ? (
-                <Image src={detail.imageUrl} alt="" width={56} height={56} className="w-14 h-14 rounded-full object-cover" />
-              ) : (
-                <div className="w-14 h-14 flex items-center justify-center text-sm font-medium text-[var(--surface)] bg-[var(--foreground-muted)] rounded-full">
-                  {initials(detail.firstName, detail.lastName, detail.email)}
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-sm text-[var(--foreground)] truncate">{detail.email ?? "No email"}</p>
-                <p className="text-[12px] font-mono text-[var(--foreground-subtle)] truncate">{detail.id}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <MetaItem label="Joined"       value={fmtDate(detail.createdAt)} />
-              <MetaItem label="Updated"      value={fmtDate(detail.updatedAt)} />
-              <MetaItem label="Last sign-in" value={fmtRelative(detail.lastSignInAt)} />
-              <MetaItem label="Last active"  value={fmtRelative(detail.lastActiveAt)} />
-              <MetaItem label="2FA"          value={detail.twoFactorEnabled ? "Enabled" : "Disabled"} />
-              <MetaItem label="Username"     value={detail.username ?? "—"} />
-            </div>
-
-            {/* Subscription (monobank billing ledger) */}
-            <div>
-              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Subscription</p>
-              {detail.subscription ? (
-                <div className="border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-xs text-[var(--foreground)]"><span className="capitalize">{detail.subscription.plan}</span> · {detail.subscription.amountUah} ₴/mo</span>
-                    <span className={`text-[11px] font-medium ${subStatusBadge[detail.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
-                      {SUB_STATUS_LABEL[detail.subscription.status] ?? detail.subscription.status.replace("_", " ")}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 px-4 py-3 text-xs">
-                    <MetaItem label="Subscribed for" value={fmtDuration(detail.subscription.startedAt)} />
-                    <MetaItem label="Since"          value={fmtDate(Date.parse(detail.subscription.startedAt))} />
-                    <MetaItem
-                      label={detail.subscription.autoRenew ? "Next charge" : "Access until"}
-                      value={detail.subscription.currentPeriodEnd ? fmtDate(Date.parse(detail.subscription.currentPeriodEnd)) : "—"}
-                    />
-                    <MetaItem label="Auto-renew" value={detail.subscription.autoRenew ? "On" : "Off"} />
-                    {detail.subscription.maskedPan && (
-                      <MetaItem label="Card" value={detail.subscription.maskedPan.replace(/\*+/, "··")} />
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
-                  Never subscribed — plan is set manually or free.
-                </p>
-              )}
-            </div>
-
-            {/* Activity stats */}
-            <div>
-              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Activity</p>
-              {!stats ? (
-                <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
-                  Stats unavailable{statsError ? ` — ${statsError}` : ""}.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {/* AI Stylist today */}
-                  <div className="border border-[var(--border)] rounded-xl p-3">
-                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist today</p>
-                    <p className="font-display text-xl font-light text-[var(--foreground)]">
-                      {stats.stylistMsgToday}
-                      <span className="text-xs text-[var(--foreground-subtle)] ml-1 font-sans">
-                        / {stats.stylistLimitDay === null ? "∞" : stats.stylistLimitDay}
-                      </span>
-                    </p>
-                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
-                      {stats.stylistRemaining === null
-                        ? "Unlimited"
-                        : `${stats.stylistRemaining} left`}
-                    </p>
-                  </div>
-
-                  {/* AI Stylist all-time */}
-                  <div className="border border-[var(--border)] rounded-xl p-3">
-                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist total</p>
-                    <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.stylistMsgTotal}</p>
-                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">messages sent</p>
-                  </div>
-
-                  {/* Images generated */}
-                  <div className="border border-[var(--border)] rounded-xl p-3">
-                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">AI images</p>
-                    <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.imagesGenerated}</p>
-                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">generated</p>
-                  </div>
-
-                  {/* Looks published */}
-                  <div className="border border-[var(--border)] rounded-xl p-3">
-                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Looks</p>
-                    <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.looksPublished}</p>
-                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">published</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Reset stylist limit */}
-              {stats && (
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <button
-                    onClick={() => resetStylistUsage("today")}
-                    disabled={resetting || stats.stylistMsgToday === 0}
-                    className={btn("secondary")}
-                  >
-                    {resetting ? "Resetting…" : "Reset today's limit"}
-                  </button>
-                  <button
-                    onClick={() => resetStylistUsage("all")}
-                    disabled={resetting}
-                    className={btn("ghost")}
-                  >
-                    Reset all-time
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Profile</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[var(--foreground-muted)]">First name</span>
-                  <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Last name</span>
-                  <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Plan</p>
-              <div className="flex flex-wrap gap-1.5">
-                {PLAN_OPTIONS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPlan(p)}
-                    className={`text-[13px] font-medium px-3 py-2 border rounded-lg transition-colors capitalize ${
-                      plan === p
-                        ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
-                        : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-              {liveSubscription(detail.subscription) && (
-                <p className="mt-2 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn)] text-[12px] px-3 py-2">
-                  Active subscription ({describeSubscription(detail.subscription)}). {PLAN_BILLING_NOTE}
-                  {renewsAutomatically(detail.subscription)
-                    ? ` ${RENEWAL_NOTE}`
-                    : detail.subscription.status === "past_due" ? ` ${PAST_DUE_NOTE}` : ""}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Access</p>
-              <div className="space-y-2">
-                {detail.adminViaEnv ? (
-                  // ADMIN_USER_IDS grants access regardless of the metadata flag,
-                  // so a toggle here would look like it revokes access and not.
-                  <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-[var(--foreground)]">Admin</p>
-                      <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Granted via env (ADMIN_USER_IDS). Remove the id there to revoke.</p>
-                    </div>
-                    <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Via env</span>
-                  </div>
-                ) : currentIsSuperAdmin ? (
-                  <ToggleRow
-                    label="Admin"
-                    description="Grants access to /goo-studio. Only super admin can change this."
-                    checked={isAdmin}
-                    onChange={setIsAdmin}
-                  />
-                ) : detail.isAdmin ? (
-                  <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-[var(--foreground)]">Admin</p>
-                      <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
-                    </div>
-                    <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Enabled</span>
-                  </div>
-                ) : null}
-                <ToggleRow label="Banned" description="Prevents the user from signing in." checked={banned} onChange={setBanned} danger />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[var(--border)]">
-              {!isSuperAdmin && (
-                <button
-                  onClick={del}
-                  disabled={saving}
-                  className={btn("danger")}
-                >
-                  Delete user
-                </button>
-              )}
-              <div className="flex gap-2 ml-auto">
-                <button
-                  onClick={onClose}
-                  className={btn("ghost")}
-                >
-                  Cancel
-                </button>
-                {!isSuperAdmin && (
-                  <button
-                    onClick={save}
-                    disabled={!hasChanges || saving}
-                    className={btn("primary")}
-                  >
-                    {saving ? "Saving…" : "Save changes"}
-                  </button>
-                )}
-              </div>
+            <div className="min-w-0">
+              <p className="text-sm text-[var(--foreground)] truncate">{detail.email ?? "No email"}</p>
+              <p className="text-[12px] font-mono text-[var(--foreground-subtle)] truncate">{detail.id}</p>
             </div>
           </div>
-        )}
-      </aside>
-    </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <MetaItem label="Joined"       value={f.date(detail.createdAt)} />
+            <MetaItem label="Updated"      value={f.date(detail.updatedAt)} />
+            <MetaItem label="Last sign-in" value={f.when(detail.lastSignInAt, "Never")} />
+            <MetaItem label="Last active"  value={f.when(detail.lastActiveAt, "Never")} />
+            <MetaItem label="2FA"          value={detail.twoFactorEnabled ? "Enabled" : "Disabled"} />
+            <MetaItem label="Username"     value={detail.username ?? "—"} />
+          </div>
+
+          {/* Subscription (monobank billing ledger) */}
+          <div>
+            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Subscription</p>
+            {detail.subscription ? (
+              <div className="border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-xs text-[var(--foreground)]"><span className="capitalize">{detail.subscription.plan}</span> · {f.money(detail.subscription.amountUah, "UAH")}/mo</span>
+                  <span className={`text-[11px] font-medium ${subStatusBadge[detail.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
+                    {SUB_STATUS_LABEL[detail.subscription.status] ?? detail.subscription.status.replace("_", " ")}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 px-4 py-3 text-xs">
+                  <MetaItem label="Subscribed for" value={fmtDuration(detail.subscription.startedAt)} />
+                  <MetaItem label="Since"          value={f.date(detail.subscription.startedAt)} />
+                  <MetaItem
+                    label={detail.subscription.autoRenew ? "Next charge" : "Access until"}
+                    value={f.date(detail.subscription.currentPeriodEnd)}
+                  />
+                  <MetaItem label="Auto-renew" value={detail.subscription.autoRenew ? "On" : "Off"} />
+                  {detail.subscription.maskedPan && (
+                    <MetaItem label="Card" value={detail.subscription.maskedPan.replace(/\*+/, "··")} />
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
+                Never subscribed — plan is set manually or free.
+              </p>
+            )}
+          </div>
+
+          {/* Activity stats */}
+          <div>
+            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Activity</p>
+            {!stats ? (
+              <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
+                Stats unavailable{statsError ? ` — ${statsError}` : ""}.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {/* AI Stylist today */}
+                <div className="border border-[var(--border)] rounded-xl p-3">
+                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist today</p>
+                  <p className="font-display text-xl font-light text-[var(--foreground)]">
+                    {stats.stylistMsgToday}
+                    <span className="text-xs text-[var(--foreground-subtle)] ml-1 font-sans">
+                      / {stats.stylistLimitDay === null ? "∞" : stats.stylistLimitDay}
+                    </span>
+                  </p>
+                  <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
+                    {stats.stylistRemaining === null
+                      ? "Unlimited"
+                      : `${stats.stylistRemaining} left`}
+                  </p>
+                </div>
+
+                {/* AI Stylist all-time */}
+                <div className="border border-[var(--border)] rounded-xl p-3">
+                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist total</p>
+                  <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.stylistMsgTotal}</p>
+                  <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">messages sent</p>
+                </div>
+
+                {/* Images generated */}
+                <div className="border border-[var(--border)] rounded-xl p-3">
+                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">AI images</p>
+                  <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.imagesGenerated}</p>
+                  <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">generated</p>
+                </div>
+
+                {/* Looks published */}
+                <div className="border border-[var(--border)] rounded-xl p-3">
+                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Looks</p>
+                  <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.looksPublished}</p>
+                  <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">published</p>
+                </div>
+              </div>
+            )}
+
+            {/* Reset stylist limit */}
+            {stats && (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <button
+                  onClick={() => resetStylistUsage("today")}
+                  disabled={resetting || stats.stylistMsgToday === 0}
+                  className={btn("secondary")}
+                >
+                  {resetting ? "Resetting…" : "Reset today's limit"}
+                </button>
+                <button
+                  onClick={() => resetStylistUsage("all")}
+                  disabled={resetting}
+                  className={btn("ghost")}
+                >
+                  Reset all-time
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Profile</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-[12px] font-medium text-[var(--foreground-muted)]">First name</span>
+                <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Last name</span>
+                <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Plan</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PLAN_OPTIONS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPlan(p)}
+                  className={`text-[13px] font-medium px-3 py-2 border rounded-lg transition-colors capitalize ${
+                    plan === p
+                      ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            {liveSubscription(detail.subscription) && (
+              <p className="mt-2 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn)] text-[12px] px-3 py-2">
+                Active subscription ({describeSubscription(detail.subscription)}). {PLAN_BILLING_NOTE}
+                {renewsAutomatically(detail.subscription)
+                  ? ` ${RENEWAL_NOTE}`
+                  : detail.subscription.status === "past_due" ? ` ${PAST_DUE_NOTE}` : ""}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Access</p>
+            <div className="space-y-2">
+              {detail.adminViaEnv ? (
+                // ADMIN_USER_IDS grants access regardless of the metadata flag,
+                // so a toggle here would look like it revokes access and not.
+                <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-[var(--foreground)]">Admin</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Granted via env (ADMIN_USER_IDS). Remove the id there to revoke.</p>
+                  </div>
+                  <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Via env</span>
+                </div>
+              ) : currentIsSuperAdmin ? (
+                <ToggleRow
+                  label="Admin"
+                  description="Grants access to /goo-studio. Only super admin can change this."
+                  checked={isAdmin}
+                  onChange={setIsAdmin}
+                />
+              ) : detail.isAdmin ? (
+                <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-[var(--foreground)]">Admin</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
+                  </div>
+                  <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Enabled</span>
+                </div>
+              ) : null}
+              <ToggleRow label="Banned" description="Prevents the user from signing in." checked={banned} onChange={setBanned} danger />
+            </div>
+          </div>
+
+        </div>
+      )}
+    </SidePanel>
   );
 }
 

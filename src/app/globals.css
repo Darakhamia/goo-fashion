@@ -783,16 +783,32 @@ summary:not(.no-press):not([class*="active:scale"]):active {
   transition-duration: var(--dur-base);
 }
 
+/* Боковая панель админки (SidePanel): въезжает справа. Носитель `.is-closing`
+   — затемнение вокруг неё, поэтому выход описан через предка. */
+.ov-slide {
+  transform: translateX(0);
+  transition: transform var(--dur-slow) var(--ease-drawer);
+}
+@starting-style {
+  .ov-slide { transform: translateX(100%); }
+}
+.is-closing .ov-slide {
+  transform: translateX(100%);
+  transition-duration: var(--dur-base);
+}
+
 /* Под «уменьшить движение» остаётся только прозрачность: оверлей появляется
    и уходит, но никуда не едет и не меняет размер. */
 @media (prefers-reduced-motion: reduce) {
   .ov-panel,
   .ov-pop,
   .ov-rise,
+  .ov-slide,
   .is-closing .ov-panel,
   .ov-panel.is-closing,
   .ov-pop.is-closing,
-  .ov-rise.is-closing {
+  .ov-rise.is-closing,
+  .is-closing .ov-slide {
     transform: none;
   }
 }

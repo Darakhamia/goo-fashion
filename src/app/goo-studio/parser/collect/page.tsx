@@ -30,6 +30,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CrawlItemResult } from "@/lib/server/parser/types";
 import { btn } from "../../_ui/recipes";
+import { AdminPage } from "@/components/admin/AdminPage";
 
 // ── Wire protocol ────────────────────────────────────────────────────────────
 
@@ -346,254 +347,256 @@ export default function CollectPage() {
   const pct = planned ? Math.min(100, Math.round((done / planned) * 100)) : 0;
 
   return (
-    <div className="max-w-5xl space-y-5">
-      <header>
-        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
-          Collect with the browser extension
-        </h1>
-        <p className="text-xs text-[var(--foreground-muted)] mt-1">
-          Keep this tab open. The extension opens store pages on your machine and this tab imports
-          what they contain, signed in as you.
-        </p>
-      </header>
+    <AdminPage layout="form">
+      <div className="space-y-5">
+        <header>
+          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
+            Collect with the browser extension
+          </h1>
+          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+            Keep this tab open. The extension opens store pages on your machine and this tab imports
+            what they contain, signed in as you.
+          </p>
+        </header>
 
-      {/* Connection */}
-      <div className={`${cardCls} px-5 py-4 flex items-center gap-3 flex-wrap`}>
-        <span
-          aria-hidden="true"
-          className={`w-2 h-2 rounded-full flex-shrink-0 ${
-            connected ? "bg-[var(--ok)]" : "bg-[var(--foreground-subtle)]"
-          }`}
-        />
-        <p className="text-[13px] font-medium text-[var(--foreground)]">
-          {connected ? "Extension connected" : "Waiting for the extension"}
-        </p>
-        {store && (
-          <span className="text-[11px] text-[var(--foreground-muted)] truncate max-w-full md:max-w-[420px]">
-            {store.replace(/^https?:\/\/(www\.)?/, "")}
-          </span>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          {running ? (
-            <button onClick={stop} className={btn("secondary")} aria-label="Stop the run">
-              Stop
-            </button>
-          ) : (
-            results.length > 0 && (
-              <button onClick={reset} className={btn("ghost")}>
-                Clear
+        {/* Connection */}
+        <div className={`${cardCls} px-5 py-4 flex items-center gap-3 flex-wrap`}>
+          <span
+            aria-hidden="true"
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              connected ? "bg-[var(--ok)]" : "bg-[var(--foreground-subtle)]"
+            }`}
+          />
+          <p className="text-[13px] font-medium text-[var(--foreground)]">
+            {connected ? "Extension connected" : "Waiting for the extension"}
+          </p>
+          {store && (
+            <span className="text-[11px] text-[var(--foreground-muted)] truncate max-w-full md:max-w-[420px]">
+              {store.replace(/^https?:\/\/(www\.)?/, "")}
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {running ? (
+              <button onClick={stop} className={btn("secondary")} aria-label="Stop the run">
+                Stop
               </button>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* What the run does with each page — set before starting it */}
-      <div className={`${cardCls} px-5 py-4 flex items-center gap-4 flex-wrap`}>
-        <div
-          role="group"
-          aria-label="What this run does"
-          className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
-        >
-          {MODES.map((m) => {
-            const active = linksOnly === m.linksOnly;
-            return (
-              <button
-                key={m.label}
-                type="button"
-                aria-pressed={active}
-                disabled={running}
-                onClick={() => chooseMode(m.linksOnly)}
-                className={`shrink-0 px-5 py-2 text-[13px] font-medium rounded-full transition-colors duration-200 disabled:opacity-40 ${
-                  active
-                    ? "bg-[var(--foreground)] text-[var(--surface)]"
-                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {m.label}
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-[11px] text-[var(--foreground-muted)] flex-1 min-w-[220px]">
-          {MODES.find((m) => m.linksOnly === linksOnly)?.says}
-          {running && " Change it between runs."}
-        </p>
-      </div>
-
-      {!connected && (
-        <div className={`${cardCls} px-5 py-4 space-y-2`}>
-          <h2 className="text-[13px] font-medium text-[var(--foreground)]">Install it once</h2>
-          <ol className="text-[12px] text-[var(--foreground-muted)] space-y-1 list-decimal pl-4">
-            <li>
-              Open <span className="text-[var(--foreground)]">chrome://extensions</span> and turn on
-              Developer mode.
-            </li>
-            <li>
-              Choose <span className="text-[var(--foreground)]">Load unpacked</span> and pick the{" "}
-              <span className="text-[var(--foreground)]">extension/</span> folder from the
-              repository.
-            </li>
-            <li>
-              Open the store you want, click the Goo icon, set how many products to collect and
-              press <span className="text-[var(--foreground)]">Collect this store</span>.
-            </li>
-            <li>Chrome will ask once for permission to read that store. Grant it.</li>
-          </ol>
-        </div>
-      )}
-
-      {notice && (
-        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-5 py-3 text-[12px] text-[var(--warn)]">
-          {notice}
-        </div>
-      )}
-
-      {robots && (
-        <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
-          <span className={labelCls}>robots.txt</span>
-          <span className="text-[var(--foreground-muted)]">
-            {robots.parsed ? "read" : "none published"}
-          </span>
-          <span className="text-[var(--foreground-muted)]">
-            crawl-delay{" "}
-            <span className="text-[var(--foreground)] tabular-nums">
-              {robots.crawlDelayMs ? `${(robots.crawlDelayMs / 1000).toFixed(1)}s` : "not set"}
-            </span>
-          </span>
-          <span className="text-[var(--foreground-muted)]">
-            pacing at{" "}
-            <span className="text-[var(--foreground)] tabular-nums">
-              {(delayMs / 1000).toFixed(1)}s
-            </span>
-          </span>
-          {robots.blocked > 0 && (
-            <span className="text-[var(--warn)] tabular-nums">{robots.blocked} disallowed, skipped</span>
-          )}
-        </div>
-      )}
-
-      {linkSearch && (
-        <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
-          <span className={labelCls}>Looking for ours</span>
-          <span className="text-[var(--foreground-muted)]">
-            <span className="text-[var(--foreground)] tabular-nums">{linkSearch.matched}</span> store
-            pages name one of our {linkSearch.cards} cards
-          </span>
-          {linkSearch.unnamed > 0 && (
-            <span className="text-[var(--foreground-muted)]">
-              <span className="tabular-nums">{linkSearch.unnamed}</span> name nothing by their
-              address, opened after
-            </span>
-          )}
-          {linkSearch.linked > 0 && (
-            <span className="text-[var(--foreground-muted)]">
-              <span className="tabular-nums">{linkSearch.linked}</span> already on a card
-            </span>
-          )}
-          {linkSearch.other > 0 && (
-            <span className="text-[var(--foreground-subtle)]">
-              <span className="tabular-nums">{linkSearch.other}</span> not ours, not opened
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Progress + outcomes */}
-      {(running || results.length > 0) && (
-        <div className={`${cardCls} overflow-hidden`}>
-          <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
-            <div className="flex items-center gap-4 flex-wrap">
-              <p className="text-[13px] font-medium text-[var(--foreground)] inline-flex items-center gap-1.5">
-                {running && <Spinner />}
-                {phase === "planning" && "Reading the store…"}
-                {phase === "collecting" && `Collecting ${done}/${planned || "…"}`}
-                {phase === "done" && "Finished"}
-                {phase === "stopped" && "Stopped"}
-                {phase === "halted" && "Halted"}
-                {phase === "idle" && "Ready"}
-              </p>
-              <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
-                <span className="text-[var(--ok)]">{imported} new</span>
-                <span className="text-[var(--foreground-muted)]">{updated} updated</span>
-                {failed > 0 && <span className="text-[var(--warn)]">{failed} skipped</span>}
-                {!running && results.length > 0 && (
-                  <a
-                    href="/goo-studio/products"
-                    className="underline hover:no-underline text-[var(--foreground)]"
-                  >
-                    View products →
-                  </a>
-                )}
-              </div>
-            </div>
-            <div className="h-1 rounded-full bg-[var(--fg-overlay-08)] overflow-hidden">
-              <div
-                className="h-full bg-[var(--foreground)] transition-[width] duration-300"
-                style={{ width: `${phase === "planning" ? 4 : pct}%` }}
-              />
-            </div>
-            {photos > 0 && (
-              <p className="text-[12px] text-[var(--foreground-subtle)]">
-                {photos} photo{photos === 1 ? "" : "s"} copied to our storage
-              </p>
+            ) : (
+              results.length > 0 && (
+                <button onClick={reset} className={btn("ghost")}>
+                  Clear
+                </button>
+              )
             )}
-            {warnings.map((w) => (
-              <p key={w} className="rounded-lg border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)]">
-                {w}
-              </p>
-            ))}
           </div>
+        </div>
 
-          {results.length > 0 && (
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border)]">
-              {results.map((r, i) => (
-                <div
-                  key={`${r.url}-${i}`}
-                  className="px-5 py-2.5 flex items-center gap-3 text-[11px]"
+        {/* What the run does with each page — set before starting it */}
+        <div className={`${cardCls} px-5 py-4 flex items-center gap-4 flex-wrap`}>
+          <div
+            role="group"
+            aria-label="What this run does"
+            className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
+          >
+            {MODES.map((m) => {
+              const active = linksOnly === m.linksOnly;
+              return (
+                <button
+                  key={m.label}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={running}
+                  onClick={() => chooseMode(m.linksOnly)}
+                  className={`shrink-0 px-5 py-2 text-[13px] font-medium rounded-full transition-colors duration-200 disabled:opacity-40 ${
+                    active
+                      ? "bg-[var(--foreground)] text-[var(--surface)]"
+                      : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                  }`}
                 >
-                  <StatusPill status={r.status} />
-                  <span className="text-[var(--foreground)] truncate flex-1 min-w-0">
-                    {r.name || r.url.replace(/^https?:\/\/(www\.)?/, "")}
-                  </span>
-                  {r.reason && (
-                    <span
-                      className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
-                      title={r.reason}
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-[var(--foreground-muted)] flex-1 min-w-[220px]">
+            {MODES.find((m) => m.linksOnly === linksOnly)?.says}
+            {running && " Change it between runs."}
+          </p>
+        </div>
+
+        {!connected && (
+          <div className={`${cardCls} px-5 py-4 space-y-2`}>
+            <h2 className="text-[13px] font-medium text-[var(--foreground)]">Install it once</h2>
+            <ol className="text-[12px] text-[var(--foreground-muted)] space-y-1 list-decimal pl-4">
+              <li>
+                Open <span className="text-[var(--foreground)]">chrome://extensions</span> and turn on
+                Developer mode.
+              </li>
+              <li>
+                Choose <span className="text-[var(--foreground)]">Load unpacked</span> and pick the{" "}
+                <span className="text-[var(--foreground)]">extension/</span> folder from the
+                repository.
+              </li>
+              <li>
+                Open the store you want, click the Goo icon, set how many products to collect and
+                press <span className="text-[var(--foreground)]">Collect this store</span>.
+              </li>
+              <li>Chrome will ask once for permission to read that store. Grant it.</li>
+            </ol>
+          </div>
+        )}
+
+        {notice && (
+          <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-5 py-3 text-[12px] text-[var(--warn)]">
+            {notice}
+          </div>
+        )}
+
+        {robots && (
+          <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
+            <span className={labelCls}>robots.txt</span>
+            <span className="text-[var(--foreground-muted)]">
+              {robots.parsed ? "read" : "none published"}
+            </span>
+            <span className="text-[var(--foreground-muted)]">
+              crawl-delay{" "}
+              <span className="text-[var(--foreground)] tabular-nums">
+                {robots.crawlDelayMs ? `${(robots.crawlDelayMs / 1000).toFixed(1)}s` : "not set"}
+              </span>
+            </span>
+            <span className="text-[var(--foreground-muted)]">
+              pacing at{" "}
+              <span className="text-[var(--foreground)] tabular-nums">
+                {(delayMs / 1000).toFixed(1)}s
+              </span>
+            </span>
+            {robots.blocked > 0 && (
+              <span className="text-[var(--warn)] tabular-nums">{robots.blocked} disallowed, skipped</span>
+            )}
+          </div>
+        )}
+
+        {linkSearch && (
+          <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
+            <span className={labelCls}>Looking for ours</span>
+            <span className="text-[var(--foreground-muted)]">
+              <span className="text-[var(--foreground)] tabular-nums">{linkSearch.matched}</span> store
+              pages name one of our {linkSearch.cards} cards
+            </span>
+            {linkSearch.unnamed > 0 && (
+              <span className="text-[var(--foreground-muted)]">
+                <span className="tabular-nums">{linkSearch.unnamed}</span> name nothing by their
+                address, opened after
+              </span>
+            )}
+            {linkSearch.linked > 0 && (
+              <span className="text-[var(--foreground-muted)]">
+                <span className="tabular-nums">{linkSearch.linked}</span> already on a card
+              </span>
+            )}
+            {linkSearch.other > 0 && (
+              <span className="text-[var(--foreground-subtle)]">
+                <span className="tabular-nums">{linkSearch.other}</span> not ours, not opened
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Progress + outcomes */}
+        {(running || results.length > 0) && (
+          <div className={`${cardCls} overflow-hidden`}>
+            <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
+              <div className="flex items-center gap-4 flex-wrap">
+                <p className="text-[13px] font-medium text-[var(--foreground)] inline-flex items-center gap-1.5">
+                  {running && <Spinner />}
+                  {phase === "planning" && "Reading the store…"}
+                  {phase === "collecting" && `Collecting ${done}/${planned || "…"}`}
+                  {phase === "done" && "Finished"}
+                  {phase === "stopped" && "Stopped"}
+                  {phase === "halted" && "Halted"}
+                  {phase === "idle" && "Ready"}
+                </p>
+                <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
+                  <span className="text-[var(--ok)]">{imported} new</span>
+                  <span className="text-[var(--foreground-muted)]">{updated} updated</span>
+                  {failed > 0 && <span className="text-[var(--warn)]">{failed} skipped</span>}
+                  {!running && results.length > 0 && (
+                    <a
+                      href="/goo-studio/products"
+                      className="underline hover:no-underline text-[var(--foreground)]"
                     >
-                      {r.reason}
-                    </span>
+                      View products →
+                    </a>
                   )}
-                  {!r.reason && detailLine(r) && (
-                    <span
-                      className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
-                      title={detailLine(r)}
-                    >
-                      {detailLine(r)}
-                    </span>
-                  )}
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="Open this page in a new tab"
-                    className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
-                  >
-                    ↗
-                  </a>
                 </div>
+              </div>
+              <div className="h-1 rounded-full bg-[var(--fg-overlay-08)] overflow-hidden">
+                <div
+                  className="h-full bg-[var(--foreground)] transition-[width] duration-300"
+                  style={{ width: `${phase === "planning" ? 4 : pct}%` }}
+                />
+              </div>
+              {photos > 0 && (
+                <p className="text-[12px] text-[var(--foreground-subtle)]">
+                  {photos} photo{photos === 1 ? "" : "s"} copied to our storage
+                </p>
+              )}
+              {warnings.map((w) => (
+                <p key={w} className="rounded-lg border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)]">
+                  {w}
+                </p>
               ))}
             </div>
-          )}
-        </div>
-      )}
 
-      {!running && results.length === 0 && connected && (
-        <p className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-          Nothing collected yet. Start a run from the extension on a store page.
-        </p>
-      )}
-    </div>
+            {results.length > 0 && (
+              <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border)]">
+                {results.map((r, i) => (
+                  <div
+                    key={`${r.url}-${i}`}
+                    className="px-5 py-2.5 flex items-center gap-3 text-[11px]"
+                  >
+                    <StatusPill status={r.status} />
+                    <span className="text-[var(--foreground)] truncate flex-1 min-w-0">
+                      {r.name || r.url.replace(/^https?:\/\/(www\.)?/, "")}
+                    </span>
+                    {r.reason && (
+                      <span
+                        className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
+                        title={r.reason}
+                      >
+                        {r.reason}
+                      </span>
+                    )}
+                    {!r.reason && detailLine(r) && (
+                      <span
+                        className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
+                        title={detailLine(r)}
+                      >
+                        {detailLine(r)}
+                      </span>
+                    )}
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="Open this page in a new tab"
+                      className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
+                    >
+                      ↗
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!running && results.length === 0 && connected && (
+          <p className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
+            Nothing collected yet. Start a run from the extension on a store page.
+          </p>
+        )}
+      </div>
+    </AdminPage>
   );
 }
 

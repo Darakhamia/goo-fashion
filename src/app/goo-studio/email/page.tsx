@@ -5,6 +5,8 @@ import type { EmailTemplate } from "@/app/api/admin/email/templates/route";
 import { buildHtml, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { AdminPage } from "@/components/admin/AdminPage";
+import { Modal } from "@/components/admin/Modal";
 
 type Audience = "all" | "free" | "basic" | "pro" | "premium" | "custom";
 
@@ -270,7 +272,7 @@ export default function AdminEmailPage() {
   const failedBatches = result?.errors?.length ?? 0;
 
   return (
-    <div className="max-w-5xl">
+    <AdminPage layout="form">
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Email</h1>
@@ -623,133 +625,125 @@ export default function AdminEmailPage() {
 
       {/* AI Write modal */}
       {showAiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Write with AI"
-            className="rounded-2xl border border-[var(--border)] w-full max-w-md max-h-[90dvh] overflow-y-auto"
-            style={{ background: "var(--surface)" }}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-              <div>
-                <h2 className="font-display text-lg font-light text-[var(--foreground)]">Write with AI</h2>
-                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                  Describe what to write — AI generates the email body
-                </p>
-              </div>
-              <button onClick={() => setShowAiModal(false)} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
+        <Modal
+          onClose={() => setShowAiModal(false)}
+          label="Write with AI"
+          panelClassName="rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto"
+        >
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <div>
+              <h2 className="font-display text-lg font-light text-[var(--foreground)]">Write with AI</h2>
+              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                Describe what to write — AI generates the email body
+              </p>
             </div>
-            <div className="px-5 py-4 space-y-3">
-              {subject && (
-                <div className="text-[12px] text-[var(--foreground-subtle)] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)]">
-                  Subject: <span className="text-[var(--foreground-muted)]">{subject}</span>
-                </div>
-              )}
-              <div>
-                <label className={labelCls}>Brief — what should the email say?</label>
-                <textarea
-                  value={aiBrief}
-                  onChange={(e) => setAiBrief(e.target.value)}
-                  placeholder={"e.g. Announce new summer collection, mention free shipping this week, include styling tips for hot weather"}
-                  rows={4}
-                  className={`${inputCls} resize-none`}
-                  autoFocus
-                  disabled={aiWriting}
-                />
-              </div>
-              {aiWriteError && <p className={`rounded-lg px-3 py-2 text-xs ${statusErr}`}>{aiWriteError}</p>}
-              {aiWriting && (
-                <p className="text-xs text-[var(--foreground-muted)] animate-pulse">Writing your email…</p>
-              )}
-            </div>
-            <div className="px-5 py-4 border-t border-[var(--border)] flex gap-3">
-              <button
-                onClick={handleAiWrite}
-                disabled={(!subject.trim() && !aiBrief.trim()) || aiWriting}
-                className={`${btn("primary")} flex-1`}
-              >
-                {aiWriting
-                  ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Writing…</>
-                  : "Generate body"}
-              </button>
-              <button
-                onClick={() => setShowAiModal(false)}
-                disabled={aiWriting}
-                className={btn("ghost")}
-              >
-                Cancel
-              </button>
-            </div>
+            <button onClick={() => setShowAiModal(false)} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
-        </div>
+          <div className="px-5 py-4 space-y-3">
+            {subject && (
+              <div className="text-[12px] text-[var(--foreground-subtle)] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)]">
+                Subject: <span className="text-[var(--foreground-muted)]">{subject}</span>
+              </div>
+            )}
+            <div>
+              <label className={labelCls}>Brief — what should the email say?</label>
+              <textarea
+                value={aiBrief}
+                onChange={(e) => setAiBrief(e.target.value)}
+                placeholder={"e.g. Announce new summer collection, mention free shipping this week, include styling tips for hot weather"}
+                rows={4}
+                className={`${inputCls} resize-none`}
+                autoFocus
+                disabled={aiWriting}
+              />
+            </div>
+            {aiWriteError && <p className={`rounded-lg px-3 py-2 text-xs ${statusErr}`}>{aiWriteError}</p>}
+            {aiWriting && (
+              <p className="text-xs text-[var(--foreground-muted)] animate-pulse">Writing your email…</p>
+            )}
+          </div>
+          <div className="px-5 py-4 border-t border-[var(--border)] flex gap-3">
+            <button
+              onClick={handleAiWrite}
+              disabled={(!subject.trim() && !aiBrief.trim()) || aiWriting}
+              className={`${btn("primary")} flex-1`}
+            >
+              {aiWriting
+                ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Writing…</>
+                : "Generate body"}
+            </button>
+            <button
+              onClick={() => setShowAiModal(false)}
+              disabled={aiWriting}
+              className={btn("ghost")}
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* Save template modal */}
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Save template"
-            className="rounded-2xl border border-[var(--border)] w-full max-w-sm max-h-[90dvh] overflow-y-auto"
-            style={{ background: "var(--surface)" }}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-              <h2 className="font-display text-lg font-light text-[var(--foreground)]">Save template</h2>
-              <button
-                onClick={() => setShowSaveModal(false)}
-                aria-label="Close"
-                className={BTN_ICON}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-            <div className="px-5 py-4 space-y-3">
-              <div>
-                <label className={labelCls}>Template name</label>
-                <input
-                  type="text"
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) handleSaveTemplate(); }}
-                  placeholder="e.g. Monthly newsletter"
-                  className={inputCls}
-                  autoFocus
-                />
-              </div>
-              <div className="text-[12px] text-[var(--foreground-subtle)] space-y-0.5">
-                <p><span className="text-[var(--foreground-muted)]">Subject:</span> {subject}</p>
-                <p><span className="text-[var(--foreground-muted)]">Body:</span> {body.slice(0, 60)}{body.length > 60 ? "…" : ""}</p>
-              </div>
-              {saveTemplateError && (
-                <p className={`rounded-lg px-3 py-2 text-xs ${statusErr}`}>Couldn&apos;t save the template: {saveTemplateError}</p>
-              )}
-            </div>
-            <div className="px-5 py-4 border-t border-[var(--border)] flex gap-3">
-              <button
-                onClick={handleSaveTemplate}
-                disabled={!templateName.trim() || savingTemplate}
-                className={`${btn("primary")} flex-1`}
-              >
-                {savingTemplate ? "Saving…" : "Save template"}
-              </button>
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className={btn("ghost")}
-              >
-                Cancel
-              </button>
-            </div>
+        <Modal
+          onClose={() => setShowSaveModal(false)}
+          label="Save template"
+          panelClassName="rounded-2xl w-full max-w-sm max-h-[90dvh] overflow-y-auto"
+        >
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <h2 className="font-display text-lg font-light text-[var(--foreground)]">Save template</h2>
+            <button
+              onClick={() => setShowSaveModal(false)}
+              aria-label="Close"
+              className={BTN_ICON}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
-        </div>
+          <div className="px-5 py-4 space-y-3">
+            <div>
+              <label className={labelCls}>Template name</label>
+              <input
+                type="text"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) handleSaveTemplate(); }}
+                placeholder="e.g. Monthly newsletter"
+                className={inputCls}
+                autoFocus
+              />
+            </div>
+            <div className="text-[12px] text-[var(--foreground-subtle)] space-y-0.5">
+              <p><span className="text-[var(--foreground-muted)]">Subject:</span> {subject}</p>
+              <p><span className="text-[var(--foreground-muted)]">Body:</span> {body.slice(0, 60)}{body.length > 60 ? "…" : ""}</p>
+            </div>
+            {saveTemplateError && (
+              <p className={`rounded-lg px-3 py-2 text-xs ${statusErr}`}>Couldn&apos;t save the template: {saveTemplateError}</p>
+            )}
+          </div>
+          <div className="px-5 py-4 border-t border-[var(--border)] flex gap-3">
+            <button
+              onClick={handleSaveTemplate}
+              disabled={!templateName.trim() || savingTemplate}
+              className={`${btn("primary")} flex-1`}
+            >
+              {savingTemplate ? "Saving…" : "Save template"}
+            </button>
+            <button
+              onClick={() => setShowSaveModal(false)}
+              className={btn("ghost")}
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
       )}
-    </div>
+    </AdminPage>
   );
 }

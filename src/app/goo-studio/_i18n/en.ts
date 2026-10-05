@@ -21,6 +21,9 @@ export const en = {
   "common.loading": "Loading…",
   "common.networkError": "Network error",
   "common.retry": "Retry",
+  "save.bar": "Save changes",
+  "save.unsaved": "Unsaved changes",
+  "save.discard": "Discard",
 
   // ── Menu ──────────────────────────────────────────────────────────────────
   "nav.group.overview": "Overview",
@@ -203,6 +206,7 @@ export const en = {
   "users.col.joined": "Joined",
   "users.col.lastActive": "Last active",
   "users.noName": "No name",
+  "users.never": "Never",
   "users.badge.superAdmin": "Super admin",
   "users.badge.team": "Team",
   "users.badge.banned": "Banned",
@@ -211,7 +215,7 @@ export const en = {
   "users.badge.pastDue": "Past due",
   "users.badge.manual": "Manual",
   "users.badge.manualHint": "Set by hand, not paid through billing",
-  "users.sub.perMonth": "{amount} ₴/mo",
+  "users.sub.perMonth": "{amount}/mo",
   "users.sub.overdue": "overdue since {date}",
   "users.sub.pending": "payment pending since {date}",
   "users.sub.pastDue": "renewal failed",

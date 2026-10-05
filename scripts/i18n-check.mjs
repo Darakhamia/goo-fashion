@@ -24,7 +24,7 @@ const args = new Set(process.argv.slice(2));
 
 /** Admin files whose interface text is fully in the dictionary. */
 const TRANSLATED = [
-  "src/app/goo-studio/layout.tsx",
+  "src/app/goo-studio/_ui/AdminShell.tsx",
   "src/app/goo-studio/prompts/page.tsx",
   "src/components/admin/ConfirmDialog.tsx",
   "src/components/admin/Toast.tsx",

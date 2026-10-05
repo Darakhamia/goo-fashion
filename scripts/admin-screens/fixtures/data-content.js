@@ -412,6 +412,18 @@ const pages = [
       await unclip(page);
     },
   },
+  // GS4-5: a showcase pick removed, so the page's one SaveBar shows.
+  {
+    name: "settings-savebar",
+    url: "/goo-studio/settings",
+    fullPage: false,
+    wait: 1800,
+    after: async (page) => {
+      await page.locator("#showcase").getByRole("button", { name: /^Remove / }).first().click();
+      await page.getByRole("region", { name: /Save changes|Сохранение/ }).waitFor();
+      await page.waitForTimeout(600);
+    },
+  },
   {
     name: "blog-editor",
     url: "/goo-studio/blog",

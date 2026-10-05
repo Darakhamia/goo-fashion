@@ -16,6 +16,8 @@ import { bookmarkletHref, readPastedPage } from "@/lib/parser-bookmarklet";
 import { pastedUrl } from "@/lib/url";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { btn, BTN_ICON } from "../_ui/recipes";
+import { AdminPage } from "@/components/admin/AdminPage";
+import { useFormat } from "@/app/goo-studio/_i18n";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -157,19 +159,19 @@ export default function ParserPage() {
 
   if (unauthorized) {
     return (
-      <div className="max-w-lg">
+      <AdminPage layout="form">
         <Header />
         <div className="mt-6 rounded-xl border border-[var(--border)] px-5 py-4">
           <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
             Access denied. Your account is not in the admin allowlist.
           </p>
         </div>
-      </div>
+      </AdminPage>
     );
   }
 
   return (
-    <div className="max-w-5xl">
+    <AdminPage layout="form">
       <Header />
 
       {/* Tabs */}
@@ -215,7 +217,7 @@ export default function ParserPage() {
           <FetchTab config={config} onSaved={(next) => setConfig(next)} />
         </div>
       )}
-    </div>
+    </AdminPage>
   );
 }
 
@@ -994,6 +996,8 @@ function SingleProductEditor({
                 <button
                   key={img}
                   onClick={() => set("imageUrl", img)}
+                  aria-label={`Use image ${product.images.indexOf(img) + 1} as the main one`}
+                  aria-pressed={img === product.imageUrl}
                   className={`w-8 h-10 rounded-lg overflow-hidden border ${img === product.imageUrl ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1099,6 +1103,7 @@ function ProductGrid({
   onClear: () => void;
   setProductAt: (i: number, patch: Partial<ParsedProduct>) => void;
 }) {
+  const f = useFormat();
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState<{
@@ -1199,7 +1204,7 @@ function ProductGrid({
                 />
                 <div className="flex items-center justify-between text-[11px] text-[var(--foreground-muted)]">
                   <span className="truncate">{p.brand || "—"}</span>
-                  <span className="font-mono tabular-nums">{p.price ? `${p.price} ${p.currency}` : "—"}</span>
+                  <span className="tabular-nums">{p.price ? f.money(p.price, p.currency || "USD") : "—"}</span>
                 </div>
                 <div className="flex gap-1">
                   <select
@@ -1282,12 +1287,13 @@ function DiagnosticsBar({ diag }: { diag: Diagnostics }) {
   );
 }
 
+/** A label and its one field. The label wraps the field, so it names it for screen readers and a click on it focuses it. */
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className={labelCls}>{label}</label>
+    <label className="block">
+      <span className={labelCls}>{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 

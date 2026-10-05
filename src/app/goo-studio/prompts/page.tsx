@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { btn } from "@/app/goo-studio/_ui/recipes";
 import { useT, type Key, type T } from "@/app/goo-studio/_i18n";
+import { AdminPage } from "@/components/admin/AdminPage";
 
 interface PromptItem {
   key: string;
@@ -124,6 +125,7 @@ function PromptCard({ item, onSave, onReset }: {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          aria-label={item.label}
           rows={8}
           spellCheck={false}
           className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-[11px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors resize-y leading-relaxed"
@@ -223,7 +225,7 @@ export default function PromptsPage() {
   const customCount = (cat: string) => prompts.filter((p) => p.category === cat && p.value !== null).length;
 
   return (
-    <div className="max-w-5xl">
+    <AdminPage layout="form">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
           {t("nav.prompts")}
@@ -278,6 +280,6 @@ export default function PromptsPage() {
           ))}
         </div>
       )}
-    </div>
+    </AdminPage>
   );
 }

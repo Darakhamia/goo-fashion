@@ -5,6 +5,7 @@ import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { btn } from "../_ui/recipes";
 import { Spinner, LoadingLine } from "./recipes";
+import { FormSection } from "@/components/admin/FormSection";
 
 interface EmbeddingCoverage {
   total: number;
@@ -143,35 +144,24 @@ export default function EmbeddingsCard() {
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mt-6">
-      <div className="px-5 py-4 border-b border-[var(--border)]">
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <circle cx="3" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <circle cx="11" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <circle cx="11" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M4.1 9.9L9.9 4.1M4.5 11H9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-          </svg>
-          <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
-            Embeddings
+    <FormSection
+      id="embeddings"
+      title="Embeddings"
+      description="Vectors behind the stylist’s search by meaning. Imports don’t create them; a backfill here does."
+      extra={<HelpButton help={help} label="How embeddings work" />}
+    >
+      {help.open && (
+        <HelpPanel help={help}>
+          <p>
+            Vectors behind the stylist&apos;s semantic search and the <span className="font-mono">?knn=1</span> mode of
+            field mining. Imports don&apos;t create them, so new products stay without one until a backfill runs here. The
+            chat searches by meaning only when the server has <code className="font-mono text-[11px]">STYLIST_SEMANTIC_SEARCH</code>{" "}
+            on; otherwise it uses keyword search. Uses the OpenAI key above.
           </p>
-          <HelpButton help={help} label="How embeddings work" />
-        </div>
-        {help.open && (
-          <div className="mt-3">
-            <HelpPanel help={help}>
-              <p>
-                Vectors behind the stylist&apos;s semantic search and the <span className="font-mono">?knn=1</span> mode of
-                field mining. Imports don&apos;t create them, so new products stay without one until a backfill runs here. The
-                chat searches by meaning only when the server has <code className="font-mono text-[11px]">STYLIST_SEMANTIC_SEARCH</code>{" "}
-                on; otherwise it uses keyword search. Uses the OpenAI key above.
-              </p>
-            </HelpPanel>
-          </div>
-        )}
-      </div>
+        </HelpPanel>
+      )}
 
-      <div className="px-5 py-4">
+      <div>
         {loading && !coverage && <LoadingLine label="Checking coverage…" />}
         {loadError && <p className="text-[11px] text-[var(--err)]">{loadError}</p>}
 
@@ -214,7 +204,7 @@ export default function EmbeddingsCard() {
         {runError && <p className="text-[11px] text-[var(--err)] mt-2">{runError}</p>}
       </div>
 
-      <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={backfill}
           disabled={running || !coverage || coverage.missing === 0}
@@ -237,6 +227,6 @@ export default function EmbeddingsCard() {
           </button>
         )}
       </div>
-    </div>
+    </FormSection>
   );
 }

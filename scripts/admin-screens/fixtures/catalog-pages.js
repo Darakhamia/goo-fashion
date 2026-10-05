@@ -395,5 +395,14 @@ module.exports = {
         await page.waitForTimeout(300);
       },
     },
+    // GS4-5: the rule form in the side panel, opened from a rule's Edit.
+    {
+      name: "retailers-rule", url: "/goo-studio/retailers", fullPage: false,
+      after: async (page) => {
+        await page.locator("tbody tr").first().getByRole("button", { name: "Edit" }).click();
+        await page.getByRole("dialog").waitFor();
+        await page.waitForTimeout(600);
+      },
+    },
   ],
 };

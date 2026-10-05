@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdminAction } from "@/lib/server/audit";
 import { btn } from "@/app/goo-studio/_ui/recipes";
+import { useFormat } from "@/app/goo-studio/_i18n";
 
 interface AuditEntry {
   id: number;
@@ -161,25 +162,6 @@ function sentenceCase(key: string) {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-function fmtRelative(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins  = Math.round(diff / 60_000);
-  const hours = Math.round(diff / 3_600_000);
-  const days  = Math.round(diff / 86_400_000);
-  if (mins  < 1)  return "just now";
-  if (mins  < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days  < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
-function fmtFull(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    year: "numeric", month: "short", day: "numeric",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
-}
-
 function MetaDetail({ metadata, action }: { metadata: Record<string, unknown>; action: string }) {
   if (action === "user.plan_changed") {
     return (
@@ -208,6 +190,7 @@ function MetaDetail({ metadata, action }: { metadata: Record<string, unknown>; a
 }
 
 export default function AdminActivityPage() {
+  const f = useFormat();
   const [access, setAccess]       = useState<"checking" | "granted" | "denied">("checking");
   const [entries, setEntries]     = useState<AuditEntry[]>([]);
   const [total, setTotal]         = useState(0);
@@ -319,7 +302,7 @@ export default function AdminActivityPage() {
             </span>
           </div>
           <p className="text-xs text-[var(--foreground-muted)]">
-            {total.toLocaleString()} recorded action{total === 1 ? "" : "s"} {filtered ? "matching the filter" : "across all admins"}
+            {f.number(total)} recorded action{total === 1 ? "" : "s"} {filtered ? "matching the filter" : "across all admins"}
           </p>
         </div>
         <button
@@ -431,12 +414,13 @@ export default function AdminActivityPage() {
 
               {/* Timestamp */}
               <div className="flex-shrink-0 text-right">
-                <p className="text-xs text-[var(--foreground-muted)]" title={fmtFull(entry.created_at)}>
-                  {fmtRelative(entry.created_at)}
+                <p className="text-xs text-[var(--foreground-muted)]" title={f.dateTime(entry.created_at)}>
+                  {f.when(entry.created_at)}
                 </p>
-                <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">
-                  {new Date(entry.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                </p>
+                {/* The date under "22h ago"; past a week the line above is the date already. */}
+                {f.when(entry.created_at) !== f.date(entry.created_at) && (
+                  <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{f.date(entry.created_at)}</p>
+                )}
               </div>
             </div>
           );
@@ -450,7 +434,7 @@ export default function AdminActivityPage() {
             disabled={loading}
             className={btn("secondary")}
           >
-            {loading ? "Loading…" : `Load more · ${entries.length.toLocaleString()} of ${total.toLocaleString()}`}
+            {loading ? "Loading…" : `Load more · ${f.number(entries.length)} of ${f.number(total)}`}
           </button>
         </div>
       )}

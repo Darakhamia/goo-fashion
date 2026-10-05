@@ -7,7 +7,7 @@ import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
-import { useT } from "@/app/goo-studio/_i18n";
+import { useFormat, useT } from "@/app/goo-studio/_i18n";
 import type { Key } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
 import type { Column } from "@/components/admin/DataTable";
@@ -15,6 +15,7 @@ import { ActiveFilters, FilterChips, FilterMenu, SearchField } from "@/component
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
 import { Badge } from "@/components/admin/Badge";
+import { Modal } from "@/components/admin/Modal";
 
 interface BlogFormState {
   slug: string;
@@ -80,20 +81,9 @@ function toLocalInputValue(iso: string): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return "";
-  }
-}
-
 export default function AdminBlogPage() {
   const t = useT();
+  const f = useFormat();
   const confirm = useConfirm();
   const toast = useToast();
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -427,7 +417,7 @@ export default function AdminBlogPage() {
       key: "published",
       header: t("blog.col.published"),
       hide: "md",
-      cell: (p) => <span className="text-[var(--foreground-muted)]">{p.isPublished ? formatDate(p.publishedAt) : "—"}</span>,
+      cell: (p) => <span className="text-[var(--foreground-muted)]">{p.isPublished ? f.date(p.publishedAt) : "—"}</span>,
     },
   ];
 
@@ -565,459 +555,452 @@ export default function AdminBlogPage() {
 
       {/* AI Generate Modal */}
       {showAiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="AI Draft"
-            className="rounded-2xl border border-[var(--border)] w-full max-w-md max-h-[90dvh] overflow-y-auto"
-            style={{ background: "var(--surface)" }}
-          >
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
-              <div>
-                <h2 className="font-display text-xl font-light text-[var(--foreground)]">AI Draft</h2>
-                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                  {aiMode === "url"
-                    ? "Rewrite an article, brand page or collection"
-                    : "Announce a release in GOO's own name"}
-                </p>
-              </div>
-              {/* Locked while generating, like Cancel: a reply landing after the
-                  modal closed would overwrite whatever post is open by then. */}
-              <button
-                onClick={() => setShowAiModal(false)}
-                disabled={aiLoading}
-                className={BTN_ICON}
-                aria-label="Close"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
+        <Modal
+          onClose={() => setShowAiModal(false)}
+          label="AI Draft"
+          panelClassName="rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto"
+        >
+          <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
+            <div>
+              <h2 className="font-display text-xl font-light text-[var(--foreground)]">AI Draft</h2>
+              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                {aiMode === "url"
+                  ? "Rewrite an article, brand page or collection"
+                  : "Announce a release in GOO's own name"}
+              </p>
             </div>
-            <div className="px-6 py-5 flex flex-col gap-4">
-              {/* Mode switch — the two modes run different prompts and pick from
-                  different halves of the taxonomy, so the choice is explicit. */}
-              <div
-                role="tablist"
-                aria-label="Draft source"
-                className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
-              >
-                {([
-                  { id: "url" as const, label: "From URL" },
-                  { id: "brief" as const, label: "From brief" },
-                ]).map((m) => (
-                  <button
-                    key={m.id}
-                    role="tab"
-                    aria-selected={aiMode === m.id}
-                    onClick={() => { setAiMode(m.id); setAiError(""); }}
-                    disabled={aiLoading}
-                    className="px-5 py-2 text-[13px] font-medium rounded-full transition-colors duration-200 disabled:opacity-40"
-                    style={
-                      aiMode === m.id
-                        ? { background: "var(--foreground)", color: "var(--surface)" }
-                        : { color: "var(--foreground-muted)" }
-                    }
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-
-              {aiMode === "url" ? (
-                <div>
-                  <label className={labelCls}>URL</label>
-                  <input
-                    type="url"
-                    value={aiUrl}
-                    onChange={(e) => setAiUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
-                    placeholder="https://vogue.com/article/..."
-                    className={inputCls}
-                    autoFocus
-                    disabled={aiLoading}
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className={labelCls}>Brief</label>
-                  <textarea
-                    value={aiBrief}
-                    onChange={(e) => setAiBrief(e.target.value)}
-                    placeholder={"Shipped the new outfit builder: drag and drop, up to 6 items per look, saves to your profile.\n\nWorks on mobile now."}
-                    rows={6}
-                    maxLength={4000}
-                    className={`${inputCls} resize-y leading-relaxed`}
-                    autoFocus
-                    disabled={aiLoading}
-                  />
-                  <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">
-                    A few lines is enough. The post can only claim what you write here — nothing is invented.
-                  </p>
-                </div>
-              )}
-
-              {aiError && <p className="text-xs text-[var(--err)]">{aiError}</p>}
-              {aiLoading && (
-                <p className="text-xs text-[var(--foreground-muted)] animate-pulse">
-                  {aiMode === "url"
-                    ? "Reading article and writing post — this takes about 10 seconds..."
-                    : "Writing the post — this takes about 10 seconds..."}
-                </p>
-              )}
-            </div>
-            <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3">
-              <button
-                onClick={handleAiGenerate}
-                disabled={!aiInputReady || aiLoading}
-                className={`${btn("primary")} flex-1`}
-              >
-                {aiLoading ? "Generating..." : "Generate post"}
-              </button>
-              <button
-                onClick={() => setShowAiModal(false)}
-                disabled={aiLoading}
-                className={btn("ghost")}
-              >
-                Cancel
-              </button>
-            </div>
+            {/* Locked while generating, like Cancel: a reply landing after the
+                modal closed would overwrite whatever post is open by then. */}
+            <button
+              onClick={() => setShowAiModal(false)}
+              disabled={aiLoading}
+              className={BTN_ICON}
+              aria-label="Close"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
-        </div>
+          <div className="px-6 py-5 flex flex-col gap-4">
+            {/* Mode switch — the two modes run different prompts and pick from
+                different halves of the taxonomy, so the choice is explicit. */}
+            <div
+              role="tablist"
+              aria-label="Draft source"
+              className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
+            >
+              {([
+                { id: "url" as const, label: "From URL" },
+                { id: "brief" as const, label: "From brief" },
+              ]).map((m) => (
+                <button
+                  key={m.id}
+                  role="tab"
+                  aria-selected={aiMode === m.id}
+                  onClick={() => { setAiMode(m.id); setAiError(""); }}
+                  disabled={aiLoading}
+                  className="px-5 py-2 text-[13px] font-medium rounded-full transition-colors duration-200 disabled:opacity-40"
+                  style={
+                    aiMode === m.id
+                      ? { background: "var(--foreground)", color: "var(--surface)" }
+                      : { color: "var(--foreground-muted)" }
+                  }
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            {aiMode === "url" ? (
+              <div>
+                <label className={labelCls}>URL</label>
+                <input
+                  type="url"
+                  value={aiUrl}
+                  onChange={(e) => setAiUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
+                  placeholder="https://vogue.com/article/..."
+                  className={inputCls}
+                  autoFocus
+                  disabled={aiLoading}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className={labelCls}>Brief</label>
+                <textarea
+                  value={aiBrief}
+                  onChange={(e) => setAiBrief(e.target.value)}
+                  placeholder={"Shipped the new outfit builder: drag and drop, up to 6 items per look, saves to your profile.\n\nWorks on mobile now."}
+                  rows={6}
+                  maxLength={4000}
+                  className={`${inputCls} resize-y leading-relaxed`}
+                  autoFocus
+                  disabled={aiLoading}
+                />
+                <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">
+                  A few lines is enough. The post can only claim what you write here — nothing is invented.
+                </p>
+              </div>
+            )}
+
+            {aiError && <p className="text-xs text-[var(--err)]">{aiError}</p>}
+            {aiLoading && (
+              <p className="text-xs text-[var(--foreground-muted)] animate-pulse">
+                {aiMode === "url"
+                  ? "Reading article and writing post — this takes about 10 seconds..."
+                  : "Writing the post — this takes about 10 seconds..."}
+              </p>
+            )}
+          </div>
+          <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3">
+            <button
+              onClick={handleAiGenerate}
+              disabled={!aiInputReady || aiLoading}
+              className={`${btn("primary")} flex-1`}
+            >
+              {aiLoading ? "Generating..." : "Generate post"}
+            </button>
+            <button
+              onClick={() => setShowAiModal(false)}
+              disabled={aiLoading}
+              className={btn("ghost")}
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={editingId ? "Edit Post" : "New Post"}
-            className="rounded-2xl border border-[var(--border)] w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden"
-            style={{ background: "var(--surface)" }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-[var(--border)] shrink-0">
-              <div className="min-w-0">
-                <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                  {editingId ? "Edit Post" : "New Post"}
-                </h2>
-                <p className="text-[12px] text-[var(--foreground-subtle)] mt-1 font-mono break-all">
-                  /blog/{previewSlug}
-                </p>
-              </div>
-              <button
-                onClick={closeModal}
-                className={`${BTN_ICON} shrink-0`}
-                aria-label="Close"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M3 3L13 13M13 3L3 13"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
+        <Modal
+          onClose={closeModal}
+          label={editingId ? "Edit Post" : "New Post"}
+          panelClassName="rounded-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden"
+          closeOnScrim={false}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-[var(--border)] shrink-0">
+            <div className="min-w-0">
+              <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+                {editingId ? "Edit Post" : "New Post"}
+              </h2>
+              <p className="text-[12px] text-[var(--foreground-subtle)] mt-1 font-mono break-all">
+                /blog/{previewSlug}
+              </p>
+            </div>
+            <button
+              onClick={closeModal}
+              className={`${BTN_ICON} shrink-0`}
+              aria-label="Close"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M3 3L13 13M13 3L3 13"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-5 flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            {/* Title */}
+            <div>
+              <label className={labelCls}>Title *</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="Post title"
+                className={`${fieldBase} text-base`}
+                autoFocus
+              />
             </div>
 
-            {/* Body */}
-            <div className="px-6 py-5 flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
-              {/* Title */}
-              <div>
-                <label className={labelCls}>Title *</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="Post title"
-                  className={`${fieldBase} text-base`}
-                  autoFocus
-                />
-              </div>
-
-              {/* Cover image + preview */}
-              <div>
-                <label className={labelCls}>Cover image URL</label>
-                <input
-                  type="url"
-                  value={form.coverImageUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, coverImageUrl: e.target.value }))}
-                  placeholder="https://..."
-                  className={inputCls}
-                />
-                {form.coverImageUrl && (
-                  <div className="mt-2 relative w-full max-w-xs aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border)]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={form.coverImageUrl}
-                      alt="Cover preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Excerpt */}
-              <div>
-                <label className={labelCls}>
-                  Excerpt
-                  <span className="text-[var(--foreground-subtle)] font-normal ml-2">
-                    (short summary)
-                  </span>
-                </label>
-                <textarea
-                  value={form.excerpt}
-                  onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
-                  placeholder="One or two sentences describing the post."
-                  rows={2}
-                  className={`${inputCls} resize-y`}
-                />
-              </div>
-
-              {/* Body */}
-              <div>
-                <label className={labelCls}>
-                  Article body
-                  <span className="text-[var(--foreground-subtle)] font-normal ml-2">
-                    — plain text works. HTML is supported too.
-                  </span>
-                </label>
-                <textarea
-                  value={form.body}
-                  onChange={(e) => handleBodyChange(e.target.value)}
-                  placeholder={
-                    "Write your article here.\n\nLeave a blank line between paragraphs.\n\nFor headings or links, use HTML: <h2>Heading</h2> or <a href=\"...\">link</a>."
-                  }
-                  rows={14}
-                  className={`${inputCls} resize-y leading-relaxed`}
-                />
-                {form.body && (
-                  <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">
-                    ≈ {estimateReadTime(form.body)} read
-                  </p>
-                )}
-              </div>
-
-              {/* Publish toggle */}
-              <div className="flex items-center gap-3 py-1">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={form.isPublished}
-                  aria-label="Published"
-                  onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                    form.isPublished ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface)] transition-transform ${
-                      form.isPublished ? "translate-x-6" : "translate-x-1"
-                    }`}
+            {/* Cover image + preview */}
+            <div>
+              <label className={labelCls}>Cover image URL</label>
+              <input
+                type="url"
+                value={form.coverImageUrl}
+                onChange={(e) => setForm((f) => ({ ...f, coverImageUrl: e.target.value }))}
+                placeholder="https://..."
+                className={inputCls}
+              />
+              {form.coverImageUrl && (
+                <div className="mt-2 relative w-full max-w-xs aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.coverImageUrl}
+                    alt="Cover preview"
+                    className="w-full h-full object-cover"
                   />
-                </button>
-                <div>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {form.isPublished ? "Published" : "Draft"}
-                  </p>
-                  <p className="text-[11px] text-[var(--foreground-muted)]">
-                    {form.isPublished
-                      ? "Visible to everyone on /blog."
-                      : "Hidden from the public site."}
-                  </p>
                 </div>
-              </div>
-
-              {/* ── Advanced section ───────────────────────────────────── */}
-              <div className="border-t border-[var(--border)] pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvanced((v) => !v)}
-                  className="flex items-center gap-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 10 10"
-                    fill="none"
-                    className={`transition-transform ${showAdvanced ? "rotate-90" : ""}`}
-                  >
-                    <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  Advanced options
-                </button>
-                {showAdvanced && (
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="md:col-span-2">
-                      <label className={labelCls}>
-                        Slug
-                        <span className="text-[var(--foreground-subtle)] font-normal ml-2">
-                          {autoSlug ? "(auto from title)" : "(manual)"}
-                        </span>
-                      </label>
-                      <input
-                        type="text"
-                        value={form.slug}
-                        onChange={(e) => {
-                          setAutoSlug(false);
-                          setForm((f) => ({ ...f, slug: slugify(e.target.value) }));
-                        }}
-                        placeholder="post-slug"
-                        className={`${inputCls} font-mono`}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Category</label>
-                      <input
-                        list="blog-categories"
-                        type="text"
-                        value={form.category}
-                        onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                        placeholder="e.g. Style Guide"
-                        className={inputCls}
-                      />
-                      <datalist id="blog-categories">
-                        {BLOG_CATEGORIES.map((c) => (
-                          <option key={c.name} value={c.name}>
-                            {c.blurb}
-                          </option>
-                        ))}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className={labelCls}>
-                        Read time
-                        <span className="text-[var(--foreground-subtle)] font-normal ml-2">
-                          {autoReadTime ? "(auto)" : "(manual)"}
-                        </span>
-                      </label>
-                      <input
-                        type="text"
-                        value={form.readTime}
-                        onChange={(e) => {
-                          setAutoReadTime(false);
-                          setForm((f) => ({ ...f, readTime: e.target.value }));
-                        }}
-                        placeholder="5 min"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Author</label>
-                      <input
-                        type="text"
-                        value={form.authorName}
-                        onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))}
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Publish date override</label>
-                      <input
-                        type="datetime-local"
-                        value={form.publishedAt}
-                        onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.value }))}
-                        className={inputCls}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* ── SEO section ────────────────────────────────────────── */}
-              <div className="border-t border-[var(--border)] pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowSeo((v) => !v)}
-                  className="flex items-center gap-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 10 10"
-                    fill="none"
-                    className={`transition-transform ${showSeo ? "rotate-90" : ""}`}
-                  >
-                    <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  SEO overrides
-                  <span className="text-[var(--foreground-subtle)] font-normal ml-1">
-                    (optional)
-                  </span>
-                </button>
-                {showSeo && (
-                  <div className="mt-4 flex flex-col gap-3">
-                    <div>
-                      <label className={labelCls}>Meta title</label>
-                      <input
-                        type="text"
-                        value={form.metaTitle}
-                        onChange={(e) => setForm((f) => ({ ...f, metaTitle: e.target.value }))}
-                        placeholder={`${form.title || "Post title"} — GOO Journal`}
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Meta description</label>
-                      <textarea
-                        value={form.metaDescription}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, metaDescription: e.target.value }))
-                        }
-                        placeholder="Defaults to excerpt. Keep under 160 characters."
-                        rows={2}
-                        className={`${inputCls} resize-y`}
-                      />
-                      <p className="mt-1 text-[12px] text-[var(--foreground-subtle)]">
-                        {(form.metaDescription || form.excerpt).length} / 160
-                      </p>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Open Graph image URL</label>
-                      <input
-                        type="url"
-                        value={form.ogImage}
-                        onChange={(e) => setForm((f) => ({ ...f, ogImage: e.target.value }))}
-                        placeholder="Defaults to cover image."
-                        className={inputCls}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {saveError && (
-                <p className="text-xs text-[var(--err)]">{saveError}</p>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3 shrink-0">
-              <button
-                onClick={handleSave}
-                disabled={!form.title.trim() || saving}
-                className={`${btn("primary")} flex-1`}
-              >
-                {saving
-                  ? "Saving..."
-                  : editingId
-                  ? "Save changes"
-                  : form.isPublished
-                  ? "Publish post"
-                  : "Save draft"}
-              </button>
-              <button
-                onClick={closeModal}
-                className={btn("ghost")}
-              >
-                Cancel
-              </button>
+            {/* Excerpt */}
+            <div>
+              <label className={labelCls}>
+                Excerpt
+                <span className="text-[var(--foreground-subtle)] font-normal ml-2">
+                  (short summary)
+                </span>
+              </label>
+              <textarea
+                value={form.excerpt}
+                onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
+                placeholder="One or two sentences describing the post."
+                rows={2}
+                className={`${inputCls} resize-y`}
+              />
             </div>
+
+            {/* Body */}
+            <div>
+              <label className={labelCls}>
+                Article body
+                <span className="text-[var(--foreground-subtle)] font-normal ml-2">
+                  — plain text works. HTML is supported too.
+                </span>
+              </label>
+              <textarea
+                value={form.body}
+                onChange={(e) => handleBodyChange(e.target.value)}
+                placeholder={
+                  "Write your article here.\n\nLeave a blank line between paragraphs.\n\nFor headings or links, use HTML: <h2>Heading</h2> or <a href=\"...\">link</a>."
+                }
+                rows={14}
+                className={`${inputCls} resize-y leading-relaxed`}
+              />
+              {form.body && (
+                <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">
+                  ≈ {estimateReadTime(form.body)} read
+                </p>
+              )}
+            </div>
+
+            {/* Publish toggle */}
+            <div className="flex items-center gap-3 py-1">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.isPublished}
+                aria-label="Published"
+                onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                  form.isPublished ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface)] transition-transform ${
+                    form.isPublished ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              <div>
+                <p className="text-sm text-[var(--foreground)]">
+                  {form.isPublished ? "Published" : "Draft"}
+                </p>
+                <p className="text-[11px] text-[var(--foreground-muted)]">
+                  {form.isPublished
+                    ? "Visible to everyone on /blog."
+                    : "Hidden from the public site."}
+                </p>
+              </div>
+            </div>
+
+            {/* ── Advanced section ───────────────────────────────────── */}
+            <div className="border-t border-[var(--border)] pt-4">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((v) => !v)}
+                className="flex items-center gap-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  className={`transition-transform ${showAdvanced ? "rotate-90" : ""}`}
+                >
+                  <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Advanced options
+              </button>
+              {showAdvanced && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="md:col-span-2">
+                    <label className={labelCls}>
+                      Slug
+                      <span className="text-[var(--foreground-subtle)] font-normal ml-2">
+                        {autoSlug ? "(auto from title)" : "(manual)"}
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.slug}
+                      onChange={(e) => {
+                        setAutoSlug(false);
+                        setForm((f) => ({ ...f, slug: slugify(e.target.value) }));
+                      }}
+                      placeholder="post-slug"
+                      className={`${inputCls} font-mono`}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Category</label>
+                    <input
+                      list="blog-categories"
+                      type="text"
+                      value={form.category}
+                      onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                      placeholder="e.g. Style Guide"
+                      className={inputCls}
+                    />
+                    <datalist id="blog-categories">
+                      {BLOG_CATEGORIES.map((c) => (
+                        <option key={c.name} value={c.name}>
+                          {c.blurb}
+                        </option>
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className={labelCls}>
+                      Read time
+                      <span className="text-[var(--foreground-subtle)] font-normal ml-2">
+                        {autoReadTime ? "(auto)" : "(manual)"}
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.readTime}
+                      onChange={(e) => {
+                        setAutoReadTime(false);
+                        setForm((f) => ({ ...f, readTime: e.target.value }));
+                      }}
+                      placeholder="5 min"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Author</label>
+                    <input
+                      type="text"
+                      value={form.authorName}
+                      onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Publish date override</label>
+                    <input
+                      type="datetime-local"
+                      value={form.publishedAt}
+                      onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.value }))}
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── SEO section ────────────────────────────────────────── */}
+            <div className="border-t border-[var(--border)] pt-4">
+              <button
+                type="button"
+                onClick={() => setShowSeo((v) => !v)}
+                className="flex items-center gap-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  className={`transition-transform ${showSeo ? "rotate-90" : ""}`}
+                >
+                  <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                SEO overrides
+                <span className="text-[var(--foreground-subtle)] font-normal ml-1">
+                  (optional)
+                </span>
+              </button>
+              {showSeo && (
+                <div className="mt-4 flex flex-col gap-3">
+                  <div>
+                    <label className={labelCls}>Meta title</label>
+                    <input
+                      type="text"
+                      value={form.metaTitle}
+                      onChange={(e) => setForm((f) => ({ ...f, metaTitle: e.target.value }))}
+                      placeholder={`${form.title || "Post title"} — GOO Journal`}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Meta description</label>
+                    <textarea
+                      value={form.metaDescription}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, metaDescription: e.target.value }))
+                      }
+                      placeholder="Defaults to excerpt. Keep under 160 characters."
+                      rows={2}
+                      className={`${inputCls} resize-y`}
+                    />
+                    <p className="mt-1 text-[12px] text-[var(--foreground-subtle)]">
+                      {(form.metaDescription || form.excerpt).length} / 160
+                    </p>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Open Graph image URL</label>
+                    <input
+                      type="url"
+                      value={form.ogImage}
+                      onChange={(e) => setForm((f) => ({ ...f, ogImage: e.target.value }))}
+                      placeholder="Defaults to cover image."
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {saveError && (
+              <p className="text-xs text-[var(--err)]">{saveError}</p>
+            )}
           </div>
-        </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3 shrink-0">
+            <button
+              onClick={handleSave}
+              disabled={!form.title.trim() || saving}
+              className={`${btn("primary")} flex-1`}
+            >
+              {saving
+                ? "Saving..."
+                : editingId
+                ? "Save changes"
+                : form.isPublished
+                ? "Publish post"
+                : "Save draft"}
+            </button>
+            <button
+              onClick={closeModal}
+              className={btn("ghost")}
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

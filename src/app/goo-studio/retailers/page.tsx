@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { storeFaviconUrl } from "@/lib/stores";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { SidePanel } from "@/components/admin/SidePanel";
 import { btn } from "../_ui/recipes";
 
 type StoreGender = "" | "men" | "women" | "unisex";
@@ -94,6 +96,8 @@ export default function RetailersPage() {
   const [loadError, setLoadError] = useState("");
 
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  /** The rule form is open in the side panel (GS4-5). */
+  const [panelOpen, setPanelOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -103,10 +107,8 @@ export default function RetailersPage() {
   /** A row action (Apply, Delete) that failed — red, apart from the grey result line. */
   const [actionError, setActionError] = useState("");
 
-  const editorRef = useRef<HTMLDivElement>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-
   const confirm = useConfirm();
+  const toast = useToast();
   const help = useHelp("retailers");
   const genderHelp = useHelp("retailers-gender");
 
@@ -132,18 +134,15 @@ export default function RetailersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  /** A new rule in the side panel; from a row of the second table, with its domain and current name filled in. */
   const startNew = (domain = "", name = "") => {
     setEditingDomain(null);
     setDraft({ ...EMPTY_DRAFT, domain, name });
     setFormError("");
+    setPanelOpen(true);
   };
 
-  /** The editor sits above both tables; a row button that fills it brings it into view. */
-  const revealEditor = () => {
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    editorRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-    nameInputRef.current?.focus({ preventScroll: true });
-  };
+  const closePanel = () => setPanelOpen(false);
 
   const startEdit = (rule: RetailerRule) => {
     setEditingDomain(rule.domain);
@@ -155,7 +154,7 @@ export default function RetailersPage() {
       note: rule.note ?? "",
     });
     setFormError("");
-    revealEditor();
+    setPanelOpen(true);
   };
 
   // A new rule typed for a domain that already has one would silently replace
@@ -184,6 +183,8 @@ export default function RetailersPage() {
         setFormError(json?.error || `Save failed (${res.status})`);
         return;
       }
+      toast.ok(`Rule for ${domainKey(draft.domain)} saved.`);
+      setPanelOpen(false);
       setDraft(EMPTY_DRAFT);
       setEditingDomain(null);
       await load();
@@ -210,7 +211,7 @@ export default function RetailersPage() {
         setActionError(`${domain}: ${json?.error || `delete failed (${res.status})`}`);
         return;
       }
-      if (editingDomain === domain) { setEditingDomain(null); setDraft(EMPTY_DRAFT); }
+      if (editingDomain === domain) { setPanelOpen(false); setEditingDomain(null); setDraft(EMPTY_DRAFT); }
       await load();
     } catch {
       setActionError(`${domain}: could not reach the server.`);
@@ -271,10 +272,23 @@ export default function RetailersPage() {
   const unruled = (report?.discovered ?? []).filter((d) => !d.ruledBy);
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center gap-2">
-        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Retailers</h1>
-        <HelpButton help={help} label="How retailer rules work" />
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Retailers</h1>
+          <HelpButton help={help} label="How retailer rules work" />
+        </div>
+        <button
+          onClick={() => startNew()}
+          disabled={!!report?.tableMissing}
+          title={report?.tableMissing ? report.setupHint ?? "" : undefined}
+          className={btn("primary")}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          Add rule
+        </button>
       </div>
       {help.open && (
         <div className="mt-2">
@@ -301,13 +315,27 @@ export default function RetailersPage() {
         <p className="text-[11px] text-[var(--err)] mt-6">{report.rulesError}</p>
       )}
 
-      {/* ── Editor ── */}
-      <div ref={editorRef} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mt-6 p-5 scroll-mt-6">
-        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-4">
-          {editingDomain ? `Edit ${editingDomain}` : "New rule"}
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* ── The rule form, in the side panel (GS4-5) ── */}
+      <SidePanel
+        open={panelOpen}
+        onClose={closePanel}
+        title={editingDomain ? `Edit ${editingDomain}` : "New rule"}
+        subtitle={editingDomain ? "Domain rule" : undefined}
+        footer={
+          <>
+            <button onClick={closePanel} className={btn("ghost")}>Cancel</button>
+            <button
+              onClick={save}
+              disabled={saving || !!report?.tableMissing || !draft.domain.trim() || !draft.name.trim()}
+              title={report?.tableMissing ? report.setupHint ?? "" : ""}
+              className={btn("primary")}
+            >
+              {saving ? "Saving…" : editingDomain ? "Save changes" : "Add rule"}
+            </button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
           <div>
             <label htmlFor="rd-domain" className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5">
               Domain
@@ -327,14 +355,13 @@ export default function RetailersPage() {
             </label>
             <input
               id="rd-name"
-              ref={nameInputRef}
               value={draft.name}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
               placeholder="Farfetch"
               className={INPUT}
             />
           </div>
-          <div className="md:col-span-2">
+          <div>
             <div className="flex items-center gap-1 mb-1.5">
               <label htmlFor="rd-gender" className="block text-[12px] font-medium text-[var(--foreground-muted)]">
                 Pieces the page doesn&apos;t mark are for
@@ -363,7 +390,7 @@ export default function RetailersPage() {
               </div>
             )}
           </div>
-          <div className="md:col-span-2">
+          <div>
             <label htmlFor="rd-note" className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5">
               Note
             </label>
@@ -375,44 +402,30 @@ export default function RetailersPage() {
               className={INPUT}
             />
           </div>
-        </div>
 
-        <label className="flex items-center gap-2 mt-4 cursor-pointer w-fit">
-          <input
-            type="checkbox"
-            checked={draft.isOfficial}
-            onChange={(e) => setDraft((d) => ({ ...d, isOfficial: e.target.checked }))}
-            className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-          />
-          <span className="text-sm text-[var(--foreground)]">This domain is the brand&apos;s official store</span>
-        </label>
+          <label className="flex items-center gap-2 cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={draft.isOfficial}
+              onChange={(e) => setDraft((d) => ({ ...d, isOfficial: e.target.checked }))}
+              className="w-4 h-4 accent-[var(--foreground)] cursor-pointer"
+            />
+            <span className="text-sm text-[var(--foreground)]">This domain is the brand&apos;s official store</span>
+          </label>
 
-        {existingRule && (
-          <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[13px] text-[var(--warn)] leading-relaxed">
-              {existingRule.domain} already has a rule (&ldquo;{existingRule.name}&rdquo;). Adding it again replaces
-              that rule&apos;s name, official flag, gender and note.
-            </p>
-            <button onClick={() => startEdit(existingRule)} className={btn("secondary")}>Edit that rule</button>
-          </div>
-        )}
-
-        {formError && <p className="text-[11px] text-[var(--err)] mt-3">{formError}</p>}
-
-        <div className="flex items-center gap-2 mt-4">
-          <button
-            onClick={save}
-            disabled={saving || !!report?.tableMissing || !draft.domain.trim() || !draft.name.trim()}
-            title={report?.tableMissing ? report.setupHint ?? "" : ""}
-            className={btn("primary")}
-          >
-            {saving ? "Saving…" : editingDomain ? "Save changes" : "Add rule"}
-          </button>
-          {(editingDomain || draft.domain || draft.name) && (
-            <button onClick={() => startNew()} className={btn("ghost")}>Cancel</button>
+          {existingRule && (
+            <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 flex flex-col items-start gap-3">
+              <p className="text-[13px] text-[var(--warn)] leading-relaxed">
+                {existingRule.domain} already has a rule (&ldquo;{existingRule.name}&rdquo;). Adding it again replaces
+                that rule&apos;s name, official flag, gender and note.
+              </p>
+              <button onClick={() => startEdit(existingRule)} className={btn("secondary")}>Edit that rule</button>
+            </div>
           )}
+
+          {formError && <p role="alert" className="text-[12px] text-[var(--err)]">{formError}</p>}
         </div>
-      </div>
+      </SidePanel>
 
       {applyResult && (
         <p className="text-[11px] text-[var(--foreground-muted)] mt-4">{applyResult}</p>
@@ -447,7 +460,7 @@ export default function RetailersPage() {
               </td></tr>
             ) : !report.rules.length ? (
               <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                No rules yet. Add one above, or pick a domain from the list below.
+                No rules yet. Add one, or pick a domain from the list below.
               </td></tr>
             ) : (
               report.rules.map((rule) => {
@@ -567,7 +580,7 @@ export default function RetailersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => { startNew(d.domain, d.currentNames[0] ?? ""); revealEditor(); }}
+                      onClick={() => startNew(d.domain, d.currentNames[0] ?? "")}
                       className={btn("secondary", "sm")}
                     >
                       Add rule

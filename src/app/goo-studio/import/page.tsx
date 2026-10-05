@@ -319,7 +319,7 @@ export default function CSVImportPage() {
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="font-display text-2xl font-light text-[var(--foreground)]">CSV Import</h1>
