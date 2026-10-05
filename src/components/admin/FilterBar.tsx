@@ -202,6 +202,49 @@ export function FilterMenu({
   );
 }
 
+export type ChipOption = { value: string; label: string; count?: number };
+
+/**
+ * One filter shown as chips with counts, when its few values are worth seeing
+ * at a glance: "All 14 · Free 9 · Basic 2 · Pro 1 · Premium 2" (Users), "All 8
+ * · Published 5 · Drafts 3" (Blog). Exactly one is on.
+ */
+export function FilterChips({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: ChipOption[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-1.5">
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(o.value)}
+            className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[13px] font-medium whitespace-nowrap transition-colors ${
+              on
+                ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--border-strong)]"
+            }`}
+          >
+            {o.label}
+            {o.count !== undefined && <span className="text-[12px] font-normal opacity-70 tabular-nums">{o.count.toLocaleString("en-US")}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export type ActiveFilter = { key: string; label: string; onRemove: () => void };
 
 export function ActiveFilters({

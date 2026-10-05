@@ -4,7 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "@/components/ui/Image";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
+import type { Key, T } from "@/app/goo-studio/_i18n";
+import { DataTable, EmptyState } from "@/components/admin/DataTable";
+import type { Column } from "@/components/admin/DataTable";
+import { ActiveFilters, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
+import { BulkBar } from "@/components/admin/BulkBar";
+import { RowMenu } from "@/components/admin/Menu";
+import type { MenuItem } from "@/components/admin/Menu";
+import { Badge } from "@/components/admin/Badge";
 
 const PAGE_SIZE = 25;
 
@@ -57,29 +66,20 @@ interface UserCounts {
   scanned: number;
 }
 
-interface BulkResult {
-  action: string;
-  ok: number;
-  total: number;
-  errors: string[];
-}
-
 const PLAN_OPTIONS = ["free", "basic", "pro", "premium"] as const;
-const STATUS_OPTIONS = ["all", "active", "banned", "locked"] as const;
-type StatusFilter = (typeof STATUS_OPTIONS)[number];
+type StatusFilter = "all" | "active" | "banned" | "locked";
+
+const STATUS_KEY: Record<Exclude<StatusFilter, "all">, Key> = {
+  active: "users.status.active",
+  banned: "users.status.banned",
+  locked: "users.status.locked",
+};
 
 const PLAN_LABEL: Record<string, string> = {
   free:    "Free",
   basic:   "Basic",
   pro:     "Pro",
   premium: "Premium",
-};
-
-const planBadge: Record<string, string> = {
-  free:    "rounded-full border border-[var(--border)] text-[var(--foreground-muted)]",
-  basic:   "rounded-full border border-[var(--border-strong)] text-[var(--foreground)]",
-  pro:     "rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]",
-  premium: "rounded-full bg-[var(--foreground)] text-[var(--surface)]",
 };
 
 function initials(first: string | null, last: string | null, email: string | null) {
@@ -177,14 +177,94 @@ const subStatusBadge: Record<string, string> = {
 const inputCls =
   "bg-transparent border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
 
-const filterBtnCls = (active: boolean) =>
-  `text-[12px] px-3 py-2.5 border rounded-full transition-colors duration-200 capitalize ${
-    active
-      ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
-      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
-  }`;
+/** A paid period that ended with no renewal after it: the account still has the plan. */
+function isOverdue(s: UserSubscription | null | undefined): s is UserSubscription {
+  return !!s && s.status === "active" && !!s.currentPeriodEnd && Date.parse(s.currentPeriodEnd) < Date.now();
+}
+
+/** "Sep 10" this year, "Sep 10, 2025" before it. */
+function fmtShortDate(iso: string): string {
+  const d = new Date(iso);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
+}
+
+/** The state worth a badge (ADMIN_DESIGN 5.4): none for an active account in good standing. */
+function statusBadge(u: UserRow, t: T) {
+  if (u.banned) return <Badge tone="err">{t("users.badge.banned")}</Badge>;
+  if (u.locked) return <Badge tone="warn">{t("users.badge.locked")}</Badge>;
+  if (u.subscription?.status === "past_due") return <Badge tone="err">{t("users.badge.pastDue")}</Badge>;
+  if (isOverdue(u.subscription)) return <Badge tone="warn">{t("users.badge.overdue")}</Badge>;
+  return null;
+}
+
+/**
+ * The plan in one line: "Free", "Basic · 399 ₴/mo", "Basic · 399 ₴/mo ·
+ * overdue since Sep 10". A paid plan with no subscription behind it was set by
+ * hand and says so.
+ */
+function PlanCell({ u, t }: { u: UserRow; t: T }) {
+  const s = u.subscription;
+  const name = PLAN_LABEL[u.plan] ?? u.plan;
+  const billed = s && s.status !== "canceled" ? s : null;
+  if (!billed) {
+    if (u.plan === "free") return <span className="text-[var(--foreground-muted)]">{name}</span>;
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        {name}
+        {/* From md: on a phone the column keeps to the plan's name. */}
+        <span className="hidden md:contents">
+          <Badge title={t("users.badge.manualHint")}>{t("users.badge.manual")}</Badge>
+        </span>
+      </span>
+    );
+  }
+  // What is billed: a payment still pending can be for a plan Clerk does not show yet.
+  const billedName = PLAN_LABEL[billed.plan] ?? billed.plan;
+  const problem =
+    billed.status === "past_due"
+      ? { text: t("users.sub.pastDue"), tone: "text-[var(--err)]" }
+      : billed.status === "pending"
+        ? { text: t("users.sub.pending", { date: fmtShortDate(billed.startedAt) }), tone: "" }
+        : isOverdue(billed)
+          ? { text: t("users.sub.overdue", { date: fmtShortDate(billed.currentPeriodEnd!) }), tone: "text-[var(--warn)]" }
+          : null;
+  // On a phone the column keeps to the plan's name, and the badge under the
+  // user's name carries the problem.
+  return (
+    <span className={problem?.tone}>
+      {billedName}
+      <span className="hidden md:inline">
+        {" "}
+        · {t("users.sub.perMonth", { amount: billed.amountUah })}
+        {problem && <> · {problem.text}</>}
+      </span>
+    </span>
+  );
+}
+
+function Avatar({ u }: { u: UserRow }) {
+  if (u.imageUrl) {
+    return <Image src={u.imageUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />;
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className="w-8 h-8 flex-shrink-0 rounded-full inline-flex items-center justify-center text-[11px] font-semibold text-[var(--foreground)] bg-[var(--fg-overlay-08)]"
+    >
+      {initials(u.firstName, u.lastName, u.email)}
+    </span>
+  );
+}
+
+const PENCIL = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M11 2.5L13.5 5 6 12.5l-3 .5.5-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+  </svg>
+);
 
 export default function AdminUsersPage() {
+  const t = useT();
   const confirm = useConfirm();
   const toast = useToast();
   const [currentIsSuperAdmin, setCurrentIsSuperAdmin] = useState(false);
@@ -216,8 +296,8 @@ export default function AdminUsersPage() {
   // (only the current page is loaded) and confirms can see subscriptions.
   const [selected, setSelected] = useState<Map<string, UserRow>>(new Map());
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkPlan, setBulkPlan] = useState<typeof PLAN_OPTIONS[number]>("free");
-  const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
+  /** Failures of the last bulk run, one line per user; the users stay selected. */
+  const [bulkErrors, setBulkErrors] = useState<string[]>([]);
 
   // Ignores responses that arrive after a newer request was sent.
   const loadSeq = useRef(0);
@@ -276,13 +356,13 @@ export default function AdminUsersPage() {
   // Reset page when filters change
   useEffect(() => { setPage(0); setSelected(new Map()); }, [search, planFilter, statusFilter]);
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-
   const selectableOnPage = users.filter((u) => !u.isSuperAdmin);
   const allOnPageSelected = selectableOnPage.length > 0 && selectableOnPage.every((u) => selected.has(u.id));
   const someOnPageSelected = selectableOnPage.some((u) => selected.has(u.id));
 
-  const toggleSelect = (u: UserRow) => {
+  const toggleSelect = (id: string) => {
+    const u = users.find((x) => x.id === id);
+    if (!u) return;
     setSelected((prev) => {
       const next = new Map(prev);
       if (next.has(u.id)) next.delete(u.id); else next.set(u.id, u);
@@ -314,7 +394,7 @@ export default function AdminUsersPage() {
    */
   const runBulk = async (action: string, rows: UserRow[], request: (id: string) => Promise<Response>) => {
     setBulkLoading(true);
-    setBulkResult(null);
+    setBulkErrors([]);
     try {
       const results = await Promise.allSettled(
         rows.map(async (u) => {
@@ -330,7 +410,13 @@ export default function AdminUsersPage() {
           errors.push(`${rowLabel(rows[i])}: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
         }
       });
-      setBulkResult({ action, ok: rows.length - failed.size, total: rows.length, errors });
+      const vars = { action, ok: rows.length - failed.size, total: rows.length };
+      if (errors.length) {
+        toast.err(t("users.bulk.failed", vars));
+        setBulkErrors(errors);
+      } else {
+        toast.ok(t("users.bulk.done", vars));
+      }
       setSelected((prev) => new Map([...prev].filter(([id]) => failed.has(id))));
     } finally {
       setBulkLoading(false);
@@ -348,17 +434,16 @@ export default function AdminUsersPage() {
   const bulkBan = async (ban: boolean) => {
     const rows = safeSelected();
     if (!rows.length) return;
-    const verb = ban ? "Ban" : "Unban";
-    const who = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
+    const count = rows.length;
     if (!(await confirm({
-      title: `${verb} ${who}?`,
-      confirmLabel: `${verb} ${who}`,
+      title: t(ban ? "users.confirm.ban" : "users.confirm.unban", { count }),
+      confirmLabel: t(ban ? "users.confirm.banAction" : "users.confirm.unbanAction", { count }),
       tone: ban ? "danger" : undefined,
     }))) return;
-    await runBulk(ban ? "Ban" : "Unban", rows, patchUser({ banned: ban }));
+    await runBulk(t(ban ? "users.bulk.ban" : "users.bulk.unban"), rows, patchUser({ banned: ban }));
   };
 
-  const bulkSetPlan = async () => {
+  const bulkSetPlan = async (plan: typeof PLAN_OPTIONS[number]) => {
     const rows = safeSelected();
     if (!rows.length) return;
     const paying = rows.filter((u) => liveSubscription(u.subscription));
@@ -367,13 +452,14 @@ export default function AdminUsersPage() {
       ? `${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
         `${PLAN_BILLING_NOTE}${renewing ? ` ${RENEWAL_NOTE}` : ""}`
       : "";
-    const who = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
+    const count = rows.length;
+    const planName = PLAN_LABEL[plan];
     if (!(await confirm({
-      title: `Set plan to "${bulkPlan}" for ${who}?`,
+      title: t("users.confirm.plan", { plan: planName, count }),
       body: warn || undefined,
-      confirmLabel: `Set plan for ${who}`,
+      confirmLabel: t("users.confirm.planAction", { count }),
     }))) return;
-    await runBulk(`Plan → ${bulkPlan}`, rows, patchUser({ plan: bulkPlan }));
+    await runBulk(t("users.bulk.planDone", { plan: planName }), rows, patchUser({ plan }));
   };
 
   const bulkDelete = async () => {
@@ -384,26 +470,41 @@ export default function AdminUsersPage() {
       ? ` ${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
         "Auto-renew is turned off before each account is deleted, so saved cards are not charged again."
       : "";
-    const who = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
+    const count = rows.length;
     if (!(await confirm({
-      title: `Permanently delete ${who}?`,
-      body: `This cannot be undone.${warn}`,
-      confirmLabel: `Delete ${who}`,
+      title: t("users.confirm.delete", { count }),
+      body: `${t("users.confirm.deleteBody")}${warn}`,
+      confirmLabel: t("users.confirm.deleteAction", { count }),
       tone: "danger",
     }))) return;
-    await runBulk("Delete", rows, (id) => fetch(`/api/admin/users/${id}`, { method: "DELETE" }));
+    await runBulk(t("users.bulk.deleteDone"), rows, (id) => fetch(`/api/admin/users/${id}`, { method: "DELETE" }));
+  };
+
+  const banOne = async (u: UserRow, ban: boolean) => {
+    if (!(await confirm({
+      title: t(ban ? "users.confirm.banOne" : "users.confirm.unbanOne", { name: rowLabel(u) }),
+      confirmLabel: t(ban ? "users.row.ban" : "users.row.unban"),
+      tone: ban ? "danger" : undefined,
+    }))) return;
+    const res = await patchUser({ banned: ban })(u.id);
+    if (!res.ok) {
+      toast.err((await res.json().catch(() => ({}))).error || t("users.saveFailed"));
+      return;
+    }
+    toast.ok(t(ban ? "users.banned" : "users.unbanned", { name: rowLabel(u) }));
+    refresh();
   };
 
   const handleDelete = async (u: UserRow) => {
     if (!(await confirm({
-      title: `Delete ${rowLabel(u)}?`,
+      title: t("users.confirm.deleteOne", { name: rowLabel(u) }),
       body: `This permanently removes the Clerk account.${deleteSubscriptionWarning(u.subscription)}`,
-      confirmLabel: "Delete user",
+      confirmLabel: t("users.confirm.deleteOneAction"),
       tone: "danger",
     }))) return;
     const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
     if (!res.ok) {
-      toast.err((await res.json().catch(() => ({}))).error || "Failed to delete");
+      toast.err((await res.json().catch(() => ({}))).error || t("users.deleteFailed"));
       return;
     }
     setSelected((prev) => { const next = new Map(prev); next.delete(u.id); return next; });
@@ -416,355 +517,230 @@ export default function AdminUsersPage() {
     loadCounts();
   };
 
+  // ── Filters ───────────────────────────────────────────────────────────────
+
+  const planChips = [
+    { value: "all", label: t("filter.all"), count: counts?.total },
+    ...PLAN_OPTIONS.map((p) => ({ value: p, label: PLAN_LABEL[p], count: counts?.[p] })),
+  ];
+
+  const statusOptions = (["active", "banned", "locked"] as const).map((s) => ({ value: s, label: t(STATUS_KEY[s]) }));
+
+  const activeFilters = [
+    ...(planFilter !== "all"
+      ? [{ key: "plan", label: `${t("users.col.plan")}: ${PLAN_LABEL[planFilter]}`, onRemove: () => setPlanFilter("all") }]
+      : []),
+    ...(statusFilter !== "all"
+      ? [{ key: "status", label: `${t("users.f.status")}: ${t(STATUS_KEY[statusFilter])}`, onRemove: () => setStatusFilter("all") }]
+      : []),
+  ];
+  const filtered = search !== "" || activeFilters.length > 0;
+
+  // ── Table ─────────────────────────────────────────────────────────────────
+
+  const rowItems = (u: UserRow): MenuItem[] => [
+    // Also an icon beside the menu, and the row's own click; on a phone the
+    // icon gives its room to the name.
+    { label: t("users.row.openShort"), onSelect: () => setSelectedId(u.id) },
+    { label: t(u.banned ? "users.row.unban" : "users.row.ban"), onSelect: () => void banOne(u, !u.banned) },
+    { kind: "separator" },
+    { label: t("users.row.delete"), onSelect: () => void handleDelete(u), tone: "danger" },
+  ];
+
+  const columns: Column<UserRow>[] = [
+    {
+      key: "user",
+      header: t("users.col.user"),
+      grow: true,
+      cell: (u) => {
+        const named = !!(u.firstName || u.lastName);
+        const name = [u.firstName, u.lastName].filter(Boolean).join(" ");
+        return (
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar u={u} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={`font-medium truncate ${named ? "" : "text-[var(--foreground-muted)]"}`} title={named ? name : undefined}>
+                  {named ? name : t("users.noName")}
+                </span>
+                {/* Badges by the name from md; on a phone the name needs the
+                    room, and the state that needs action moves under it. */}
+                <span className="hidden md:contents">
+                  {(u.isSuperAdmin || u.isAdmin) && <Badge>{t(u.isSuperAdmin ? "users.badge.superAdmin" : "users.badge.team")}</Badge>}
+                  {statusBadge(u, t)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0 text-[12px] text-[var(--foreground-muted)]">
+                <span className="md:hidden contents">{statusBadge(u, t)}</span>
+                <span className="truncate" title={u.email ?? undefined}>
+                  {u.email ?? "—"}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      },
+    },
+    { key: "plan", header: t("users.col.plan"), cell: (u) => <PlanCell u={u} t={t} /> },
+    {
+      key: "joined",
+      header: t("users.col.joined"),
+      hide: "md",
+      cell: (u) => <span className="text-[var(--foreground-muted)]">{fmtDate(u.createdAt)}</span>,
+    },
+    {
+      key: "active",
+      header: t("users.col.lastActive"),
+      hide: "md",
+      cell: (u) => <span className="text-[var(--foreground-muted)]">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</span>,
+    },
+  ];
+
+  const subtitle = [
+    counts ? t("users.count", { count: counts.total }) : null,
+    counts?.banned ? t("users.bannedCount", { count: counts.banned }) : null,
+    counts?.partial ? t("users.countsPartial", { count: counts.scanned }) : null,
+  ].filter(Boolean);
+
   return (
     <div>
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Users</h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-1">
-            {counts ? counts.total.toLocaleString() : "—"} registered
-            {error ? <span className="text-[var(--err)]"> · {error}</span> : null}
-            {countsError ? <span className="text-[var(--err)]"> · counts unavailable: {countsError}</span> : null}
-            {subsError ? <span className="text-[var(--err)]"> · subscription data unavailable: {subsError}</span> : null}
+          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">{t("nav.users")}</h1>
+          <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
+            {subtitle.length ? subtitle.join(" · ") : "—"}
+            {countsError ? <span className="text-[var(--err)]"> · {t("users.countsFailed", { error: countsError })}</span> : null}
+            {subsError ? <span className="text-[var(--err)]"> · {t("users.subsFailed", { error: subsError })}</span> : null}
           </p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className={btn("secondary")}
-        >
-          {loading ? "Loading…" : "Refresh"}
+        <button onClick={refresh} disabled={loading} className={btn("secondary")}>
+          {loading ? t("common.loading") : t("users.refresh")}
         </button>
       </div>
 
-      {/* Stats — 6 cards in a 3-col / 6-col grid. Counted server-side across
-          all users; if Clerk holds more than the server scans, say so. */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        {[
-          { label: "Total",   value: counts?.total,   note: "registered" },
-          { label: "Premium", value: counts?.premium, note: "subscribers" },
-          { label: "Pro",     value: counts?.pro,     note: "subscribers" },
-          { label: "Basic",   value: counts?.basic,   note: "subscribers" },
-          { label: "Free",    value: counts?.free,    note: "accounts" },
-          { label: "Banned",  value: counts?.banned,  note: "suspended" },
-        ].map((s) => (
-          <div key={s.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
-            <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-2">{s.label}</p>
-            <p className="font-display text-3xl font-light text-[var(--foreground)]">{s.value === undefined ? "—" : s.value.toLocaleString()}</p>
-            <p className="text-[12px] text-[var(--foreground-muted)] mt-1">
-              {counts?.partial && s.label !== "Total" ? `of newest ${counts.scanned.toLocaleString()}` : s.note}
-            </p>
-          </div>
-        ))}
+      {/* Search, the plans as chips with their counts (they were six cards),
+          and the state. Counted on the server across all users. */}
+      <div className="mb-4 flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchField value={search} onChange={setSearch} placeholder={t("users.search.placeholder")} label={t("users.search.label")} />
+          <FilterChips
+            label={t("users.col.plan")}
+            value={planFilter}
+            options={planChips}
+            onChange={(v) => setPlanFilter(v as typeof planFilter)}
+          />
+          <FilterMenu
+            label={t("users.f.status")}
+            value={statusFilter === "all" ? "" : statusFilter}
+            options={statusOptions}
+            onChange={(v) => setStatusFilter((v || "all") as StatusFilter)}
+            allLabel={t("users.status.any")}
+          />
+        </div>
+        {filtered && (
+          <ActiveFilters
+            filters={activeFilters}
+            onClearAll={() => {
+              setPlanFilter("all");
+              setStatusFilter("all");
+            }}
+            count={loading ? null : t("users.found", { count: total })}
+          />
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 mb-6">
-        {/* Search */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-xs">
-            <input
-              type="text"
-              placeholder="Search by name or email…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={inputCls + " w-full pr-10 md:pr-8"}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-0 md:right-3 top-1/2 -translate-y-1/2 w-10 h-10 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)]"
-                aria-label="Clear search"
-              >×</button>
-            )}
-          </div>
-        </div>
-        {/* Plan filter */}
-        <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-[12px] font-medium text-[var(--foreground-muted)] mr-1">Plan</span>
-          {(["all", ...PLAN_OPTIONS] as const).map((p) => (
-            <button key={p} onClick={() => setPlanFilter(p)} className={filterBtnCls(planFilter === p)}>
-              {p}
-            </button>
-          ))}
-        </div>
-        {/* Status filter */}
-        <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-[12px] font-medium text-[var(--foreground-muted)] mr-1">Status</span>
-          {STATUS_OPTIONS.map((s) => (
-            <button key={s} onClick={() => setStatusFilter(s)} className={filterBtnCls(statusFilter === s)}>
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Bulk action bar */}
-      {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl bg-[var(--background)] px-4 py-3 mb-4">
-          <span className="text-xs text-[var(--foreground-muted)]">
-            {selected.size} selected
-          </span>
-          <div className="h-3 w-px bg-[var(--border)]" />
-          <button
-            onClick={() => bulkBan(true)}
-            disabled={bulkLoading}
-            className={btn("secondary")}
-          >
-            Ban
-          </button>
-          <button
-            onClick={() => bulkBan(false)}
-            disabled={bulkLoading}
-            className={btn("secondary")}
-          >
-            Unban
-          </button>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Plan</span>
-            <select
-              value={bulkPlan}
-              onChange={(e) => setBulkPlan(e.target.value as typeof PLAN_OPTIONS[number])}
-              className="text-[13px] bg-transparent border border-[var(--border)] rounded-lg px-2 py-2 text-[var(--foreground)] outline-none"
-            >
-              {PLAN_OPTIONS.map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
-            </select>
-            <button
-              onClick={bulkSetPlan}
-              disabled={bulkLoading}
-              className={btn("secondary")}
-            >
-              Apply
-            </button>
-          </div>
-          <div className="h-3 w-px bg-[var(--border)]" />
-          <button
-            onClick={bulkDelete}
-            disabled={bulkLoading}
-            className={btn("danger")}
-          >
-            Delete
-          </button>
-          <button
-            onClick={() => setSelected(new Map())}
-            className={`${btn("ghost")} ml-auto`}
-          >
-            Clear
-          </button>
-        </div>
-      )}
-
-      {/* Bulk outcome — "N of M", with each failure; failed users stay selected */}
-      {bulkResult && (
-        <div
-          role="status"
-          className={`rounded-xl border px-4 py-3 mb-4 text-xs ${
-            bulkResult.errors.length
-              ? "bg-[var(--err-bg)] text-[var(--err)] border-[var(--err-line)]"
-              : "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]"
-          }`}
-        >
+      {/* The failures of the last bulk run, by user; those users stay selected. */}
+      {bulkErrors.length > 0 && (
+        <div role="alert" className="mb-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]">
           <div className="flex items-start justify-between gap-3">
-            <p>
-              {bulkResult.action}: {bulkResult.ok} of {bulkResult.total} succeeded
-              {bulkResult.errors.length ? " — the failed users are still selected." : "."}
-            </p>
-            <button
-              onClick={() => setBulkResult(null)}
-              className={`${BTN_ICON} shrink-0`}
-              aria-label="Dismiss"
-            >
+            <ul className="space-y-0.5 min-w-0 break-words">
+              {bulkErrors.map((e) => <li key={e}>{e}</li>)}
+            </ul>
+            <button onClick={() => setBulkErrors([])} className={`${BTN_ICON} flex-shrink-0`} aria-label={t("common.dismiss")}>
               ×
             </button>
           </div>
-          {bulkResult.errors.length > 0 && (
-            <ul className="mt-2 space-y-0.5">
-              {bulkResult.errors.map((e) => <li key={e}>{e}</li>)}
-            </ul>
-          )}
         </div>
       )}
 
-      {/* Table */}
-      <div className="rounded-xl border border-[var(--border)] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
-                {/* Checkbox select-all */}
-                <th className="px-4 py-3 w-10">
-                  <input
-                    type="checkbox"
-                    checked={allOnPageSelected}
-                    ref={(el) => { if (el) el.indeterminate = someOnPageSelected && !allOnPageSelected; }}
-                    onChange={toggleSelectAll}
-                    className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-                  />
-                </th>
-                {/* Below md only who, plan and status fit; the rest is one
-                    tap away in the drawer the row opens. */}
-                {([
-                  ["User", ""],
-                  ["Email", " hidden md:table-cell"],
-                  ["Plan", ""],
-                  ["Subscription", " hidden md:table-cell"],
-                  ["Joined", " hidden md:table-cell"],
-                  ["Last active", " hidden md:table-cell"],
-                  ["Status", ""],
-                  ["", ""],
-                ] as const).map(([h, cls]) => (
-                  <th key={h} className={`text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal${cls}`}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => {
-                const label = rowLabel(u);
-                const isSuper = u.isSuperAdmin;
-                return (
-                  <tr
-                    key={u.id}
-                    onClick={() => setSelectedId(u.id)}
-                    className={`border-b border-[var(--border)] hover:bg-[var(--background)] transition-colors last:border-0 cursor-pointer ${selected.has(u.id) ? "bg-[var(--background)]" : ""}`}
+      <DataTable
+        label={t("nav.users")}
+        rows={users}
+        rowKey={(u) => u.id}
+        columns={columns}
+        loading={loading && users.length === 0}
+        pageSize={PAGE_SIZE}
+        // Only one page comes from the server at a time; a scan that was cut
+        // short says so even on one page, so the caveat is never hidden.
+        paging={{ page, total, onPage: setPage, note: listPartial ? t("users.listPartial") : undefined }}
+        onRowClick={(u) => setSelectedId(u.id)}
+        selection={{
+          selected: new Set(selected.keys()),
+          onToggle: (id) => toggleSelect(id),
+          onToggleAll: toggleSelectAll,
+          allSelected: allOnPageSelected,
+          someSelected: someOnPageSelected,
+          rowLabel,
+          canSelect: (u) => !u.isSuperAdmin,
+        }}
+        actions={(u) => (
+          <>
+            <button
+              onClick={() => setSelectedId(u.id)}
+              // A super admin has no menu, so the button stays on a phone too.
+              className={u.isSuperAdmin ? BTN_ICON_SM : `${BTN_ICON_SM} max-md:hidden`}
+              aria-label={t("users.row.open", { name: rowLabel(u) })}
+              title={t("users.row.open", { name: rowLabel(u) })}
+            >
+              {PENCIL}
+            </button>
+            {!u.isSuperAdmin && <RowMenu size="sm" label={t("menu.moreFor", { name: rowLabel(u) })} items={rowItems(u)} />}
+          </>
+        )}
+        empty={
+          error ? (
+            <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+              <p className="text-[13px] text-[var(--err)] break-words">{error}</p>
+              <button onClick={refresh} className={btn("secondary")}>
+                {t("products.retry")}
+              </button>
+            </div>
+          ) : (
+            <EmptyState
+              text={t(filtered ? "users.empty.filtered" : "users.empty.none")}
+              action={
+                activeFilters.length > 0 ? (
+                  <button
+                    onClick={() => {
+                      setPlanFilter("all");
+                      setStatusFilter("all");
+                    }}
+                    className={btn("secondary")}
                   >
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {!isSuper && (
-                        <input
-                          type="checkbox"
-                          checked={selected.has(u.id)}
-                          onChange={() => toggleSelect(u)}
-                          className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-                        />
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {u.imageUrl ? (
-                          <Image src={u.imageUrl} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium text-[var(--surface)] bg-[var(--foreground-muted)] shrink-0">
-                            {initials(u.firstName, u.lastName, u.email)}
-                          </div>
-                        )}
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-medium text-[var(--foreground)] truncate">{label}</span>
-                          {u.email && label !== u.email && (
-                            <span className="md:hidden text-[12px] text-[var(--foreground-subtle)] truncate">{u.email}</span>
-                          )}
-                          {isSuper ? (
-                            <span className="text-[11px] font-medium text-[var(--warn)]">Super admin</span>
-                          ) : u.isAdmin ? (
-                            <span className="text-[11px] font-medium text-[var(--ok)]">Admin</span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] truncate max-w-[240px] hidden md:table-cell">{u.email ?? "—"}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-[11px] font-medium px-2 py-1 ${planBadge[u.plan] ?? planBadge.free}`}>
-                        {PLAN_LABEL[u.plan] ?? u.plan}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      {u.subscription ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span className={`text-[12px] ${subStatusBadge[u.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
-                            {SUB_STATUS_LABEL[u.subscription.status] ?? u.subscription.status.replace("_", " ")} · {u.subscription.amountUah} ₴/mo
-                          </span>
-                          <span className="text-[12px] text-[var(--foreground-subtle)]">
-                            {fmtDuration(u.subscription.startedAt)}
-                            {u.subscription.currentPeriodEnd && u.subscription.status === "active"
-                              ? ` · ${u.subscription.autoRenew ? "renews" : "ends"} ${fmtDate(Date.parse(u.subscription.currentPeriodEnd))}`
-                              : ""}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-[12px] text-[var(--foreground-subtle)]">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] hidden md:table-cell">{fmtDate(u.createdAt)}</td>
-                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] hidden md:table-cell">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</td>
-                    <td className="px-4 py-3">
-                      {u.banned ? (
-                        <span className="text-[11px] font-medium px-2 py-1 rounded-full bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]">Banned</span>
-                      ) : u.locked ? (
-                        <span className="text-[11px] font-medium px-2 py-1 rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]">Locked</span>
-                      ) : (
-                        <span className="text-[11px] font-medium px-2 py-1 rounded-full text-[var(--foreground-muted)] border border-[var(--border)]">Active</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isSuper ? (
-                        <div className="flex justify-end">
-                          <span className="text-[11px] font-medium text-[var(--warn)] bg-[var(--warn-bg)] border border-[var(--warn-line)] rounded-full px-2 py-1">Protected</span>
-                        </div>
-                      ) : (
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedId(u.id); }}
-                            className={BTN_ICON}
-                            title="Edit"
-                            aria-label="Edit user"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                              <path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(u); }}
-                            className={BTN_ICON}
-                            title="Delete"
-                            aria-label="Delete user"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                              <path d="M3 4H13M6 4V2H10V4M5 4L5.5 13H10.5L11 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {!loading && users.length === 0 && (
-          <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">No users found</div>
-        )}
-        {loading && users.length === 0 && (
-          <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">Loading…</div>
-        )}
-      </div>
+                    {t("products.clearFilters")}
+                  </button>
+                ) : undefined
+              }
+            />
+          )
+        }
+      />
 
-      {/* Pagination — also shown for a single page when the filter scan was
-          capped, so the "newest users only" caveat is never hidden. */}
-      {(totalPages > 1 || listPartial) && total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
-          <span className="text-[12px] text-[var(--foreground-muted)]">
-            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString()}
-            {listPartial ? " · filter covers the newest users only" : ""}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className={btn("secondary")}
-            >
-              ← Prev
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className={btn("secondary")}
-            >
-              Next →
-            </button>
-          </div>
-        </div>
-      )}
+      <BulkBar
+        count={selected.size}
+        onClear={() => setSelected(new Map())}
+        actions={[
+          { key: "ban", label: t("users.bulk.ban"), onClick: () => void bulkBan(true), disabled: bulkLoading },
+          { key: "unban", label: t("users.bulk.unban"), onClick: () => void bulkBan(false), disabled: bulkLoading },
+          {
+            key: "plan",
+            label: t("users.bulk.plan"),
+            disabled: bulkLoading,
+            menu: PLAN_OPTIONS.map((p) => ({ label: PLAN_LABEL[p], onSelect: () => void bulkSetPlan(p) })),
+          },
+          { key: "delete", label: t("users.bulk.delete"), onClick: () => void bulkDelete(), disabled: bulkLoading, tone: "danger" },
+        ]}
+      />
 
       {selectedId && (
         <UserDrawer

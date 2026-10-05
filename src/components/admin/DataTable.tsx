@@ -16,9 +16,13 @@ import { useT } from "@/app/goo-studio/_i18n";
  *   always on touch screens, and pinned to the right edge on a phone.
  * - Pages of 50 with "1–50 of 412" under the table: the browser no longer
  *   draws all 1 224 products, and their photos, at once. `resetKey` sends the
- *   table back to the first page when the filters or the sort change.
+ *   table back to the first page when the filters or the sort change. A list
+ *   the server pages (Users) passes `paging`: `rows` is then the current page.
  * - Selection is the caller's: a checkbox column when `selection` is given,
  *   Shift-click for a run of rows (the caller decides what a run is).
+ * - `onRowClick` opens the row (Users: the side panel). The row's own buttons
+ *   and boxes keep their clicks, and the same action stays a button in
+ *   `actions` for the keyboard.
  */
 
 export type Column<T> = {
@@ -40,8 +44,23 @@ export type Selection<T> = {
   onToggleAll: () => void;
   /** All rows (not only this page) are selected. */
   allSelected: boolean;
+  /** Some rows, not all, are selected: the header box shows a dash. */
+  someSelected?: boolean;
   /** Names the row for its checkbox ("Select Athleticz oversized T-shirt"). */
   rowLabel: (row: T) => string;
+  /** A row that cannot be selected gets no checkbox (a super admin). */
+  canSelect?: (row: T) => boolean;
+};
+
+/** Pages cut by the server: `rows` holds the current page only. */
+export type Paging = {
+  /** From 0. */
+  page: number;
+  /** Rows on all pages. */
+  total: number;
+  onPage: (page: number) => void;
+  /** A remark next to "1–25 of 140"; the footer shows for it even on one page. */
+  note?: ReactNode;
 };
 
 const HIDE = { sm: "hidden sm:table-cell", md: "hidden md:table-cell", lg: "hidden lg:table-cell" } as const;
@@ -92,6 +111,8 @@ export function DataTable<T>({
   empty,
   pageSize = 50,
   resetKey = "",
+  paging,
+  onRowClick,
 }: {
   /** Names the table for screen readers. */
   label: string;
@@ -106,6 +127,8 @@ export function DataTable<T>({
   empty?: ReactNode;
   pageSize?: number;
   resetKey?: string;
+  paging?: Paging;
+  onRowClick?: (row: T) => void;
 }) {
   const t = useT();
   const topRef = useRef<HTMLDivElement>(null);
@@ -116,15 +139,19 @@ export function DataTable<T>({
     setPage(0);
   }
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
-  const current = Math.min(page, pageCount - 1);
+  const total = paging ? paging.total : rows.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const current = paging ? paging.page : Math.min(page, pageCount - 1);
   const start = current * pageSize;
-  const shown = rows.slice(start, start + pageSize);
-  const paged = rows.length > pageSize;
+  const shown = paging ? rows : rows.slice(start, start + pageSize);
+  const paged = total > pageSize;
+  const footer = (paged || paging?.note !== undefined) && !loading && rows.length > 0;
+  const Footer = paged ? "nav" : "div";
   const colCount = columns.length + (selection ? 1 : 0) + (actions ? 1 : 0);
 
   const go = (p: number) => {
-    setPage(p);
+    if (paging) paging.onPage(p);
+    else setPage(p);
     topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   };
 
@@ -142,6 +169,9 @@ export function DataTable<T>({
                 <input
                   type="checkbox"
                   checked={selection.allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !!selection.someSelected && !selection.allSelected;
+                  }}
                   onChange={selection.onToggleAll}
                   aria-label={t("table.selectAll", { count: rows.length })}
                   title={t("table.selectAll", { count: rows.length })}
@@ -198,25 +228,43 @@ export function DataTable<T>({
             shown.map((row, r) => {
               const id = rowKey(row);
               const isSelected = selection?.selected.has(id) ?? false;
-              const last = r === shown.length - 1 && !paged;
+              const last = r === shown.length - 1 && !footer;
               const cellBase = `h-[52px] border-t border-[var(--border)] ${r === 0 ? "border-t-0" : ""}`;
               return (
-                <tr key={id} className={`group/row transition-colors ${isSelected ? "bg-[var(--fg-overlay-05)]" : "hover:bg-[var(--fg-overlay-05)]"}`}>
+                <tr
+                  key={id}
+                  onClick={
+                    onRowClick
+                      ? (e) => {
+                          // Clicks on the row's own controls, and inside a menu
+                          // portalled out of it, are theirs.
+                          const target = e.target as HTMLElement;
+                          if (!e.currentTarget.contains(target) || target.closest("button, a, input, label, select, textarea")) return;
+                          onRowClick(row);
+                        }
+                      : undefined
+                  }
+                  className={`group/row transition-colors ${isSelected ? "bg-[var(--fg-overlay-05)]" : "hover:bg-[var(--fg-overlay-05)]"} ${
+                    onRowClick ? "cursor-pointer" : ""
+                  }`}
+                >
                   {selection && (
                     <td className={`${cellBase} w-11 pl-4 pr-0 ${last ? "rounded-bl-xl" : ""}`}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        // The modifier keys are on the native click event; a
-                        // keyboard Space arrives without Shift and toggles one row.
-                        onChange={(e) => selection.onToggle(id, (e.nativeEvent as MouseEvent).shiftKey === true)}
-                        // Shift-click would otherwise also select the text between rows.
-                        onMouseDown={(e) => {
-                          if (e.shiftKey) e.preventDefault();
-                        }}
-                        aria-label={t("table.selectRow", { name: selection.rowLabel(row) })}
-                        className="w-4 h-4 accent-[var(--foreground)] cursor-pointer align-middle"
-                      />
+                      {(selection.canSelect?.(row) ?? true) && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          // The modifier keys are on the native click event; a
+                          // keyboard Space arrives without Shift and toggles one row.
+                          onChange={(e) => selection.onToggle(id, (e.nativeEvent as MouseEvent).shiftKey === true)}
+                          // Shift-click would otherwise also select the text between rows.
+                          onMouseDown={(e) => {
+                            if (e.shiftKey) e.preventDefault();
+                          }}
+                          aria-label={t("table.selectRow", { name: selection.rowLabel(row) })}
+                          className="w-4 h-4 accent-[var(--foreground)] cursor-pointer align-middle"
+                        />
+                      )}
                     </td>
                   )}
                   {columns.map((c, i) => (
@@ -251,60 +299,69 @@ export function DataTable<T>({
         </tbody>
       </table>
 
-      {paged && !loading && (
-        <nav
-          aria-label={t("table.pages")}
+      {footer && (
+        // A landmark only when there are pages to go to.
+        <Footer
+          aria-label={paged ? t("table.pages") : undefined}
           className="flex flex-wrap items-center gap-1 min-h-12 px-4 py-2 border-t border-[var(--border)] text-[12px] text-[var(--foreground-muted)]"
         >
           <span className="tabular-nums mr-auto">
-            {t("table.range", { from: start + 1, to: Math.min(start + pageSize, rows.length), total: rows.length })}
+            {t("table.range", { from: start + 1, to: start + shown.length, total })}
+            {paging?.note !== undefined && <> · {paging.note}</>}
           </span>
-          <button
-            type="button"
-            onClick={() => go(current - 1)}
-            disabled={current === 0}
-            aria-label={t("table.prev")}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            ‹
-          </button>
-          {pageList(current, pageCount).map((p, i) =>
-            p === "gap" ? (
-              <span key={`gap-${i}`} className="px-1" aria-hidden="true">
-                …
-              </span>
-            ) : (
+          {paged && (
+            <>
               <button
-                key={p}
                 type="button"
-                onClick={() => go(p)}
-                aria-current={p === current ? "page" : undefined}
-                aria-label={t("table.page", { page: p + 1 })}
-                className={`min-w-7 h-7 px-1.5 rounded-lg tabular-nums ${
-                  p === current ? "bg-[var(--fg-overlay-08)] text-[var(--foreground)] font-medium" : "hover:text-[var(--foreground)]"
-                }`}
+                onClick={() => go(current - 1)}
+                disabled={current === 0}
+                aria-label={t("table.prev")}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {p + 1}
+                ‹
               </button>
-            )
+              {pageList(current, pageCount).map((p, i) =>
+                p === "gap" ? (
+                  <span key={`gap-${i}`} className="px-1" aria-hidden="true">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => go(p)}
+                    aria-current={p === current ? "page" : undefined}
+                    aria-label={t("table.page", { page: p + 1 })}
+                    className={`min-w-7 h-7 px-1.5 rounded-lg tabular-nums ${
+                      p === current ? "bg-[var(--fg-overlay-08)] text-[var(--foreground)] font-medium" : "hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {p + 1}
+                  </button>
+                )
+              )}
+              <button
+                type="button"
+                onClick={() => go(current + 1)}
+                disabled={current >= pageCount - 1}
+                aria-label={t("table.next")}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            onClick={() => go(current + 1)}
-            disabled={current >= pageCount - 1}
-            aria-label={t("table.next")}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            ›
-          </button>
-        </nav>
+        </Footer>
       )}
     </div>
   );
 }
 
-/** A 40px photo for the first column (ADMIN_DESIGN 5.8), on the product's own backdrop. */
-export function Thumb({ src, bg }: { src?: string | null; bg?: string | null }) {
+/**
+ * A 40px photo for the first column (ADMIN_DESIGN 5.8): a product whole, on its
+ * own backdrop; a look or a blog cover (`fit="cover"`) filling the square.
+ */
+export function Thumb({ src, bg, fit = "contain" }: { src?: string | null; bg?: string | null; fit?: "contain" | "cover" }) {
   return (
     <span
       className="w-10 h-10 flex-shrink-0 rounded-md overflow-hidden inline-flex items-center justify-center"
@@ -312,7 +369,7 @@ export function Thumb({ src, bg }: { src?: string | null; bg?: string | null }) 
     >
       {src && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" loading="lazy" decoding="async" className="w-full h-full object-contain" />
+        <img src={src} alt="" loading="lazy" decoding="async" className={`w-full h-full ${fit === "cover" ? "object-cover" : "object-contain"}`} />
       )}
     </span>
   );

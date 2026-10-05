@@ -4,10 +4,20 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Image from "@/components/ui/Image";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
-import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
+import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
-import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { useToast } from "@/components/admin/Toast";
+import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
+import type { Key } from "@/app/goo-studio/_i18n";
+import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
+import type { Column } from "@/components/admin/DataTable";
+import { ActiveFilters, FilterMenu, SearchField } from "@/components/admin/FilterBar";
+import { BulkBar } from "@/components/admin/BulkBar";
+import { RowMenu } from "@/components/admin/Menu";
+import type { MenuItem } from "@/components/admin/Menu";
+import { Tabs, tabPanel } from "@/components/admin/Tabs";
 
 interface PendingLook {
   id: string;
@@ -61,6 +71,38 @@ const CATEGORIES: { value: Category | "all"; label: string }[] = [
   { value: "accessories", label: "Accessories" },
 ];
 const ROLES: OutfitRole[] = ["hero", "secondary", "accent"];
+
+const OCCASION_KEY: Record<Occasion, Key> = {
+  casual: "outfits.occasion.casual",
+  work: "outfits.occasion.work",
+  evening: "outfits.occasion.evening",
+  sport: "outfits.occasion.sport",
+  formal: "outfits.occasion.formal",
+  weekend: "outfits.occasion.weekend",
+};
+const SEASON_KEY: Record<Season, Key> = {
+  all: "outfits.season.all",
+  spring: "outfits.season.spring",
+  summer: "outfits.season.summer",
+  autumn: "outfits.season.autumn",
+  winter: "outfits.season.winter",
+};
+
+type SortKey = "newest" | "oldest" | "name" | "priceAsc" | "priceDesc";
+const SORT_OPTIONS: { value: SortKey; label: Key }[] = [
+  { value: "newest", label: "outfits.sort.newest" },
+  { value: "oldest", label: "outfits.sort.oldest" },
+  { value: "name", label: "outfits.sort.nameAsc" },
+  { value: "priceAsc", label: "outfits.sort.priceAsc" },
+  { value: "priceDesc", label: "outfits.sort.priceDesc" },
+];
+
+const fmtUsd = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
+
+/** "$216" or "$898–$1,391": a look costs the sum of its pieces, within their price spread. */
+function priceRange(o: Outfit): string {
+  return o.totalPriceMax > o.totalPriceMin ? `${fmtUsd(o.totalPriceMin)}–${fmtUsd(o.totalPriceMax)}` : fmtUsd(o.totalPriceMin);
+}
 /** Most pieces an outfit takes — as many as the collage on the site can draw. */
 const MAX_ITEMS = 6;
 /**
@@ -86,7 +128,10 @@ const selectCls =
 const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
 
 export default function AdminOutfitsPage() {
+  const t = useT();
   const confirm = useConfirm();
+  const toast = useToast();
+  const cards = useDownloadCards("outfits");
   // A selection dragged out of the editor must not close it — see the hook.
   const lookBackdrop = useBackdropDismiss(() => setSelectedLook(null));
   const [adminTab, setAdminTab] = useState<"outfits" | "pending">("outfits");
@@ -108,14 +153,13 @@ export default function AdminOutfitsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  /** The last row action that failed — a delete or a homepage star. */
-  const [actionError, setActionError] = useState("");
-  /** Ticked rows, by outfit id — what the toolbar's buttons act on. */
+  const [occasionFilter, setOccasionFilter] = useState<Occasion | "">("");
+  const [seasonFilter, setSeasonFilter] = useState<Season | "">("");
+  const [homeFilter, setHomeFilter] = useState<"on" | "off" | "">("");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
+  /** Ticked rows, by outfit id — what the selection bar acts on. */
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  /** Outcome of the last photo export — this page has no toast to borrow. */
-  const [exportNote, setExportNote] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [featuringId, setFeaturingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -411,19 +455,34 @@ export default function AdminOutfitsPage() {
 
   // ── Rows in the table, and the ones ticked ─────────────────────────────────
 
-  const filteredOutfits = useMemo(
-    () =>
-      outfits.filter(
-        (o) =>
-          o.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          o.occasion.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          o.description.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    [outfits, searchQuery]
-  );
+  const filteredOutfits = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = outfits.filter((o) => {
+      if (occasionFilter && o.occasion !== occasionFilter) return false;
+      if (seasonFilter && o.season !== seasonFilter) return false;
+      if (homeFilter && !!o.isHomepageFeatured !== (homeFilter === "on")) return false;
+      if (!q) return true;
+      return (
+        o.name.toLowerCase().includes(q) ||
+        o.occasion.toLowerCase().includes(q) ||
+        o.description.toLowerCase().includes(q) ||
+        o.styleKeywords.some((k) => styleLabel(k).toLowerCase().includes(q)) ||
+        o.items.some((i) => i.product.name.toLowerCase().includes(q) || i.product.brand.toLowerCase().includes(q))
+      );
+    });
+    // "Newest" keeps the order the API sends (newest first) for looks with no date.
+    const time = (o: Outfit) => (o.createdAt ? Date.parse(o.createdAt) : 0);
+    const sorted = [...list];
+    if (sortKey === "newest") sorted.sort((a, b) => time(b) - time(a));
+    else if (sortKey === "oldest") sorted.sort((a, b) => time(a) - time(b));
+    else if (sortKey === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sortKey === "priceAsc") sorted.sort((a, b) => a.totalPriceMin - b.totalPriceMin);
+    else sorted.sort((a, b) => b.totalPriceMin - a.totalPriceMin);
+    return sorted;
+  }, [outfits, searchQuery, occasionFilter, seasonFilter, homeFilter, sortKey]);
 
   const allSelected = filteredOutfits.length > 0 && filteredOutfits.every((o) => selectedIds.has(o.id));
-  const someSelected = selectedIds.size > 0;
+  const someSelected = selectedIds.size > 0 && !allSelected;
 
   /**
    * Tick a row, and with Shift held, everything between it and the row ticked
@@ -501,15 +560,13 @@ export default function AdminOutfitsPage() {
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (!ids.length) return;
-    const what = `${ids.length} selected outfit${ids.length > 1 ? "s" : ""}`;
     if (!(await confirm({
-      title: `Delete ${what}?`,
-      confirmLabel: `Delete ${ids.length} outfit${ids.length > 1 ? "s" : ""}`,
+      title: t("outfits.confirm.bulkDelete", { count: ids.length }),
+      confirmLabel: t("outfits.confirm.bulkDeleteAction", { count: ids.length }),
       tone: "danger",
     }))) return;
 
     setBulkDeleting(true);
-    setActionError("");
     const deleted: string[] = [];
     const failed: string[] = [];
     // One at a time: the delete endpoint takes a single id, and firing thirty at
@@ -525,15 +582,12 @@ export default function AdminOutfitsPage() {
     }
     setOutfits((prev) => prev.filter((o) => !deleted.includes(o.id)));
     deselect(deleted);
-    if (failed.length) {
-      setActionError(`${failed.length} of ${ids.length} could not be deleted. They are still selected.`);
-    }
+    if (failed.length) toast.err(t("outfits.bulk.partial", { failed: failed.length, total: ids.length }));
     setBulkDeleting(false);
   };
 
   const handleToggleFeatured = async (outfit: Outfit) => {
     setFeaturingId(outfit.id);
-    setActionError("");
     const next = !outfit.isHomepageFeatured;
     try {
       const res = await fetch(`/api/outfits/${outfit.id}`, {
@@ -547,10 +601,10 @@ export default function AdminOutfitsPage() {
         );
       } else {
         const err = await res.json().catch(() => ({}));
-        setActionError(err.error ?? `Could not update the homepage flag (${res.status}).`);
+        toast.err(err.error ?? `Could not update the homepage flag (${res.status}).`);
       }
     } catch {
-      setActionError("Could not update the homepage flag (network error).");
+      toast.err("Could not update the homepage flag (network error).");
     } finally {
       setFeaturingId(null);
     }
@@ -558,14 +612,12 @@ export default function AdminOutfitsPage() {
 
   const handleDelete = async (outfit: Outfit) => {
     if (!(await confirm({
-      title: `Delete "${outfit.name}"?`,
-      body: "This cannot be undone.",
-      confirmLabel: "Delete outfit",
+      title: t("outfits.confirm.delete", { name: outfit.name }),
+      body: t("outfits.confirm.deleteBody"),
+      confirmLabel: t("outfits.confirm.deleteAction"),
       tone: "danger",
     }))) return;
     const id = outfit.id;
-    setDeleteId(id);
-    setActionError("");
     // The row goes only once the server says the outfit is gone.
     try {
       const res = await fetch(`/api/outfits/${id}`, { method: "DELETE" });
@@ -574,12 +626,10 @@ export default function AdminOutfitsPage() {
         deselect([id]);
       } else {
         const err = await res.json().catch(() => ({}));
-        setActionError(err.error ?? `Failed to delete outfit (${res.status}).`);
+        toast.err(err.error ?? `Failed to delete outfit (${res.status}).`);
       }
     } catch {
-      setActionError("Failed to delete outfit (network error).");
-    } finally {
-      setDeleteId(null);
+      toast.err("Failed to delete outfit (network error).");
     }
   };
 
@@ -635,76 +685,183 @@ export default function AdminOutfitsPage() {
   const shownProducts = useMemo(() => filteredProducts.slice(0, PICKER_LIMIT), [filteredProducts]);
   const atItemLimit = selectedItems.length >= MAX_ITEMS;
 
+  // ── The table ─────────────────────────────────────────────────────────────
+
+  const featuredCount = outfits.filter((o) => o.isHomepageFeatured).length;
+  const aiCount = outfits.filter((o) => o.isAIGenerated).length;
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setOccasionFilter("");
+    setSeasonFilter("");
+    setHomeFilter("");
+  };
+
+  const activeFilters = [
+    ...(occasionFilter
+      ? [{ key: "occasion", label: `${t("outfits.f.occasion")}: ${t(OCCASION_KEY[occasionFilter])}`, onRemove: () => setOccasionFilter("") }]
+      : []),
+    ...(seasonFilter
+      ? [{ key: "season", label: `${t("outfits.f.season")}: ${t(SEASON_KEY[seasonFilter])}`, onRemove: () => setSeasonFilter("") }]
+      : []),
+    ...(homeFilter
+      ? [
+          {
+            key: "home",
+            label: `${t("outfits.f.homepage")}: ${t(homeFilter === "on" ? "outfits.home.filterOn" : "outfits.home.filterOff")}`,
+            onRemove: () => setHomeFilter(""),
+          },
+        ]
+      : []),
+  ];
+
+  /** Back to the first page when what the table shows changes. */
+  const tableResetKey = [searchQuery, occasionFilter, seasonFilter, homeFilter, sortKey].join("|");
+
+  const rowItems = (o: Outfit): MenuItem[] => [
+    // Also an icon beside the menu; on a phone the icon gives its room to the name.
+    { label: t("outfits.row.editShort"), onSelect: () => openEditModal(o) },
+    { label: t("cards.downloadOne"), onSelect: () => void cards.download([o.id]), disabled: cards.busy },
+    {
+      // The switch's column starts at md; below it, this is the way.
+      label: t(o.isHomepageFeatured ? "outfits.row.unfeature" : "outfits.row.feature"),
+      onSelect: () => void handleToggleFeatured(o),
+      disabled: featuringId === o.id,
+    },
+    { kind: "separator" },
+    { label: t("outfits.row.delete"), onSelect: () => void handleDelete(o), tone: "danger" },
+  ];
+
+  const outfitColumns: Column<Outfit>[] = [
+    {
+      key: "outfit",
+      header: t("outfits.col.outfit"),
+      grow: true,
+      cell: (o) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <Thumb src={o.imageUrl} fit="cover" />
+          <div className="min-w-0">
+            <div className="font-medium truncate" title={o.name}>
+              {o.name}
+            </div>
+            {o.styleKeywords.length > 0 && (
+              <div className="text-[12px] text-[var(--foreground-muted)] truncate">{o.styleKeywords.map(styleLabel).join(" · ")}</div>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    { key: "occasion", header: t("outfits.col.occasion"), hide: "md", cell: (o) => t(OCCASION_KEY[o.occasion] ?? "outfits.occasion.casual") },
+    { key: "season", header: t("outfits.col.season"), hide: "lg", cell: (o) => t(SEASON_KEY[o.season] ?? "outfits.season.all") },
+    {
+      key: "items",
+      header: t("outfits.col.items"),
+      align: "right",
+      hide: "lg",
+      cell: (o) => <span className="text-[var(--foreground-muted)]">{o.items.length}</span>,
+    },
+    { key: "price", header: t("outfits.col.price"), align: "right", hide: "md", cell: (o) => priceRange(o) },
+    {
+      key: "home",
+      header: t("outfits.col.homepage"),
+      hide: "md",
+      cell: (o) => {
+        const on = !!o.isHomepageFeatured;
+        return (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={on}
+            aria-label={t("outfits.home.switch", { name: o.name })}
+            onClick={() => void handleToggleFeatured(o)}
+            disabled={featuringId === o.id}
+            className="group/sw inline-flex items-center gap-2 h-7 disabled:opacity-40"
+          >
+            <span
+              aria-hidden="true"
+              className={`relative w-7 h-4 rounded-full transition-colors ${on ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"}`}
+            >
+              <span
+                className={`absolute top-0.5 w-3 h-3 rounded-full bg-[var(--surface)] transition-[left] ${on ? "left-3.5" : "left-0.5"}`}
+              />
+            </span>
+            <span className={on ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] group-hover/sw:text-[var(--foreground)]"}>
+              {t(on ? "outfits.home.on" : "outfits.home.off")}
+            </span>
+          </button>
+        );
+      },
+    },
+  ];
+
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Outfits</h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-            {loading ? "Loading..." : outfitsError ? "Not loaded" : `${outfits.length} total · ${filteredOutfits.length} shown`}
+      {/* Header: what the open tab holds, and its actions. */}
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">{t("nav.outfits")}</h1>
+          <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
+            {adminTab === "pending"
+              ? loadingPending
+                ? t("common.loading")
+                : t("outfits.summary.pending", { count: pendingLooks.length })
+              : loading
+                ? t("common.loading")
+                : outfitsError
+                  ? "—"
+                  : [
+                      t("outfits.summary.count", { count: outfits.length }),
+                      t("outfits.summary.home", { count: featuredCount }),
+                      t("outfits.summary.ai", { count: aiCount }),
+                    ].join(" · ")}
           </p>
         </div>
         {adminTab === "outfits" && (
           <div className="flex items-center gap-2 flex-wrap">
+            {cards.busy && (
+              <span role="status" className="text-[12px] text-[var(--foreground-muted)] tabular-nums">
+                {cards.received ? t("cards.packingMb", { mb: (cards.received / (1024 * 1024)).toFixed(1) }) : t("cards.packing")}
+              </span>
+            )}
             {/* The looks in the table — the ticked ones, or all of them — drawn as
                 pictures with the cards of their pieces, as one ZIP. */}
-            <DownloadCardsButton
-              kind="outfits"
-              ids={exportIds}
-              count={exportIds ? exportIds.length : outfits.length}
-              onNotify={(msg, type) => setExportNote({ msg, type })}
-              title={
-                selectedIds.size
-                  ? `Download the ${selectedIds.size} selected looks and the cards of their pieces, in one ZIP`
-                  : "Download the card of every outfit shown, with the cards of their pieces, in one ZIP"
-              }
-            />
             <button
-              onClick={openAddModal}
-              className={btn("primary")}
+              onClick={() => void cards.download(exportIds)}
+              disabled={cards.busy || outfits.length === 0}
+              className={btn("secondary")}
             >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              {t("cards.download")}
+            </button>
+            <button onClick={openAddModal} className={btn("primary")}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                 <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
-              Add outfit
+              {t("outfits.add")}
             </button>
           </div>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-0 border-b border-[var(--border)] mb-6">
-        {(["outfits", "pending"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => {
-              setAdminTab(t);
-              if (t === "pending") loadPending();
-            }}
-            className={`px-5 py-3 text-[13px] font-medium border-b-2 -mb-px transition-colors ${
-              adminTab === t
-                ? "border-[var(--foreground)] text-[var(--foreground)]"
-                : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-            }`}
-          >
-            {t === "pending" ? (
-              <span className="flex items-center gap-2">
-                Pending
-                {pendingLooks.length > 0 && (
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--surface)] text-[11px]">
-                    {pendingLooks.length}
-                  </span>
-                )}
-              </span>
-            ) : "Outfits"}
-          </button>
-        ))}
+      {/* The count shows on Pending even at zero: an empty queue is news too. */}
+      <div className="mb-6">
+        <Tabs
+          label={t("outfits.tabs")}
+          idBase="outfits"
+          tabs={[
+            { key: "outfits", label: t("outfits.tab.outfits"), count: outfitsError ? undefined : outfits.length },
+            { key: "pending", label: t("outfits.tab.pending"), count: pendingError ? undefined : pendingLooks.length },
+          ]}
+          value={adminTab}
+          onChange={(key) => {
+            setAdminTab(key);
+            if (key === "pending") loadPending();
+          }}
+        />
       </div>
 
       {/* ── Pending looks tab ── */}
       {adminTab === "pending" && (
-        <div>
+        <div {...tabPanel("outfits", "pending")}>
           {pendingError && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
               <span>{pendingError}</span>
@@ -947,297 +1104,138 @@ export default function AdminOutfitsPage() {
 
       {/* ── Outfits tab ── */}
       {adminTab === "outfits" && (
-        <>
-      {/* Row action error */}
-      {actionError && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
-          <span>{actionError}</span>
-          <button
-            onClick={() => setActionError("")}
-            aria-label="Dismiss"
-            className={`${BTN_ICON} ml-4 shrink-0`}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Photo export outcome */}
-      {exportNote && (
-        <div
-          className={`mb-4 flex items-center justify-between rounded-lg border px-4 py-2.5 text-xs ${
-            exportNote.type === "ok"
-              ? "border-[var(--ok-line)] bg-[var(--ok-bg)] text-[var(--ok)]"
-              : "border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)]"
-          }`}
-        >
-          <span>{exportNote.msg}</span>
-          <button
-            onClick={() => setExportNote(null)}
-            aria-label="Dismiss"
-            className={`${BTN_ICON} ml-4 shrink-0`}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Search */}
-      <div className="mb-5">
-        <input
-          type="search"
-          placeholder="Search by name, occasion or description..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={`${inputCls} max-w-sm`}
-        />
-      </div>
-
-      {/* Bulk action bar */}
-      {someSelected && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--background)]">
-          <span className="text-xs text-[var(--foreground)]">{selectedIds.size} selected</span>
-          <button
-            onClick={handleBulkDelete}
-            disabled={bulkDeleting}
-            className={btn("danger")}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path
-                d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+        <div {...tabPanel("outfits", "outfits")}>
+          {/* Search and filters (FilterBar), the active ones as chips with the
+              count, and the sort. */}
+          <div className="mb-4 flex flex-col gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <SearchField
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder={t("outfits.search.placeholder")}
+                label={t("outfits.search.label")}
               />
-            </svg>
-            {bulkDeleting ? "Deleting…" : `Delete ${selectedIds.size}`}
-          </button>
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className={`${btn("ghost")} ml-auto`}
-          >
-            Deselect all
-          </button>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[var(--border)]">
-              <th className="px-3 py-3 w-10">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleSelectAll}
-                  className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-                  aria-label="Select all outfits"
-                  title="Select all"
+              <FilterMenu
+                label={t("outfits.f.occasion")}
+                value={occasionFilter}
+                options={OCCASIONS.map((o) => ({ value: o, label: t(OCCASION_KEY[o]) }))}
+                onChange={(v) => setOccasionFilter(v as Occasion | "")}
+                allLabel={t("filter.all")}
+              />
+              <FilterMenu
+                label={t("outfits.f.season")}
+                value={seasonFilter}
+                options={SEASONS.map((o) => ({ value: o, label: t(SEASON_KEY[o]) }))}
+                onChange={(v) => setSeasonFilter(v as Season | "")}
+                allLabel={t("filter.all")}
+              />
+              <FilterMenu
+                label={t("outfits.f.homepage")}
+                value={homeFilter}
+                options={[
+                  { value: "on", label: t("outfits.home.filterOn") },
+                  { value: "off", label: t("outfits.home.filterOff") },
+                ]}
+                onChange={(v) => setHomeFilter(v as "on" | "off" | "")}
+                allLabel={t("filter.any")}
+              />
+            </div>
+            <ActiveFilters
+              filters={activeFilters}
+              onClearAll={clearFilters}
+              count={loading || outfitsError ? null : t("filter.count", { shown: filteredOutfits.length, total: outfits.length })}
+              trailing={
+                <FilterMenu
+                  label={t("filter.sort")}
+                  value={sortKey}
+                  options={SORT_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))}
+                  onChange={(v) => setSortKey(v as SortKey)}
+                  variant="ghost"
+                  align="end"
                 />
-              </th>
-              {["Image", "Name", "Occasion", "Season", "Items", "Price Range", "Keywords", "Homepage", "Actions"].map((h, i) => (
-                <th
-                  key={h}
-                  className={`text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal${
-                    i === 8 ? " text-right sticky right-0 bg-[var(--surface)] md:static md:bg-transparent" : ""
-                  }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}`}
+              }
+            />
+          </div>
+
+          <DataTable
+            label={t("nav.outfits")}
+            rows={filteredOutfits}
+            rowKey={(o) => o.id}
+            columns={outfitColumns}
+            loading={loading}
+            resetKey={tableResetKey}
+            selection={{
+              selected: selectedIds,
+              onToggle: toggleSelect,
+              onToggleAll: toggleSelectAll,
+              allSelected,
+              someSelected,
+              rowLabel: (o) => o.name,
+            }}
+            actions={(o) => (
+              <>
+                <button
+                  onClick={() => openEditModal(o)}
+                  className={`${BTN_ICON_SM} max-md:hidden`}
+                  aria-label={t("outfits.row.edit", { name: o.name })}
+                  title={t("outfits.row.edit", { name: o.name })}
                 >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                  Loading...
-                </td>
-              </tr>
-            ) : outfitsError ? (
-              <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--err)]">
-                  {outfitsError}{" "}
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M11 2.5L13.5 5 6 12.5l-3 .5.5-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <RowMenu size="sm" label={t("menu.moreFor", { name: o.name })} items={rowItems(o)} />
+              </>
+            )}
+            empty={
+              outfitsError ? (
+                <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+                  <p className="text-[13px] text-[var(--err)] break-words">{outfitsError}</p>
                   <button
                     onClick={() => {
                       setLoading(true);
                       loadOutfits();
                     }}
-                    className="underline underline-offset-4 opacity-80 hover:opacity-100 transition-opacity"
+                    className={btn("secondary")}
                   >
-                    Retry
+                    {t("common.retry")}
                   </button>
-                </td>
-              </tr>
-            ) : filteredOutfits.length === 0 ? (
-              <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                  No outfits found.
-                </td>
-              </tr>
-            ) : (
-              filteredOutfits.map((outfit) => (
-                <tr
-                  key={outfit.id}
-                  className={`border-b border-[var(--border)] last:border-b-0 transition-colors ${
-                    selectedIds.has(outfit.id) ? "bg-[var(--background)]" : "hover:bg-[var(--background)]"
-                  }`}
-                >
-                  {/* Checkbox */}
-                  <td className="px-3 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(outfit.id)}
-                      // Shift-click ticks the whole run since the last box used.
-                      // React routes a checkbox's onChange from the underlying
-                      // click, so the modifier is on the native event — and a
-                      // keyboard Space arrives with shiftKey false and toggles
-                      // the one row.
-                      onChange={(e) => toggleSelect(outfit.id, (e.nativeEvent as MouseEvent).shiftKey === true)}
-                      // Shift-clicking would otherwise select the text between
-                      // the two rows as well, which reads as a bug.
-                      onMouseDown={(e) => {
-                        if (e.shiftKey) e.preventDefault();
-                      }}
-                      className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-                      aria-label={`Select ${outfit.name}`}
-                    />
-                  </td>
-                  {/* Image */}
-                  <td className="px-4 py-3">
-                    <div className="relative w-10 h-[52px] overflow-hidden flex-shrink-0">
-                      <Image src={outfit.imageUrl} alt={outfit.name} fill className="object-cover" sizes="40px" />
-                    </div>
-                  </td>
-                  {/* Name */}
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-[var(--foreground)]">{outfit.name}</span>
-                  </td>
-                  {/* Occasion */}
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="text-xs capitalize text-[var(--foreground-muted)]">
-                      {outfit.occasion}
-                    </span>
-                  </td>
-                  {/* Season */}
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-xs capitalize text-[var(--foreground-muted)]">
-                      {outfit.season}
-                    </span>
-                  </td>
-                  {/* Items */}
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex -space-x-2">
-                        {outfit.items.slice(0, 3).map((item) => (
-                          <div
-                            key={item.product.id}
-                            className="relative w-6 h-6 rounded-full overflow-hidden border border-[var(--surface)] flex-shrink-0"
-                          >
-                            <Image
-                              src={item.product.imageUrl}
-                              alt={item.product.name}
-                              fill
-                              className="object-cover"
-                              sizes="24px"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      <span className="text-xs text-[var(--foreground-muted)]">
-                        {outfit.items.length} {outfit.items.length === 1 ? "item" : "items"}
-                      </span>
-                    </div>
-                  </td>
-                  {/* Price — hidden below lg together with its header */}
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-sm text-[var(--foreground)]">
-                      ${outfit.totalPriceMin}–${outfit.totalPriceMax}
-                    </span>
-                  </td>
-                  {/* Keywords */}
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {outfit.styleKeywords.slice(0, 2).map((kw) => (
-                        <span
-                          key={kw}
-                          className="text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 leading-none rounded-full"
-                        >
-                          {styleLabel(kw)}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  {/* Homepage featured */}
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleToggleFeatured(outfit)}
-                      disabled={featuringId === outfit.id}
-                      title={outfit.isHomepageFeatured ? "Remove from homepage" : "Feature on homepage"}
-                      className="p-1 transition-colors disabled:opacity-40"
-                      aria-label="Toggle homepage featured"
-                    >
-                      {outfit.isHomepageFeatured ? (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--warn)]">
-                          <path d="M8 1L9.85 5.55L15 6.18L11.5 9.55L12.42 14.69L8 12.17L3.58 14.69L4.5 9.55L1 6.18L6.15 5.55L8 1Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--foreground-subtle)] hover:text-[var(--warn)]">
-                          <path d="M8 1L9.85 5.55L15 6.18L11.5 9.55L12.42 14.69L8 12.17L3.58 14.69L4.5 9.55L1 6.18L6.15 5.55L8 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </button>
-                  </td>
-                  {/* Actions — pinned to the right edge on phones, where the
-                      table is wider than the screen. */}
-                  <td className="px-4 py-3 sticky right-0 bg-[var(--surface)] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)] md:static md:bg-transparent md:shadow-none">
-                    <div className="flex items-center justify-end gap-2">
-                      <DownloadCardButton
-                        kind="outfits"
-                        id={outfit.id}
-                        onNotify={(msg, type) => setExportNote({ msg, type })}
-                      />
-                      <button
-                        onClick={() => openEditModal(outfit)}
-                        className={BTN_ICON}
-                        aria-label="Edit"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                        </svg>
+                </div>
+              ) : (
+                <EmptyState
+                  text={t(outfits.length ? "outfits.empty.filtered" : "outfits.empty.none")}
+                  action={
+                    outfits.length ? (
+                      <button onClick={clearFilters} className={btn("secondary")}>
+                        {t("filter.clearFilters")}
                       </button>
-                      <button
-                        onClick={() => handleDelete(outfit)}
-                        disabled={deleteId === outfit.id}
-                        className={BTN_ICON}
-                        aria-label="Delete"
-                        title="Delete outfit"
-                      >
-                        {/* A bin, not a cross: the cross on this page means "close". */}
-                        <svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                          <path
-                            d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
+                    ) : (
+                      <button onClick={openAddModal} className={btn("primary")}>
+                        {t("outfits.add")}
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    )
+                  }
+                />
+              )
+            }
+          />
+
+          <BulkBar
+            count={selectedIds.size}
+            onClear={() => setSelectedIds(new Set())}
+            actions={[
+              { key: "cards", label: t("cards.download"), onClick: () => void cards.download(exportIds), disabled: cards.busy },
+              {
+                key: "delete",
+                label: t(bulkDeleting ? "outfits.bulk.deleting" : "outfits.bulk.delete"),
+                onClick: () => void handleBulkDelete(),
+                disabled: bulkDeleting,
+                tone: "danger",
+              },
+            ]}
+          />
+        </div>
+      )}
 
       {/* ── MODAL ── */}
       {showModal && (
@@ -1659,8 +1657,6 @@ export default function AdminOutfitsPage() {
             </div>
           </div>
         </div>
-      )}
-        </>
       )}
     </div>
   );

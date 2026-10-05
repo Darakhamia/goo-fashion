@@ -164,6 +164,7 @@ export function Menu({
   triggerTitle,
   items,
   align = "end",
+  disabled = false,
 }: {
   /** Names the menu and its button for screen readers ("More actions for …"). */
   label: string;
@@ -173,6 +174,7 @@ export function Menu({
   triggerTitle?: string;
   items: MenuItem[];
   align?: PopoverAlign;
+  disabled?: boolean;
 }) {
   const { open, toggle, close, triggerRef, panelRef, panelId, style, portal } = usePopover(align);
   useRovingFocus(panelRef, open);
@@ -183,6 +185,7 @@ export function Menu({
         ref={triggerRef}
         type="button"
         onClick={toggle}
+        disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
