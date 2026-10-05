@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdminAction } from "@/lib/server/audit";
 import { btn } from "@/app/goo-studio/_ui/recipes";
-import { useFormat } from "@/app/goo-studio/_i18n";
+import { useFormat, useT, type Format, type Key, type T } from "@/app/goo-studio/_i18n";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { EmptyState } from "@/components/admin/DataTable";
+import { ActiveFilters, FilterChips, FilterMenu, type ActiveFilter } from "@/components/admin/FilterBar";
+
+/*
+ * Activity, the super admin's log of admin actions (docs/ADMIN_DESIGN.md §6,
+ * mockup "Activity", GS4-12): grouped by day, each row "what — over what —
+ * who", the time on the right. Filters by admin and by type; pages of 50 from
+ * GET /api/admin/audit.
+ */
 
 interface AuditEntry {
   id: number;
@@ -23,179 +33,229 @@ interface AdminOption {
 
 const PAGE_SIZE = 50;
 
-// Typed against AdminAction so a new action cannot ship without a label here.
-const ACTION_LABELS: Record<AdminAction, string> = {
-  "user.name_updated":     "Updated name",
-  "user.plan_changed":     "Changed plan",
-  "user.admin_granted":    "Granted admin",
-  "user.admin_revoked":    "Revoked admin",
-  "user.banned":           "Banned user",
-  "user.unbanned":         "Unbanned user",
-  "user.deleted":          "Deleted user",
-  "settings.api_key_updated": "Updated API key",
-  "settings.api_key_deleted": "Deleted API key",
-  "settings.homepage_showcase_updated": "Updated homepage showcase",
-  "settings.homepage_stylist_updated":  "Updated homepage stylist",
-  "settings.prompt_updated": "Updated prompt",
-  "settings.prompt_reset":   "Reset prompt",
-  "parser.config_updated":   "Updated parser config",
-  "parser.product_imported": "Imported product",
-  "parser.crawl_batch":      "Crawled batch",
-  "parser.collect_ingest":   "Collected products",
-  "categories.updated":      "Updated categories",
-  "products.created":        "Created product",
-  "products.updated":        "Edited product",
-  "products.deleted":        "Deleted product",
-  "products.bulk_deleted":   "Bulk-deleted products",
-  "products.recategorized":  "Recategorized products",
-  "products.recategorize_undone": "Undid recategorize",
-  "products.styles_reset":   "Reset styles",
-  "products.styles_reset_undone": "Undid style reset",
-  "products.label_fixed":    "Fixed labels",
-  "products.label_dismissed": "Dismissed label suggestion",
-  "products.label_restored":  "Restored label suggestion",
-  "products.bulk_edited":    "Bulk-edited products",
-  "products.bg_color_sampled": "Sampled backgrounds",
-  "products.bg_color_undone":  "Undid backgrounds",
-  "products.duplicates_merged":    "Merged duplicates",
-  "products.duplicates_dismissed": "Dismissed duplicates",
-  "products.colour_group_split":   "Split a colour group",
-  "products.colourways_grouped":   "Grouped colours",
-  "products.colourways_dismissed": "Dismissed colour grouping",
-  "catalogue_check.settings_updated": "Updated AI check settings",
-  "catalogue_check.fixed":          "AI check fixed products",
-  "catalogue_check.brands_unified": "AI check unified brands",
-  "catalogue_check.applied":        "Applied AI check fixes",
-  "catalogue_check.dismissed":      "Dismissed AI check fixes",
-  "catalogue_check.undone":         "Undid AI check fixes",
-  "outfits.created":         "Created outfit",
-  "outfits.updated":         "Edited outfit",
-  "outfits.deleted":         "Deleted outfit",
-  "looks.approved":          "Approved look",
-  "looks.rejected":          "Rejected look",
-  "blog.created":            "Created post",
-  "blog.updated":            "Edited post",
-  "blog.deleted":            "Deleted post",
-  "brands.created":          "Added brand",
-  "brands.deleted":          "Deleted brand",
-  "brands.logo_updated":     "Updated brand logo",
-  "brands.logo_removed":     "Removed brand logo",
-  "retailer_domain.saved":   "Saved retailer rule",
-  "retailer_domain.deleted": "Deleted retailer rule",
-  "retailer_domain.applied": "Applied retailer rule",
-  "import.csv":              "Imported CSV",
-  "stylist_usage.reset":     "Reset stylist limit",
-  "email.sent":              "Sent email",
-  "waitlist.deleted":        "Deleted from waitlist",
-};
+/** Up to this many admins the filter is a row of chips; past it, a menu with search. */
+const ADMIN_CHIPS_MAX = 4;
 
-type Tone = "danger" | "warn" | "ok";
+type Tone = "err" | "warn" | "ok";
 
-// Only the three admin statuses (DESIGN_SYSTEM.md §9); everything else is neutral.
-const ACTION_TONES: Partial<Record<AdminAction, Tone>> = {
-  "user.banned":             "danger",
-  "user.deleted":            "danger",
-  "settings.api_key_deleted": "danger",
-  "products.deleted":        "danger",
-  "products.bulk_deleted":   "danger",
-  "outfits.deleted":         "danger",
-  "blog.deleted":            "danger",
-  "brands.deleted":          "danger",
-  "retailer_domain.deleted": "danger",
-  "waitlist.deleted":        "danger",
-  "user.admin_granted":      "ok",
-  "looks.approved":          "ok",
-  "user.admin_revoked":      "warn",
-  "user.plan_changed":       "warn",
+// Typed against AdminAction, so a new action cannot ship without a tone here
+// (null for neutral) and a label in the dictionary (act.<action>, see actKey).
+// Only the three admin statuses (DESIGN_SYSTEM.md §9).
+const ACTION_TONE: Record<AdminAction, Tone | null> = {
+  "user.name_updated": null,
+  "user.plan_changed": "warn",
+  "user.admin_granted": "ok",
+  "user.admin_revoked": "warn",
+  "user.banned": "err",
+  "user.unbanned": null,
+  "user.deleted": "err",
   "settings.api_key_updated": "warn",
-  "stylist_usage.reset":     "warn",
-  "email.sent":              "warn",
+  "settings.api_key_deleted": "err",
+  "settings.homepage_showcase_updated": null,
+  "settings.homepage_stylist_updated": null,
+  "settings.prompt_updated": null,
+  "settings.prompt_reset": null,
+  "parser.config_updated": null,
+  "parser.product_imported": null,
+  "parser.crawl_batch": null,
+  "parser.collect_ingest": null,
+  "categories.updated": null,
+  "products.created": null,
+  "products.updated": null,
+  "products.deleted": "err",
+  "products.bulk_deleted": "err",
+  "products.recategorized": null,
+  "products.recategorize_undone": null,
+  "products.styles_reset": null,
+  "products.styles_reset_undone": null,
+  "products.label_fixed": null,
+  "products.label_dismissed": null,
+  "products.label_restored": null,
+  "products.bulk_edited": null,
+  "products.bg_color_sampled": null,
+  "products.bg_color_undone": null,
+  "products.duplicates_merged": null,
+  "products.duplicates_dismissed": null,
+  "products.colour_group_split": null,
+  "products.colourways_grouped": null,
+  "products.colourways_dismissed": null,
+  "catalogue_check.settings_updated": null,
+  "catalogue_check.fixed": null,
+  "catalogue_check.brands_unified": null,
+  "catalogue_check.applied": null,
+  "catalogue_check.dismissed": null,
+  "catalogue_check.undone": null,
+  "outfits.created": null,
+  "outfits.updated": null,
+  "outfits.deleted": "err",
+  "looks.approved": "ok",
+  "looks.rejected": null,
+  "blog.created": null,
+  "blog.updated": null,
+  "blog.deleted": "err",
+  "brands.created": null,
+  "brands.deleted": "err",
+  "brands.logo_updated": null,
+  "brands.logo_removed": null,
+  "retailer_domain.saved": null,
+  "retailer_domain.deleted": "err",
+  "retailer_domain.applied": null,
+  "import.csv": null,
+  "stylist_usage.reset": "warn",
+  "email.sent": "warn",
+  "waitlist.deleted": "err",
 };
 
-const TONE_CLASSES: Record<Tone, string> = {
-  danger: "bg-[var(--err-bg)] text-[var(--err)] border-[var(--err-line)]",
-  warn:   "bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]",
-  ok:     "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]",
-};
-
-const GROUP_LABELS: Record<string, string> = {
-  user: "Users",
-  settings: "Settings",
-  parser: "Parser",
-  categories: "Categories",
-  products: "Products",
-  catalogue_check: "AI check",
-  outfits: "Outfits",
-  looks: "Looks",
-  blog: "Blog",
-  brands: "Brands",
-  retailer_domain: "Retailers",
-  import: "Import",
-  stylist_usage: "Stylist",
-  email: "Email",
-  waitlist: "Waitlist",
-};
-
-// Action filter options, grouped by the part of the key before the dot.
-const ACTION_GROUPS: [string, AdminAction[]][] = Object.entries(
-  (Object.keys(ACTION_LABELS) as AdminAction[]).reduce<Record<string, AdminAction[]>>((acc, a) => {
-    const group = a.split(".")[0];
-    (acc[group] ??= []).push(a);
-    return acc;
-  }, {}),
-);
+/** Every action, in the order above (by section): the Type filter's choices. */
+const ACTIONS = Object.keys(ACTION_TONE) as AdminAction[];
 
 function isKnownAction(action: string): action is AdminAction {
-  return Object.prototype.hasOwnProperty.call(ACTION_LABELS, action);
+  return Object.prototype.hasOwnProperty.call(ACTION_TONE, action);
 }
 
-const pillCls = (active: boolean) =>
-  `px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
-    active
-      ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-  }`;
-
-/** "retailer_domain" → "Retailer domain" — a stored key as a badge reads it. */
-function sentenceCase(key: string) {
-  const t = key.replace(/_/g, " ");
-  return t.charAt(0).toUpperCase() + t.slice(1);
+/** The action's label in the dictionary; an action without one fails the type check here. */
+function actKey(action: AdminAction): Key {
+  return `act.${action}`;
 }
 
-function MetaDetail({ metadata, action }: { metadata: Record<string, unknown>; action: string }) {
-  if (action === "user.plan_changed") {
-    return (
-      <span className="text-[12px] text-[var(--foreground-subtle)]">
-        {String(metadata.from ?? "?")} → {String(metadata.to ?? "?")}
-      </span>
-    );
+/** An action the log has but this page does not know (an old one) shows as stored. */
+function actionLabel(action: string, t: T): string {
+  return isKnownAction(action) ? t(actKey(action)) : action;
+}
+
+const PLAN: Record<string, Key> = { free: "plan.free", basic: "plan.basic", pro: "plan.pro", premium: "plan.premium" };
+
+/** What the action was done to, by name, when the entry recorded one: "Free → Premium", a product's name. */
+function detailOf(entry: AuditEntry, t: T): string | null {
+  const m = entry.metadata ?? {};
+  if (entry.action === "user.plan_changed") {
+    const plan = (v: unknown) => (typeof v === "string" && PLAN[v] ? t(PLAN[v]) : String(v ?? "?"));
+    return `${plan(m.from)} → ${plan(m.to)}`;
   }
-  if (action === "user.deleted" && metadata.target_email) {
-    return <span className="text-[12px] text-[var(--foreground-subtle)]">{String(metadata.target_email)}</span>;
-  }
-  if (action === "user.name_updated") {
-    const parts = [metadata.firstName, metadata.lastName].filter(Boolean);
-    if (parts.length) {
-      return <span className="text-[12px] text-[var(--foreground-subtle)]">{parts.join(" ")}</span>;
-    }
+  if (entry.action === "user.deleted" && m.target_email) return String(m.target_email);
+  if (entry.action === "user.name_updated") {
+    const parts = [m.firstName, m.lastName].filter(Boolean);
+    if (parts.length) return parts.join(" ");
   }
   // Whatever names the target, if the entry recorded one.
-  const name = [metadata.name, metadata.title, metadata.subject, metadata.domain].find(
-    (v): v is string => typeof v === "string" && v.trim() !== "",
+  return (
+    [m.name, m.title, m.subject, m.domain].find((v): v is string => typeof v === "string" && v.trim() !== "") ?? null
   );
-  if (name) {
-    return <span className="text-[12px] text-[var(--foreground-subtle)] truncate max-w-[240px]">{name}</span>;
-  }
-  return null;
+}
+
+// 16px icons by the part of the action before the dot (the mockup's set).
+const ICON = {
+  users: "M6 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13.5C2 11 3.8 10 6 10s4 1 4.5 3.5M11 3a2.3 2.3 0 0 1 0 4.4M12.5 10.3c1.1.5 1.8 1.6 2 3.2",
+  sliders: "M3 4.5h6M12 4.5h1M3 11.5h1M7 11.5h6M10.5 3v3M5.5 10v3",
+  chat: "M2.5 3.5h11V11H7l-3 2.5V11H2.5z",
+  upload: "M8 10.5V2.5M5 5.5l3-3 3 3M2.5 10.5v3h11v-3",
+  list: "M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01",
+  tag: "M2.5 8.5V3a.5.5 0 0 1 .5-.5h5.5l5 5-6 6zM5.5 5.5h.01",
+  spark: "M8 2v3M8 11v3M2 8h3M11 8h3M4 4l2 2M10 10l2 2M12 4l-2 2M6 10l-2 2",
+  layers: "M8 2l6 3-6 3-6-3zM2 8l6 3 6-3M2 11l6 3 6-3",
+  doc: "M4 2.5h5.5L12 5v8.5H4zM9.5 2.5V5H12M6 8h4M6 10.5h4",
+  star: "M8 2l1.8 3.8 4.2.5-3.1 2.9.8 4.1L8 11.3l-3.7 2 .8-4.1L2 6.3l4.2-.5z",
+  bag: "M3 5.5h10l-.8 8H3.8zM5.5 5.5V4a2.5 2.5 0 0 1 5 0v1.5",
+  mail: "M2.5 4h11v8.5h-11zM2.5 4.5L8 9l5.5-4.5",
+  edit: "M11 2.5L13.5 5 6 12.5l-3 .5.5-3z",
+  trash: "M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 9h5.8l.6-9",
+  ban: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM3.8 3.8l8.4 8.4",
+} as const;
+
+const GROUP_ICON: Record<string, keyof typeof ICON> = {
+  user: "users",
+  settings: "sliders",
+  parser: "upload",
+  import: "upload",
+  categories: "list",
+  products: "tag",
+  catalogue_check: "spark",
+  outfits: "layers",
+  looks: "layers",
+  blog: "doc",
+  brands: "star",
+  retailer_domain: "bag",
+  email: "mail",
+  waitlist: "mail",
+  stylist_usage: "chat",
+};
+
+function iconFor(action: string): keyof typeof ICON {
+  if (action === "user.banned") return "ban";
+  if (action.endsWith(".deleted") || action.endsWith("_deleted")) return "trash";
+  if (action.startsWith("settings.prompt_")) return "chat";
+  return GROUP_ICON[action.split(".")[0]] ?? "edit";
+}
+
+// The icon's tile carries the tone: red for what deletes, amber for what
+// changes access or money, green for what grants.
+const TILE: Record<Tone | "none", string> = {
+  err: "bg-[var(--err-bg)] text-[var(--err)]",
+  warn: "bg-[var(--warn-bg)] text-[var(--warn)]",
+  ok: "bg-[var(--ok-bg)] text-[var(--ok)]",
+  none: "bg-[var(--fg-overlay-08)] text-[var(--foreground-muted)]",
+};
+
+/** Local midnight of the entry's day, the key it is grouped by. */
+function dayOf(iso: string): number {
+  const d = new Date(iso);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function Entry({ entry, first, t, f }: { entry: AuditEntry; first: boolean; t: T; f: Format }) {
+  const tone = isKnownAction(entry.action) ? ACTION_TONE[entry.action] : null;
+  const detail = detailOf(entry, t);
+  return (
+    <li className={`flex items-start gap-3 px-4 md:px-5 py-3 ${first ? "" : "border-t border-[var(--border)]"}`}>
+      <span aria-hidden="true" className={`flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg ${TILE[tone ?? "none"]}`}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d={ICON[iconFor(entry.action)]} />
+        </svg>
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] leading-5 text-[var(--foreground)] break-words">
+          <span className="font-medium">{actionLabel(entry.action, t)}</span>
+          {detail && (
+            <span className="text-[var(--foreground-muted)]" title={entry.target_id ?? undefined}>
+              {" · "}
+              {detail}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 min-w-0 text-[12px] leading-[18px] text-[var(--foreground-muted)]">
+          <span className="truncate">{entry.admin_email ?? entry.admin_id}</span>
+          {/* The target's id only when the entry named nothing: a UUID is not a name. */}
+          {!detail && entry.target_id && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono truncate max-w-[180px]">{entry.target_id}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <time
+        dateTime={entry.created_at}
+        title={f.dateTime(entry.created_at)}
+        className="flex-shrink-0 text-[12px] leading-5 text-[var(--foreground-muted)] tabular-nums whitespace-nowrap"
+      >
+        {f.when(entry.created_at)}
+      </time>
+    </li>
+  );
 }
 
 export default function AdminActivityPage() {
+  const t = useT();
   const f = useFormat();
   const [access, setAccess]       = useState<"checking" | "granted" | "denied">("checking");
   const [entries, setEntries]     = useState<AuditEntry[]>([]);
   const [total, setTotal]         = useState(0);
+  // The whole log's size, from the last unfiltered answer, for the header.
+  const [logTotal, setLogTotal]   = useState<number | null>(null);
   const [admins, setAdmins]       = useState<AdminOption[]>([]);
   const [loading, setLoading]     = useState(false);
+  // The server's message; "" when it gave none, worded on screen in the admin's language.
   const [error, setError]         = useState<string | null>(null);
   const [adminFilter, setAdminFilter]   = useState("");
   const [actionFilter, setActionFilter] = useState("");
@@ -246,9 +306,10 @@ export default function AdminActivityPage() {
         return [...prev, ...page.filter((e) => !seen.has(e.id))];
       });
       setTotal(body.total ?? 0);
+      if (!adminFilter && !actionFilter) setLogTotal(body.total ?? 0);
       if (body.admins) setAdmins(body.admins);
     } catch (e) {
-      if (id === requestId.current) setError(e instanceof Error ? e.message : "Failed to load");
+      if (id === requestId.current) setError(e instanceof Error ? e.message : "");
     } finally {
       if (id === requestId.current) setLoading(false);
     }
@@ -271,212 +332,162 @@ export default function AdminActivityPage() {
     setActionFilter(action);
   };
 
-  if (access === "checking") {
-    return <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</div>;
-  }
-
-  // Access guard — non-super admins get a locked view
-  if (access === "denied") {
+  if (access !== "granted") {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-[var(--foreground-muted)]">
-          <rect x="5" y="11" width="14" height="10" rx="1" stroke="currentColor" strokeWidth="1.4" />
-          <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-        <p className="text-sm text-[var(--foreground-muted)]">Access restricted to super admin only.</p>
+      <div>
+        <PageHeader title={t("nav.activity")} subtitle={access === "checking" ? t("common.loading") : undefined} />
+        {/* Access guard — non-super admins get a locked view. */}
+        {access === "denied" && (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+            <EmptyState
+              text={t("activity.denied")}
+              icon={
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="5" y="11" width="14" height="10" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              }
+            />
+          </div>
+        )}
       </div>
     );
   }
 
   const filtered = !!(adminFilter || actionFilter);
+  const adminOptions = admins.map((a) => ({ value: a.id, label: a.email ?? `${a.id.slice(0, 16)}…` }));
+  const adminLabel = adminOptions.find((o) => o.value === adminFilter)?.label ?? adminFilter;
+  const activeFilters: ActiveFilter[] = [
+    ...(adminFilter
+      ? [{ key: "admin", label: `${t("activity.f.admin")}: ${adminLabel}`, onRemove: () => changeFilter("", actionFilter) }]
+      : []),
+    ...(actionFilter
+      ? [{ key: "type", label: `${t("activity.f.type")}: ${actionLabel(actionFilter, t)}`, onRemove: () => changeFilter(adminFilter, "") }]
+      : []),
+  ];
+
+  const subtitle = [
+    logTotal !== null && t("activity.count", { count: logTotal }),
+    admins.length > 0 && t("activity.admins", { count: admins.length }),
+  ].filter(Boolean).join(" · ");
+
+  // Newest first, as the API sends them: a new group starts where the day changes.
+  const days: { day: number; at: string; entries: AuditEntry[] }[] = [];
+  for (const e of entries) {
+    const day = dayOf(e.created_at);
+    const last = days[days.length - 1];
+    if (last && last.day === day) last.entries.push(e);
+    else days.push({ day, at: e.created_at, entries: [e] });
+  }
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const today = midnight.getTime();
+  midnight.setDate(midnight.getDate() - 1);
+  const yesterday = midnight.getTime();
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-        <div>
-          <div className="flex flex-wrap items-center gap-2.5 mb-1">
-            <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Admin Activity</h1>
-            <span className="text-[11px] font-medium px-2 py-1 border rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]">
-              Super admin
-            </span>
-          </div>
-          <p className="text-xs text-[var(--foreground-muted)]">
-            {f.number(total)} recorded action{total === 1 ? "" : "s"} {filtered ? "matching the filter" : "across all admins"}
-          </p>
+      <PageHeader
+        title={t("nav.activity")}
+        subtitle={subtitle || (loading ? t("common.loading") : undefined)}
+        actions={[
+          { key: "refresh", label: loading ? t("common.loading") : t("activity.refresh"), onClick: () => fetchPage(0), disabled: loading },
+        ]}
+      />
+
+      {/* Who and what; the dates filter of the mockup needs the API first. */}
+      <div className="mb-6 flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {admins.length <= ADMIN_CHIPS_MAX ? (
+            <FilterChips
+              label={t("activity.f.admin")}
+              value={adminFilter}
+              options={[{ value: "", label: t("activity.allAdmins") }, ...adminOptions]}
+              onChange={(v) => changeFilter(v, actionFilter)}
+            />
+          ) : (
+            <FilterMenu
+              label={t("activity.f.admin")}
+              value={adminFilter}
+              options={adminOptions}
+              onChange={(v) => changeFilter(v, actionFilter)}
+              allLabel={t("activity.allAdmins")}
+              searchable
+            />
+          )}
+          <FilterMenu
+            label={t("activity.f.type")}
+            value={actionFilter}
+            options={ACTIONS.map((a) => ({ value: a, label: t(actKey(a)) }))}
+            onChange={(v) => changeFilter(adminFilter, v)}
+            allLabel={t("activity.allTypes")}
+            searchable
+          />
         </div>
-        <button
-          onClick={() => fetchPage(0)}
-          disabled={loading}
-          className={btn("secondary")}
-        >
-          {loading ? "Loading…" : "Refresh"}
-        </button>
+        {filtered && (
+          <ActiveFilters
+            filters={activeFilters}
+            onClearAll={() => changeFilter("", "")}
+            count={loading ? null : t("activity.count", { count: total })}
+          />
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <button onClick={() => changeFilter("", actionFilter)} aria-pressed={!adminFilter} className={pillCls(!adminFilter)}>
-          All admins
-        </button>
-        {admins.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => changeFilter(a.id, actionFilter)}
-            aria-pressed={adminFilter === a.id}
-            className={`${pillCls(adminFilter === a.id)} truncate max-w-[200px]`}
-            title={a.id}
-          >
-            {a.email ?? a.id.slice(0, 16) + "…"}
-          </button>
-        ))}
-        <span className="w-px h-4 bg-[var(--border)] mx-1" />
-        <select
-          value={actionFilter}
-          onChange={(e) => changeFilter(adminFilter, e.target.value)}
-          aria-label="Filter by action"
-          className="rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[12px] px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[220px]"
-        >
-          <option value="">All actions</option>
-          {ACTION_GROUPS.map(([group, actions]) => (
-            <optgroup key={group} label={GROUP_LABELS[group] ?? group}>
-              {actions.map((a) => (
-                <option key={a} value={a}>{ACTION_LABELS[a]}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </div>
-
-      {error && (
-        <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-4 py-3">
-          {error}
+      {error !== null && (
+        <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)] break-words">
+          {error || t("activity.loadFailed")}
         </div>
       )}
 
-      {/* Timeline */}
-      <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
-        {loading && entries.length === 0 && (
-          <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">Loading…</div>
-        )}
-        {!loading && !error && entries.length === 0 && (
-          <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">
-            {filtered
-              ? "No actions match this filter."
-              : "No activity recorded yet. Actions by admins will appear here."}
+      {entries.length === 0 ? (
+        loading ? (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-12 text-center text-[13px] text-[var(--foreground-muted)]">
+            {t("common.loading")}
           </div>
-        )}
-
-        {entries.map((entry, i) => {
-          const action = isKnownAction(entry.action) ? entry.action : null;
-          const label = action ? ACTION_LABELS[action] : entry.action;
-          const tone = action ? ACTION_TONES[action] : undefined;
-          const colorCls = tone ? TONE_CLASSES[tone] : "border-[var(--border)] text-[var(--foreground-muted)]";
-          const isLast = i === entries.length - 1;
-
-          return (
-            <div
-              key={entry.id}
-              className={`flex items-start gap-3 md:gap-4 px-4 md:px-6 py-4 hover:bg-[var(--background)] transition-colors ${!isLast ? "border-b border-[var(--border)]" : ""}`}
-            >
-              {/* Icon column */}
-              <div className="flex-shrink-0 mt-0.5">
-                <ActionIcon action={entry.action} />
-              </div>
-
-              {/* Main info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-[11px] font-medium px-2 py-0.5 border rounded-full ${colorCls}`}>
-                    {label}
-                  </span>
-                  {entry.target_type && (
-                    <span className="text-[11px] font-medium text-[var(--foreground-subtle)] border border-[var(--border)] rounded-full px-1.5 py-0.5">
-                      {sentenceCase(entry.target_type)}
-                    </span>
-                  )}
-                  <MetaDetail metadata={entry.metadata} action={entry.action} />
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 min-w-0">
-                  <span className="text-xs text-[var(--foreground)] break-all">
-                    {entry.admin_email ?? entry.admin_id}
-                  </span>
-                  {entry.target_id && (
-                    <>
-                      <span className="text-[var(--border-strong)]">·</span>
-                      <span className="text-[12px] font-mono text-[var(--foreground-subtle)] truncate max-w-[180px]">
-                        {entry.target_id}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Timestamp */}
-              <div className="flex-shrink-0 text-right">
-                <p className="text-xs text-[var(--foreground-muted)]" title={f.dateTime(entry.created_at)}>
-                  {f.when(entry.created_at)}
-                </p>
-                {/* The date under "22h ago"; past a week the line above is the date already. */}
-                {f.when(entry.created_at) !== f.date(entry.created_at) && (
-                  <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{f.date(entry.created_at)}</p>
+        ) : error === null ? (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+            <EmptyState
+              text={filtered ? t("activity.empty.filtered") : t("activity.empty.none")}
+              action={
+                filtered ? (
+                  <button type="button" onClick={() => changeFilter("", "")} className={btn("secondary")}>
+                    {t("filter.clearFilters")}
+                  </button>
+                ) : undefined
+              }
+            />
+          </div>
+        ) : null
+      ) : (
+        <div className="flex flex-col gap-6">
+          {days.map((d) => (
+            <section key={d.day} className="flex flex-col gap-2">
+              <h2 className="flex flex-wrap items-baseline gap-x-2 text-[13px] leading-5 font-medium text-[var(--foreground)]">
+                {d.day === today ? t("activity.today") : d.day === yesterday ? t("activity.yesterday") : f.date(d.at)}
+                {(d.day === today || d.day === yesterday) && (
+                  <span className="text-[12px] font-normal text-[var(--foreground-muted)]">{f.date(d.at)}</span>
                 )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              </h2>
+              <ul className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
+                {d.entries.map((entry, i) => (
+                  <Entry key={entry.id} entry={entry} first={i === 0} t={t} f={f} />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
 
       {entries.length > 0 && entries.length < total && (
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={() => fetchPage(entries.length)}
-            disabled={loading}
-            className={btn("secondary")}
-          >
-            {loading ? "Loading…" : `Load more · ${f.number(entries.length)} of ${f.number(total)}`}
+        <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+          <button type="button" onClick={() => fetchPage(entries.length)} disabled={loading} className={btn("secondary")}>
+            {loading ? t("common.loading") : t("activity.loadMore")}
           </button>
+          <span className="text-[12px] text-[var(--foreground-muted)] tabular-nums">
+            {t("filter.count", { shown: entries.length, total })}
+          </span>
         </div>
       )}
     </div>
-  );
-}
-
-function ActionIcon({ action }: { action: string }) {
-  const cls = "text-[var(--foreground-subtle)]";
-  if (action === "user.banned" || action.endsWith(".deleted") || action.endsWith("_deleted")) {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={cls}>
-        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2" />
-        <path d="M3.5 3.5L12.5 12.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (action === "user.admin_granted") {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={cls}>
-        <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (action === "user.plan_changed") {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={cls}>
-        <path d="M3 8H13M10 5L13 8L10 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (action.startsWith("settings.")) {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={cls}>
-        <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
-        <path d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={cls}>
-      <path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-    </svg>
   );
 }
