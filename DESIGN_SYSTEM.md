@@ -867,9 +867,9 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | Заголовок секции или карточки | `text-[15px] leading-[22px] font-medium text-[var(--foreground)]`, без трекинга | «System health», «Recent signups»; модалка Customize `layout.tsx:935` |
 | **Служебная подпись — единственный капс** | `text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]` (+ `font-normal` в `<th>`) | шапки таблиц `subscriptions/page.tsx:104`, `waitlist/page.tsx:15`; подписи KPI на дашборде, в Users, Analytics; группы меню `layout.tsx:602` |
 | Кнопка, вкладка, пункт меню | `text-[13px] font-medium`, обычный регистр, без трекинга | рецепты `_ui/recipes.ts`, пункты меню `layout.tsx:638` |
-| Чип, фильтр-пилюля, сегмент | `text-[12px]`, обычный регистр | `analytics/page.tsx:23-28` |
+| Чип, фильтр-пилюля, сегмент | `text-[12px]`, обычный регистр | `FilterChips` (`FilterBar.tsx`) |
 | Бейдж | `text-[11px] font-medium`, обычный регистр («Exact», «12 missing») | |
-| Подпись поля | `block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5` | `parser/page.tsx:114`, `catalogue-check/page.tsx:121`, `blog/page.tsx:49` |
+| Подпись поля | `block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5` | рецепт `FIELD_LABEL` в `_ui/recipes.ts` |
 | Вспомогательный и мета-текст | `text-[12px] text-[var(--foreground-muted)]` | |
 | Большое число | `font-display text-3xl font-light` (`text-2xl md:text-3xl` в карточках на телефоне) | `users/page.tsx:426` |
 
@@ -903,6 +903,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | Что | Где | Как пользоваться |
 |---|---|---|
 | Рецепты кнопок и полей | `src/app/goo-studio/_ui/recipes.ts` | `btn(kind, size)`: `primary` — одно главное действие страницы или блока; `secondary` — остальные кнопки (канон Р14: рамка `--border-strong`, текст `--foreground`); `ghost` — тихие действия (Cancel, Dismiss, Undo); `danger` — удаление среди других действий; `dangerSolid` — только подтверждающая кнопка опасного `ConfirmDialog`. Размер `md` — `h-8 px-3`, `sm` — `h-7 px-2.5` для строки таблицы, `lg` — `h-12 px-4 text-[15px]` для главного действия, закреплённого внизу экрана телефона (`PageHeader`). Плюс `BTN_ICON` (иконка 32px, обязательно `aria-label`), `BTN_ICON_SM` (28px, в строке таблицы), `BTN_ICON_OUTLINE` («…» рядом с главной кнопкой), `INPUT`, `SELECT`, `FIELD_LABEL`. Это строки классов, а не компонент: общий примитив кнопки запрещён `CLAUDE.md` |
+| Карточка блока и баннер | `src/app/goo-studio/_ui/recipes.ts` (GS4-12) | `PANEL` — карточка: `rounded-xl border border-[var(--border)] bg-[var(--surface)]`, отступы и раскладку добавляет место вызова (`` `${PANEL} p-5` ``). `BANNER.err` / `.warn` / `.ok` — плашка сбоя или предупреждения (подробнее — «Статусы, баннеры и тосты» ниже). Своих констант карточки и баннера в экранах нет |
 | Подтверждение | `src/components/admin/ConfirmDialog.tsx` | `const confirm = useConfirm(); if (!(await confirm({ title, body, confirmLabel, tone })))`. Заголовок называет объект и последствие, кнопка — действие («Delete post», не «OK»). `tone: "danger"` — для удаления, блокировки и всего необратимого: фокус встаёт на Cancel, кнопка красная. Escape и клик мимо — «нет». `confirm()` браузера в админке не используется |
 | Тост | `src/components/admin/Toast.tsx` | `const toast = useToast(); toast.ok(…)`, `toast.err(…)`, `toast.info(…)`. Панель `--surface` справа внизу, точка статуса, кнопка закрытия; успех 5 с, ошибка 8 с, пауза под курсором и фокусом; новый тост заменяет старый. `alert()` и свои тосты в страницах не заводятся |
 | Пояснение за «?» | `src/components/admin/HelpToggle.tsx` | `const help = useHelp("id")`, `<HelpButton help label />` рядом с заголовком, `<HelpPanel help>` под ним. Открытость хранится в `localStorage` (`goo-admin-help-<id>`). Абзацы «как это работает» уходят сюда, видимой остаётся строка с числами и состоянием |
@@ -945,15 +946,16 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 - **Проверка** — `npm run i18n:check` (`scripts/i18n-check.mjs`, шаг CI «Admin dictionaries»):
   - ключи `ru.ts` должны быть в `en.ts`;
   - в файлах из списка `TRANSLATED` не должно быть текста мимо словаря: JSX-текста и строк в `placeholder` / `title` / `aria-label` / `alt` / `label`;
-  - остальные файлы отчёт показывает с числом строк, пока GS4-12 не переведёт их на словарь.
-- **Переведено на 2026-10-05:** оболочка (`layout.tsx`), `ConfirmDialog`, `Toast`, `HelpToggle`, `ImageCropEditor`, Prompts. Русский интерфейс в админке остался только там, где выбран русский язык.
+  - остальные файлы отчёт показывает с числом строк — после GS4-12 таких нет.
+- **Словарь экрана — в своём файле:** `_i18n/screens/<экран>.en.ts` и `.ru.ts`, ключи с префиксом экрана (`brands.*`, `aicheck.*`). `en.ts` и `ru.ts` подключают их через `...`; проверка видит и такие ключи. Общие ключи (`common.*`, `nav.*`, `filter.*`) остаются в `en.ts` / `ru.ts`.
+- **Переведено на 2026-10-05 (GS4-12):** вся админка — оболочка, общие компоненты и все экраны; все они в списке `TRANSLATED`. Данные (названия товаров, ответы API и парсера, тексты писем) показываются как пришли.
 
 ### Статусы, баннеры и тосты — как в коде сейчас
 
 | Что | Рецепт | Где |
 |---|---|---|
-| Базовая тройка | `bg-[var(--X-bg)] text-[var(--X)] border border-[var(--X-line)]`, X — `ok` / `warn` / `err` | константы `statusOk` / `statusWarn` / `statusErr` в `email/page.tsx:54-56`, `import/page.tsx:54-56`, `waitlist/page.tsx:14-15` |
-| Баннер | `rounded-xl border border-[var(--X-line)] bg-[var(--X-bg)] px-4 py-3` + текст `text-xs text-[var(--X)]`; у баннера ошибки `role="alert"` | `catalogue-check/page.tsx:369`, `activity/page.tsx:369`, `parser/page.tsx:118` |
+| Базовая тройка | `bg-[var(--X-bg)] text-[var(--X)] border border-[var(--X-line)]`, X — `ok` / `warn` / `err` | бейдж — компонент `Badge` (`src/components/admin/Badge.tsx`); своих констант статуса в экранах нет с GS4-12 |
+| Баннер | рецепт `BANNER.err` / `.warn` / `.ok` в `_ui/recipes.ts`: `rounded-xl border border-[var(--X-line)] bg-[var(--X-bg)] px-4 py-3 text-[13px] text-[var(--X)] break-words`; у баннера ошибки `role="alert"`. Место вызова добавляет только раскладку (`mb-6`, `flex`) | сбой загрузки, недостающий шаг, предупреждение импорта. Что сломано и как чинить, с числом и ссылкой, — строкой `AttentionList`, не баннером (Dashboard, Subscriptions, AI check, Duplicates). Своих констант баннера в экранах нет с GS4-12 |
 | Бейдж | базовая тройка + `text-[11px] font-medium px-2 py-0.5 rounded-full`, обычный регистр | бейдж Super admin в меню аккаунта; радиусы ещё гуляют, см. раздел 11 |
 | Точка состояния | `w-2 h-2 rounded-full bg-[var(--X)]` | дашборд, «System health» |
 | Тост | компонент `Toast` (`useToast()`): `fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 md:w-[380px] z-[100]`, панель `--surface` с границей и тенью плавающего слоя `shadow-[0_8px_24px_rgba(0,0,0,0.12)]`, точка статуса `--ok` / `--err` / `--foreground-muted`, текст 13px `--foreground`, кнопка закрытия; `role="status"`, у ошибки `role="alert"` | `src/components/admin/Toast.tsx`; своих тостов в страницах нет с GS4-3 |
@@ -1007,10 +1009,10 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
    - Новый общий примитив кнопки не заводить (`CLAUDE.md`).
 7. **Подтверждение — только `useConfirm()`**, тост — только `useToast()`. `confirm()`, `alert()` и `prompt()` браузера в админке не используются: системные окна не берут тему, не называют действие на кнопке и не дают фокус-ловушку.
 8. **Пояснение длиннее одного предложения — за «?»** (`HelpToggle`). Короткая подсказка к одному полю остаётся под полем.
-9. **Фильтр-пилюля:** `px-2.5 py-1 text-[12px] border rounded-full transition-colors` (`analytics/page.tsx:24-29`).
+9. **Фильтр-пилюля:** компонент `FilterChips` (`FilterBar.tsx`), `aria-pressed`; ниже — его рецепт.
    - Активная — `bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]`.
    - Неактивная — `border-[var(--border)] text-[var(--foreground-muted)]`.
-10. **Переключатель:** `button role="switch" aria-checked`, дорожка `w-9 h-5 rounded-full`, бегунок `w-4 h-4 rounded-full bg-[var(--surface)]` (`parser/page.tsx:576-588`).
+10. **Переключатель:** `button role="switch" aria-checked`, дорожка `w-9 h-5 rounded-full`, бегунок `w-4 h-4 rounded-full bg-[var(--surface)]` (`Toggle` в `parser/page.tsx`).
     - Включён — дорожка `bg-[var(--foreground)]`.
     - Выключен — `bg-[var(--border-strong)]`. С `--border` выключенный переключатель на белой панели был не виден (GS1-0).
 11. **Заголовок страницы:** `font-display text-2xl font-light text-[var(--foreground)]` + подзаголовок muted.
