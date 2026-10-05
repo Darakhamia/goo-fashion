@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
 
 interface WaitlistEntry {
   id: string;
@@ -15,6 +17,7 @@ const statusErr  = "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--er
 const thCls = "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal";
 
 export default function WaitlistPage() {
+  const confirm = useConfirm();
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -45,7 +48,12 @@ export default function WaitlistPage() {
   useEffect(() => { load(); }, [load]);
 
   const remove = async (email: string) => {
-    if (!confirm(`Remove ${email} from the waitlist? This cannot be undone.`)) return;
+    if (!(await confirm({
+      title: `Remove ${email} from the waitlist?`,
+      body: "This cannot be undone.",
+      confirmLabel: "Remove email",
+      tone: "danger",
+    }))) return;
     setDeleting(email);
     setActionError("");
     try {
@@ -92,7 +100,7 @@ export default function WaitlistPage() {
           <button
             onClick={copyAll}
             disabled={entries.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
+            className={btn("secondary")}
           >
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="4" y="4" width="8" height="8" rx="1" />
@@ -103,7 +111,7 @@ export default function WaitlistPage() {
           <button
             onClick={load}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
+            className={btn("secondary")}
           >
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2v4H8M2 12v-4h4" />
@@ -161,7 +169,7 @@ export default function WaitlistPage() {
                     <button
                       onClick={() => remove(entry.email)}
                       disabled={deleting === entry.email}
-                      className="flex items-center justify-center w-7 h-7 text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors disabled:opacity-40"
+                      className={BTN_ICON}
                       title="Remove"
                       aria-label={`Remove ${entry.email}`}
                     >

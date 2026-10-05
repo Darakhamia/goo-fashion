@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { EmailTemplate } from "@/app/api/admin/email/templates/route";
 import { buildHtml, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
 
 type Audience = "all" | "free" | "basic" | "pro" | "premium" | "custom";
 
@@ -54,6 +56,7 @@ const statusWarn = "bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--
 const statusErr  = "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]";
 
 export default function AdminEmailPage() {
+  const confirm = useConfirm();
   const [status, setStatus] = useState<StatusData | null>(null);
   const [statusError, setStatusError] = useState("");
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -194,10 +197,14 @@ export default function AdminEmailPage() {
     }
   };
 
-  const handleLoadTemplate = (t: EmailTemplate) => {
+  const handleLoadTemplate = async (t: EmailTemplate) => {
     const hasDraft = subject.trim() || body.trim();
     const isSame = subject === t.subject && body === t.body;
-    if (hasDraft && !isSame && !confirm(`Replace the current subject and body with "${t.name}"?`)) return;
+    if (hasDraft && !isSame && !(await confirm({
+      title: `Replace the current subject and body with "${t.name}"?`,
+      confirmLabel: "Replace draft",
+      tone: "danger",
+    }))) return;
     setSubject(t.subject);
     setBody(t.body);
     setShowPreview(false);
@@ -234,7 +241,11 @@ export default function AdminEmailPage() {
   };
 
   const handleDeleteTemplate = async (id: string) => {
-    if (!confirm("Delete this template?")) return;
+    if (!(await confirm({
+      title: "Delete this template?",
+      confirmLabel: "Delete template",
+      tone: "danger",
+    }))) return;
     setDeletingId(id);
     setTemplatesError("");
     try {
@@ -390,7 +401,7 @@ export default function AdminEmailPage() {
                   <button
                     type="button"
                     onClick={() => { setAiWriteError(""); setShowAiModal(true); }}
-                    className="inline-flex items-center gap-1.5 rounded-lg text-[13px] font-medium border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                    className={btn("secondary")}
                   >
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                       <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.1" />
@@ -433,7 +444,7 @@ export default function AdminEmailPage() {
             <button
               onClick={() => setShowPreview((v) => !v)}
               disabled={!showPreview && (!subject.trim() || !body.trim())}
-              className="rounded-lg text-[13px] font-medium text-[var(--foreground-muted)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className={btn("secondary")}
             >
               {showPreview ? "Hide preview" : "Show email preview"}
             </button>
@@ -461,7 +472,7 @@ export default function AdminEmailPage() {
             <button
               onClick={() => sendEmail(true)}
               disabled={!canSend || testSending || sending}
-              className="rounded-lg text-[13px] font-medium text-[var(--foreground)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              className={btn("secondary")}
             >
               {testSending ? (
                 <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Sending test…</>
@@ -472,7 +483,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={() => setConfirmSend(true)}
                 disabled={!canSend || testSending || sending || recipientCount === 0}
-                className="rounded-lg text-[13px] font-medium text-[var(--surface)] bg-[var(--foreground)] px-5 py-2.5 hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className={btn("primary")}
               >
                 Send to {recipientCount > 0 ? `${recipientCount} recipient${recipientCount !== 1 ? "s" : ""}` : "audience"}
               </button>
@@ -484,7 +495,7 @@ export default function AdminEmailPage() {
                 <button
                   onClick={() => sendEmail(false)}
                   disabled={sending}
-                  className="rounded-lg text-[13px] font-medium text-[var(--surface)] bg-[var(--foreground)] px-4 py-2 hover:opacity-80 disabled:opacity-40 transition-opacity flex items-center gap-2"
+                  className={btn("primary")}
                 >
                   {sending ? (
                     <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Sending…</>
@@ -493,7 +504,7 @@ export default function AdminEmailPage() {
                 <button
                   onClick={() => setConfirmSend(false)}
                   disabled={sending}
-                  className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+                  className={btn("ghost")}
                 >
                   Cancel
                 </button>
@@ -543,7 +554,7 @@ export default function AdminEmailPage() {
               disabled={!subject.trim() || !body.trim()}
               title="Save current draft as template"
               aria-label="Save current draft as template"
-              className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className={BTN_ICON}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -584,7 +595,7 @@ export default function AdminEmailPage() {
                         onClick={() => handleLoadTemplate(t)}
                         title="Load into editor"
                         aria-label={`Load template ${t.name} into the editor`}
-                        className="p-1 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                        className={BTN_ICON}
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -595,7 +606,7 @@ export default function AdminEmailPage() {
                         disabled={deletingId === t.id}
                         title="Delete template"
                         aria-label={`Delete template ${t.name}`}
-                        className="p-1 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--err)] transition-colors disabled:opacity-40"
+                        className={BTN_ICON}
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -627,7 +638,7 @@ export default function AdminEmailPage() {
                   Describe what to write — AI generates the email body
                 </p>
               </div>
-              <button onClick={() => setShowAiModal(false)} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={() => setShowAiModal(false)} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
@@ -660,7 +671,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={handleAiWrite}
                 disabled={(!subject.trim() && !aiBrief.trim()) || aiWriting}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-2.5 text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2 rounded-lg"
+                className={`${btn("primary")} flex-1`}
               >
                 {aiWriting
                   ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Writing…</>
@@ -669,7 +680,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={() => setShowAiModal(false)}
                 disabled={aiWriting}
-                className="border border-[var(--border)] px-4 py-2.5 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
+                className={btn("ghost")}
               >
                 Cancel
               </button>
@@ -693,7 +704,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={() => setShowSaveModal(false)}
                 aria-label="Close"
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className={BTN_ICON}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -725,13 +736,13 @@ export default function AdminEmailPage() {
               <button
                 onClick={handleSaveTemplate}
                 disabled={!templateName.trim() || savingTemplate}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-2.5 text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity rounded-lg"
+                className={`${btn("primary")} flex-1`}
               >
                 {savingTemplate ? "Saving…" : "Save template"}
               </button>
               <button
                 onClick={() => setShowSaveModal(false)}
-                className="border border-[var(--border)] px-4 py-2.5 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
+                className={btn("ghost")}
               >
                 Cancel
               </button>
