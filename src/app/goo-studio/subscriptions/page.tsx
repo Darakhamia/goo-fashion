@@ -8,7 +8,7 @@ import { AttentionList, type AttentionRow } from "@/components/admin/AttentionLi
 import { KpiStrip, type Kpi } from "@/components/admin/KpiStrip";
 import { Badge, type BadgeTone } from "@/components/admin/Badge";
 import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
-import { CRON_FIX } from "@/lib/server/attention";
+import { CRON_FIX } from "@/lib/billing-cron";
 
 /*
  * Subscriptions (docs/ADMIN_DESIGN.md §6, mockup "Subscriptions", GS4-12):
