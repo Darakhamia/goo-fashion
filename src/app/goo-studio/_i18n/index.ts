@@ -51,7 +51,12 @@ export function translate(lang: Lang, key: Key, vars?: Vars): string {
     text = message[form] ?? message.other;
   }
   if (!vars) return text;
-  return text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
+  // A number reads in the language's grouping: "1,224 products" / "1 224 товара".
+  return text.replace(/\{(\w+)\}/g, (whole, name: string) => {
+    if (!(name in vars)) return whole;
+    const value = vars[name];
+    return typeof value === "number" ? value.toLocaleString(LOCALE[lang]) : String(value);
+  });
 }
 
 export function useLang(): Lang {
