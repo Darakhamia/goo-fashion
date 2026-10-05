@@ -375,6 +375,19 @@ function parseNavOrder(saved: string | null): string[] {
   }
 }
 
+/** Marks a menu item only super admins see (it was an unexplained "SA" badge). */
+function SuperAdminMark() {
+  return (
+    <span title="Visible to super admins only" className="inline-flex items-center text-[var(--foreground-subtle)] flex-shrink-0">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="3.5" y="7" width="9" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+      <span className="sr-only">Super admins only</span>
+    </span>
+  );
+}
+
 function GripIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0">
@@ -397,6 +410,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [customizing, setCustomizing] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dragHref = useRef<string | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -412,6 +428,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (drawerPathname !== pathname) {
     setDrawerPathname(pathname);
     setMobileNavOpen(false);
+    setAccountOpen(false);
   }
 
   useScrollLock(mobileNavOpen);
@@ -441,6 +458,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [customizing]);
+
+  // The account menu closes on Escape (focus back to its button) and on a
+  // press anywhere outside it.
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setAccountOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (!accountRef.current?.contains(e.target as Node)) setAccountOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [accountOpen]);
 
   /** Closes the phone menu; focus goes back to the button that opened it. */
   const dismissMobileNav = () => {
@@ -522,7 +560,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
    * 40px+ tall below md for touch and keep their desktop padding from md up.
    */
   const renderMenu = (compact: boolean, onNavigate?: () => void) => (
-    <nav className="flex-1 py-3 flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain">
+    <nav aria-label="Admin sections" className="flex-1 pt-1 pb-4 flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain">
       {NAV_CATEGORIES.map((cat) => {
         const items = navItems.filter((i) => i.category === cat.key);
         if (items.length === 0) return null;
@@ -536,9 +574,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.1 }}
-                  className="px-5 pt-3 pb-1"
+                  className="px-5 pt-4 pb-1"
                 >
-                  <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                  <span className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
                     {cat.label}
                   </span>
                 </motion.div>
@@ -557,14 +595,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     onClick={onNavigate}
                     aria-current={isActive ? "page" : undefined}
                     title={compact ? item.label : undefined}
-                    className={`flex items-center transition-colors rounded-xl ${
+                    className={`flex items-center transition-colors rounded-lg ${
                       compact
-                        ? "justify-center px-0 py-3"
-                        : "gap-3 px-3 py-3 md:py-2"
-                    } text-xs tracking-[0.1em] uppercase ${
+                        ? "justify-center px-0 py-3 md:py-2"
+                        : "gap-2.5 px-3 py-2.5 md:py-0 md:h-8"
+                    } text-[13px] font-medium ${
                       isActive
-                        ? "text-[var(--foreground)] bg-[var(--background)]"
-                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)]"
+                        ? "text-[var(--foreground)] bg-[var(--surface)] shadow-[0_0_0_1px_var(--border)]"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
                     }`}
                   >
                     <span className="flex-shrink-0">{item.icon}</span>
@@ -579,11 +617,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden whitespace-nowrap"
                         >
                           {item.label}
-                          {item.superAdminOnly && (
-                            <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)] leading-none rounded-full">
-                              SA
-                            </span>
-                          )}
+                          {item.superAdminOnly && <SuperAdminMark />}
                         </motion.span>
                       )}
                     </AnimatePresence>
@@ -597,103 +631,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </nav>
   );
 
-  const renderControls = (compact: boolean, onNavigate?: () => void) => (
-    <div className="pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-[var(--border)] flex flex-col gap-0.5 flex-shrink-0 px-2">
-      {/* Theme toggle */}
-      <button
-        onClick={toggleTheme}
-        title={compact ? (theme === "light" ? "Dark mode" : "Light mode") : undefined}
-        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] rounded-xl w-full ${
-          compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
-        }`}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          {theme === "light" ? (
-            <path d="M13.5 10A6 6 0 016 2.5a6 6 0 100 11A6 6 0 0013.5 10z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-          ) : (
-            <>
-              <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.4 3.4L4.5 4.5M11.5 11.5L12.6 12.6M3.4 12.6L4.5 11.5M11.5 4.5L12.6 3.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </>
-          )}
-        </svg>
-        <AnimatePresence initial={false}>
-          {!compact && (
-            <motion.span
-              key="theme-label"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.12 }}
-              className="overflow-hidden whitespace-nowrap"
-            >
-              {theme === "light" ? "Dark mode" : "Light mode"}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </button>
-
-      {/* Customize */}
-      <button
-        onClick={() => {
-          onNavigate?.();
-          setCustomizing(true);
-        }}
-        title={compact ? "Customize menu" : undefined}
-        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] rounded-xl w-full ${
-          compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
-        }`}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-          <path d="M11 2L13 4L11 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <AnimatePresence initial={false}>
-          {!compact && (
-            <motion.span
-              key="customize-label"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.12 }}
-              className="overflow-hidden whitespace-nowrap"
-            >
-              Customize
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </button>
-
-      {/* Back to site */}
-      <Link
-        href="/"
-        onClick={onNavigate}
-        title={compact ? "Back to site" : undefined}
-        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] rounded-xl ${
-          compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
-        }`}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <AnimatePresence initial={false}>
-          {!compact && (
-            <motion.span
-              key="back-label"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.12 }}
-              className="overflow-hidden whitespace-nowrap"
-            >
-              Back to site
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </Link>
-    </div>
-  );
-
   const logo = (onNavigate?: () => void) => (
     <Link
       href="/"
@@ -703,13 +640,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <span className="font-display text-xl tracking-[0.2em] uppercase text-[var(--foreground)] hover:opacity-60 transition-opacity">
         GOO
       </span>
-      <span className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-1.5 py-0.5 leading-none rounded-md">
-        Admin
-      </span>
+      <span className="text-[12px] text-[var(--foreground-muted)]">Studio</span>
     </Link>
   );
 
-  const crumbs = ["Admin", activeItem?.label, subpageTitle].filter(Boolean) as string[];
+  const menuItemCls =
+    "w-full flex items-center gap-2.5 px-3 py-2.5 md:py-2 text-[13px] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors text-left";
 
   return (
     <div
@@ -722,12 +658,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ── Sidebar (md and up) ── */}
       <aside
         className={`hidden md:flex flex-shrink-0 flex-col border-r border-[var(--border)] h-full transition-[width] duration-200 ease-in-out overflow-hidden ${
-          collapsed ? "w-[60px]" : "w-56"
+          collapsed ? "w-[60px]" : "w-60"
         }`}
-        style={{ background: "var(--surface)" }}
+        style={{ background: "var(--background)" }}
       >
         {/* Logo row */}
-        <div className="h-16 flex items-center border-b border-[var(--border)] flex-shrink-0">
+        <div className="h-14 flex items-center flex-shrink-0">
           <AnimatePresence initial={false}>
             {!collapsed && (
               <motion.div
@@ -745,8 +681,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button
             onClick={() => setCollapsed((c) => !c)}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={`flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 rounded-lg hover:bg-[var(--background)] ${
-              collapsed ? "w-[60px] h-16" : "w-10 h-10 mr-1.5"
+              collapsed ? "w-[60px] h-14" : "w-8 h-8 mr-2"
             }`}
           >
             <svg
@@ -762,15 +699,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {renderMenu(collapsed)}
-        {renderControls(collapsed)}
       </aside>
 
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col min-w-0" style={{ background: "var(--background)" }}>
         {/* Top bar */}
         <div
-          className="h-14 md:h-16 flex items-center justify-between gap-3 px-4 md:px-8 border-b border-[var(--border)] flex-shrink-0"
-          style={{ background: "var(--surface)" }}
+          className="h-14 flex items-center justify-between gap-3 px-4 md:px-8 border-b border-[var(--border)] flex-shrink-0"
+          style={{ background: "var(--background)" }}
         >
           <div className="flex items-center gap-2 min-w-0">
             {/* Below md the sidebar is a drawer opened from here. */}
@@ -787,52 +723,100 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
             </button>
-            {crumbs.map((part, i) => (
-              // On phones the leading "Admin" crumb is dropped to leave room
-              // for the page name.
-              <span
-                key={i}
-                className={`items-center gap-2 min-w-0 ${
-                  i === 0 && crumbs.length > 1 ? "hidden md:flex" : "flex"
-                }`}
-              >
-                {i > 0 && (
-                  <span className={`text-[var(--border-strong)] ${i === 1 ? "hidden md:inline" : ""}`}>/</span>
-                )}
-                <span
-                  className={`text-[10px] tracking-[0.18em] uppercase truncate ${
-                    i === crumbs.length - 1 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"
-                  }`}
-                >
-                  {part}
-                </span>
-              </span>
-            ))}
+            {/* The page names itself in its own heading. The bar adds the
+                section only where that helps: on nested pages, and on phones,
+                where the menu is closed. */}
+            <nav aria-label="Breadcrumb" className="flex items-center gap-2 min-w-0 text-[13px]">
+              {subpageTitle && activeItem ? (
+                <>
+                  <Link href={activeItem.href} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors truncate">
+                    {activeItem.label}
+                  </Link>
+                  <span className="text-[var(--border-strong)]" aria-hidden="true">/</span>
+                  <span className="text-[var(--foreground)] truncate" aria-current="page">{subpageTitle}</span>
+                </>
+              ) : (
+                activeItem && <span className="md:hidden font-medium text-[var(--foreground)] truncate">{activeItem.label}</span>
+              )}
+            </nav>
           </div>
 
-          <div className="flex items-center gap-3 flex-shrink-0">
-            {/* Nothing until the profile loads — no placeholder identity. */}
-            {user && (
-              <div className="text-right hidden sm:block min-w-0 max-w-[16rem]">
-                <div className="flex items-center justify-end gap-1.5 mb-0.5">
-                  <p className="text-xs text-[var(--foreground)] leading-none truncate">{user.name}</p>
-                  {isSuperAdmin && (
-                    <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)] leading-none rounded-full flex-shrink-0">
-                      Super Admin
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] text-[var(--foreground-subtle)] leading-none truncate">{user.email}</p>
+          <div ref={accountRef} className="relative flex-shrink-0">
+            <button
+              ref={accountButtonRef}
+              type="button"
+              onClick={() => setAccountOpen((o) => !o)}
+              aria-haspopup="menu"
+              aria-expanded={accountOpen}
+              aria-controls="admin-account-menu"
+              aria-label="Account menu"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold bg-[var(--foreground)] text-[var(--background)] hover:opacity-85 transition-opacity"
+            >
+              {initials || (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
+                  <path d="M3 13.5c.6-2.4 2.6-3.5 5-3.5s4.4 1.1 5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+            {accountOpen && (
+              <div
+                id="admin-account-menu"
+                role="menu"
+                aria-label="Account"
+                className="absolute right-0 top-full mt-2 z-50 w-64 rounded-xl border border-[var(--border)] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+                style={{ background: "var(--surface)" }}
+              >
+                {/* Nothing until the profile loads — no placeholder identity. */}
+                {user && (
+                  <div className="px-3 pt-2 pb-2.5 mb-1 border-b border-[var(--border)] min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-[13px] font-medium text-[var(--foreground)] truncate">{user.name}</p>
+                      {isSuperAdmin && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--warn-bg)] text-[var(--warn)] flex-shrink-0">
+                          Super admin
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12px] text-[var(--foreground-muted)] truncate">{user.email}</p>
+                  </div>
+                )}
+                <button type="button" role="menuitem" onClick={toggleTheme} className={menuItemCls}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="text-[var(--foreground-muted)]">
+                    {theme === "light" ? (
+                      <path d="M13.5 10A6 6 0 016 2.5a6 6 0 100 11A6 6 0 0013.5 10z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                    ) : (
+                      <>
+                        <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.3" />
+                        <path d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.4 3.4L4.5 4.5M11.5 11.5L12.6 12.6M3.4 12.6L4.5 11.5M11.5 4.5L12.6 3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                      </>
+                    )}
+                  </svg>
+                  {theme === "light" ? "Dark theme" : "Light theme"}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    setCustomizing(true);
+                  }}
+                  className={menuItemCls}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="text-[var(--foreground-muted)]">
+                    <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    <path d="M11 2L13 4L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Customize menu
+                </button>
+                <Link href="/" role="menuitem" className={menuItemCls}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="text-[var(--foreground-muted)]">
+                    <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Back to site
+                </Link>
               </div>
             )}
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center border text-[10px] tracking-[0.1em] font-medium text-[var(--foreground)] flex-shrink-0 ${
-                isSuperAdmin ? "border-[var(--warn-line)]" : "border-[var(--border-strong)]"
-              }`}
-              style={{ background: "var(--background)" }}
-            >
-              {initials}
-            </div>
           </div>
         </div>
 
@@ -882,7 +866,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </button>
             </div>
             {renderMenu(false, () => setMobileNavOpen(false))}
-            {renderControls(false, () => setMobileNavOpen(false))}
           </motion.div>
         )}
       </AnimatePresence>
@@ -913,10 +896,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {/* Header */}
               <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between flex-shrink-0">
-                <div>
-                  <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Sidebar</p>
-                  <h2 id="customize-menu-title" className="font-display text-base font-light text-[var(--foreground)]">Customize Menu</h2>
-                </div>
+                <h2 id="customize-menu-title" className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Customize menu</h2>
                 <button
                   onClick={() => setCustomizing(false)}
                   className="w-10 h-10 md:w-auto md:h-auto md:p-1.5 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors rounded-lg hover:bg-[var(--background)]"
@@ -929,7 +909,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
 
               {/* Hint */}
-              <p className="px-5 pt-3 pb-1 text-[10px] text-[var(--foreground-subtle)] tracking-wide">
+              <p className="px-5 pt-3 pb-1 text-[12px] text-[var(--foreground-muted)]">
                 Drag items or use the arrows to reorder them within a group. Changes save automatically.
               </p>
 
@@ -943,7 +923,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   const sortable = items.length > 1;
                   return (
                     <div key={cat.key}>
-                      <p className="px-2 pb-1 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                      <p className="px-2 pb-1 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
                         {cat.label}
                       </p>
                       <ul className="flex flex-col gap-1">
@@ -975,14 +955,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <GripIcon />
                               </span>
                               <span className="text-[var(--foreground-muted)] flex-shrink-0">{item.icon}</span>
-                              <span className="text-xs tracking-[0.1em] uppercase text-[var(--foreground)] flex-1 min-w-0 truncate">
+                              <span className="text-[13px] text-[var(--foreground)] flex-1 min-w-0 truncate">
                                 {item.label}
                               </span>
-                              {item.superAdminOnly && (
-                                <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)] leading-none rounded-full">
-                                  SA
-                                </span>
-                              )}
+                              {item.superAdminOnly && <SuperAdminMark />}
                               {sortable && (
                                 <span className="flex items-center flex-shrink-0">
                                   <button
@@ -1022,13 +998,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="px-5 py-3 md:py-4 border-t border-[var(--border)] flex items-center justify-between flex-shrink-0">
                 <button
                   onClick={resetOrder}
-                  className="py-3 md:py-0 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  className="py-3 md:py-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   Reset to default
                 </button>
                 <button
                   onClick={() => setCustomizing(false)}
-                  className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--surface)] px-5 py-3 md:py-2 hover:opacity-80 transition-opacity rounded-lg"
+                  className="text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] px-4 py-3 md:py-0 md:h-8 hover:opacity-85 transition-opacity rounded-lg"
                 >
                   Done
                 </button>
