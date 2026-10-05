@@ -13,7 +13,7 @@ const LOGO_MAX_BYTES = 5 * 1024 * 1024;
 const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)] w-full";
 const PRIMARY =
-  "shrink-0 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
+  "shrink-0 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
 const GHOST =
   "border border-[var(--border)] px-3 py-1.5 rounded-lg text-[11px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] disabled:opacity-40 transition-colors";
 
@@ -194,8 +194,8 @@ export default function AdminBrandsPage() {
 
       {/* Load failure — said once, with the server's own words */}
       {loadError && (
-        <div role="alert" className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3">
-          <p className="text-[13px] text-red-500 leading-relaxed">{loadError}</p>
+        <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3">
+          <p className="text-[13px] text-[var(--err)] leading-relaxed">{loadError}</p>
           <button onClick={fetchBrands} className={`${GHOST} mt-3`}>
             Retry
           </button>
@@ -203,7 +203,7 @@ export default function AdminBrandsPage() {
       )}
 
       {/* Add brand */}
-      <div className="mb-8 rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
+      <div className="mb-8 rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--surface)" }}>
         <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Add brand</p>
         <div className="flex gap-2">
           <input
@@ -249,7 +249,7 @@ export default function AdminBrandsPage() {
       />
 
       {/* Brand list */}
-      <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+      <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
         {loading ? (
           <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
             Loading…
@@ -271,7 +271,7 @@ export default function AdminBrandsPage() {
                   key={brand.name}
                   className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3 ${
                     i !== filtered.length - 1 ? "border-b border-[var(--border)]" : ""
-                  } hover:bg-[var(--surface)] transition-colors`}
+                  } hover:bg-[var(--background)] transition-colors`}
                 >
                   <span className="flex items-center gap-3 min-w-0">
                     {brand.logoUrl ? (
@@ -307,7 +307,7 @@ export default function AdminBrandsPage() {
                       <button
                         onClick={() => handleLogoRemove(brand.name)}
                         disabled={logoBusy}
-                        className={`${GHOST} hover:text-red-500 hover:border-red-500`}
+                        className={`${GHOST} hover:text-[var(--err)] hover:border-[var(--err)]`}
                       >
                         Remove logo
                       </button>
@@ -337,8 +337,8 @@ export default function AdminBrandsPage() {
           role={toast.type === "err" ? "alert" : "status"}
           className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 md:max-w-md px-4 py-3 text-xs tracking-wide rounded-xl border ${
             toast.type === "ok"
-              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-              : "bg-[var(--background)] text-red-500 border-red-400/30"
+              ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
+              : "bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]"
           }`}
         >
           {toast.msg}

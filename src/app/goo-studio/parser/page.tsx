@@ -110,15 +110,15 @@ const fieldBase =
 const inputCls = `${fieldBase} text-sm bg-transparent`;
 /** Regexes, endpoint templates, keys. */
 const monoInputCls = `${fieldBase} font-mono text-[11px] bg-transparent`;
-const selectCls = `${fieldBase} text-sm bg-[var(--background)]`;
+const selectCls = `${fieldBase} text-sm bg-[var(--surface)]`;
 const labelCls = "block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-1.5";
 const btnPrimary =
-  "px-4 py-2 text-xs tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
+  "px-4 py-2 text-xs tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
 const btnGhost =
   "px-4 py-2 text-xs tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
 /** Status plaques: the admin's three semantic colours, always in this shape. */
-const errorBoxCls = "rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-[12px] text-red-500 break-words";
-const warnBoxCls = "rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-[12px] text-amber-500 break-words";
+const errorBoxCls = "rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[12px] text-[var(--err)] break-words";
+const warnBoxCls = "rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)] break-words";
 /** Where the extension hands its pages to; install steps live there too. */
 const EXTENSION_PAGE = "/goo-studio/parser/collect";
 const Spinner = () => (
@@ -378,7 +378,7 @@ function CollectTab({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <label className={labelCls}>Store URL — category, brand page or single product</label>
@@ -476,7 +476,7 @@ function CollectTab({
 
       {/* Progress */}
       {(running || results.length > 0) && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
           <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
             <div className="flex items-center gap-4 flex-wrap">
               <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
@@ -486,9 +486,9 @@ function CollectTab({
                 {phase === "stopped" && "Stopped"}
               </p>
               <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
-                <span className="text-emerald-500">{imported} new</span>
+                <span className="text-[var(--ok)]">{imported} new</span>
                 <span className="text-[var(--foreground-muted)]">{updated} updated</span>
-                {failed > 0 && <span className="text-amber-500">{failed} skipped</span>}
+                {failed > 0 && <span className="text-[var(--warn)]">{failed} skipped</span>}
                 {(phase === "done" || phase === "stopped") && (
                   <a href="/goo-studio/products" className="underline hover:no-underline text-[var(--foreground)]">View products →</a>
                 )}
@@ -551,10 +551,10 @@ function CollectTab({
 
 function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
   const map: Record<CrawlItemResult["status"], { label: string; cls: string }> = {
-    imported: { label: "new", cls: "text-emerald-500 bg-emerald-400/15 border-emerald-400/30" },
+    imported: { label: "new", cls: "text-[var(--ok)] bg-[var(--ok-bg)] border-[var(--ok-line)]" },
     updated: { label: "upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)] border-[var(--border)]" },
-    skipped: { label: "skip", cls: "text-amber-500 bg-amber-400/15 border-amber-400/30" },
-    failed: { label: "fail", cls: "text-red-500 bg-red-400/15 border-red-400/30" },
+    skipped: { label: "skip", cls: "text-[var(--warn)] bg-[var(--warn-bg)] border-[var(--warn-line)]" },
+    failed: { label: "fail", cls: "text-[var(--err)] bg-[var(--err-bg)] border-[var(--err-line)]" },
   };
   const { label, cls } = map[status];
   return (
@@ -585,7 +585,7 @@ function Toggle({
       onClick={() => onChange(!on)}
       className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${on ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"}`}
     >
-      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--background)] transition-[left] ${on ? "left-[18px]" : "left-0.5"}`} />
+      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--surface)] transition-[left] ${on ? "left-[18px]" : "left-0.5"}`} />
     </button>
   );
   if (!label) return track;
@@ -743,7 +743,7 @@ function ParseTab({
       <p className="text-[10px] text-[var(--foreground-subtle)] -mt-3">
         Fetch mode: <span className="text-[var(--foreground-muted)] font-mono">{provider}</span>
         {provider !== "direct" && !config?.key.configured && (
-          <span className="text-amber-500"> · no API key set (Fetch &amp; Anti-bot tab)</span>
+          <span className="text-[var(--warn)]"> · no API key set (Fetch &amp; Anti-bot tab)</span>
         )}
       </p>
 
@@ -842,7 +842,7 @@ function PastePagePanel({
   const ready = !!pasted && (!!pasted.url || !!urlHint);
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <button
         onClick={onToggle}
         aria-expanded={open}
@@ -924,7 +924,7 @@ function PastePagePanel({
               </div>
             </div>
             {text && !pasted?.url && !urlHint && (
-              <p className="text-[10px] text-amber-500 mt-1.5">
+              <p className="text-[10px] text-[var(--warn)] mt-1.5">
                 Fill the Product URL field above — pasted markup has no address of its own, and
                 the catalogue needs one to link to and to dedupe on.
               </p>
@@ -970,13 +970,13 @@ function SingleProductEditor({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="px-5 py-3 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">Preview &amp; edit</p>
         {product.valid ? (
-          <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-400/15 border border-emerald-400/30 px-2 py-0.5 rounded-full">Ready</span>
+          <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] px-2 py-0.5 rounded-full">Ready</span>
         ) : (
-          <span className="text-[9px] tracking-[0.12em] uppercase text-amber-500 bg-amber-400/15 border border-amber-400/30 px-2 py-0.5 rounded-full" title={product.issues.join("; ")}>
+          <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--warn)] bg-[var(--warn-bg)] border border-[var(--warn-line)] px-2 py-0.5 rounded-full" title={product.issues.join("; ")}>
             {product.issues.join(" · ")}
           </span>
         )}
@@ -985,7 +985,7 @@ function SingleProductEditor({
       <div className="p-5 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-5">
         {/* Images */}
         <div>
-          <div className="aspect-[3/4] bg-[var(--surface)] rounded-lg overflow-hidden border border-[var(--border)]">
+          <div className="aspect-[3/4] bg-[var(--background)] rounded-lg overflow-hidden border border-[var(--border)]">
             {product.imageUrl
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -1064,9 +1064,9 @@ function SingleProductEditor({
         <button onClick={runImport} disabled={importing || !product.name} className={btnPrimary}>
           {importing && <Spinner />} {importing ? "Importing…" : "Import product"}
         </button>
-        {error && <span className="text-[12px] text-red-500">{error}</span>}
+        {error && <span className="text-[12px] text-[var(--err)]">{error}</span>}
         {imported && (
-          <span className="text-[12px] text-emerald-500 flex items-center gap-2 flex-wrap">
+          <span className="text-[12px] text-[var(--ok)] flex items-center gap-2 flex-wrap">
             {importHeadline(imported)}
             {imported.productId && (
               <a href={`/product/${imported.productId}`} target="_blank" rel="noreferrer" className="underline hover:no-underline">
@@ -1143,7 +1143,7 @@ function ProductGrid({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="px-5 py-3 border-b border-[var(--border)] flex items-center gap-4 flex-wrap">
         <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
           {products.length} products found · {selected.size} selected
@@ -1153,7 +1153,7 @@ function ProductGrid({
         <div className="ml-auto flex flex-wrap items-center gap-3">
           {importing && <span className="text-[11px] text-[var(--foreground-muted)]">{progress.done}/{progress.total}…</span>}
           {result && (
-            <span className="text-[11px] text-emerald-500">
+            <span className="text-[11px] text-[var(--ok)]">
               Imported {result.ok}
               {result.joined ? ` · ${result.joined} added as stores to existing products` : ""}
               {result.grouped ? ` · ${result.grouped} grouped with other colours` : ""}
@@ -1177,7 +1177,7 @@ function ProductGrid({
               className={`rounded-lg border overflow-hidden transition-colors ${sel ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
             >
               <button onClick={() => onToggle(i)} className="block w-full text-left relative">
-                <div className="aspect-[3/4] bg-[var(--surface)]">
+                <div className="aspect-[3/4] bg-[var(--background)]">
                   {p.imageUrl
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -1185,11 +1185,11 @@ function ProductGrid({
                 </div>
                 <span className={`absolute top-2 left-2 w-4 h-4 rounded-full flex items-center justify-center border ${sel ? "bg-[var(--foreground)] border-[var(--foreground)]" : "bg-[var(--bg-overlay-90)] border-[var(--border-strong)]"}`}>
                   {sel && (
-                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="var(--background)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="var(--surface)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   )}
                 </span>
                 {!p.valid && (
-                  <span className="absolute top-2 right-2 text-[9px] tracking-[0.1em] uppercase text-amber-500 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full" title={p.issues.join("; ")}>
+                  <span className="absolute top-2 right-2 text-[9px] tracking-[0.1em] uppercase text-[var(--warn)] bg-[var(--warn-bg)] border border-[var(--warn-line)] px-1.5 py-0.5 rounded-full" title={p.issues.join("; ")}>
                     {p.issues[0]}
                   </span>
                 )}
@@ -1208,14 +1208,14 @@ function ProductGrid({
                   <select
                     value={p.category}
                     onChange={(e) => setProductAt(i, { category: e.target.value as Category })}
-                    className="flex-1 min-w-0 bg-[var(--background)] border border-[var(--border)] focus:border-[var(--foreground)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded-lg outline-none"
+                    className="flex-1 min-w-0 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded-lg outline-none"
                   >
                     {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <select
                     value={p.gender ?? ""}
                     onChange={(e) => setProductAt(i, { gender: (e.target.value || undefined) as Gender | undefined })}
-                    className="bg-[var(--background)] border border-[var(--border)] focus:border-[var(--foreground)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded-lg outline-none"
+                    className="bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded-lg outline-none"
                   >
                     <option value="">—</option>
                     {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -1250,7 +1250,7 @@ function LinksPanel({
 }) {
   const cap = Math.min(count, 24);
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-5 py-4 flex items-center gap-4 flex-wrap">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4 flex items-center gap-4 flex-wrap">
       <div className="flex-1 min-w-[200px]">
         <p className="text-[12px] text-[var(--foreground)]">Looks like a listing — found {count} product link{count !== 1 ? "s" : ""}.</p>
         <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">
@@ -1266,21 +1266,21 @@ function LinksPanel({
 
 function DiagnosticsBar({ diag }: { diag: Diagnostics }) {
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-3 flex flex-wrap gap-x-6 gap-y-1.5 text-[10px] text-[var(--foreground-muted)]">
-      <span>HTTP <span className={`font-mono ${diag.status >= 200 && diag.status < 300 ? "text-emerald-500" : "text-red-500"}`}>{diag.status || "—"}</span></span>
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex flex-wrap gap-x-6 gap-y-1.5 text-[10px] text-[var(--foreground-muted)]">
+      <span>HTTP <span className={`font-mono ${diag.status >= 200 && diag.status < 300 ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{diag.status || "—"}</span></span>
       <span>HTML <span className="font-mono text-[var(--foreground)]">{(diag.htmlLength / 1024).toFixed(0)}kb</span></span>
       <span>Via <span className="font-mono text-[var(--foreground)]">{diag.provider}</span></span>
       <span>Recipe <span className="font-mono text-[var(--foreground)]">{diag.matchedConfig?.name ?? "none"}</span></span>
       {diag.strategies && diag.strategies.length > 0 && (
-        <span>Extracted via <span className="font-mono text-emerald-500">{diag.strategies.join(", ")}</span></span>
+        <span>Extracted via <span className="font-mono text-[var(--ok)]">{diag.strategies.join(", ")}</span></span>
       )}
       {diag.strategies && diag.strategies.length === 0 && (
-        <span className="text-amber-500">No structured data found — add a recipe regex</span>
+        <span className="text-[var(--warn)]">No structured data found — add a recipe regex</span>
       )}
       {diag.aiFields && diag.aiFields.length > 0 && (
         <span>AI filled <span className="text-[var(--foreground)]">{diag.aiFields.join(", ")}</span></span>
       )}
-      {diag.aiError && <span className="text-amber-500">{diag.aiError}</span>}
+      {diag.aiError && <span className="text-[var(--warn)]">{diag.aiError}</span>}
     </div>
   );
 }
@@ -1313,7 +1313,7 @@ function stableJson(v: unknown): string {
 }
 
 function UnsavedNote() {
-  return <span className="text-[11px] text-amber-500">Unsaved changes</span>;
+  return <span className="text-[11px] text-[var(--warn)]">Unsaved changes</span>;
 }
 
 // ── Recipes tab ──────────────────────────────────────────────────────────────
@@ -1381,7 +1381,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
 
       <div className="space-y-2">
         {items.map((c) => (
-          <div key={c.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
+          <div key={c.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             {/* Row header */}
             {/* Below md the domain takes a line of its own. */}
             <div className="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3">
@@ -1406,7 +1406,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
               <button onClick={() => setExpanded(expanded === c.id ? null : c.id)} className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)]">
                 {expanded === c.id ? "Hide" : "Edit"}
               </button>
-              <button onClick={() => remove(c.id)} aria-label={`Delete the ${c.name || c.domain || "new"} recipe`} className="flex items-center justify-center text-[var(--foreground-subtle)] hover:text-red-500 transition-colors" title="Delete">
+              <button onClick={() => remove(c.id)} aria-label={`Delete the ${c.name || c.domain || "new"} recipe`} className="flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors" title="Delete">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
               </button>
             </div>
@@ -1465,8 +1465,8 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
           {saving && <Spinner />} {saving ? "Saving…" : "Save recipes"}
         </button>
         {dirty && !saving && <UnsavedNote />}
-        {saved && <span className="text-[12px] text-emerald-500">Saved</span>}
-        {error && <span className="text-[12px] text-red-500">{error}</span>}
+        {saved && <span className="text-[12px] text-[var(--ok)]">Saved</span>}
+        {error && <span className="text-[12px] text-[var(--err)]">{error}</span>}
       </div>
     </div>
   );
@@ -1550,7 +1550,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
   return (
     <div className="max-w-2xl space-y-5">
       {/* Provider */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
         <Field label="Fetch provider">
           <select className={selectCls} value={settings.provider} onChange={(e) => set("provider", e.target.value as FetchProvider)}>
             {PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
@@ -1592,13 +1592,13 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
       </div>
 
       {/* AI extraction + image storage */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">AI &amp; images</p>
           {config.openai.configured ? (
-            <span className="text-[10px] tracking-[0.1em] uppercase text-emerald-500">OpenAI key found</span>
+            <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--ok)]">OpenAI key found</span>
           ) : (
-            <span className="text-[10px] tracking-[0.1em] uppercase text-amber-500">No OpenAI key</span>
+            <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--warn)]">No OpenAI key</span>
           )}
         </div>
 
@@ -1631,15 +1631,15 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
 
       {/* API key */}
       {needsKey && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 space-y-3">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">Provider API key</p>
             {config.key.configured ? (
-              <span className="text-[10px] tracking-[0.1em] text-emerald-500 break-all text-right">
+              <span className="text-[10px] tracking-[0.1em] text-[var(--ok)] break-all text-right">
                 <span className="uppercase">{config.key.source === "env" ? "Set via env" : "Stored"}</span> · {config.key.masked}
               </span>
             ) : (
-              <span className="text-[10px] tracking-[0.1em] uppercase text-amber-500">Not set</span>
+              <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--warn)]">Not set</span>
             )}
           </div>
           {keyFromEnv ? (
@@ -1667,7 +1667,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
                 </button>
               </div>
               {config.key.configured && config.key.source === "database" && (
-                <button onClick={clearKey} className="text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors">
+                <button onClick={clearKey} className="text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors">
                   Clear stored key
                 </button>
               )}
@@ -1681,8 +1681,8 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
           {saving && <Spinner />} {saving ? "Saving…" : "Save settings"}
         </button>
         {dirty && !saving && <UnsavedNote />}
-        {saved && <span className="text-[12px] text-emerald-500">Saved</span>}
-        {error && <span className="text-[12px] text-red-500">{error}</span>}
+        {saved && <span className="text-[12px] text-[var(--ok)]">Saved</span>}
+        {error && <span className="text-[12px] text-[var(--err)]">{error}</span>}
       </div>
     </div>
   );

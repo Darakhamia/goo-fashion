@@ -93,7 +93,7 @@ function appendMessage(prev: string, message: string): string {
 function SelectionLoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div>
-      <p className="text-[11px] text-red-500 leading-relaxed">{message}</p>
+      <p className="text-[11px] text-[var(--err)] leading-relaxed">{message}</p>
       <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed">
         Saving is off until the current selection loads, so the live homepage is not overwritten with an empty one.
       </p>
@@ -118,7 +118,7 @@ function SelectedThumb({
 }) {
   return (
     <div
-      className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
+      className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--background)] group"
       title={item?.name ?? id}
     >
       {item?.imageUrl ? (
@@ -215,7 +215,7 @@ function PickerModal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-2xl max-h-[90dvh] md:max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
+        className="w-full max-w-2xl max-h-[90dvh] md:max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 shrink-0">
@@ -227,7 +227,7 @@ function PickerModal({
           </div>
           <button
             onClick={onClose}
-            className="ml-auto px-3 py-1.5 rounded-lg text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+            className="ml-auto px-3 py-1.5 rounded-lg text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 transition-opacity"
           >
             Done
           </button>
@@ -259,7 +259,7 @@ function PickerModal({
                       selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
                     }`}
                   >
-                    <div className="aspect-square bg-[var(--surface)] flex items-center justify-center">
+                    <div className="aspect-square bg-[var(--background)] flex items-center justify-center">
                       {p.imageUrl ? (
                         // The catalogue can be hundreds of store-hosted photos:
                         // load only the ones scrolled into view.
@@ -278,7 +278,7 @@ function PickerModal({
                       )}
                     </div>
                     {selected && (
-                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
+                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--surface)] flex items-center justify-center">
                         <svg width="9" height="9" viewBox="0 0 11 11" fill="none" aria-hidden="true">
                           <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
@@ -735,7 +735,7 @@ export default function SettingsPage() {
           drop an unknown column rather than lose the row — so a migration that
           was never run costs a feature silently. This says out loud what the
           database actually has. */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -755,15 +755,15 @@ export default function SettingsPage() {
         <div className="px-5 py-4">
           {schemaLoading && !schema && <LoadingLine label="Checking…" />}
 
-          {schemaError && <p className="text-[11px] text-red-500">{schemaError}</p>}
+          {schemaError && <p className="text-[11px] text-[var(--err)]">{schemaError}</p>}
 
           {schema && (
             <>
               <span
                 className={`inline-block px-2 py-1 rounded-lg text-[10px] tracking-[0.18em] uppercase border ${
                   schema.ok
-                    ? "bg-emerald-400/15 text-emerald-500 border-emerald-400/30"
-                    : "bg-amber-400/15 text-amber-500 border-amber-400/30"
+                    ? "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]"
+                    : "bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]"
                 }`}
               >
                 {schema.ok ? "All columns present" : `${schema.checks.filter((c) => !c.present).length} missing`}
@@ -774,7 +774,7 @@ export default function SettingsPage() {
                   <li key={`${c.table}.${c.column}`} className="flex items-start gap-2">
                     <span
                       className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
-                        c.present ? "bg-emerald-500" : c.error ? "bg-red-500" : "bg-amber-500"
+                        c.present ? "bg-[var(--ok)]" : c.error ? "bg-[var(--err)]" : "bg-[var(--warn)]"
                       }`}
                       aria-hidden="true"
                     />
@@ -815,13 +815,13 @@ export default function SettingsPage() {
       </div>
 
       {catalogError && (
-        <p className="text-[11px] text-red-500 mb-4 leading-relaxed">
+        <p className="text-[11px] text-[var(--err)] mb-4 leading-relaxed">
           {catalogError} Previews below may read “missing” and the pickers may be empty; saved selections are not affected.
         </p>
       )}
 
       {/* ── Homepage showcase ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -882,13 +882,13 @@ export default function SettingsPage() {
             {showcaseSaving && <Spinner />}
             {showcaseSaving ? "Saving…" : "Save showcase"}
           </button>
-          {showcaseOk && <p className="text-[11px] text-emerald-500">Saved — changes go live on next homepage load.</p>}
-          {showcaseError && <p className="text-[11px] text-red-500">{showcaseError}</p>}
+          {showcaseOk && <p className="text-[11px] text-[var(--ok)]">Saved — changes go live on next homepage load.</p>}
+          {showcaseError && <p className="text-[11px] text-[var(--err)]">{showcaseError}</p>}
         </div>
       </div>
 
       {/* ── AI Stylist showcase ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -980,7 +980,7 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={name}
-                        className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+                        className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--background)]"
                       >
                         <span className="w-8 h-8 rounded-lg bg-white border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
                           {store ? (
@@ -1013,7 +1013,7 @@ export default function SettingsPage() {
                         </div>
                         <button
                           onClick={() => removeShowcaseStore(name)}
-                          className="w-5 h-5 rounded-full hover:bg-[var(--background)] text-[var(--foreground-subtle)] hover:text-red-500 flex items-center justify-center transition-colors shrink-0"
+                          className="w-5 h-5 rounded-full hover:bg-[var(--surface)] text-[var(--foreground-subtle)] hover:text-[var(--err)] flex items-center justify-center transition-colors shrink-0"
                           aria-label={`Remove ${name}`}
                         >
                           <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
@@ -1050,13 +1050,13 @@ export default function SettingsPage() {
             {stylistSaving && <Spinner />}
             {stylistSaving ? "Saving…" : "Save stylist"}
           </button>
-          {stylistOk && <p className="text-[11px] text-emerald-500">Saved — changes go live on next homepage load.</p>}
-          {stylistError && <p className="text-[11px] text-red-500">{stylistError}</p>}
+          {stylistOk && <p className="text-[11px] text-[var(--ok)]">Saved — changes go live on next homepage load.</p>}
+          {stylistError && <p className="text-[11px] text-[var(--err)]">{stylistError}</p>}
         </div>
       </div>
 
       {/* ── OpenAI section ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
 
         {/* Header */}
         <div className="px-5 py-4 border-b border-[var(--border)]">
@@ -1087,7 +1087,7 @@ export default function SettingsPage() {
           {/* Load error */}
           {loadError && (
             <div>
-              <p className="text-[11px] text-red-500">{loadError}</p>
+              <p className="text-[11px] text-[var(--err)]">{loadError}</p>
               <button onClick={loadStatus} className={`mt-3 ${SECONDARY_BTN}`}>
                 Retry
               </button>
@@ -1114,7 +1114,7 @@ export default function SettingsPage() {
           {status?.configured && status.source === "env" && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="w-2 h-2 rounded-full bg-[var(--ok)]" />
                 <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground)]">
                   Configured
                 </p>
@@ -1133,7 +1133,7 @@ export default function SettingsPage() {
           {status?.configured && status.source === "database" && !showInput && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="w-2 h-2 rounded-full bg-[var(--ok)]" />
                 <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground)]">
                   Configured
                 </p>
@@ -1145,7 +1145,7 @@ export default function SettingsPage() {
                 Stored in database. Raw key is never returned to the browser.
               </p>
               {saveOk && (
-                <p className="text-[11px] text-emerald-500 mb-3">Key saved successfully.</p>
+                <p className="text-[11px] text-[var(--ok)] mb-3">Key saved successfully.</p>
               )}
             </div>
           )}
@@ -1196,14 +1196,14 @@ export default function SettingsPage() {
                 </button>
               </div>
               {saveError && (
-                <p className="text-[11px] text-red-500 mt-2">{saveError}</p>
+                <p className="text-[11px] text-[var(--err)] mt-2">{saveError}</p>
               )}
             </div>
           )}
 
           {/* Test result */}
           {testResult === "ok" && (
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-emerald-500">
+            <div className="mt-3 flex items-center gap-2 text-[11px] text-[var(--ok)]">
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
                 <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -1211,7 +1211,7 @@ export default function SettingsPage() {
             </div>
           )}
           {testResult === "fail" && (
-            <div className="mt-3 flex items-start gap-2 text-[11px] text-red-500">
+            <div className="mt-3 flex items-start gap-2 text-[11px] text-[var(--err)]">
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
                 <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
@@ -1221,7 +1221,7 @@ export default function SettingsPage() {
 
           {/* Clear error */}
           {clearError && (
-            <p className="text-[11px] text-red-500 mt-3">{clearError}</p>
+            <p className="text-[11px] text-[var(--err)] mt-3">{clearError}</p>
           )}
         </div>
 
@@ -1280,7 +1280,7 @@ export default function SettingsPage() {
               <button
                 onClick={clearKey}
                 disabled={clearing}
-                className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {clearing ? "Clearing…" : "Clear"}
               </button>

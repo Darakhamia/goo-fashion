@@ -106,7 +106,7 @@ const FIELD_LABEL: Record<string, string> = {
 const outline =
   "px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 const primary =
-  "bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
+  "bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
 const small = "text-[10px] tracking-[0.1em] uppercase transition-colors disabled:opacity-40";
 const inputClass =
   "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
@@ -340,29 +340,29 @@ export default function CatalogueCheckPage() {
       </div>
 
       {error && (
-        <div role="alert" className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-xs text-red-500">
+        <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-xs text-[var(--err)]">
           {error}
         </div>
       )}
       {status && !status.migrated && (
-        <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3">
-          <p className="text-[13px] text-amber-500 leading-relaxed">
+        <div className="mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
             Run supabase/migrations/025_catalogue_check.sql in the Supabase SQL editor first. Until then the check has nowhere to
             record what it changed, so it does not run at all.
           </p>
         </div>
       )}
       {status && !status.keyConfigured && (
-        <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3">
-          <p className="text-[13px] text-amber-500 leading-relaxed">
+        <div className="mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
             No OpenAI key. Add one under <Link href="/goo-studio/settings" className="underline">Settings</Link> or set
             OPENAI_API_KEY — the check uses the same key as the parser.
           </p>
         </div>
       )}
       {status?.sweepPausedUntil && status.migrated && status.keyConfigured && (
-        <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3">
-          <p className="text-[13px] text-amber-500 leading-relaxed">
+        <div className="mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
             The background check is paused until {when(status.sweepPausedUntil)}
             {status.spend.autoThisMonth >= status.settings.monthlyBudgetUsd
               ? ` — it has spent its monthly cap (${usd(status.spend.autoThisMonth)} of ${usd(status.settings.monthlyBudgetUsd)}). Raise the cap below or run it from this page.`
@@ -373,7 +373,7 @@ export default function CatalogueCheckPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
         {/* Run */}
-        <section className="rounded-xl border border-[var(--border)] p-4 md:p-5" style={{ background: "var(--background)" }}>
+        <section className="rounded-xl border border-[var(--border)] p-4 md:p-5" style={{ background: "var(--surface)" }}>
           <h2 className="text-sm text-[var(--foreground)]">Check the catalogue</h2>
           <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed">
             New products are checked by themselves after every import. Here you run it over everything at once. A product is only
@@ -395,7 +395,7 @@ export default function CatalogueCheckPage() {
           </div>
 
           {(job || lines.length > 0 || brandNotes.length > 0) && (
-            <div className="mt-4 rounded-lg border border-[var(--border)] px-3 py-3" style={{ background: "var(--surface)" }}>
+            <div className="mt-4 rounded-lg border border-[var(--border)] px-3 py-3" style={{ background: "var(--background)" }}>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[11px] text-[var(--foreground)]" role="status">
                   {job ? `${JOB_LABEL[job]}… ` : "Last run: "}
@@ -434,7 +434,7 @@ export default function CatalogueCheckPage() {
         </section>
 
         {/* Settings */}
-        <section className="rounded-xl border border-[var(--border)] p-4 md:p-5" style={{ background: "var(--background)" }}>
+        <section className="rounded-xl border border-[var(--border)] p-4 md:p-5" style={{ background: "var(--surface)" }}>
           <h2 className="text-sm text-[var(--foreground)]">Settings</h2>
           {draft && status && (
             <div className="mt-3 flex flex-col gap-4">
@@ -449,7 +449,7 @@ export default function CatalogueCheckPage() {
                       onClick={() => setDraft({ ...draft, mode: m.id })}
                       className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
                         draft.mode === m.id
-                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                          ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                           : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                       }`}
                     >
@@ -465,7 +465,7 @@ export default function CatalogueCheckPage() {
                   <select
                     value={draft.model}
                     onChange={(e) => setDraft({ ...draft, model: e.target.value })}
-                    className={`${inputClass} bg-[var(--background)]`}
+                    className={`${inputClass} bg-[var(--surface)]`}
                   >
                     {status.models.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -514,7 +514,7 @@ export default function CatalogueCheckPage() {
 
       {/* Waiting for a person */}
       {status?.migrated && (
-        <section className="rounded-xl border border-[var(--border)] mb-5" style={{ background: "var(--background)" }}>
+        <section className="rounded-xl border border-[var(--border)] mb-5" style={{ background: "var(--surface)" }}>
           <header className="px-5 py-3.5 border-b border-[var(--border)] flex flex-wrap items-center gap-2">
             <h2 className="text-sm text-[var(--foreground)]">Waiting for you</h2>
             <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">{status.counts.suggestions}</span>
@@ -546,7 +546,7 @@ export default function CatalogueCheckPage() {
 
       {/* Fixed by the check */}
       {status?.migrated && (
-        <section className="rounded-xl border border-[var(--border)] mb-5" style={{ background: "var(--background)" }}>
+        <section className="rounded-xl border border-[var(--border)] mb-5" style={{ background: "var(--surface)" }}>
           <header className="px-5 py-3.5 border-b border-[var(--border)]">
             <h2 className="text-sm text-[var(--foreground)]">Fixed by the check</h2>
             <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
@@ -570,10 +570,10 @@ export default function CatalogueCheckPage() {
       {status?.migrated && status.runs.length > 0 && (
         <section className="mb-5">
           <h2 className="text-sm text-[var(--foreground)] mb-3">Runs</h2>
-          <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
+          <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
             <table className="w-full min-w-[640px] text-xs">
               <thead>
-                <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
+                <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
                   {["Started", "Kind", "Model", "Products", "Fixed", "For you", "Cost", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
                       {h}
@@ -625,8 +625,8 @@ export default function CatalogueCheckPage() {
           role={toast.type === "ok" ? "status" : "alert"}
           className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
             toast.type === "ok"
-              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-              : "bg-[var(--background)] text-red-500 border-red-400/30"
+              ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
+              : "bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]"
           }`}
         >
           {toast.msg}
@@ -654,7 +654,7 @@ function FixRow({
   const many = group.fixes.length > 1;
   const isBusy = busy === group.key;
   return (
-    <li className="px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 hover:bg-[var(--surface)] transition-colors">
+    <li className="px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 hover:bg-[var(--background)] transition-colors">
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           {many ? (
@@ -693,7 +693,7 @@ function FixRow({
               <button
                 onClick={() => onDecide(group.key, ids, "apply")}
                 disabled={isBusy || disabled}
-                className="bg-[var(--foreground)] text-[var(--background)] px-3 py-1.5 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40"
+                className="bg-[var(--foreground)] text-[var(--surface)] px-3 py-1.5 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40"
               >
                 {isBusy ? "…" : many ? `Apply ${ids.length}` : "Apply"}
               </button>

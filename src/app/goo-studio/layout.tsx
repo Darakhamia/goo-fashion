@@ -563,8 +563,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         : "gap-3 px-3 py-3 md:py-2"
                     } text-xs tracking-[0.1em] uppercase ${
                       isActive
-                        ? "text-[var(--foreground)] bg-[var(--surface)]"
-                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
+                        ? "text-[var(--foreground)] bg-[var(--background)]"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)]"
                     }`}
                   >
                     <span className="flex-shrink-0">{item.icon}</span>
@@ -580,7 +580,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                           {item.label}
                           {item.superAdminOnly && (
-                            <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full">
+                            <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)] leading-none rounded-full">
                               SA
                             </span>
                           )}
@@ -603,7 +603,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <button
         onClick={toggleTheme}
         title={compact ? (theme === "light" ? "Dark mode" : "Light mode") : undefined}
-        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl w-full ${
+        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] rounded-xl w-full ${
           compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
         }`}
       >
@@ -640,7 +640,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           setCustomizing(true);
         }}
         title={compact ? "Customize menu" : undefined}
-        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl w-full ${
+        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] rounded-xl w-full ${
           compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
         }`}
       >
@@ -669,7 +669,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         href="/"
         onClick={onNavigate}
         title={compact ? "Back to site" : undefined}
-        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl ${
+        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] rounded-xl ${
           compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
         }`}
       >
@@ -714,7 +714,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div
       suppressHydrationWarning
-      className={`flex h-dvh overflow-hidden bg-[var(--surface)] text-[var(--foreground)] ${THEME_CLASS[theme]}`}
+      className={`flex h-dvh overflow-hidden bg-[var(--background)] text-[var(--foreground)] ${THEME_CLASS[theme]}`}
     >
       {/* Saved dark theme before the first paint — see THEME_BOOT_SCRIPT. */}
       <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
@@ -724,7 +724,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         className={`hidden md:flex flex-shrink-0 flex-col border-r border-[var(--border)] h-full transition-[width] duration-200 ease-in-out overflow-hidden ${
           collapsed ? "w-[60px]" : "w-56"
         }`}
-        style={{ background: "var(--background)" }}
+        style={{ background: "var(--surface)" }}
       >
         {/* Logo row */}
         <div className="h-16 flex items-center border-b border-[var(--border)] flex-shrink-0">
@@ -745,7 +745,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button
             onClick={() => setCollapsed((c) => !c)}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 rounded-lg hover:bg-[var(--surface)] ${
+            className={`flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 rounded-lg hover:bg-[var(--background)] ${
               collapsed ? "w-[60px] h-16" : "w-10 h-10 mr-1.5"
             }`}
           >
@@ -766,11 +766,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-w-0" style={{ background: "var(--surface)" }}>
+      <div className="flex-1 flex flex-col min-w-0" style={{ background: "var(--background)" }}>
         {/* Top bar */}
         <div
           className="h-14 md:h-16 flex items-center justify-between gap-3 px-4 md:px-8 border-b border-[var(--border)] flex-shrink-0"
-          style={{ background: "var(--background)" }}
+          style={{ background: "var(--surface)" }}
         >
           <div className="flex items-center gap-2 min-w-0">
             {/* Below md the sidebar is a drawer opened from here. */}
@@ -781,7 +781,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               aria-label="Open menu"
               aria-expanded={mobileNavOpen}
               aria-controls="admin-mobile-nav"
-              className="md:hidden -ml-2 w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+              className="md:hidden -ml-2 w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -817,7 +817,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="flex items-center justify-end gap-1.5 mb-0.5">
                   <p className="text-xs text-[var(--foreground)] leading-none truncate">{user.name}</p>
                   {isSuperAdmin && (
-                    <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full flex-shrink-0">
+                    <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)] leading-none rounded-full flex-shrink-0">
                       Super Admin
                     </span>
                   )}
@@ -827,9 +827,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center border text-[10px] tracking-[0.1em] font-medium text-[var(--foreground)] flex-shrink-0 ${
-                isSuperAdmin ? "border-amber-400/60" : "border-[var(--border-strong)]"
+                isSuperAdmin ? "border-[var(--warn-line)]" : "border-[var(--border-strong)]"
               }`}
-              style={{ background: "var(--surface)" }}
+              style={{ background: "var(--background)" }}
             >
               {initials}
             </div>
@@ -865,7 +865,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             exit={{ x: -280, opacity: 0 }}
             transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
             className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] max-w-[85vw] flex flex-col border-r border-[var(--border)]"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             <div className="h-14 flex items-center justify-between pr-3 border-b border-[var(--border)] flex-shrink-0">
               {logo(() => setMobileNavOpen(false))}
@@ -908,7 +908,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               aria-modal="true"
               aria-labelledby="customize-menu-title"
               className="relative w-full max-w-80 max-h-[90dvh] border border-[var(--border)] flex flex-col rounded-2xl overflow-hidden"
-              style={{ background: "var(--background)" }}
+              style={{ background: "var(--surface)" }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -919,7 +919,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
                 <button
                   onClick={() => setCustomizing(false)}
-                  className="w-10 h-10 md:w-auto md:h-auto md:p-1.5 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors rounded-lg hover:bg-[var(--surface)]"
+                  className="w-10 h-10 md:w-auto md:h-auto md:p-1.5 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors rounded-lg hover:bg-[var(--background)]"
                   aria-label="Close"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -967,8 +967,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 sortable ? "md:cursor-grab md:active:cursor-grabbing" : ""
                               } ${
                                 dragOver === item.href
-                                  ? "border-[var(--foreground)] bg-[var(--surface)]"
-                                  : "border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)]"
+                                  ? "border-[var(--foreground)] bg-[var(--background)]"
+                                  : "border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--background)]"
                               }`}
                             >
                               <span className={`hidden md:inline ${sortable ? "text-[var(--foreground-subtle)]" : "text-[var(--foreground-subtle)] opacity-40"}`}>
@@ -979,7 +979,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 {item.label}
                               </span>
                               {item.superAdminOnly && (
-                                <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full">
+                                <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)] leading-none rounded-full">
                                   SA
                                 </span>
                               )}
@@ -990,7 +990,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     onClick={() => moveItem(item.href, items[index - 1].href)}
                                     disabled={index === 0}
                                     aria-label={`Move ${item.label} up`}
-                                    className="w-10 h-10 md:w-auto md:h-auto md:p-1 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="w-10 h-10 md:w-auto md:h-auto md:p-1 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                   >
                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                                       <path d="M3 7.5L6 4.5L9 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1001,7 +1001,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     onClick={() => moveItem(item.href, items[index + 1].href)}
                                     disabled={index === items.length - 1}
                                     aria-label={`Move ${item.label} down`}
-                                    className="w-10 h-10 md:w-auto md:h-auto md:p-1 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="w-10 h-10 md:w-auto md:h-auto md:p-1 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                   >
                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                                       <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1028,7 +1028,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </button>
                 <button
                   onClick={() => setCustomizing(false)}
-                  className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-5 py-3 md:py-2 hover:opacity-80 transition-opacity rounded-lg"
+                  className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--surface)] px-5 py-3 md:py-2 hover:opacity-80 transition-opacity rounded-lg"
                 >
                   Done
                 </button>

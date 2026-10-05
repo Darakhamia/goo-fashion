@@ -27,16 +27,16 @@ function formatBucket(b: string, range: AnalyticsResponse["range"]): string {
 // visible in both themes.
 const PALETTE = [
   "var(--foreground)",
-  "color-mix(in srgb, var(--foreground) 72%, var(--surface))",
-  "color-mix(in srgb, var(--foreground) 52%, var(--surface))",
-  "color-mix(in srgb, var(--foreground) 36%, var(--surface))",
-  "color-mix(in srgb, var(--foreground) 24%, var(--surface))",
-  "color-mix(in srgb, var(--foreground) 14%, var(--surface))",
+  "color-mix(in srgb, var(--foreground) 72%, var(--background))",
+  "color-mix(in srgb, var(--foreground) 52%, var(--background))",
+  "color-mix(in srgb, var(--foreground) 36%, var(--background))",
+  "color-mix(in srgb, var(--foreground) 24%, var(--background))",
+  "color-mix(in srgb, var(--foreground) 14%, var(--background))",
 ];
 
 const tooltipStyle = {
   contentStyle: {
-    background: "var(--background)",
+    background: "var(--surface)",
     border: "1px solid var(--border)",
     fontSize: 11,
     color: "var(--foreground)",
@@ -211,7 +211,7 @@ export function CountriesChart({ items }: { items: PieItem[] }) {
               <span className="text-xs text-[var(--foreground)]">{countryLabel(item.key)}</span>
               <span className="text-[11px] text-[var(--foreground-muted)] tabular-nums">{item.count.toLocaleString()} <span className="text-[var(--foreground-subtle)]">· {pct}%</span></span>
             </div>
-            <div className="h-1.5 bg-[var(--surface)] rounded-none">
+            <div className="h-1.5 bg-[var(--background)] rounded-none">
               <div className="h-full bg-[var(--foreground)] transition-[width]" style={{ width: `${barW}%` }} />
             </div>
           </div>
@@ -249,7 +249,7 @@ export function FunnelChart({ funnel }: { funnel: AnalyticsResponse["funnel"] })
                 <div className="text-[11px] text-[var(--foreground-muted)] tabular-nums">
                   {step.sessions.toLocaleString()}
                   {showConv && (
-                    <span className={`ml-2 ${conv >= 50 ? "text-emerald-600" : conv >= 25 ? "text-amber-500" : "text-red-500"}`}>
+                    <span className={`ml-2 ${conv >= 50 ? "text-[var(--ok)]" : conv >= 25 ? "text-[var(--warn)]" : "text-[var(--err)]"}`}>
                       · {conv}%
                     </span>
                   )}
@@ -258,7 +258,7 @@ export function FunnelChart({ funnel }: { funnel: AnalyticsResponse["funnel"] })
                 <div className="text-[11px] text-[var(--foreground-subtle)]">not tracked yet</div>
               )}
             </div>
-            <div className="h-2 bg-[var(--surface)]">
+            <div className="h-2 bg-[var(--background)]">
               <div
                 className="h-full transition-[width]"
                 style={{

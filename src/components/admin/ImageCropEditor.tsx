@@ -200,7 +200,7 @@ export function ImageCropEditor({
       {/* Холст */}
       <div
         ref={containerRef}
-        className="relative select-none overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
+        className="relative select-none overflow-hidden bg-[var(--background)] border border-[var(--border)]"
         style={{ aspectRatio: String(canvasAspect(crop)) }}
       >
         {/* Изображение — так же, как его кладёт карточка */}
@@ -289,7 +289,7 @@ export function ImageCropEditor({
           <span className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-[0.1em]">Preview 3:4</span>
           {/* The same markup ProductCard's CroppedImage uses. */}
           <div
-            className="relative overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
+            className="relative overflow-hidden bg-[var(--background)] border border-[var(--border)]"
             style={{ width: 60, height: 80 }}
           >
             <div
@@ -329,14 +329,14 @@ export function ImageCropEditor({
           type="button"
           onClick={() => onSave(crop)}
           disabled={saving}
-          className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 rounded-lg"
+          className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 rounded-lg"
         >
           {saving ? "Сохранение…" : "Сохранить кадрирование"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+          className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
         >
           Отмена
         </button>

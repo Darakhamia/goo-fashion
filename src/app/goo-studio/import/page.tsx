@@ -48,7 +48,7 @@ const isSelectable = (row: CSVMappedRow) => row._valid || canRefreshOnly(row);
 // ── Styled primitives (goo-studio recipes, DESIGN_SYSTEM.md §9) ──────────────
 
 const btnPrimary =
-  "inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--foreground)] text-[var(--background)] text-xs tracking-[0.12em] uppercase hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed";
+  "inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--foreground)] text-[var(--surface)] text-xs tracking-[0.12em] uppercase hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed";
 const btnOutline =
   "inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 const btnText =
@@ -56,9 +56,9 @@ const btnText =
 const thCls =
   "text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal whitespace-nowrap";
 const chipCls = "inline-block text-[10px] tracking-[0.12em] uppercase px-2 py-0.5 rounded-full whitespace-nowrap";
-const statusOk = "bg-emerald-400/15 text-emerald-500 border border-emerald-400/30";
-const statusWarn = "bg-amber-400/15 text-amber-500 border border-amber-400/30";
-const statusError = "bg-red-400/15 text-red-500 border border-red-400/30";
+const statusOk = "bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]";
+const statusWarn = "bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]";
+const statusError = "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]";
 const statusNeutral = "bg-[var(--fg-overlay-05)] text-[var(--foreground-subtle)] border border-[var(--border)]";
 
 const Spinner = () => (
@@ -344,7 +344,7 @@ export default function CSVImportPage() {
           <span className="text-[var(--border-strong)]">→</span>
           <span className={step === "preview" && !finished ? "text-[var(--foreground)]" : ""}>2. Preview</span>
           <span className="text-[var(--border-strong)]">→</span>
-          <span className={phase === "done" ? "text-emerald-500" : importing || phase === "stopped" ? "text-[var(--foreground)]" : ""}>
+          <span className={phase === "done" ? "text-[var(--ok)]" : importing || phase === "stopped" ? "text-[var(--foreground)]" : ""}>
             3. Import
           </span>
           <button onClick={reset} disabled={importing} className={`ml-4 ${btnText}`}>
@@ -366,7 +366,7 @@ export default function CSVImportPage() {
             onKeyDown={(e) => {
               if ((e.key === "Enter" || e.key === " ") && !parsing) { e.preventDefault(); fileRef.current?.click(); }
             }}
-            className="rounded-xl border-2 border-dashed border-[var(--border)] hover:border-[var(--border-strong)] focus-visible:border-[var(--foreground)] outline-none bg-[var(--background)] transition-colors cursor-pointer flex flex-col items-center justify-center py-16 px-4 gap-3 text-center"
+            className="rounded-xl border-2 border-dashed border-[var(--border)] hover:border-[var(--border-strong)] focus-visible:border-[var(--foreground)] outline-none bg-[var(--surface)] transition-colors cursor-pointer flex flex-col items-center justify-center py-16 px-4 gap-3 text-center"
           >
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="text-[var(--foreground-muted)]">
               <path d="M16 4V20" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -400,10 +400,10 @@ export default function CSVImportPage() {
           )}
 
           {/* Supported columns reference */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-[10px] text-[var(--foreground-muted)] space-y-2">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-[10px] text-[var(--foreground-muted)] space-y-2">
             <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Supported Awin feed columns</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0.5 font-mono mt-1">
-              <span><span className="text-[var(--foreground)]">aw_deep_link</span> → affiliate link <span className="text-red-500">*required*</span></span>
+              <span><span className="text-[var(--foreground)]">aw_deep_link</span> → affiliate link <span className="text-[var(--err)]">*required*</span></span>
               <span><span className="text-[var(--foreground)]">product_name</span> → name</span>
               <span><span className="text-[var(--foreground)]">search_price</span> / display_price → price</span>
               <span><span className="text-[var(--foreground)]">display_price</span> → currency symbol (£€$…)</span>
@@ -450,7 +450,7 @@ export default function CSVImportPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
             {merchants.map((m) => {
               const isSelected = selectedMerchants.has(m.name);
               const share = allRows.length ? Math.round((m.count / allRows.length) * 100) : 0;
@@ -472,7 +472,7 @@ export default function CSVImportPage() {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-xs text-[var(--foreground)] tabular-nums">{m.count.toLocaleString()} items</p>
-                    <p className="text-[10px] text-emerald-500 tabular-nums">{m.validCount.toLocaleString()} valid</p>
+                    <p className="text-[10px] text-[var(--ok)] tabular-nums">{m.validCount.toLocaleString()} valid</p>
                   </div>
                   <div className="w-24 flex-shrink-0 hidden sm:block">
                     <div className="h-1 rounded-full bg-[var(--border)] overflow-hidden">
@@ -511,7 +511,7 @@ export default function CSVImportPage() {
 
       {/* ── Import progress and result ── */}
       {phase !== "idle" && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
           <div className="px-5 py-3.5 space-y-2.5">
             <div className="flex items-center gap-4 flex-wrap">
               <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] tabular-nums">
@@ -520,7 +520,7 @@ export default function CSVImportPage() {
                 {phase === "stopped" && "Stopped"}
               </p>
               <div className="ml-auto flex items-center gap-3 flex-wrap text-[11px] tabular-nums">
-                <span className="text-emerald-500">{totals.created.toLocaleString()} new</span>
+                <span className="text-[var(--ok)]">{totals.created.toLocaleString()} new</span>
                 <span className="text-[var(--foreground-muted)]">{totals.updated.toLocaleString()} updated</span>
                 {totals.merged > 0 && (
                   <span className="text-[var(--foreground-muted)]" title="Joined a product we already carry from another store">
@@ -531,7 +531,7 @@ export default function CSVImportPage() {
                   <span className="text-[var(--foreground-subtle)]">{totals.skipped.toLocaleString()} skipped</span>
                 )}
                 {totals.errors.length > 0 && (
-                  <span className="text-red-500">{totals.errors.length.toLocaleString()} failed</span>
+                  <span className="text-[var(--err)]">{totals.errors.length.toLocaleString()} failed</span>
                 )}
                 {importing && (
                   <button onClick={() => { stopRef.current = true; }} className={btnOutline}>Stop</button>
@@ -569,7 +569,7 @@ export default function CSVImportPage() {
               )}
 
               {totals.errors.length > 0 && (
-                <ul className="text-[11px] text-red-500 font-mono space-y-0.5 max-h-40 overflow-y-auto">
+                <ul className="text-[11px] text-[var(--err)] font-mono space-y-0.5 max-h-40 overflow-y-auto">
                   {totals.errors.map((e, i) => <li key={i}>{e.name}: {e.error}</li>)}
                 </ul>
               )}
@@ -601,9 +601,9 @@ export default function CSVImportPage() {
             <div className="flex items-center gap-4 flex-wrap">
               <span className="text-xs text-[var(--foreground-muted)] tabular-nums">
                 {previewRows.length.toLocaleString()} rows ·{" "}
-                <span className="text-emerald-500">{validCount.toLocaleString()} valid</span>
+                <span className="text-[var(--ok)]">{validCount.toLocaleString()} valid</span>
                 {soldOutCount > 0 && (
-                  <> · <span className="text-amber-500">{soldOutCount.toLocaleString()} sold out</span></>
+                  <> · <span className="text-[var(--warn)]">{soldOutCount.toLocaleString()} sold out</span></>
                 )}
                 {unusableCount > 0 && (
                   <> · <span className="text-[var(--foreground-subtle)]">{unusableCount.toLocaleString()} skipped</span></>
@@ -645,14 +645,14 @@ export default function CSVImportPage() {
 
           {/* What the import will do */}
           {selected.size > 0 && (
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 space-y-1.5">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 space-y-1.5">
               {checking ? (
                 <p className="flex items-center gap-2 text-xs text-[var(--foreground-muted)] tabular-nums">
                   <Spinner /> Checking the catalogue… {checking.done.toLocaleString()}/{checking.total.toLocaleString()} links
                 </p>
               ) : existing ? (
                 <p className="text-xs text-[var(--foreground)] tabular-nums">
-                  <span className="text-emerald-500">{plan.create.toLocaleString()} will be created</span>
+                  <span className="text-[var(--ok)]">{plan.create.toLocaleString()} will be created</span>
                   {" · "}
                   <span>{plan.update.toLocaleString()} will be updated</span>
                   {plan.skip > 0 && (
@@ -691,10 +691,10 @@ export default function CSVImportPage() {
             </div>
           )}
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-x-auto">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-x-auto">
             <table className="w-full text-xs min-w-[900px]">
               <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--surface)]">
+                <tr className="border-b border-[var(--border)] bg-[var(--background)]">
                   <th className="w-10 px-3 py-3"><span className="sr-only">Select</span></th>
                   <th className={thCls}>Image</th>
                   <th className={thCls}>Name</th>
@@ -734,10 +734,10 @@ export default function CSVImportPage() {
                         <div className="relative w-10 h-14">
                           {row.imageUrl
                             // eslint-disable-next-line @next/next/no-img-element
-                            ? <img src={row.imageUrl} alt="" loading="lazy" className="w-10 h-14 object-cover rounded-lg bg-[var(--surface)]" />
-                            : <div className="w-10 h-14 rounded-lg bg-[var(--surface)]" />}
+                            ? <img src={row.imageUrl} alt="" loading="lazy" className="w-10 h-14 object-cover rounded-lg bg-[var(--background)]" />
+                            : <div className="w-10 h-14 rounded-lg bg-[var(--background)]" />}
                           {row.images && row.images.length > 1 && (
-                            <span className="absolute -bottom-1 -right-1 text-[10px] leading-none bg-[var(--foreground)] text-[var(--background)] px-1 py-0.5 rounded-full tabular-nums">
+                            <span className="absolute -bottom-1 -right-1 text-[10px] leading-none bg-[var(--foreground)] text-[var(--surface)] px-1 py-0.5 rounded-full tabular-nums">
                               +{row.images.length - 1}
                             </span>
                           )}
@@ -787,8 +787,8 @@ export default function CSVImportPage() {
                       </td>
                       <td className="px-4 py-2">
                         {/^https?:\/\//.test(row.referralUrl)
-                          ? <span className="text-[10px] text-emerald-500">✓ link</span>
-                          : <span className="text-[10px] text-red-500">no link</span>}
+                          ? <span className="text-[10px] text-[var(--ok)]">✓ link</span>
+                          : <span className="text-[10px] text-[var(--err)]">no link</span>}
                       </td>
                       <td className="px-4 py-2">
                         {row._valid ? (

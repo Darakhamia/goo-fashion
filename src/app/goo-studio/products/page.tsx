@@ -93,7 +93,7 @@ const MISSING_FILTERS: { value: string; label: string; test: (p: Product) => boo
 ];
 
 const filterSelectCls =
-  "rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[180px]";
+  "rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[180px]";
 
 
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
@@ -222,7 +222,7 @@ const inputCls =
 // currency) would otherwise carry both w-full and its width, and w-full won —
 // the currency took the row and squeezed the store price to a few pixels.
 const selectBaseCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-[var(--surface)] text-[var(--foreground)] transition-colors";
 const selectCls = `${selectBaseCls} w-full`;
 const labelCls =
   "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
@@ -322,7 +322,7 @@ function ImageList({
               )}
             </div>
             {url && uploadErrors[url] && uploading !== url && (
-              <p className="text-[10px] leading-snug text-red-500">
+              <p className="text-[10px] leading-snug text-[var(--err)]">
                 Still on the external site — not copied to storage. {uploadErrors[url]}
               </p>
             )}
@@ -432,7 +432,7 @@ function RetailerList({
             <div>
               <label className={labelCls}>Store</label>
               <div className="flex items-center gap-2">
-                <span className="w-8 h-8 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex items-center justify-center">
+                <span className="w-8 h-8 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden flex items-center justify-center">
                   {logoFor(r.name) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logoFor(r.name)!} alt={r.name} className="w-full h-full object-contain p-1" />
@@ -570,7 +570,7 @@ function SecHead({ label, hint, open, onToggle }: { label: string; hint?: string
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--surface)] transition-colors text-left"
+      className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--background)] transition-colors text-left"
     >
       <span className="flex items-center gap-2">
         <span className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">{label}</span>
@@ -1948,7 +1948,7 @@ export default function AdminProductsPage() {
       {/* DB status banner — the one place a missing database is explained;
           every action that writes is disabled below it. */}
       {dbConfigured === false && (
-        <div className="mb-4 rounded-xl bg-red-400/15 text-red-500 border border-red-400/30 px-4 py-3 text-xs">
+        <div className="mb-4 rounded-xl bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)] px-4 py-3 text-xs">
           <strong>Database not configured — nothing on this page can be saved.</strong>{" "}
           Add <code className="font-mono">SUPABASE_URL</code> and{" "}
           <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> to the environment and reload.
@@ -2047,7 +2047,7 @@ export default function AdminProductsPage() {
             onClick={openAddModal}
             disabled={!canWrite}
             title={canWrite ? undefined : "Requires Supabase"}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -2082,7 +2082,7 @@ export default function AdminProductsPage() {
               }}
               className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
                 filterGroup === g.id
-                  ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                  ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                   : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
               }`}
             >
@@ -2098,7 +2098,7 @@ export default function AdminProductsPage() {
                   onClick={() => setFilterSubcategory((prev) => (prev === item.label ? "" : item.label))}
                   className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
                     filterSubcategory === item.label
-                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                       : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                   }`}
                 >
@@ -2169,7 +2169,7 @@ export default function AdminProductsPage() {
           <select
             value={filterMissing}
             onChange={(e) => setFilterMissing(e.target.value)}
-            className={`${filterSelectCls} ${filterMissing ? "border-amber-500/60 text-amber-600" : ""}`}
+            className={`${filterSelectCls} ${filterMissing ? "border-[var(--warn-line)] text-[var(--warn)]" : ""}`}
             title="Show only products missing a field"
           >
             <option value="">Missing: anything</option>
@@ -2186,7 +2186,7 @@ export default function AdminProductsPage() {
             onClick={() => setFilterNew((prev) => (prev === true ? null : true))}
             className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
               filterNew === true
-                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                 : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
             }`}
           >
@@ -2206,7 +2206,7 @@ export default function AdminProductsPage() {
                 setSortKey(key);
                 setSortDir(dir);
               }}
-              className="rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer"
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer"
             >
               {sortOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -2236,7 +2236,7 @@ export default function AdminProductsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" {...bulkBackdrop}>
           <div
             className="w-full max-w-xl max-h-[90dvh] md:max-h-[85vh] overflow-y-auto rounded-2xl border border-[var(--border)] shadow-xl"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)]">
@@ -2309,7 +2309,7 @@ export default function AdminProductsPage() {
                   <div className="flex gap-1">
                     {(["add", "replace"] as const).map((mode) => (
                       <button key={mode} onClick={() => setBulk((b) => ({ ...b, styleMode: mode }))}
-                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border rounded-full transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border rounded-full transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
                       >{mode}</button>
                     ))}
                   </div>
@@ -2322,7 +2322,7 @@ export default function AdminProductsPage() {
                         ...b,
                         styleKeywords: on ? b.styleKeywords.filter((x) => x !== k) : [...b.styleKeywords, k],
                       }))}
-                        className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
+                        className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
                       >{k}</button>
                     );
                   })}
@@ -2336,7 +2336,7 @@ export default function AdminProductsPage() {
                   <div className="flex gap-1">
                     {(["add", "replace"] as const).map((mode) => (
                       <button key={mode} onClick={() => setBulk((b) => ({ ...b, colorMode: mode }))}
-                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border rounded-full transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border rounded-full transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
                       >{mode}</button>
                     ))}
                   </div>
@@ -2349,7 +2349,7 @@ export default function AdminProductsPage() {
                         ...b,
                         colorGroupIds: on ? b.colorGroupIds.filter((x) => x !== g.id) : [...b.colorGroupIds, g.id],
                       }))}
-                        className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
+                        className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
                       >{g.name}</button>
                     );
                   })}
@@ -2382,7 +2382,7 @@ export default function AdminProductsPage() {
                 <button
                   onClick={applyBulkEdit}
                   disabled={bulkSaving || !bulkChangeCount || !canWrite}
-                  className="bg-[var(--foreground)] text-[var(--background)] px-5 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                  className="bg-[var(--foreground)] text-[var(--surface)] px-5 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
                 >
                   {bulkSaving ? "Applying…" : `Apply to ${selectedIds.size}`}
                 </button>
@@ -2394,7 +2394,7 @@ export default function AdminProductsPage() {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
+        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--background)]">
           <span className="text-xs text-[var(--foreground)]">
             {selectedIds.size} selected
           </span>
@@ -2402,7 +2402,7 @@ export default function AdminProductsPage() {
             <button
               onClick={openGroupModal}
               disabled={!canWrite}
-              className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--background)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <circle cx="3" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
@@ -2415,7 +2415,7 @@ export default function AdminProductsPage() {
           <button
             onClick={() => setBulkOpen(true)}
             disabled={!canWrite}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--background)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M8.5 1.5l2 2-6 6-2.5.5.5-2.5 6-6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -2425,7 +2425,7 @@ export default function AdminProductsPage() {
           <button
             onClick={handleBulkDelete}
             disabled={deleting || !canWrite}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400/30 text-red-500 px-3 py-1.5 hover:bg-red-400/15 transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--err-line)] text-[var(--err)] px-3 py-1.5 hover:bg-[var(--err-bg)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2442,13 +2442,13 @@ export default function AdminProductsPage() {
       )}
 
       {/* Table */}
-      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
+      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
         {loading ? (
           <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
+              <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
                 {/* Checkbox */}
                 <th className="px-3 py-3 w-10">
                   <input
@@ -2486,7 +2486,7 @@ export default function AdminProductsPage() {
                     Added <SortIcon dir={sortDirFor("createdAt")} />
                   </button>
                 </th>
-                <th className="text-right px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal sticky right-0 bg-[var(--surface)] md:static md:bg-transparent">Actions</th>
+                <th className="text-right px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal sticky right-0 bg-[var(--background)] md:static md:bg-transparent">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2495,7 +2495,7 @@ export default function AdminProductsPage() {
                   <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
                     {loadError ? (
                       <div role="alert" className="flex flex-col items-center gap-3">
-                        <p className="text-red-500 break-words">{loadError}</p>
+                        <p className="text-[var(--err)] break-words">{loadError}</p>
                         <button
                           onClick={fetchProducts}
                           className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
@@ -2513,7 +2513,7 @@ export default function AdminProductsPage() {
                   <tr
                     key={product.id}
                     className={`border-b border-[var(--border)] last:border-b-0 transition-colors ${
-                      selectedIds.has(product.id) ? "bg-[var(--surface)]" : "hover:bg-[var(--surface)]"
+                      selectedIds.has(product.id) ? "bg-[var(--background)]" : "hover:bg-[var(--background)]"
                     }`}
                   >
                     {/* Checkbox */}
@@ -2544,7 +2544,7 @@ export default function AdminProductsPage() {
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-[var(--surface)]" />
+                          <div className="w-full h-full bg-[var(--background)]" />
                         )}
                       </div>
                     </td>
@@ -2589,7 +2589,7 @@ export default function AdminProductsPage() {
                     </td>
                     {/* Pinned to the right edge on phones: the table is wider
                         than the screen and the actions used to sit past it. */}
-                    <td className="px-2 md:px-4 py-3 sticky right-0 bg-[var(--background)] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)] md:static md:bg-transparent md:shadow-none">
+                    <td className="px-2 md:px-4 py-3 sticky right-0 bg-[var(--surface)] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)] md:static md:bg-transparent md:shadow-none">
                       {/* Three icons to a row on phones keeps the table close
                           to the screen width. */}
                       <div className="flex flex-wrap md:flex-nowrap items-center justify-end gap-1 md:gap-2 w-[128px] md:w-auto ml-auto">
@@ -2657,7 +2657,7 @@ export default function AdminProductsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
             className="border border-[var(--border)] rounded-2xl max-w-5xl w-full mx-4 max-h-[90dvh] md:max-h-[94vh] flex flex-col overflow-hidden"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)] shrink-0">
@@ -2684,14 +2684,14 @@ export default function AdminProductsPage() {
             {/* Suggestions — spans the modal, above both columns, because the
                 fields they land in live in different ones. */}
             {suggestions && suggestions.length > 0 && (
-              <div className="shrink-0 border-b border-[var(--border)] px-4 md:px-6 py-3 bg-[var(--surface)] max-h-[35dvh] overflow-y-auto md:max-h-none md:overflow-visible">
+              <div className="shrink-0 border-b border-[var(--border)] px-4 md:px-6 py-3 bg-[var(--background)] max-h-[35dvh] overflow-y-auto md:max-h-none md:overflow-visible">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                   <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
                     From how the catalogue is filed
                   </p>
                   <div className="flex items-center gap-3">
                     <button onClick={applySuggestions} disabled={!chosen.size}
-                      className="border border-[var(--foreground)] text-[var(--foreground)] rounded-lg px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors disabled:opacity-40">
+                      className="border border-[var(--foreground)] text-[var(--foreground)] rounded-lg px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--surface)] transition-colors disabled:opacity-40">
                       Fill {chosen.size || ""} selected
                     </button>
                     <button onClick={() => { setSuggestions(null); setChosen(new Set()); }}
@@ -2718,9 +2718,9 @@ export default function AdminProductsPage() {
                         <span className="text-[11px] leading-relaxed">
                           <span className="tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">{s.field}</span>{" "}
                           <span className="font-mono text-[var(--foreground)]">{shown}</span>
-                          {s.replaces && <span className="text-amber-600"> — replaces {s.replaces}</span>}
+                          {s.replaces && <span className="text-[var(--warn)]"> — replaces {s.replaces}</span>}
                           {s.alsoSetsCategory && <span className="text-[var(--foreground-muted)]"> · also sets category to {s.alsoSetsCategory}</span>}
-                          {s.confidence === "low" && <span className="text-amber-600"> · unsure</span>}
+                          {s.confidence === "low" && <span className="text-[var(--warn)]"> · unsure</span>}
                           <span className="block text-[10px] text-[var(--foreground-subtle)]">{s.why}</span>
                         </span>
                       </label>
@@ -2786,7 +2786,7 @@ export default function AdminProductsPage() {
                           autoComplete="off"
                         />
                         {brandDropdownOpen && (
-                          <div ref={brandDropdownRef} className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] rounded-xl bg-[var(--background)] max-h-48 overflow-y-auto shadow-lg">
+                          <div ref={brandDropdownRef} className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] rounded-xl bg-[var(--surface)] max-h-48 overflow-y-auto shadow-lg">
                             {(() => {
                               const q = form.brand.toLowerCase().trim();
                               const filtered = suggestedBrands.filter((b) => b.toLowerCase().includes(q));
@@ -2794,10 +2794,10 @@ export default function AdminProductsPage() {
                               return (
                                 <>
                                   {filtered.map((b) => (
-                                    <button key={b} type="button" onMouseDown={(e) => { e.preventDefault(); setForm((f) => ({ ...f, brand: b })); setBrandDropdownOpen(false); }} className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--surface)] transition-colors ${form.brand === b ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>{b}</button>
+                                    <button key={b} type="button" onMouseDown={(e) => { e.preventDefault(); setForm((f) => ({ ...f, brand: b })); setBrandDropdownOpen(false); }} className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--background)] transition-colors ${form.brand === b ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>{b}</button>
                                   ))}
                                   {form.brand.trim() && !exactMatch && (
-                                    <button type="button" disabled={addingBrand} onMouseDown={(e) => { e.preventDefault(); addBrandInline(form.brand.trim()); }} className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] border-t border-[var(--border)] hover:bg-[var(--surface)] flex items-center gap-2 transition-colors">
+                                    <button type="button" disabled={addingBrand} onMouseDown={(e) => { e.preventDefault(); addBrandInline(form.brand.trim()); }} className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] border-t border-[var(--border)] hover:bg-[var(--background)] flex items-center gap-2 transition-colors">
                                       {addingBrand ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <span className="text-base leading-none">+</span>}
                                       Add &ldquo;{form.brand.trim()}&rdquo; as new brand
                                     </button>
@@ -2854,7 +2854,7 @@ export default function AdminProductsPage() {
                                       disabled={!first}
                                       title={first ? undefined : `${g.label} has no subcategories yet — add one under Categories.`}
                                       onClick={() => first && pick(first.label)}
-                                      className={`py-1.5 text-[10px] border rounded-full transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                      className={`py-1.5 text-[10px] border rounded-full transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                     >{g.label}</button>
                                   );
                                 })}
@@ -2865,7 +2865,7 @@ export default function AdminProductsPage() {
                                   {activeGroup.items.map((item) => (
                                     <button key={item.label} type="button"
                                       onClick={() => pick(item.label)}
-                                      className={`px-2.5 py-1.5 text-[11px] border rounded-full transition-colors ${form.subcategory === item.label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                      className={`px-2.5 py-1.5 text-[11px] border rounded-full transition-colors ${form.subcategory === item.label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                     >{item.label}</button>
                                   ))}
                                 </div>
@@ -2924,7 +2924,7 @@ export default function AdminProductsPage() {
                                     const active = selected.includes(size);
                                     return (
                                       <button key={size} type="button" onClick={() => toggle(size)}
-                                        className={`min-w-[34px] px-2 py-1.5 text-[11px] border rounded-full transition-colors text-center ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                        className={`min-w-[34px] px-2 py-1.5 text-[11px] border rounded-full transition-colors text-center ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                       >{size}</button>
                                     );
                                   })}
@@ -3062,7 +3062,7 @@ export default function AdminProductsPage() {
                                   ...f,
                                   colorGroupIds: active ? f.colorGroupIds.filter((id) => id !== cg.id) : [...f.colorGroupIds, cg.id],
                                 }))}
-                                className={`flex items-center gap-2 px-2.5 py-2 border rounded-full text-[11px] tracking-[0.06em] uppercase transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                className={`flex items-center gap-2 px-2.5 py-2 border rounded-full text-[11px] tracking-[0.06em] uppercase transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                               >
                                 <span className="w-3 h-3 rounded-full shrink-0 border border-black/10"
                                   style={{ background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode }} />
@@ -3083,7 +3083,7 @@ export default function AdminProductsPage() {
                         <div className="flex flex-wrap gap-1.5">
                           {STYLE_KEYWORDS.map((kw) => (
                             <button key={kw} type="button" onClick={() => toggleKeyword(kw)}
-                              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
+                              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
                             >{kw}</button>
                           ))}
                         </div>
@@ -3128,9 +3128,9 @@ export default function AdminProductsPage() {
                             const matches = products.filter((p) => p.id !== (editingProduct?.id ?? "") && !form.linkedProductIds.includes(p.id) && (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))).slice(0, 6);
                             if (matches.length === 0) return null;
                             return (
-                              <div className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] rounded-xl shadow-lg mt-0.5 max-h-48 overflow-y-auto" style={{ background: "var(--background)" }}>
+                              <div className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] rounded-xl shadow-lg mt-0.5 max-h-48 overflow-y-auto" style={{ background: "var(--surface)" }}>
                                 {matches.map((mp) => (
-                                  <button key={mp.id} type="button" onClick={() => { setForm((f) => ({ ...f, linkedProductIds: [...f.linkedProductIds, mp.id] })); setVariantSearch(""); }} className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--surface)] transition-colors border-b border-[var(--border)] last:border-0">
+                                  <button key={mp.id} type="button" onClick={() => { setForm((f) => ({ ...f, linkedProductIds: [...f.linkedProductIds, mp.id] })); setVariantSearch(""); }} className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--background)] transition-colors border-b border-[var(--border)] last:border-0">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     {mp.imageUrl && <img src={mp.imageUrl} alt={mp.name} loading="lazy" decoding="async" className="w-6 h-8 object-cover shrink-0" />}
                                     {mp.colorHex && <span className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: mp.colorHex }} />}
@@ -3179,13 +3179,13 @@ export default function AdminProductsPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.name.trim() || saving || !canWrite}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {saving ? "Saving…" : editingProduct ? "Save Changes" : "Add Product"}
               </button>
               <button
                 onClick={closeModal}
-                className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
               >
                 Cancel
               </button>
@@ -3199,7 +3199,7 @@ export default function AdminProductsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div
             className="border border-[var(--border)] rounded-2xl p-5 md:p-8 max-w-xl w-full mx-4 max-h-[90dvh] md:max-h-[95vh] overflow-y-auto"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             {/* Заголовок с кнопкой сброса */}
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-4">
@@ -3208,7 +3208,7 @@ export default function AdminProductsPage() {
                 {cropProduct.cropData && canWrite && (
                   <button
                     onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
-                    className="text-[10px] tracking-[0.1em] uppercase text-red-500 hover:text-red-700 underline transition-colors"
+                    className="text-[10px] tracking-[0.1em] uppercase text-[var(--err)] hover:text-[var(--err)] underline transition-colors"
                   >
                     Удалить кадрирование
                   </button>
@@ -3242,7 +3242,7 @@ export default function AdminProductsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
             className="border border-[var(--border)] rounded-2xl p-5 md:p-8 max-w-lg w-full mx-4 max-h-[90dvh] md:max-h-[92vh] overflow-y-auto"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             <div className="flex items-center justify-between gap-3 mb-5">
               <div className="min-w-0">
@@ -3334,7 +3334,7 @@ export default function AdminProductsPage() {
                         }
                         className={`text-[9px] tracking-[0.14em] uppercase px-2 py-1 border rounded-lg transition-colors ${
                           entry.isPrimary
-                            ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                            ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                             : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                         }`}
                       >
@@ -3354,13 +3354,13 @@ export default function AdminProductsPage() {
               <button
                 onClick={handleGroupSave}
                 disabled={grouping || !canWrite}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
               </button>
               <button
                 onClick={() => setGroupModal({ open: false, entries: [] })}
-                className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
               >
                 Cancel
               </button>
@@ -3376,13 +3376,13 @@ export default function AdminProductsPage() {
           // The status tints are translucent; the solid backing keeps the
           // toast legible over the table in either admin theme.
           className="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-[100] md:max-w-md rounded-xl overflow-hidden"
-          style={{ background: "var(--background)" }}
+          style={{ background: "var(--surface)" }}
         >
           <div
             className={`flex items-start gap-3 pl-5 pr-3 py-3 text-sm border rounded-xl ${
               toast.type === "ok"
-                ? "bg-emerald-400/15 text-emerald-500 border-emerald-400/30"
-                : "bg-red-400/15 text-red-500 border-red-400/30"
+                ? "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]"
+                : "bg-[var(--err-bg)] text-[var(--err)] border-[var(--err-line)]"
             }`}
           >
             <span className="flex-1 break-words">{toast.msg}</span>

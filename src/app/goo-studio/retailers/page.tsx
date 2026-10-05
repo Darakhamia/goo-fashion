@@ -57,7 +57,7 @@ const GENDER_SHORT: Record<Exclude<StoreGender, "">, string> = { men: "Men", wom
 const INPUT =
   "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)]";
 const PRIMARY =
-  "bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40";
+  "bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40";
 const GHOST =
   "border border-[var(--border)] px-3 py-1.5 rounded-lg text-[11px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] disabled:opacity-40 transition-colors";
 const TH =
@@ -79,7 +79,7 @@ function Favicon({ domain }: { domain: string }) {
 
 function OfficialBadge() {
   return (
-    <span className="inline-block px-2 py-0.5 rounded-lg text-[10px] tracking-[0.14em] uppercase bg-emerald-400/15 text-emerald-500 border border-emerald-400/30">
+    <span className="inline-block px-2 py-0.5 rounded-lg text-[10px] tracking-[0.14em] uppercase bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]">
       Official
     </span>
   );
@@ -266,17 +266,17 @@ export default function RetailersPage() {
           top, naming the migration — rather than letting the admin fill the
           form in and meet a PostgREST schema-cache message on submit. */}
       {report?.tableMissing && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 mt-6">
-          <p className="text-[13px] text-amber-500 leading-relaxed">{report.setupHint}</p>
+        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 mt-6">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">{report.setupHint}</p>
         </div>
       )}
 
       {report?.rulesError && (
-        <p className="text-[11px] text-red-500 mt-6">{report.rulesError}</p>
+        <p className="text-[11px] text-[var(--err)] mt-6">{report.rulesError}</p>
       )}
 
       {/* ── Editor ── */}
-      <div ref={editorRef} className="rounded-xl border border-[var(--border)] bg-[var(--background)] mt-6 p-5 scroll-mt-6">
+      <div ref={editorRef} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mt-6 p-5 scroll-mt-6">
         <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-4">
           {editingDomain ? `Edit ${editingDomain}` : "New rule"}
         </p>
@@ -316,7 +316,7 @@ export default function RetailersPage() {
               id="rd-gender"
               value={draft.defaultGender}
               onChange={(e) => setDraft((d) => ({ ...d, defaultGender: e.target.value as StoreGender }))}
-              className={`${INPUT} bg-[var(--background)]`}
+              className={`${INPUT} bg-[var(--surface)]`}
             >
               {GENDER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -353,8 +353,8 @@ export default function RetailersPage() {
         </label>
 
         {existingRule && (
-          <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[13px] text-amber-500 leading-relaxed">
+          <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[13px] text-[var(--warn)] leading-relaxed">
               {existingRule.domain} already has a rule (&ldquo;{existingRule.name}&rdquo;). Adding it again replaces
               that rule&apos;s name, official flag, gender and note.
             </p>
@@ -362,7 +362,7 @@ export default function RetailersPage() {
           </div>
         )}
 
-        {formError && <p className="text-[11px] text-red-500 mt-3">{formError}</p>}
+        {formError && <p className="text-[11px] text-[var(--err)] mt-3">{formError}</p>}
 
         <div className="flex items-center gap-2 mt-4">
           <button
@@ -383,10 +383,10 @@ export default function RetailersPage() {
         <p className="text-[11px] text-[var(--foreground-muted)] mt-4">{applyResult}</p>
       )}
       {actionError && (
-        <p role="alert" className="text-[11px] text-red-500 mt-4">{actionError}</p>
+        <p role="alert" className="text-[11px] text-[var(--err)] mt-4">{actionError}</p>
       )}
 
-      {loadError && <p className="text-[11px] text-red-500 mt-6">{loadError}</p>}
+      {loadError && <p className="text-[11px] text-[var(--err)] mt-6">{loadError}</p>}
 
       {/* ── Rules ── */}
       <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mt-8 mb-3">
@@ -394,7 +394,7 @@ export default function RetailersPage() {
       </p>
       <div className="rounded-xl border border-[var(--border)] overflow-hidden overflow-x-auto">
         <table className="w-full">
-          <thead style={{ background: "var(--surface)" }}>
+          <thead style={{ background: "var(--background)" }}>
             <tr>
               <th className={TH}>Domain</th>
               <th className={TH}>Name</th>
@@ -460,7 +460,7 @@ export default function RetailersPage() {
                         <button
                           onClick={() => remove(rule.domain)}
                           disabled={busyDomain === rule.domain}
-                          className={`${GHOST} hover:text-red-500 hover:border-red-500`}
+                          className={`${GHOST} hover:text-[var(--err)] hover:border-[var(--err)]`}
                         >
                           Delete
                         </button>
@@ -489,12 +489,12 @@ export default function RetailersPage() {
       </p>
 
       {report?.discoverError && (
-        <p className="text-[11px] text-amber-500 mb-3">{report.discoverError}</p>
+        <p className="text-[11px] text-[var(--warn)] mb-3">{report.discoverError}</p>
       )}
 
       <div className="rounded-xl border border-[var(--border)] overflow-hidden overflow-x-auto">
         <table className="w-full">
-          <thead style={{ background: "var(--surface)" }}>
+          <thead style={{ background: "var(--background)" }}>
             <tr>
               <th className={TH}>Domain</th>
               <th className={TH}>Products</th>

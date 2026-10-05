@@ -67,7 +67,7 @@ function PromptCard({ item, onSave, onReset }: {
   }
 
   return (
-    <div className="border border-[var(--border)] bg-[var(--background)] rounded-xl overflow-hidden">
+    <div className="border border-[var(--border)] bg-[var(--surface)] rounded-xl overflow-hidden">
       <div className="px-4 py-3.5 border-b border-[var(--border)] flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
@@ -75,7 +75,7 @@ function PromptCard({ item, onSave, onReset }: {
               {item.label}
             </p>
             {isModified && (
-              <span className="text-[10px] tracking-[0.14em] uppercase px-2 py-0.5 bg-[var(--surface)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none">
+              <span className="text-[10px] tracking-[0.14em] uppercase px-2 py-0.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none">
                 кастом
               </span>
             )}
@@ -100,10 +100,10 @@ function PromptCard({ item, onSave, onReset }: {
           onChange={(e) => setText(e.target.value)}
           rows={8}
           spellCheck={false}
-          className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-[11px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors resize-y leading-relaxed"
+          className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-[11px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors resize-y leading-relaxed"
         />
         {missing.length > 0 && (
-          <p className="text-[10px] text-amber-500 mt-1.5">
+          <p className="text-[10px] text-[var(--warn)] mt-1.5">
             Не хватает <span className="font-mono">{missing.join(" ")}</span> — без {missing.length > 1 ? "них" : "него"} генерация пойдёт без этих данных.
           </p>
         )}
@@ -112,15 +112,15 @@ function PromptCard({ item, onSave, onReset }: {
             Пустой промт сохранится как сброс до дефолтного.
           </p>
         )}
-        {err && <p className="text-[10px] text-red-500 mt-1.5">{err}</p>}
-        {ok  && <p className="text-[10px] text-emerald-500 mt-1.5">Сохранено.</p>}
+        {err && <p className="text-[10px] text-[var(--err)] mt-1.5">{err}</p>}
+        {ok  && <p className="text-[10px] text-[var(--ok)] mt-1.5">Сохранено.</p>}
       </div>
 
       <div className="px-4 py-3 border-t border-[var(--border)] flex items-center gap-2">
         <button
           onClick={handleSave}
           disabled={!isDirty || saving || missing.length > 0}
-          className="px-3 py-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          className="px-3 py-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
           {saving && <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />}
           {saving ? "Сохранение…" : "Сохранить"}
@@ -137,7 +137,7 @@ function PromptCard({ item, onSave, onReset }: {
           <button
             onClick={handleReset}
             disabled={resetting}
-            className="ml-auto text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors disabled:opacity-30"
+            className="ml-auto text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors disabled:opacity-30"
           >
             {resetting ? "Сброс…" : "Сброс"}
           </button>
@@ -221,7 +221,7 @@ export default function PromptsPage() {
             >
               {cat.label}
               {count > 0 && (
-                <span className="text-[8px] px-1.5 py-0.5 bg-[var(--surface)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none tabular-nums">
+                <span className="text-[8px] px-1.5 py-0.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none tabular-nums">
                   {count}
                 </span>
               )}
@@ -236,7 +236,7 @@ export default function PromptsPage() {
           <span className="text-[11px]">Загрузка…</span>
         </div>
       )}
-      {loadErr && <p className="text-[11px] text-red-500">{loadErr}</p>}
+      {loadErr && <p className="text-[11px] text-[var(--err)]">{loadErr}</p>}
 
       {!loading && !loadErr && (
         <div className={`grid gap-4 ${activeTab === "image" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>

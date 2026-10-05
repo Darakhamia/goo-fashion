@@ -135,7 +135,7 @@ export default function EmbeddingsCard() {
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mt-6">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mt-6">
       <div className="px-5 py-4 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -158,7 +158,7 @@ export default function EmbeddingsCard() {
 
       <div className="px-5 py-4">
         {loading && !coverage && <LoadingLine label="Checking coverage…" />}
-        {loadError && <p className="text-[11px] text-red-500">{loadError}</p>}
+        {loadError && <p className="text-[11px] text-[var(--err)]">{loadError}</p>}
 
         {coverage && (
           <>
@@ -168,7 +168,7 @@ export default function EmbeddingsCard() {
               <span className="tabular-nums">{coverage.coverage}%</span>
             </p>
             <div
-              className="mt-2 h-1.5 rounded-full bg-[var(--surface)] overflow-hidden"
+              className="mt-2 h-1.5 rounded-full bg-[var(--background)] overflow-hidden"
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={100}
@@ -190,13 +190,13 @@ export default function EmbeddingsCard() {
             This run: <span className="tabular-nums">{progress.processed}</span> embedded
             {progress.failed > 0 && (
               <>
-                {" "}· <span className="tabular-nums text-red-500">{progress.failed}</span> failed
+                {" "}· <span className="tabular-nums text-[var(--err)]">{progress.failed}</span> failed
               </>
             )}
           </p>
         )}
-        {runDone && <p className="text-[11px] text-emerald-500 mt-2">Every product has an embedding.</p>}
-        {runError && <p className="text-[11px] text-red-500 mt-2">{runError}</p>}
+        {runDone && <p className="text-[11px] text-[var(--ok)] mt-2">Every product has an embedding.</p>}
+        {runError && <p className="text-[11px] text-[var(--err)] mt-2">{runError}</p>}
       </div>
 
       <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2 flex-wrap">

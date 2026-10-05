@@ -111,9 +111,9 @@ const ACTION_TONES: Partial<Record<AdminAction, Tone>> = {
 };
 
 const TONE_CLASSES: Record<Tone, string> = {
-  danger: "bg-red-400/15 text-red-500 border-red-400/30",
-  warn:   "bg-amber-400/15 text-amber-500 border-amber-400/30",
-  ok:     "bg-emerald-400/15 text-emerald-500 border-emerald-400/30",
+  danger: "bg-[var(--err-bg)] text-[var(--err)] border-[var(--err-line)]",
+  warn:   "bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]",
+  ok:     "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]",
 };
 
 const GROUP_LABELS: Record<string, string> = {
@@ -150,7 +150,7 @@ function isKnownAction(action: string): action is AdminAction {
 const pillCls = (active: boolean) =>
   `px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
     active
-      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+      ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
       : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
   }`;
 
@@ -307,7 +307,7 @@ export default function AdminActivityPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2.5 mb-1">
             <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Admin Activity</h1>
-            <span className="text-[9px] tracking-[0.16em] uppercase px-2 py-1 border rounded-full bg-amber-400/15 text-amber-500 border-amber-400/30">
+            <span className="text-[9px] tracking-[0.16em] uppercase px-2 py-1 border rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]">
               Super Admin
             </span>
           </div>
@@ -345,7 +345,7 @@ export default function AdminActivityPage() {
           value={actionFilter}
           onChange={(e) => changeFilter(adminFilter, e.target.value)}
           aria-label="Filter by action"
-          className="rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[220px]"
+          className="rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[220px]"
         >
           <option value="">All actions</option>
           {ACTION_GROUPS.map(([group, actions]) => (
@@ -359,13 +359,13 @@ export default function AdminActivityPage() {
       </div>
 
       {error && (
-        <div role="alert" className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3">
+        <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-4 py-3">
           {error}
         </div>
       )}
 
       {/* Timeline */}
-      <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
+      <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
         {loading && entries.length === 0 && (
           <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">Loading…</div>
         )}
@@ -387,7 +387,7 @@ export default function AdminActivityPage() {
           return (
             <div
               key={entry.id}
-              className={`flex items-start gap-3 md:gap-4 px-4 md:px-6 py-4 hover:bg-[var(--surface)] transition-colors ${!isLast ? "border-b border-[var(--border)]" : ""}`}
+              className={`flex items-start gap-3 md:gap-4 px-4 md:px-6 py-4 hover:bg-[var(--background)] transition-colors ${!isLast ? "border-b border-[var(--border)]" : ""}`}
             >
               {/* Icon column */}
               <div className="flex-shrink-0 mt-0.5">

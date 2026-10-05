@@ -68,8 +68,8 @@ type StatusFilter = (typeof STATUS_OPTIONS)[number];
 const planBadge: Record<string, string> = {
   free:    "rounded-full border border-[var(--border)] text-[var(--foreground-muted)]",
   basic:   "rounded-full border border-[var(--border-strong)] text-[var(--foreground)]",
-  pro:     "rounded-full bg-amber-400/15 text-amber-500 border border-amber-400/30",
-  premium: "rounded-full bg-[var(--foreground)] text-[var(--background)]",
+  pro:     "rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]",
+  premium: "rounded-full bg-[var(--foreground)] text-[var(--surface)]",
 };
 
 function initials(first: string | null, last: string | null, email: string | null) {
@@ -151,9 +151,9 @@ function deleteSubscriptionWarning(s: UserSubscription | null | undefined): stri
 }
 
 const subStatusBadge: Record<string, string> = {
-  active:   "text-emerald-500",
-  pending:  "text-amber-500",
-  past_due: "text-red-500",
+  active:   "text-[var(--ok)]",
+  pending:  "text-[var(--warn)]",
+  past_due: "text-[var(--err)]",
   canceled: "text-[var(--foreground-subtle)]",
 };
 
@@ -382,9 +382,9 @@ export default function AdminUsersPage() {
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Users</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1">
             {counts ? counts.total.toLocaleString() : "—"} registered
-            {error ? <span className="text-red-500"> · {error}</span> : null}
-            {countsError ? <span className="text-red-500"> · counts unavailable: {countsError}</span> : null}
-            {subsError ? <span className="text-red-500"> · subscription data unavailable: {subsError}</span> : null}
+            {error ? <span className="text-[var(--err)]"> · {error}</span> : null}
+            {countsError ? <span className="text-[var(--err)]"> · counts unavailable: {countsError}</span> : null}
+            {subsError ? <span className="text-[var(--err)]"> · subscription data unavailable: {subsError}</span> : null}
           </p>
         </div>
         <button
@@ -407,7 +407,7 @@ export default function AdminUsersPage() {
           { label: "Free",    value: counts?.free,    note: "accounts" },
           { label: "Banned",  value: counts?.banned,  note: "suspended" },
         ].map((s) => (
-          <div key={s.label} className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-5">
+          <div key={s.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
             <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-2">{s.label}</p>
             <p className="font-display text-3xl font-light text-[var(--foreground)]">{s.value === undefined ? "—" : s.value.toLocaleString()}</p>
             <p className="text-[10px] text-[var(--foreground-muted)] mt-1">
@@ -460,7 +460,7 @@ export default function AdminUsersPage() {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl bg-[var(--surface)] px-4 py-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl bg-[var(--background)] px-4 py-3 mb-4">
           <span className="text-xs text-[var(--foreground-muted)]">
             {selected.size} selected
           </span>
@@ -500,7 +500,7 @@ export default function AdminUsersPage() {
           <button
             onClick={bulkDelete}
             disabled={bulkLoading}
-            className="text-[9px] tracking-[0.14em] uppercase border border-red-500/40 rounded-lg px-3 py-2 text-red-500 hover:bg-red-500/5 transition-colors disabled:opacity-40"
+            className="text-[9px] tracking-[0.14em] uppercase border border-[var(--err-line)] rounded-lg px-3 py-2 text-[var(--err)] hover:bg-[var(--err-bg)] transition-colors disabled:opacity-40"
           >
             Delete
           </button>
@@ -519,8 +519,8 @@ export default function AdminUsersPage() {
           role="status"
           className={`rounded-xl border px-4 py-3 mb-4 text-xs ${
             bulkResult.errors.length
-              ? "bg-red-400/15 text-red-500 border-red-400/30"
-              : "bg-emerald-400/15 text-emerald-500 border-emerald-400/30"
+              ? "bg-[var(--err-bg)] text-[var(--err)] border-[var(--err-line)]"
+              : "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]"
           }`}
         >
           <div className="flex items-start justify-between gap-3">
@@ -549,7 +549,7 @@ export default function AdminUsersPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
+              <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
                 {/* Checkbox select-all */}
                 <th className="px-4 py-3 w-10">
                   <input
@@ -586,7 +586,7 @@ export default function AdminUsersPage() {
                   <tr
                     key={u.id}
                     onClick={() => setSelectedId(u.id)}
-                    className={`border-b border-[var(--border)] hover:bg-[var(--surface)] transition-colors last:border-0 cursor-pointer ${selected.has(u.id) ? "bg-[var(--surface)]" : ""}`}
+                    className={`border-b border-[var(--border)] hover:bg-[var(--background)] transition-colors last:border-0 cursor-pointer ${selected.has(u.id) ? "bg-[var(--background)]" : ""}`}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {!isSuper && (
@@ -603,7 +603,7 @@ export default function AdminUsersPage() {
                         {u.imageUrl ? (
                           <Image src={u.imageUrl} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-medium text-[var(--background)] bg-[var(--foreground-muted)] shrink-0">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-medium text-[var(--surface)] bg-[var(--foreground-muted)] shrink-0">
                             {initials(u.firstName, u.lastName, u.email)}
                           </div>
                         )}
@@ -613,9 +613,9 @@ export default function AdminUsersPage() {
                             <span className="md:hidden text-[10px] text-[var(--foreground-subtle)] truncate">{u.email}</span>
                           )}
                           {isSuper ? (
-                            <span className="text-[9px] tracking-[0.1em] uppercase text-amber-500">Super Admin</span>
+                            <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--warn)]">Super Admin</span>
                           ) : u.isAdmin ? (
-                            <span className="text-[9px] tracking-[0.1em] uppercase text-emerald-500">Admin</span>
+                            <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--ok)]">Admin</span>
                           ) : null}
                         </div>
                       </div>
@@ -647,9 +647,9 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] hidden md:table-cell">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</td>
                     <td className="px-4 py-3">
                       {u.banned ? (
-                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-red-400/15 text-red-500 border border-red-400/30">Banned</span>
+                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]">Banned</span>
                       ) : u.locked ? (
-                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-amber-400/15 text-amber-500 border border-amber-400/30">Locked</span>
+                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]">Locked</span>
                       ) : (
                         <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full text-[var(--foreground-muted)] border border-[var(--border)]">Active</span>
                       )}
@@ -657,7 +657,7 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3">
                       {isSuper ? (
                         <div className="flex justify-end">
-                          <span className="text-[9px] tracking-[0.12em] uppercase text-amber-500 bg-amber-400/15 border border-amber-400/30 rounded-full px-2 py-1">Protected</span>
+                          <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--warn)] bg-[var(--warn-bg)] border border-[var(--warn-line)] rounded-full px-2 py-1">Protected</span>
                         </div>
                       ) : (
                         <div className="flex justify-end gap-2">
@@ -673,7 +673,7 @@ export default function AdminUsersPage() {
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(u); }}
-                            className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-red-500 transition-colors"
+                            className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--err)] transition-colors"
                             title="Delete"
                             aria-label="Delete user"
                           >
@@ -908,9 +908,9 @@ function UserDrawer({
         aria-labelledby="user-drawer-title"
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md h-full overflow-y-auto overscroll-contain border-l border-[var(--border)] pb-[env(safe-area-inset-bottom)]"
-        style={{ background: "var(--background)" }}
+        style={{ background: "var(--surface)" }}
       >
-        <div className="px-4 md:px-6 py-4 md:py-5 border-b border-[var(--border)] flex items-center justify-between gap-3 sticky top-0 z-10" style={{ background: "var(--background)" }}>
+        <div className="px-4 md:px-6 py-4 md:py-5 border-b border-[var(--border)] flex items-center justify-between gap-3 sticky top-0 z-10" style={{ background: "var(--surface)" }}>
           <div className="min-w-0">
             <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">User Detail</p>
             <h2 id="user-drawer-title" className="font-display text-lg font-light text-[var(--foreground)] truncate max-w-[280px]">{displayName}</h2>
@@ -931,17 +931,17 @@ function UserDrawer({
         )}
 
         {error && (
-          <div className="mx-6 my-4 rounded-xl border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-3 py-2">{error}</div>
+          <div className="mx-6 my-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-3 py-2">{error}</div>
         )}
 
         {detail && !loading && (
           <div className="px-4 md:px-6 py-5 space-y-6">
             {isSuperAdmin && (
-              <div className="flex items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-amber-500 flex-shrink-0">
+              <div className="flex items-center gap-3 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[var(--warn)] flex-shrink-0">
                   <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                 </svg>
-                <p className="text-[10px] tracking-[0.1em] uppercase text-amber-500">
+                <p className="text-[10px] tracking-[0.1em] uppercase text-[var(--warn)]">
                   Super admin — this account is protected and cannot be modified.
                 </p>
               </div>
@@ -950,7 +950,7 @@ function UserDrawer({
               {detail.imageUrl ? (
                 <Image src={detail.imageUrl} alt="" width={56} height={56} className="w-14 h-14 rounded-full object-cover" />
               ) : (
-                <div className="w-14 h-14 flex items-center justify-center text-sm font-medium text-[var(--background)] bg-[var(--foreground-muted)] rounded-full">
+                <div className="w-14 h-14 flex items-center justify-center text-sm font-medium text-[var(--surface)] bg-[var(--foreground-muted)] rounded-full">
                   {initials(detail.firstName, detail.lastName, detail.email)}
                 </div>
               )}
@@ -1102,7 +1102,7 @@ function UserDrawer({
                 ))}
               </div>
               {liveSubscription(detail.subscription) && (
-                <p className="mt-2 rounded-xl border border-amber-400/30 bg-amber-400/15 text-amber-500 text-[10px] px-3 py-2">
+                <p className="mt-2 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn)] text-[10px] px-3 py-2">
                   Active subscription ({describeSubscription(detail.subscription)}). {PLAN_BILLING_NOTE}
                   {renewsAutomatically(detail.subscription)
                     ? ` ${RENEWAL_NOTE}`
@@ -1122,7 +1122,7 @@ function UserDrawer({
                       <p className="text-xs text-[var(--foreground)]">Admin</p>
                       <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">Granted via env (ADMIN_USER_IDS). Remove the id there to revoke.</p>
                     </div>
-                    <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-400/15 border border-emerald-400/30 rounded-full px-2 py-1">Via env</span>
+                    <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Via env</span>
                   </div>
                 ) : currentIsSuperAdmin ? (
                   <ToggleRow
@@ -1137,7 +1137,7 @@ function UserDrawer({
                       <p className="text-xs text-[var(--foreground)]">Admin</p>
                       <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
                     </div>
-                    <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-400/15 border border-emerald-400/30 rounded-full px-2 py-1">Enabled</span>
+                    <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Enabled</span>
                   </div>
                 ) : null}
                 <ToggleRow label="Banned" description="Prevents the user from signing in." checked={banned} onChange={setBanned} danger />
@@ -1149,7 +1149,7 @@ function UserDrawer({
                 <button
                   onClick={del}
                   disabled={saving}
-                  className="text-[10px] tracking-[0.14em] uppercase text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+                  className="text-[10px] tracking-[0.14em] uppercase text-[var(--err)] hover:text-[var(--err)] transition-colors disabled:opacity-50"
                 >
                   Delete user
                 </button>
@@ -1165,7 +1165,7 @@ function UserDrawer({
                   <button
                     onClick={save}
                     disabled={!hasChanges || saving}
-                    className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-40"
+                    className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-40"
                   >
                     {saving ? "Saving…" : "Save changes"}
                   </button>
@@ -1208,13 +1208,13 @@ function ToggleRow({
       className="w-full flex items-center justify-between px-3 py-2.5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] transition-colors text-left"
     >
       <div>
-        <p className={`text-xs ${danger && checked ? "text-red-500" : "text-[var(--foreground)]"}`}>{label}</p>
+        <p className={`text-xs ${danger && checked ? "text-[var(--err)]" : "text-[var(--foreground)]"}`}>{label}</p>
         <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">{description}</p>
       </div>
       <div className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
-        checked ? (danger ? "bg-red-500" : "bg-[var(--foreground)]") : "bg-[var(--border)]"
+        checked ? (danger ? "bg-[var(--err)]" : "bg-[var(--foreground)]") : "bg-[var(--border)]"
       }`}>
-        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--background)] transition-[left] ${
+        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--surface)] transition-[left] ${
           checked ? "left-[18px]" : "left-0.5"
         }`} />
       </div>

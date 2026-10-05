@@ -90,6 +90,51 @@
   color-scheme: dark;
 }
 
+/* goo-studio only (docs/ADMIN_DESIGN.md §4.1). These come after the shared
+   blocks above, so on the admin root they win over them.
+   - --foreground-subtle is darkened to pass 4.5:1 on the admin's panels and
+     canvas: the admin uses it for dates, counts and evidence, which people
+     read, not only for placeholders.
+   - Status colours are tokens here instead of raw emerald/amber/red: the -500
+     text the admin used on its own tinted fill was 2:1 to 2.5:1 in the light
+     theme ("PRO", "SUPER ADMIN"). Light uses the 700 shades, dark the 400s.
+     --*-line is the border of a status badge or banner. */
+.admin-theme-light {
+  --foreground-subtle: #706E6A;
+  --ok: #047857;
+  --ok-bg: rgba(52, 211, 153, 0.14);
+  --ok-line: rgba(4, 120, 87, 0.3);
+  --warn: #B45309;
+  --warn-bg: rgba(251, 191, 36, 0.16);
+  --warn-line: rgba(180, 83, 9, 0.3);
+  --err: #B91C1C;
+  --err-bg: rgba(248, 113, 113, 0.14);
+  --err-line: rgba(185, 28, 28, 0.3);
+}
+.admin-theme-dark {
+  --foreground-subtle: #80807C;
+  --ok: #34D399;
+  --ok-bg: rgba(52, 211, 153, 0.12);
+  --ok-line: rgba(52, 211, 153, 0.3);
+  --warn: #FBBF24;
+  --warn-bg: rgba(251, 191, 36, 0.12);
+  --warn-line: rgba(251, 191, 36, 0.3);
+  --err: #F87171;
+  --err-bg: rgba(248, 113, 113, 0.12);
+  --err-line: rgba(248, 113, 113, 0.3);
+}
+
+/* Keyboard focus in goo-studio is always visible. In the base layer, so a
+   control that draws its own focus state (fields: outline-none + a darker
+   border) keeps it. */
+@layer base {
+  :where(.admin-theme-light, .admin-theme-dark)
+    :where(a, button, [role="switch"], [role="radio"], [role="tab"], summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+  }
+}
+
 /* goo-studio on phones. Below md every button, select and text field is at
    least 40px tall, and an icon-only button (the ones carrying an aria-label)
    40px wide as well: the smallest comfortable touch target. The rule lives in

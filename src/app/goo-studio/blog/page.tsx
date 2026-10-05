@@ -337,7 +337,7 @@ export default function AdminBlogPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={openAiModal}
-            className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--foreground)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-colors hover:bg-[var(--surface)] rounded-lg"
+            className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--foreground)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-colors hover:bg-[var(--background)] rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
@@ -348,7 +348,7 @@ export default function AdminBlogPage() {
           </button>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path
@@ -375,12 +375,12 @@ export default function AdminBlogPage() {
       </div>
 
       {(loadError || deleteError) && (
-        <div className="mb-4 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 flex items-start justify-between gap-4">
-          <p className="text-xs text-red-500 leading-relaxed">{loadError || deleteError}</p>
+        <div className="mb-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 flex items-start justify-between gap-4">
+          <p className="text-xs text-[var(--err)] leading-relaxed">{loadError || deleteError}</p>
           {!loadError && (
             <button
               onClick={() => setDeleteError("")}
-              className="text-red-500 hover:opacity-70 transition-opacity shrink-0"
+              className="text-[var(--err)] hover:opacity-70 transition-opacity shrink-0"
               aria-label="Dismiss"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -394,11 +394,11 @@ export default function AdminBlogPage() {
       {/* Table */}
       <div
         className="rounded-xl border border-[var(--border)] overflow-x-auto"
-        style={{ background: "var(--background)" }}
+        style={{ background: "var(--surface)" }}
       >
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
+            <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
               {["Cover", "Title", "Slug", "Category", "Status", "Published", "Actions"].map(
                 (h, i) => (
                   <th
@@ -442,10 +442,10 @@ export default function AdminBlogPage() {
               filteredPosts.map((post) => (
                 <tr
                   key={post.id}
-                  className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors"
+                  className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--background)] transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <div className="relative w-12 h-12 overflow-hidden flex-shrink-0 rounded-lg bg-[var(--surface)]">
+                    <div className="relative w-12 h-12 overflow-hidden flex-shrink-0 rounded-lg bg-[var(--background)]">
                       {post.coverImageUrl && (
                         <Image
                           src={post.coverImageUrl}
@@ -564,7 +564,7 @@ export default function AdminBlogPage() {
             aria-modal="true"
             aria-label="AI Draft"
             className="rounded-2xl border border-[var(--border)] w-full max-w-md max-h-[90dvh] overflow-y-auto"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
               <div>
@@ -594,7 +594,7 @@ export default function AdminBlogPage() {
               <div
                 role="tablist"
                 aria-label="Draft source"
-                className="flex gap-0 bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] w-fit"
+                className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
               >
                 {([
                   { id: "url" as const, label: "From URL" },
@@ -609,7 +609,7 @@ export default function AdminBlogPage() {
                     className="px-5 py-2 text-[10px] tracking-[0.16em] uppercase font-medium rounded-full transition-colors duration-200 disabled:opacity-40"
                     style={
                       aiMode === t.id
-                        ? { background: "var(--foreground)", color: "var(--background)" }
+                        ? { background: "var(--foreground)", color: "var(--surface)" }
                         : { color: "var(--foreground-muted)" }
                     }
                   >
@@ -651,7 +651,7 @@ export default function AdminBlogPage() {
                 </div>
               )}
 
-              {aiError && <p className="text-xs text-red-500">{aiError}</p>}
+              {aiError && <p className="text-xs text-[var(--err)]">{aiError}</p>}
               {aiLoading && (
                 <p className="text-xs text-[var(--foreground-muted)] animate-pulse">
                   {aiMode === "url"
@@ -664,14 +664,14 @@ export default function AdminBlogPage() {
               <button
                 onClick={handleAiGenerate}
                 disabled={!aiInputReady || aiLoading}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {aiLoading ? "Generating..." : "Generate post"}
               </button>
               <button
                 onClick={() => setShowAiModal(false)}
                 disabled={aiLoading}
-                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40 rounded-lg"
+                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 rounded-lg"
               >
                 Cancel
               </button>
@@ -688,7 +688,7 @@ export default function AdminBlogPage() {
             aria-modal="true"
             aria-label={editingId ? "Edit Post" : "New Post"}
             className="rounded-2xl border border-[var(--border)] w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-[var(--border)] shrink-0">
@@ -807,7 +807,7 @@ export default function AdminBlogPage() {
                   }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-[var(--background)] transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface)] transition-transform ${
                       form.isPublished ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
@@ -983,7 +983,7 @@ export default function AdminBlogPage() {
               </div>
 
               {saveError && (
-                <p className="text-xs text-red-500">{saveError}</p>
+                <p className="text-xs text-[var(--err)]">{saveError}</p>
               )}
             </div>
 
@@ -992,7 +992,7 @@ export default function AdminBlogPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.title.trim() || saving}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {saving
                   ? "Saving..."
@@ -1004,7 +1004,7 @@ export default function AdminBlogPage() {
               </button>
               <button
                 onClick={closeModal}
-                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors rounded-lg"
+                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
               >
                 Cancel
               </button>

@@ -51,7 +51,7 @@ const labelCls =
   "block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-1.5";
 const btnGhost =
   "px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors rounded-lg";
-const cardCls = "rounded-xl border border-[var(--border)] bg-[var(--background)]";
+const cardCls = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 
 const Spinner = () => (
   <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -363,7 +363,7 @@ export default function CollectPage() {
         <span
           aria-hidden="true"
           className={`w-2 h-2 rounded-full flex-shrink-0 ${
-            connected ? "bg-emerald-500" : "bg-[var(--foreground-subtle)]"
+            connected ? "bg-[var(--ok)]" : "bg-[var(--foreground-subtle)]"
           }`}
         />
         <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground)]">
@@ -394,7 +394,7 @@ export default function CollectPage() {
         <div
           role="group"
           aria-label="What this run does"
-          className="flex gap-0 bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] w-fit"
+          className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
         >
           {MODES.map((m) => {
             const active = linksOnly === m.linksOnly;
@@ -407,7 +407,7 @@ export default function CollectPage() {
                 onClick={() => chooseMode(m.linksOnly)}
                 className={`shrink-0 px-5 py-2 text-[10px] tracking-[0.16em] uppercase font-medium rounded-full transition-colors duration-200 disabled:opacity-40 ${
                   active
-                    ? "bg-[var(--foreground)] text-[var(--background)]"
+                    ? "bg-[var(--foreground)] text-[var(--surface)]"
                     : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                 }`}
               >
@@ -445,7 +445,7 @@ export default function CollectPage() {
       )}
 
       {notice && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-5 py-3 text-[12px] text-amber-500">
+        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-5 py-3 text-[12px] text-[var(--warn)]">
           {notice}
         </div>
       )}
@@ -469,7 +469,7 @@ export default function CollectPage() {
             </span>
           </span>
           {robots.blocked > 0 && (
-            <span className="text-amber-500 tabular-nums">{robots.blocked} disallowed, skipped</span>
+            <span className="text-[var(--warn)] tabular-nums">{robots.blocked} disallowed, skipped</span>
           )}
         </div>
       )}
@@ -515,9 +515,9 @@ export default function CollectPage() {
                 {phase === "idle" && "Ready"}
               </p>
               <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
-                <span className="text-emerald-500">{imported} new</span>
+                <span className="text-[var(--ok)]">{imported} new</span>
                 <span className="text-[var(--foreground-muted)]">{updated} updated</span>
-                {failed > 0 && <span className="text-amber-500">{failed} skipped</span>}
+                {failed > 0 && <span className="text-[var(--warn)]">{failed} skipped</span>}
                 {!running && results.length > 0 && (
                   <a
                     href="/goo-studio/products"
@@ -540,7 +540,7 @@ export default function CollectPage() {
               </p>
             )}
             {warnings.map((w) => (
-              <p key={w} className="rounded-lg border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-[12px] text-amber-500">
+              <p key={w} className="rounded-lg border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)]">
                 {w}
               </p>
             ))}
@@ -638,10 +638,10 @@ function detailLine(r: CrawlItemResult): string {
 
 function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
   const map: Record<CrawlItemResult["status"], { label: string; cls: string }> = {
-    imported: { label: "new", cls: "text-emerald-500 bg-emerald-400/15 border-emerald-400/30" },
+    imported: { label: "new", cls: "text-[var(--ok)] bg-[var(--ok-bg)] border-[var(--ok-line)]" },
     updated: { label: "upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)] border-[var(--border)]" },
-    skipped: { label: "skip", cls: "text-amber-500 bg-amber-400/15 border-amber-400/30" },
-    failed: { label: "fail", cls: "text-red-500 bg-red-400/15 border-red-400/30" },
+    skipped: { label: "skip", cls: "text-[var(--warn)] bg-[var(--warn-bg)] border-[var(--warn-line)]" },
+    failed: { label: "fail", cls: "text-[var(--err)] bg-[var(--err-bg)] border-[var(--err-line)]" },
   };
   const { label, cls } = map[status];
   return (

@@ -80,7 +80,7 @@ const defaultForm: OutfitFormState = {
 const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
 const selectCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--surface)] text-[var(--foreground)] transition-colors";
 const labelCls = "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
 export default function AdminOutfitsPage() {
@@ -644,7 +644,7 @@ export default function AdminOutfitsPage() {
             />
             <button
               onClick={openAddModal}
-              className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
+              className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -674,7 +674,7 @@ export default function AdminOutfitsPage() {
               <span className="flex items-center gap-2">
                 Pending
                 {pendingLooks.length > 0 && (
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[9px]">
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--surface)] text-[9px]">
                     {pendingLooks.length}
                   </span>
                 )}
@@ -688,7 +688,7 @@ export default function AdminOutfitsPage() {
       {adminTab === "pending" && (
         <div>
           {pendingError && (
-            <div className="mb-4 flex items-center justify-between rounded-lg border border-red-400/30 bg-red-400/15 px-4 py-2.5 text-xs text-red-500">
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
               <span>{pendingError}</span>
               <button
                 onClick={() => {
@@ -706,17 +706,17 @@ export default function AdminOutfitsPage() {
           ) : pendingError && pendingLooks.length === 0 ? null : pendingLooks.length === 0 ? (
             <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">No looks awaiting review.</p>
           ) : (
-            <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+            <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
               {pendingLooks.map((look, idx) => (
                 <div
                   key={look.id}
                   onClick={() => openSubmission(look)}
-                  className={`flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-[var(--surface)] transition-colors ${
+                  className={`flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-[var(--background)] transition-colors ${
                     idx !== 0 ? "border-t border-[var(--border)]" : ""
                   }`}
                 >
                   {/* Thumbnail */}
-                  <div className="w-12 h-16 shrink-0 overflow-hidden bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+                  <div className="w-12 h-16 shrink-0 overflow-hidden bg-[var(--background)] rounded-xl border border-[var(--border)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={look.generated_image} alt="Look" className="w-full h-full object-cover" />
                   </div>
@@ -763,7 +763,7 @@ export default function AdminOutfitsPage() {
             role="dialog"
             aria-modal="true"
             aria-label="Review submitted look"
-            className="bg-[var(--background)] w-full max-w-3xl max-h-[90dvh] flex flex-col border border-[var(--border)] rounded-2xl overflow-y-auto md:overflow-hidden"
+            className="bg-[var(--surface)] w-full max-w-3xl max-h-[90dvh] flex flex-col border border-[var(--border)] rounded-2xl overflow-y-auto md:overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
@@ -798,7 +798,7 @@ export default function AdminOutfitsPage() {
                 whole dialog scrolls instead of each column. */}
             <div className="flex flex-col md:flex-row shrink-0 md:shrink md:min-h-0 md:flex-1 md:overflow-hidden">
               {/* Generated image */}
-              <div className="w-full h-72 md:h-auto md:w-[55%] shrink-0 bg-[var(--surface)] overflow-hidden">
+              <div className="w-full h-72 md:h-auto md:w-[55%] shrink-0 bg-[var(--background)] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selectedLook.generated_image}
@@ -811,7 +811,7 @@ export default function AdminOutfitsPage() {
               <div className="flex-1 flex flex-col border-t md:border-t-0 md:border-l border-[var(--border)] md:overflow-y-auto divide-y divide-[var(--border)]">
                 {selectedLook.pieces.length > 0 ? selectedLook.pieces.map((piece) => (
                   <div key={piece.slot} className="flex items-center gap-3 px-4 py-3">
-                    <div className="w-12 h-12 shrink-0 bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden">
+                    <div className="w-12 h-12 shrink-0 bg-[var(--background)] rounded-xl border border-[var(--border)] overflow-hidden">
                       {piece.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={piece.imageUrl} alt={piece.name ?? piece.slot} className="w-full h-full object-contain p-1" />
@@ -888,7 +888,7 @@ export default function AdminOutfitsPage() {
                       aria-pressed={on}
                       className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
                         on
-                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
                           : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                       }`}
                     >
@@ -902,7 +902,7 @@ export default function AdminOutfitsPage() {
             {/* Actions */}
             <div className="px-5 py-4 border-t border-[var(--border)] shrink-0">
               {moderationError && (
-                <p className="mb-3 rounded-lg border border-red-400/30 bg-red-400/15 px-4 py-2.5 text-xs text-red-500">
+                <p className="mb-3 rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
                   {moderationError}
                 </p>
               )}
@@ -910,14 +910,14 @@ export default function AdminOutfitsPage() {
                 <button
                   onClick={() => handleApproveLook(selectedLook.id)}
                   disabled={approvingId === selectedLook.id}
-                  className="flex-1 h-10 rounded-lg text-[10px] tracking-[0.16em] uppercase bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 disabled:opacity-40 transition-opacity"
+                  className="flex-1 h-10 rounded-lg text-[10px] tracking-[0.16em] uppercase bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 disabled:opacity-40 transition-opacity"
                 >
                   {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
                 </button>
                 <button
                   onClick={() => handleRejectLook(selectedLook.id)}
                   disabled={approvingId === selectedLook.id}
-                  className="flex-1 h-10 rounded-lg text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-red-400 hover:text-red-400 disabled:opacity-40 transition-colors"
+                  className="flex-1 h-10 rounded-lg text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--err)] hover:text-[var(--err)] disabled:opacity-40 transition-colors"
                 >
                   Reject
                 </button>
@@ -932,7 +932,7 @@ export default function AdminOutfitsPage() {
         <>
       {/* Row action error */}
       {actionError && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-red-400/30 bg-red-400/15 px-4 py-2.5 text-xs text-red-500">
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
           <span>{actionError}</span>
           <button
             onClick={() => setActionError("")}
@@ -951,8 +951,8 @@ export default function AdminOutfitsPage() {
         <div
           className={`mb-4 flex items-center justify-between rounded-lg border px-4 py-2.5 text-xs ${
             exportNote.type === "ok"
-              ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-500"
-              : "border-red-400/30 bg-red-400/15 text-red-500"
+              ? "border-[var(--ok-line)] bg-[var(--ok-bg)] text-[var(--ok)]"
+              : "border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)]"
           }`}
         >
           <span>{exportNote.msg}</span>
@@ -981,12 +981,12 @@ export default function AdminOutfitsPage() {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
+        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--background)]">
           <span className="text-xs text-[var(--foreground)]">{selectedIds.size} selected</span>
           <button
             onClick={handleBulkDelete}
             disabled={bulkDeleting}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400 text-red-500 px-3 py-1.5 hover:bg-red-400/10 transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--err)] text-[var(--err)] px-3 py-1.5 hover:bg-[var(--err-bg)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path
@@ -1009,7 +1009,7 @@ export default function AdminOutfitsPage() {
       )}
 
       {/* Table */}
-      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
+      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--border)]">
@@ -1027,7 +1027,7 @@ export default function AdminOutfitsPage() {
                 <th
                   key={h}
                   className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${
-                    i === 8 ? " text-right sticky right-0 bg-[var(--background)] md:static md:bg-transparent" : ""
+                    i === 8 ? " text-right sticky right-0 bg-[var(--surface)] md:static md:bg-transparent" : ""
                   }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}`}
                 >
                   {h}
@@ -1044,7 +1044,7 @@ export default function AdminOutfitsPage() {
               </tr>
             ) : outfitsError ? (
               <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-sm text-red-500">
+                <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--err)]">
                   {outfitsError}{" "}
                   <button
                     onClick={() => {
@@ -1068,7 +1068,7 @@ export default function AdminOutfitsPage() {
                 <tr
                   key={outfit.id}
                   className={`border-b border-[var(--border)] last:border-b-0 transition-colors ${
-                    selectedIds.has(outfit.id) ? "bg-[var(--surface)]" : "hover:bg-[var(--surface)]"
+                    selectedIds.has(outfit.id) ? "bg-[var(--background)]" : "hover:bg-[var(--background)]"
                   }`}
                 >
                   {/* Checkbox */}
@@ -1120,7 +1120,7 @@ export default function AdminOutfitsPage() {
                         {outfit.items.slice(0, 3).map((item) => (
                           <div
                             key={item.product.id}
-                            className="relative w-6 h-6 rounded-full overflow-hidden border border-[var(--background)] flex-shrink-0"
+                            className="relative w-6 h-6 rounded-full overflow-hidden border border-[var(--surface)] flex-shrink-0"
                           >
                             <Image
                               src={item.product.imageUrl}
@@ -1166,11 +1166,11 @@ export default function AdminOutfitsPage() {
                       aria-label="Toggle homepage featured"
                     >
                       {outfit.isHomepageFeatured ? (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-amber-500">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--warn)]">
                           <path d="M8 1L9.85 5.55L15 6.18L11.5 9.55L12.42 14.69L8 12.17L3.58 14.69L4.5 9.55L1 6.18L6.15 5.55L8 1Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
                         </svg>
                       ) : (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--foreground-subtle)] hover:text-amber-400">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--foreground-subtle)] hover:text-[var(--warn)]">
                           <path d="M8 1L9.85 5.55L15 6.18L11.5 9.55L12.42 14.69L8 12.17L3.58 14.69L4.5 9.55L1 6.18L6.15 5.55L8 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                         </svg>
                       )}
@@ -1178,7 +1178,7 @@ export default function AdminOutfitsPage() {
                   </td>
                   {/* Actions — pinned to the right edge on phones, where the
                       table is wider than the screen. */}
-                  <td className="px-4 py-3 sticky right-0 bg-[var(--background)] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)] md:static md:bg-transparent md:shadow-none">
+                  <td className="px-4 py-3 sticky right-0 bg-[var(--surface)] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)] md:static md:bg-transparent md:shadow-none">
                     <div className="flex items-center justify-end gap-2">
                       <DownloadCardButton
                         kind="outfits"
@@ -1197,7 +1197,7 @@ export default function AdminOutfitsPage() {
                       <button
                         onClick={() => handleDelete(outfit)}
                         disabled={deleteId === outfit.id}
-                        className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors p-1 disabled:opacity-40"
+                        className="text-[var(--foreground-muted)] hover:text-[var(--err)] transition-colors p-1 disabled:opacity-40"
                         aria-label="Delete"
                         title="Delete outfit"
                       >
@@ -1231,7 +1231,7 @@ export default function AdminOutfitsPage() {
             aria-modal="true"
             aria-label={editingId ? "Edit outfit" : "New outfit"}
             className="rounded-2xl border border-[var(--border)] w-full max-w-5xl max-h-[90dvh] overflow-y-auto overscroll-contain lg:max-h-none lg:overflow-visible flex flex-col"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
@@ -1275,7 +1275,7 @@ export default function AdminOutfitsPage() {
                         aria-pressed={productCategory === value}
                         className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
                           productCategory === value
-                            ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                            ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
                             : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                         }`}
                       >
@@ -1305,12 +1305,12 @@ export default function AdminOutfitsPage() {
                             title={blocked ? `An outfit takes up to ${MAX_ITEMS} items` : undefined}
                             className={`text-left rounded-xl overflow-hidden border transition-colors group relative disabled:opacity-40 disabled:cursor-not-allowed ${
                               isSelected
-                                ? "border-[var(--foreground)] bg-[var(--surface)]"
+                                ? "border-[var(--foreground)] bg-[var(--background)]"
                                 : "border-[var(--border)] hover:border-[var(--foreground)] disabled:hover:border-[var(--border)]"
                             }`}
                           >
                             {/* Product image */}
-                            <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+                            <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--background)]">
                               <Image
                                 src={product.imageUrl}
                                 alt={product.name}
@@ -1323,7 +1323,7 @@ export default function AdminOutfitsPage() {
                                 <div className="absolute inset-0 bg-[var(--fg-overlay-08)] flex items-center justify-center">
                                   <div className="w-6 h-6 rounded-full bg-[var(--foreground)] flex items-center justify-center">
                                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                      <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--surface)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                   </div>
                                 </div>
@@ -1394,7 +1394,7 @@ export default function AdminOutfitsPage() {
                               <select
                                 value={item.role}
                                 onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
-                                className="text-[10px] uppercase tracking-[0.08em] rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
+                                className="text-[10px] uppercase tracking-[0.08em] rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
                               >
                                 {ROLES.map((r) => (
                                   <option key={r} value={r}>{r}</option>
@@ -1523,7 +1523,7 @@ export default function AdminOutfitsPage() {
                           aria-pressed={form.styleKeywords.includes(kw)}
                           className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
                             form.styleKeywords.includes(kw)
-                              ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                              ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
                               : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                           }`}
                         >
@@ -1539,7 +1539,7 @@ export default function AdminOutfitsPage() {
 
                     {/* Preview */}
                     {form.imageUrl ? (
-                      <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden rounded-xl bg-[var(--surface)]">
+                      <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden rounded-xl bg-[var(--background)]">
                         <Image
                           src={form.imageUrl}
                           alt="Cover preview"
@@ -1588,7 +1588,7 @@ export default function AdminOutfitsPage() {
                     )}
 
                     {uploadError && (
-                      <p className="text-[10px] text-red-500 mb-1.5">{uploadError}</p>
+                      <p className="text-[10px] text-[var(--err)] mb-1.5">{uploadError}</p>
                     )}
 
                     {/* Manual URL fallback */}
@@ -1617,7 +1617,7 @@ export default function AdminOutfitsPage() {
 
                   {/* Error */}
                   {saveError && (
-                    <p className="text-xs text-red-500">{saveError}</p>
+                    <p className="text-xs text-[var(--err)]">{saveError}</p>
                   )}
                 </div>
 
@@ -1626,13 +1626,13 @@ export default function AdminOutfitsPage() {
                   <button
                     onClick={handleSave}
                     disabled={!form.name.trim() || saving}
-                    className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                    className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
                   >
                     {saving ? "Saving..." : editingId ? "Save Changes" : "Create Outfit"}
                   </button>
                   <button
                     onClick={closeModal}
-                    className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors rounded-lg"
+                    className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
                   >
                     Cancel
                   </button>
