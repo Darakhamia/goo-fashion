@@ -199,7 +199,8 @@ export default function AdminEmailPage() {
       title: t("email.confirm.title", { count: recipientCount }),
       body: t("email.confirm.body", { subject: subject.trim() }),
       confirmLabel: t("email.confirm.action"),
-      tone: "danger",
+      // Not red: sending destroys nothing. The second ask is the safeguard.
+      tone: "default",
     }))) return;
     await sendEmail(false);
   };
