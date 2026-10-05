@@ -634,8 +634,8 @@ module.exports = {
         await page.setInputFiles('input[type="file"]', { name: "awin_feed_1823341_2026-10-05.csv", mimeType: "text/csv", buffer: Buffer.from(CSV_TEXT) });
         await page.getByText(/merchants? detected|найден[оы]? \d+ магазин/).waitFor({ timeout: 20000 });
         await page.getByText("Selfridges", { exact: true }).click();
-        await page.getByRole("button", { name: /^Preview/ }).click();
-        await page.getByText(/will be created/).waitFor({ timeout: 20000 });
+        await page.getByRole("button", { name: /^(Preview|Предпросмотр)/ }).click();
+        await page.getByText(/will be created|будет создано/).waitFor({ timeout: 20000 });
         await page.waitForLoadState("networkidle");
         await page.mouse.move(1, 1);
       },
@@ -646,8 +646,8 @@ module.exports = {
       after: async (page) => {
         await page.getByRole("button", { name: /^(Parse URL|Разбор ссылки|Ссылка)$/ }).click();
         await page.getByPlaceholder("https://www.farfetch.com/shopping/men/...").fill(PARSE_URL);
-        await page.getByRole("button", { name: "Parse", exact: true }).click();
-        await page.getByText("Preview & edit").waitFor({ timeout: 20000 });
+        await page.getByRole("button", { name: /^(Parse|Разобрать)$/ }).click();
+        await page.getByText(/^(Preview & edit|Просмотр и правка)$/).waitFor({ timeout: 20000 });
         await page.waitForLoadState("networkidle");
         await page.mouse.move(1, 1);
       },

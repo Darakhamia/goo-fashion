@@ -237,11 +237,12 @@ const expand = async (page, labels) => {
     await page.locator('div.fixed button[aria-expanded="false"]', { hasText: label }).first().click();
   }
 };
-const scrollModalTo = async (page, label) => {
-  await page.evaluate((label) => {
-    const btn = [...document.querySelectorAll('div.fixed button[aria-expanded]')].find((b) => b.textContent.trim().startsWith(label));
+// Section names in both languages: ["Pricing", "Цена"].
+const scrollModalTo = async (page, labels) => {
+  await page.evaluate((labels) => {
+    const btn = [...document.querySelectorAll('div.fixed button[aria-expanded]')].find((b) => labels.some((l) => b.textContent.trim().startsWith(l)));
     if (btn) btn.scrollIntoView({ block: "start" });
-  }, label);
+  }, labels);
   await page.waitForTimeout(300);
 };
 
@@ -304,15 +305,15 @@ module.exports = {
     { name: "products-editor", url: "/goo-studio/products", fullPage: false, after: openFirstEditor },
     {
       name: "products-editor-2", url: "/goo-studio/products", fullPage: false,
-      after: async (page) => { await openFirstEditor(page); await expand(page, ["Details", "Colors"]); await scrollModalTo(page, "Pricing"); },
+      after: async (page) => { await openFirstEditor(page); await expand(page, [/Details|Подробности/, /Colors|Цвета/]); await scrollModalTo(page, ["Pricing", "Цена"]); },
     },
     {
       name: "products-editor-3", url: "/goo-studio/products", fullPage: false,
-      after: async (page) => { await openFirstEditor(page); await expandAll(page); await scrollModalTo(page, "Colors"); },
+      after: async (page) => { await openFirstEditor(page); await expandAll(page); await scrollModalTo(page, ["Colors", "Цвета"]); },
     },
     {
       name: "products-editor-4", url: "/goo-studio/products", fullPage: false,
-      after: async (page) => { await openFirstEditor(page); await expandAll(page); await scrollModalTo(page, "Where to buy"); },
+      after: async (page) => { await openFirstEditor(page); await expandAll(page); await scrollModalTo(page, ["Where to buy", "Где купить"]); },
     },
     {
       name: "products-bulk", url: "/goo-studio/products", fullPage: false,
@@ -328,9 +329,9 @@ module.exports = {
       name: "products-filter", url: "/goo-studio/products", fullPage: false,
       after: async (page) => {
         await waitRows(page);
-        const sheet = page.locator('button[aria-haspopup="dialog"]', { hasText: /^Filters/ });
+        const sheet = page.locator('button[aria-haspopup="dialog"]', { hasText: /^(Filters|Фильтры)/ });
         if (await sheet.isVisible()) await sheet.click();
-        else await page.locator('button[aria-haspopup="menu"]', { hasText: "Brand" }).click();
+        else await page.locator('button[aria-haspopup="menu"]', { hasText: /Brand|Бренд/ }).click();
         await page.waitForTimeout(500);
       },
     },
@@ -348,7 +349,7 @@ module.exports = {
       after: async (page) => {
         await waitRows(page);
         // On a phone the header's "…" holds Import and the maintenance runs together.
-        const menu = page.getByRole("button", { name: "Catalog maintenance" });
+        const menu = page.getByRole("button", { name: /^(Catalog maintenance|Обслуживание каталога)$/ });
         await menu.filter({ visible: true }).click();
         await page.waitForTimeout(300);
       },
@@ -368,7 +369,7 @@ module.exports = {
       name: "outfits-pending", url: "/goo-studio/outfits",
       after: async (page) => {
         await page.getByRole("tab", { name: /^(Pending|На проверке)/ }).click();
-        await page.waitForSelector('img[alt="Look"]', { timeout: 15000 });
+        await page.waitForSelector('img:is([alt="Look"], [alt="Образ"])', { timeout: 15000 });
         await unclip(page);
       },
     },
@@ -376,8 +377,8 @@ module.exports = {
       name: "outfits-pending-review", url: "/goo-studio/outfits", fullPage: false,
       after: async (page) => {
         await page.getByRole("tab", { name: /^(Pending|На проверке)/ }).click();
-        await page.locator('img[alt="Look"]').first().click();
-        await page.getByRole("dialog", { name: "Review submitted look" }).waitFor();
+        await page.locator('img:is([alt="Look"], [alt="Образ"])').first().click();
+        await page.getByRole("dialog", { name: /^(Review submitted look|Проверка присланного образа)$/ }).waitFor();
       },
     },
     // GS4-3 components: the confirm dialog, the toast after the confirmed
