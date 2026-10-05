@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdminAction } from "@/lib/server/audit";
-import { btn } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Format, type Key, type T } from "@/app/goo-studio/_i18n";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState } from "@/components/admin/DataTable";
@@ -434,7 +434,7 @@ export default function AdminActivityPage() {
       </div>
 
       {error !== null && (
-        <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)] break-words">
+        <div role="alert" className={`${BANNER.err} mb-6`}>
           {error || t("activity.loadFailed")}
         </div>
       )}

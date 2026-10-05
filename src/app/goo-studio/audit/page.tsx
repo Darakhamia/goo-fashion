@@ -24,7 +24,7 @@ import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { useToast } from "@/components/admin/Toast";
-import { btn } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Key, type T } from "@/app/goo-studio/_i18n";
 
 interface Suspect {
@@ -357,23 +357,17 @@ export default function AdminAuditPage() {
       )}
 
       {error && (
-        <div className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-xs text-[var(--err)]">
+        <div role="alert" className={`${BANNER.err} mb-6`}>
           {"key" in error ? t(error.key) : error.text}
         </div>
       )}
 
       {report && !report.dismissalsAvailable && (
-        <div className="mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">{t("audit.migrationMissing")}</p>
-        </div>
+        <p className={`${BANNER.warn} mb-6`}>{t("audit.migrationMissing")}</p>
       )}
 
       {report?.dismissalsError && (
-        <div className="mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
-            {t("audit.dismissalsError", { error: report.dismissalsError })}
-          </p>
-        </div>
+        <p className={`${BANNER.warn} mb-6`}>{t("audit.dismissalsError", { error: report.dismissalsError })}</p>
       )}
 
       {loading && !report && (

@@ -4,7 +4,7 @@ import { Fragment, useState, useEffect, useMemo, useRef } from "react";
 import type { EmailTemplate } from "@/app/api/admin/email/templates/route";
 import { buildHtml, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
-import { btn, BTN_ICON, FIELD_LABEL, INPUT } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, BTN_ICON, FIELD_LABEL, INPUT } from "@/app/goo-studio/_ui/recipes";
 import { useT } from "@/app/goo-studio/_i18n";
 import type { Key, Vars } from "@/app/goo-studio/_i18n";
 import { AdminPage } from "@/components/admin/AdminPage";
@@ -64,9 +64,6 @@ const FORMAT_HELP: { input: Key; output: Key }[] = [
 const fieldCls = `${INPUT} w-full`;
 
 // Banners follow the admin's banner recipe (DESIGN_SYSTEM.md §9).
-const bannerErr = "rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]";
-const bannerWarn = "rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[13px] text-[var(--warn)]";
-const bannerOk = "rounded-xl border border-[var(--ok-line)] bg-[var(--ok-bg)] px-4 py-3 text-[13px] text-[var(--ok)]";
 
 const SPINNER = <span aria-hidden="true" className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />;
 
@@ -399,12 +396,12 @@ export default function AdminEmailPage() {
         <div className="flex flex-col gap-4">
           {/* Status: only what stops a send is shown; a working setup is the header's line. */}
           {!loadingStatus && statusError && (
-            <div role="alert" className={bannerErr}>
+            <div role="alert" className={BANNER.err}>
               <span className="font-medium">{t("email.loadFailed")}</span> {say(statusError)}
             </div>
           )}
           {!loadingStatus && status && !status.configured && (
-            <div className={bannerWarn}>
+            <div className={BANNER.warn}>
               <span className="font-medium">{t("email.notConfigured")}</span> {t("email.notConfiguredHint")}{" "}
               <code className="font-mono">{"RESEND_API_KEY"}</code>
             </div>
@@ -425,7 +422,7 @@ export default function AdminEmailPage() {
               />
 
               {status?.countsError && (
-                <p role="alert" className={bannerErr}>
+                <p role="alert" className={BANNER.err}>
                   {t("email.countsFailed", { error: status.countsError })}
                 </p>
               )}
@@ -571,13 +568,13 @@ export default function AdminEmailPage() {
 
               {/* Result */}
               {sendError && (
-                <div role="alert" className={bannerErr}>
+                <div role="alert" className={BANNER.err}>
                   <p className="font-medium">{t("email.send.failed")}</p>
                   <p className="text-xs mt-1 break-words">{sendError}</p>
                 </div>
               )}
               {result && (
-                <div role={result.ok ? "status" : "alert"} className={result.ok ? bannerOk : bannerErr}>
+                <div role={result.ok ? "status" : "alert"} className={result.ok ? BANNER.ok : BANNER.err}>
                   {result.ok ? (
                     <p>
                       {result.testOnly

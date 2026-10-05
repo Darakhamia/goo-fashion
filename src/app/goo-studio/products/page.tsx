@@ -19,7 +19,7 @@ import { storeFaviconUrl } from "@/lib/stores";
 import { bareHost, pastedUrl } from "@/lib/url";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Key } from "@/app/goo-studio/_i18n";
 import { Modal } from "@/components/admin/Modal";
 
@@ -2246,7 +2246,7 @@ export default function AdminProductsPage() {
       {/* DB status banner — the one place a missing database is explained;
           every action that writes is disabled below it. */}
       {dbConfigured === false && (
-        <div className="mb-4 rounded-xl bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)] px-4 py-3 text-xs">
+        <div role="alert" className={`${BANNER.err} mb-4`}>
           <strong>{t("products.db.title")}</strong>{" "}
           {rich(t("products.db.hint"), { url: "SUPABASE_URL", key: "SUPABASE_SERVICE_ROLE_KEY" })}
         </div>

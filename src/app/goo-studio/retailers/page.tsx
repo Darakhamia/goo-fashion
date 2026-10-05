@@ -10,7 +10,7 @@ import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable
 import { Badge } from "@/components/admin/Badge";
 import { RowMenu, type MenuItem } from "@/components/admin/Menu";
 import { PageHeader, PLUS } from "@/components/admin/PageHeader";
-import { btn, BTN_ICON_SM } from "../_ui/recipes";
+import { BANNER, btn, BTN_ICON_SM } from "../_ui/recipes";
 import { useFormat, useT, type Key } from "../_i18n";
 
 type StoreGender = "" | "men" | "women" | "unisex";
@@ -426,9 +426,7 @@ export default function RetailersPage() {
           top, naming the migration — rather than letting the admin fill the
           form in and meet a PostgREST schema-cache message on submit. */}
       {report?.tableMissing && (
-        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 mt-6">
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">{report.setupHint}</p>
-        </div>
+        <p className={`${BANNER.warn} mt-6`}>{report.setupHint}</p>
       )}
 
       {report?.rulesError && (
@@ -530,8 +528,8 @@ export default function RetailersPage() {
           </label>
 
           {existingRule && (
-            <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 flex flex-col items-start gap-3">
-              <p className="text-[13px] text-[var(--warn)] leading-relaxed">
+            <div className={`${BANNER.warn} flex flex-col items-start gap-3`}>
+              <p>
                 {t("retailers.existing", { domain: existingRule.domain, name: existingRule.name })}
               </p>
               <button onClick={() => startEdit(existingRule)} className={btn("secondary")}>{t("retailers.existing.edit")}</button>

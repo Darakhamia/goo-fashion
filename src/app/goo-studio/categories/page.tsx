@@ -33,7 +33,7 @@ import { PageHeader, PLUS } from "@/components/admin/PageHeader";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { RowMenu, type MenuItem } from "@/components/admin/Menu";
 import { SidePanel } from "@/components/admin/SidePanel";
-import { btn, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "../_ui/recipes";
+import { BANNER, btn, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "../_ui/recipes";
 import { useFormat, useT } from "../_i18n";
 
 interface Counts {
@@ -49,8 +49,6 @@ interface TreeResponse {
   detail?: string;
   counts?: Counts;
 }
-
-const warnBoxCls = "mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3";
 
 /** The migrations that move the tree into the database, in the order they run. */
 const TREE_MIGRATIONS = ["supabase/migrations/011_category_tree.sql", "013_subcategory_sizes.sql"] as const;
@@ -448,8 +446,8 @@ export default function AdminCategoriesPage() {
       )}
 
       {loadError && (
-        <div className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-xs text-[var(--err)] leading-relaxed">
+        <div role="alert" className={`${BANNER.err} mb-6 flex flex-wrap items-center justify-between gap-4`}>
+          <p>
             {loadErrorText}
             {tree ? ` ${t("categories.outOfDate")}` : ""}
           </p>
@@ -460,15 +458,15 @@ export default function AdminCategoriesPage() {
       )}
 
       {noDatabase && (
-        <div className={warnBoxCls}>
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">{t("categories.noDatabase")}</p>
+        <div className={`${BANNER.warn} mb-6`}>
+          <p>{t("categories.noDatabase")}</p>
         </div>
       )}
 
       {tableMissing && (
-        <div className={warnBoxCls}>
-          <p className="text-[13px] font-medium text-[var(--warn)] mb-1">{t("categories.tablesMissing.title")}</p>
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
+        <div className={`${BANNER.warn} mb-6`}>
+          <p className="font-medium mb-1">{t("categories.tablesMissing.title")}</p>
+          <p>
             {rich(t("categories.tablesMissing.text"), {
               first: <span className="font-mono">{TREE_MIGRATIONS[0]}</span>,
               second: <span className="font-mono">{TREE_MIGRATIONS[1]}</span>,
@@ -478,8 +476,8 @@ export default function AdminCategoriesPage() {
       )}
 
       {readFailed && (
-        <div className={`${warnBoxCls} flex items-center justify-between gap-4`}>
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
+        <div className={`${BANNER.warn} mb-6 flex items-center justify-between gap-4`}>
+          <p>
             {tree?.detail ? t("categories.readFailedDetail", { detail: tree.detail }) : t("categories.readFailed")}
           </p>
           <button onClick={() => load()} disabled={loading} className={`${btn("ghost")} shrink-0`}>
@@ -489,8 +487,8 @@ export default function AdminCategoriesPage() {
       )}
 
       {tablesEmpty && (
-        <div className={warnBoxCls}>
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">{t("categories.tablesEmpty")}</p>
+        <div className={`${BANNER.warn} mb-6`}>
+          <p>{t("categories.tablesEmpty")}</p>
         </div>
       )}
 

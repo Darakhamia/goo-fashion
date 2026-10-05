@@ -7,7 +7,7 @@ import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabe
 import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT } from "@/app/goo-studio/_i18n";
 import type { Key, T, Vars } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
@@ -875,7 +875,7 @@ export default function AdminOutfitsPage() {
       {adminTab === "pending" && (
         <div {...tabPanel("outfits", "pending")}>
           {pendingError && (
-            <div role="alert" className="mb-4 flex items-center justify-between rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
+            <div role="alert" className={`${BANNER.err} mb-4 flex items-center justify-between`}>
               <span>{sayFailure(pendingError, t)}</span>
               <button
                 onClick={() => {
@@ -1083,7 +1083,7 @@ export default function AdminOutfitsPage() {
           {/* Actions */}
           <div className="px-5 py-4 border-t border-[var(--border)] shrink-0">
             {moderationError && (
-              <p className="mb-3 rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
+              <p role="alert" className={`${BANNER.err} mb-3`}>
                 {moderationError}
               </p>
             )}

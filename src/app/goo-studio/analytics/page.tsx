@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { KpiStrip, type Kpi } from "@/components/admin/KpiStrip";
 import { FilterChips } from "@/components/admin/FilterBar";
 import type { AnalyticsResponse, RangeOption } from "./types";
+import { BANNER } from "../_ui/recipes";
 import { LOCALE, useFormat, useLang, useT, type Key, type Lang, type T } from "../_i18n";
 
 /*
@@ -317,12 +318,12 @@ export default function AdminAnalyticsPage() {
         {(error || data?.truncated) && (
           <div className="flex flex-col gap-3">
             {error && (
-              <div role="alert" className="rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-4 py-3">
+              <div role="alert" className={BANNER.err}>
                 {"key" in error ? t(error.key) : error.text}
               </div>
             )}
             {data?.truncated && (
-              <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn)] text-xs px-4 py-3">
+              <div className={BANNER.warn}>
                 {t("analytics.truncated")}
               </div>
             )}

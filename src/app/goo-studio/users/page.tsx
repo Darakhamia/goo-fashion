@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import Image from "@/components/ui/Image";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT } from "@/app/goo-studio/_i18n";
 import type { Format, Key, T, Vars } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState } from "@/components/admin/DataTable";
@@ -640,7 +640,7 @@ export default function AdminUsersPage() {
 
       {/* The failures of the last bulk run, by user; those users stay selected. */}
       {bulkErrors.length > 0 && (
-        <div role="alert" className="mb-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]">
+        <div role="alert" className={`${BANNER.err} mb-4`}>
           <div className="flex items-start justify-between gap-3">
             <ul className="space-y-0.5 min-w-0 break-words">
               {bulkErrors.map((e) => <li key={e}>{e}</li>)}
@@ -952,7 +952,7 @@ function UserDrawer({
       )}
 
       {error && (
-        <div role="alert" className="my-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-3 py-2">
+        <div role="alert" className={`${BANNER.err} my-4`}>
           {sayFailure(error, t)}
         </div>
       )}
@@ -960,11 +960,11 @@ function UserDrawer({
       {detail && !loading && (
         <div className="space-y-6">
           {isSuperAdmin && (
-            <div className="flex items-center gap-3 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
+            <div className={`${BANNER.warn} flex items-center gap-3`}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="text-[var(--warn)] flex-shrink-0">
                 <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
               </svg>
-              <p className="text-[12px] text-[var(--warn)]">{t("users.panel.protected")}</p>
+              <p>{t("users.panel.protected")}</p>
             </div>
           )}
           <div className="flex items-center gap-4">
@@ -1110,7 +1110,7 @@ function UserDrawer({
               onChange={setPlan}
             />
             {liveSubscription(detail.subscription) && (
-              <p className="mt-2 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn)] text-[12px] px-3 py-2">
+              <p className={`${BANNER.warn} mt-2`}>
                 {sentences(
                   t("users.panel.activeSub", { sub: describeSubscription(detail.subscription, t, f) }),
                   t("users.note.planBilling"),

@@ -22,7 +22,7 @@ import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { Badge, type BadgeTone } from "@/components/admin/Badge";
 import { FormPanel, FormSection } from "@/components/admin/FormSection";
 import { SaveBar } from "@/components/admin/SaveBar";
-import { btn, BTN_ICON, FIELD_LABEL, INPUT, SELECT } from "../_ui/recipes";
+import { BANNER, btn, BTN_ICON, FIELD_LABEL, INPUT, SELECT } from "../_ui/recipes";
 import { AdminPage } from "@/components/admin/AdminPage";
 import { useFormat, useT, type Key, type T } from "@/app/goo-studio/_i18n";
 
@@ -145,9 +145,6 @@ const inputCls = `${INPUT} w-full`;
 /** Regexes, endpoint templates, keys. */
 const monoInputCls = `${fieldBase} font-mono text-[11px] bg-transparent`;
 const selectCls = `${SELECT} w-full`;
-/** Status plaques: the admin's three semantic colors, always in this shape. */
-const errorBoxCls = "rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[12px] text-[var(--err)] break-words";
-const warnBoxCls = "rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)] break-words";
 /** Where the extension hands its pages to; install steps live there too. */
 const EXTENSION_PAGE = "/goo-studio/parser/collect";
 const Spinner = () => (
@@ -234,7 +231,7 @@ export default function ParserPage() {
         ))}
       </div>
 
-      {loadError && <div className={`${errorBoxCls} mb-4`}>{t(loadError)}</div>}
+      {loadError && <div className={`${BANNER.err} mb-4`}>{t(loadError)}</div>}
 
       {tab === "collect" && (
         <CollectTab
@@ -503,7 +500,7 @@ function CollectTab({
       </div>
 
       {error && (
-        <div className={`${errorBoxCls} space-y-1`}>
+        <div className={`${BANNER.err} space-y-1`}>
           <p>{error}</p>
           {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
           {refused && (
@@ -519,7 +516,7 @@ function CollectTab({
         </div>
       )}
       {!error && hint && (
-        <div className={warnBoxCls}>{hint}</div>
+        <div className={BANNER.warn}>{hint}</div>
       )}
 
       {/* Progress */}
@@ -555,7 +552,7 @@ function CollectTab({
                 {aiUsed > 0 && t("parser.crawl.neededAi", { count: aiUsed })}
               </p>
             )}
-            {warnings.map((w) => <p key={w} className={warnBoxCls}>{w}</p>)}
+            {warnings.map((w) => <p key={w} className={BANNER.warn}>{w}</p>)}
           </div>
 
           {results.length > 0 && (
@@ -810,7 +807,7 @@ function ParseTab({
       />
 
       {error && (
-        <div className={`${errorBoxCls} space-y-1`}>
+        <div className={`${BANNER.err} space-y-1`}>
           <p>{error}</p>
           {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
           {hint && (
@@ -827,7 +824,7 @@ function ParseTab({
 
       {linkResult && linkResult.ok > 0 && (
         linkResult.failed > 0 ? (
-          <div className={warnBoxCls}>
+          <div className={BANNER.warn}>
             {t("parser.parse.partial", { ok: linkResult.ok, total: linkResult.total, failed: linkResult.failed })}
           </div>
         ) : (
@@ -1137,7 +1134,7 @@ function SingleProductEditor({
         {imported && importDetails(imported, t) && (
           <p className="text-[11px] text-[var(--foreground-muted)] basis-full leading-relaxed">{importDetails(imported, t)}</p>
         )}
-        {typeof imported?.warning === "string" && <p className={`${warnBoxCls} basis-full`}>{imported.warning}</p>}
+        {typeof imported?.warning === "string" && <p className={`${BANNER.warn} basis-full`}>{imported.warning}</p>}
       </div>
     </div>
   );
@@ -1234,7 +1231,7 @@ function ProductGrid({
             {selected.size ? t("parser.grid.import", { count: selected.size }) : t("parser.grid.importNone")}
           </button>
         </div>
-        {result?.warnings.map((w) => <p key={w} className={`${warnBoxCls} basis-full`}>{w}</p>)}
+        {result?.warnings.map((w) => <p key={w} className={`${BANNER.warn} basis-full`}>{w}</p>)}
       </div>
 
       <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">

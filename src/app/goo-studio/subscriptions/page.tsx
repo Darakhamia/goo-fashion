@@ -9,6 +9,7 @@ import { KpiStrip, type Kpi } from "@/components/admin/KpiStrip";
 import { Badge, type BadgeTone } from "@/components/admin/Badge";
 import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
 import { CRON_FIX } from "@/lib/billing-cron";
+import { BANNER } from "@/app/goo-studio/_ui/recipes";
 
 /*
  * Subscriptions (docs/ADMIN_DESIGN.md §6, mockup "Subscriptions", GS4-12):
@@ -174,7 +175,7 @@ export default function SubscriptionsPage() {
     return (
       <div>
         {header}
-        <div role="alert" className="rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)] break-words">
+        <div role="alert" className={BANNER.err}>
           {error || t("subs.loadFailed")}
         </div>
       </div>

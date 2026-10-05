@@ -21,7 +21,7 @@ import { Badge } from "@/components/admin/Badge";
 import { DataTable, Thumb, type Column } from "@/components/admin/DataTable";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { btn } from "../_ui/recipes";
+import { BANNER, btn } from "../_ui/recipes";
 import { useFormat, useT, type Key } from "../_i18n";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
@@ -107,8 +107,6 @@ const Spinner = () => (
 );
 
 // Banners (DESIGN_SYSTEM.md §9, "Statuses, banners and toasts").
-const BANNER_ERR = "rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[12px] text-[var(--err)]";
-const BANNER_WARN = "rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)]";
 const PANEL = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 
 export default function CSVImportPage() {
@@ -593,7 +591,7 @@ export default function CSVImportPage() {
               </div>
             )}
             {parseError && (
-              <div role="alert" className={BANNER_ERR}>{parseError}</div>
+              <div role="alert" className={BANNER.err}>{parseError}</div>
             )}
 
             {/* Supported columns reference */}
@@ -739,7 +737,7 @@ export default function CSVImportPage() {
                 />
               </div>
               {totals.warnings.map((w) => (
-                <p key={w} className={BANNER_WARN}>{w}</p>
+                <p key={w} className={BANNER.warn}>{w}</p>
               ))}
             </div>
 
@@ -873,7 +871,7 @@ export default function CSVImportPage() {
             )}
 
             {checkError && (
-              <div className={`${BANNER_WARN} space-y-2`}>
+              <div className={`${BANNER.warn} space-y-2`}>
                 <p>{t("import.plan.checkFailed", { error: checkError })}</p>
                 <button onClick={() => void checkCatalogue(previewRows)} disabled={importing} className={btn("secondary")}>
                   {t("import.plan.checkAgain")}

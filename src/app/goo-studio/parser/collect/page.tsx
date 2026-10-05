@@ -30,7 +30,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { CrawlItemResult } from "@/lib/server/parser/types";
-import { btn } from "../../_ui/recipes";
+import { BANNER, btn } from "../../_ui/recipes";
 import { AdminPage } from "@/components/admin/AdminPage";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Badge, type BadgeTone } from "@/components/admin/Badge";
@@ -457,7 +457,7 @@ export default function CollectPage() {
         )}
 
         {notice && (
-          <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-5 py-3 text-[12px] text-[var(--warn)]">
+          <div className={BANNER.warn}>
             {notice}
           </div>
         )}
@@ -548,7 +548,7 @@ export default function CollectPage() {
                 </p>
               )}
               {warnings.map((w) => (
-                <p key={w} className="rounded-lg border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)]">
+                <p key={w} className={BANNER.warn}>
                   {w}
                 </p>
               ))}

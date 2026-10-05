@@ -27,7 +27,7 @@ import { Badge } from "@/components/admin/Badge";
 import { FilterChips } from "@/components/admin/FilterBar";
 import { RowMenu } from "@/components/admin/Menu";
 import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
-import { btn, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
 import { useSetting, writeSetting } from "@/app/goo-studio/_ui/settings";
 import { useFormat, useT, type Key, type T, type Vars } from "@/app/goo-studio/_i18n";
 
@@ -445,7 +445,7 @@ export default function CatalogueCheckPage() {
 
       <div className="flex flex-col gap-6">
         {error && (
-          <div role="alert" className="rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]">
+          <div role="alert" className={BANNER.err}>
             {sayFailure(error, t)}
           </div>
         )}

@@ -28,7 +28,7 @@ import { AttentionList, type AttentionRow } from "@/components/admin/AttentionLi
 import { Badge } from "@/components/admin/Badge";
 import { Tabs, tabPanel } from "@/components/admin/Tabs";
 import { EmptyState, Thumb } from "@/components/admin/DataTable";
-import { btn } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Key, type T, type Vars } from "@/app/goo-studio/_i18n";
 
 type Reason = "gtin" | "mpn" | "name";
@@ -722,7 +722,7 @@ export default function DuplicatesPage() {
         {attention.length > 0 && <AttentionList rows={attention} />}
 
         {error && (
-          <div role="alert" className="rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]">
+          <div role="alert" className={BANNER.err}>
             {sayFailure(error, t)}
           </div>
         )}
