@@ -192,6 +192,32 @@ export async function chargeWallet(params: ChargeWalletParams): Promise<ChargeWa
   });
 }
 
+// ── Health probe ─────────────────────────────────────────────────────────────
+
+/**
+ * Whether monobank accepts the token, and how fast it answers: the cheapest
+ * authenticated request there is, the merchant's public key (GS1-1, the
+ * dashboard's service row). A present token is not a working one — a revoked
+ * key still reads as "configured".
+ */
+export async function pingMonobank(
+  timeoutMs: number,
+): Promise<{ ok: true; ms: number } | { ok: false; status?: number; message: string }> {
+  if (!TOKEN) return { ok: false, message: "MONOBANK_TOKEN is not configured." };
+  const started = Date.now();
+  try {
+    const res = await fetch(`${API_BASE}/api/merchant/pubkey`, {
+      headers: { "X-Token": TOKEN },
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (res.ok) return { ok: true, ms: Date.now() - started };
+    return { ok: false, status: res.status, message: `monobank answered ${res.status}` };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "monobank did not answer" };
+  }
+}
+
 // ── Webhook signature verification ────────────────────────────────────────────
 
 let cachedPubKeyPem: string | null = null;
