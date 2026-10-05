@@ -50,6 +50,12 @@ const eslintConfig = defineConfig([
     },
     rules: { "no-undef": "error" },
   },
+  // The admin screenshot stand is Node tooling run with plain `node` (CommonJS),
+  // not app code: it loads its fixtures with require().
+  {
+    files: ["scripts/admin-screens/**/*.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   // Catalog photos are hosted on the retailers' CDNs, which rate-limit Next's
   // image optimizer and answer 429 — the product then renders as alt text.
   // @/components/ui/Image decides per host whether the optimizer may be used;

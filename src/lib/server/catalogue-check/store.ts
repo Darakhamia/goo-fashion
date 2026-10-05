@@ -70,8 +70,12 @@ const SETTINGS_KEY = "catalogue_check";
 const MAX_NOTES = 2_000;
 const MAX_BUDGET = 100;
 
+// Suggest, not auto: the check runs in the background after every import and
+// on every visit to the AI check page, so with no saved settings "auto" would
+// start rewriting the whole unchecked catalogue the moment migration 025 lands.
+// The team switches to auto on the page once it trusts the fixes.
 export const DEFAULT_CHECK_SETTINGS: CheckSettings = {
-  mode: "auto",
+  mode: "suggest",
   model: DEFAULT_CHECK_MODEL,
   monthlyBudgetUsd: 5,
   notes: "",
