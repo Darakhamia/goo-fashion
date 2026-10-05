@@ -396,7 +396,7 @@ const pages = [
     url: "/goo-studio/analytics",
     wait: 1800,
     after: async (page) => {
-      await page.getByRole("button", { name: "30d", exact: true }).click();
+      await page.getByRole("button", { name: /^(30d|30 дн\.)$/ }).click();
       await page.waitForLoadState("networkidle");
       await page.waitForTimeout(1200);
       await unclip(page);

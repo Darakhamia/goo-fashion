@@ -611,7 +611,8 @@ module.exports = {
       after: async (page) => {
         await page.route("**/api/admin/catalogue-check", (r) => r.fulfill({ json: CHECK_READY }));
         await page.reload({ waitUntil: "networkidle" });
-        await page.getByText("Fixed by the check").waitFor({ timeout: 20000 });
+        // The progress bar shows once the status has loaded; it waits in any language.
+        await page.getByRole("progressbar").waitFor({ timeout: 20000 });
         await page.waitForTimeout(600);
       },
     },
