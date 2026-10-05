@@ -5,7 +5,7 @@ own site) straight into the catalog — one page, a whole category, or a whole
 store — plus the shared import step the CSV feed importer also runs on.
 
 Admin screen: **Goo Studio → Imports → Parser** (`/goo-studio/parser`), four tabs:
-**Collect catalog** (opens first), **Parse URL**, **Site Recipes**, **Fetch & Anti-bot**.
+**Collect catalog** (opens first), **Parse URL**, **Site recipes**, **Fetch & anti-bot**.
 The browser-extension receiver lives at `/goo-studio/parser/collect` (no menu item
 of its own — see §1c).
 
@@ -50,7 +50,7 @@ URL ─▶ Fetch layer ─▶ HTML ─▶ Universal extractor ─▶ Normalizer 
 
 ---
 
-## 1. Fetch layer — "Fetch & Anti-bot" tab
+## 1. Fetch layer — "Fetch & anti-bot" tab
 
 | Provider | What it does |
 |---|---|
@@ -400,7 +400,7 @@ still pass the gallery harvester's identity tests, colours go through
 `colour-choice.ts`, sizes through `pickSizes`. The page titles let the server
 work out the tail the store appends to every title (`commonTitleSuffix`) and cut
 it off product names. Site recipes apply; the AI and photo-copy settings come
-from **Fetch & Anti-bot → AI & images** (the extension sends no overrides).
+from **Fetch & anti-bot → AI & images** (the extension sends no overrides).
 
 ### Pace and stopping
 
@@ -518,7 +518,7 @@ normalisation is the dedupe key, so one photo offered at three sizes is stored
 once instead of three times.
 
 > JS-rendered galleries are still invisible to a plain fetch. Use the extension,
-> or enable **Render JS** with a provider in Fetch & Anti-bot.
+> or enable **Render JS** with a provider in Fetch & anti-bot.
 
 ## 3. Normalizer
 
@@ -577,7 +577,7 @@ retries, and reports it as an unsaved column (§7).
 
 ---
 
-## Site recipes — "Site Recipes" tab
+## Site recipes — "Site recipes" tab
 
 Recipes match by hostname (the domain or any subdomain of it) and add
 **extraction** overrides on top of the generic extractor — they carry no fetch
@@ -608,7 +608,7 @@ table, same as embeddings and the stylist).
 
 - **When it runs.** `auto` (default) spends a call only when the deterministic
   pass is missing name, price *or* images — so Farfetch/SSENSE stay free.
-  `always` runs it on every page. Both switchable in **Fetch & Anti-bot → AI &
+  `always` runs it on every page. Both switchable in **Fetch & anti-bot → AI &
   images**; the Collect catalog tab can switch AI off for one run.
 - **What it gets.** `condenseHtml()` strips scripts, styles, SVG and data-URIs
   first — that is the bulk of a retail page and none of the facts. Typical
@@ -731,7 +731,7 @@ re-uploads it to the public `product-images` bucket.
 - The same primitives serve the admin's upload-by-URL (`/api/admin/upload-image`),
   backdrop sampling (`bg-color.ts`) and card export (`card-export.ts`).
 
-Toggle: **Fetch & Anti-bot → AI & images → Copy product photos…** (default on;
+Toggle: **Fetch & anti-bot → AI & images → Copy product photos…** (default on;
 the Collect catalog tab can switch it off for one run).
 
 ---
