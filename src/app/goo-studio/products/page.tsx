@@ -218,8 +218,12 @@ interface GroupModalState {
 
 const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
-const selectCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
+// Width is not part of the base: a select that sets its own (the store's
+// currency) would otherwise carry both w-full and its width, and w-full won —
+// the currency took the row and squeezed the store price to a few pixels.
+const selectBaseCls =
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
+const selectCls = `${selectBaseCls} w-full`;
 const labelCls =
   "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
@@ -463,7 +467,7 @@ function RetailerList({
                   value={r.currency}
                   onChange={(e) => set(i, { currency: e.target.value })}
                   aria-label="Currency of this store's price"
-                  className={`${selectCls} w-[76px] shrink-0`}
+                  className={`${selectBaseCls} w-[84px] shrink-0`}
                 >
                   {/* An imported store may price in a currency the switcher does
                       not offer (złoty, say); it stays selectable rather than
@@ -2482,7 +2486,7 @@ export default function AdminProductsPage() {
                     Added <SortIcon dir={sortDirFor("createdAt")} />
                   </button>
                 </th>
-                <th className="text-right px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Actions</th>
+                <th className="text-right px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal sticky right-0 bg-[var(--surface)] md:static md:bg-transparent">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2583,7 +2587,9 @@ export default function AdminProductsPage() {
                     <td className="px-2 py-3 hidden lg:table-cell">
                       <span className="text-xs text-[var(--foreground-subtle)] whitespace-nowrap">{fmtDate(product.createdAt)}</span>
                     </td>
-                    <td className="px-2 md:px-4 py-3">
+                    {/* Pinned to the right edge on phones: the table is wider
+                        than the screen and the actions used to sit past it. */}
+                    <td className="px-2 md:px-4 py-3 sticky right-0 bg-[var(--background)] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)] md:static md:bg-transparent md:shadow-none">
                       {/* Three icons to a row on phones keeps the table close
                           to the screen width. */}
                       <div className="flex flex-wrap md:flex-nowrap items-center justify-end gap-1 md:gap-2 w-[128px] md:w-auto ml-auto">

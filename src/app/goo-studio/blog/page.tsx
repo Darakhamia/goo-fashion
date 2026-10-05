@@ -803,7 +803,7 @@ export default function AdminBlogPage() {
                   aria-label="Published"
                   onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
                   className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                    form.isPublished ? "bg-[var(--foreground)]" : "bg-[var(--border)]"
+                    form.isPublished ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"
                   }`}
                 >
                   <span

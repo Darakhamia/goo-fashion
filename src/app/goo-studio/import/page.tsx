@@ -458,7 +458,7 @@ export default function CSVImportPage() {
                 <label
                   key={m.name}
                   className={`flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors border-b border-[var(--border)] last:border-0 ${
-                    isSelected ? "bg-[var(--surface)]" : "hover:bg-[var(--fg-overlay-05)]"
+                    isSelected ? "bg-[var(--fg-overlay-08)]" : "hover:bg-[var(--fg-overlay-05)]"
                   }`}
                 >
                   <input
@@ -718,7 +718,7 @@ export default function CSVImportPage() {
                       onClick={() => selectable && !importing && toggleRow(i)}
                       className={`border-b border-[var(--border)] last:border-0 transition-colors ${
                         selectable ? "cursor-pointer" : "opacity-40 cursor-default"
-                      } ${isSelected ? "bg-[var(--surface)]" : "hover:bg-[var(--fg-overlay-05)]"}`}
+                      } ${isSelected ? "bg-[var(--fg-overlay-08)]" : "hover:bg-[var(--fg-overlay-05)]"}`}
                     >
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <input

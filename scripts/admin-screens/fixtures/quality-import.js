@@ -506,7 +506,8 @@ const CSV_TEXT = buildCsv();
 // PARSER — config, parse, crawl (Collect tab), collect (extension page)
 // ═════════════════════════════════════════════════════════════════════════════
 const SB_KEY = "VQ3K8ZP1M4XWN7R2T6YB0CJ5HD9LFG3SAE8UQ1K7ZM4PX2NW6R0TB5YC9JH3DL7FG1SA4EU8Q23f9a";
-const maskKey = (k) => k.slice(0, 4) + "•".repeat(Math.max(4, k.length - 8)) + k.slice(-4);
+// Same shape as maskKey in api/admin/parser/config/route.ts: 4 + 8 dots + 4.
+const maskKey = (k) => k.slice(0, 4) + "•".repeat(8) + k.slice(-4);
 const PARSER_CONFIG = {
   fetchSettings: { provider: "scrapingbee", endpoint: "", renderJs: true, impersonate: "chrome", timeoutMs: 30000 },
   key: { configured: true, source: "database", masked: maskKey(SB_KEY) },

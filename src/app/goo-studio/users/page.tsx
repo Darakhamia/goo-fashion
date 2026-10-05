@@ -975,7 +975,7 @@ function UserDrawer({
               {detail.subscription ? (
                 <div className="border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
                   <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-xs text-[var(--foreground)] capitalize">{detail.subscription.plan} · {detail.subscription.amountUah} ₴/mo</span>
+                    <span className="text-xs text-[var(--foreground)]"><span className="capitalize">{detail.subscription.plan}</span> · {detail.subscription.amountUah} ₴/mo</span>
                     <span className={`text-[9px] tracking-[0.12em] uppercase ${subStatusBadge[detail.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
                       {detail.subscription.status.replace("_", " ")}
                     </span>

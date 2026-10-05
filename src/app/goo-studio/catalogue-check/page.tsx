@@ -112,9 +112,11 @@ const inputClass =
   "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
 const labelClass = "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
+// Below a dime every figure gets three decimals, so a column of run costs
+// reads $0.010 / $0.005 instead of mixing $0.01 with $0.0052.
 function usd(n: number): string {
   if (!n) return "$0";
-  return n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
+  return n < 0.1 ? `$${n.toFixed(3)}` : `$${n.toFixed(2)}`;
 }
 
 function plural(n: number, word: string): string {

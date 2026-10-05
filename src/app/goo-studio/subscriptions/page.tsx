@@ -228,7 +228,7 @@ export default function SubscriptionsPage() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total earned" value={uah(summary.earnedTotalUah)} sub={approxUsd(summary.earnedTotalUah, rate)} />
-        <StatCard label="Earned this month" value={uah(summary.earnedThisMonthUah)} sub={`${summary.paymentsTotal} payments total`} />
+        <StatCard label="Earned this month" value={uah(summary.earnedThisMonthUah)} sub={`${summary.paymentsTotal} payment${summary.paymentsTotal === 1 ? "" : "s"} total`} />
         <StatCard label="MRR" value={uah(summary.mrrUah)} sub={approxUsd(summary.mrrUah, rate)} />
         <StatCard label="Active subscribers" value={summary.activeSubscriptions.toLocaleString()} sub={summary.autoRenewOff > 0 ? `${summary.autoRenewOff} won't renew` : "all auto-renew"} />
       </div>

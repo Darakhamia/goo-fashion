@@ -1120,7 +1120,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               {status.maskedKey && (
-                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1">{status.maskedKey}</p>
+                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1 break-all">{status.maskedKey}</p>
               )}
               <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
                 Key is set via the <code className="font-mono text-[10px]">OPENAI_API_KEY</code> environment variable.
@@ -1139,7 +1139,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               {status.maskedKey && (
-                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1">{status.maskedKey}</p>
+                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1 break-all">{status.maskedKey}</p>
               )}
               <p className="text-[11px] text-[var(--foreground-subtle)] mb-4">
                 Stored in database. Raw key is never returned to the browser.

@@ -1027,7 +1027,7 @@ export default function AdminOutfitsPage() {
                 <th
                   key={h}
                   className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${
-                    i === 8 ? " text-right" : ""
+                    i === 8 ? " text-right sticky right-0 bg-[var(--background)] md:static md:bg-transparent" : ""
                   }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}`}
                 >
                   {h}
@@ -1176,8 +1176,9 @@ export default function AdminOutfitsPage() {
                       )}
                     </button>
                   </td>
-                  {/* Actions */}
-                  <td className="px-4 py-3">
+                  {/* Actions — pinned to the right edge on phones, where the
+                      table is wider than the screen. */}
+                  <td className="px-4 py-3 sticky right-0 bg-[var(--background)] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)] md:static md:bg-transparent md:shadow-none">
                     <div className="flex items-center justify-end gap-2">
                       <DownloadCardButton
                         kind="outfits"

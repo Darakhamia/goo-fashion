@@ -583,7 +583,7 @@ function Toggle({
       aria-label={label ? undefined : ariaLabel}
       disabled={disabled}
       onClick={() => onChange(!on)}
-      className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${on ? "bg-[var(--foreground)]" : "bg-[var(--border)]"}`}
+      className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${on ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"}`}
     >
       <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--background)] transition-[left] ${on ? "left-[18px]" : "left-0.5"}`} />
     </button>
@@ -1635,8 +1635,8 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
           <div className="flex items-center justify-between">
             <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">Provider API key</p>
             {config.key.configured ? (
-              <span className="text-[10px] tracking-[0.1em] uppercase text-emerald-500">
-                {config.key.source === "env" ? "Set via env" : "Stored"} · {config.key.masked}
+              <span className="text-[10px] tracking-[0.1em] text-emerald-500 break-all text-right">
+                <span className="uppercase">{config.key.source === "env" ? "Set via env" : "Stored"}</span> · {config.key.masked}
               </span>
             ) : (
               <span className="text-[10px] tracking-[0.1em] uppercase text-amber-500">Not set</span>

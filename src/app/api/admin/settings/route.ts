@@ -5,9 +5,11 @@ import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
 
 // Returns a masked version of the key — never returns the raw value to the browser.
+// A fixed run of dots: one per hidden character made a long sk-proj key about
+// 150 characters wide, past its card and, on a phone, past the screen.
 function maskKey(key: string): string {
   if (key.length <= 12) return "•".repeat(key.length);
-  return key.slice(0, 8) + "•".repeat(Math.max(4, key.length - 12)) + key.slice(-4);
+  return key.slice(0, 8) + "•".repeat(8) + key.slice(-4);
 }
 
 // GET /api/admin/settings?key=openai_api_key
