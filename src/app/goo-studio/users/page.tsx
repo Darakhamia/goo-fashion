@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import Image from "@/components/ui/Image";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
+import { btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT } from "@/app/goo-studio/_i18n";
-import type { Format, Key, T } from "@/app/goo-studio/_i18n";
-import { formatMoney } from "@/lib/admin-format";
+import type { Format, Key, T, Vars } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState } from "@/components/admin/DataTable";
 import type { Column } from "@/components/admin/DataTable";
 import { ActiveFilters, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
@@ -15,6 +15,7 @@ import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
 import { Badge } from "@/components/admin/Badge";
+import type { BadgeTone } from "@/components/admin/Badge";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { SidePanel } from "@/components/admin/SidePanel";
 
@@ -78,12 +79,29 @@ const STATUS_KEY: Record<Exclude<StatusFilter, "all">, Key> = {
   locked: "users.status.locked",
 };
 
-const PLAN_LABEL: Record<string, string> = {
-  free:    "Free",
-  basic:   "Basic",
-  pro:     "Pro",
-  premium: "Premium",
+const PLAN_KEY: Record<string, Key> = {
+  free:    "plan.free",
+  basic:   "plan.basic",
+  pro:     "plan.pro",
+  premium: "plan.premium",
 };
+
+/** A plan's name; one this screen does not know shows as stored. */
+function planName(plan: string, t: T): string {
+  const key = PLAN_KEY[plan];
+  return key ? t(key) : plan;
+}
+
+/**
+ * An error to show. The server's own words stay as they came; one of ours is
+ * kept as its dictionary key, so it follows a language switch without the
+ * loaders running again.
+ */
+type Failure = string | { key: Key; vars?: Vars };
+
+function sayFailure(f: Failure, t: T): string {
+  return typeof f === "string" ? f : t(f.key, f.vars);
+}
 
 function initials(first: string | null, last: string | null, email: string | null) {
   const f = first?.[0] ?? "";
@@ -93,15 +111,16 @@ function initials(first: string | null, last: string | null, email: string | nul
   return "—";
 }
 
-/** "3 mo", "12 d" — how long since `iso`. */
-function fmtDuration(iso: string): string {
+/** "3 months", "1 year 2 months" — how long since `iso`. */
+function fmtDuration(iso: string, t: T): string {
   const days = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
-  if (days < 1)  return "today";
-  if (days < 31) return `${days} d`;
+  if (days < 1)  return t("users.duration.lessThanDay");
+  if (days < 31) return t("users.duration.days", { count: days });
   const months = Math.floor(days / 30.44);
-  if (months < 12) return `${months} mo`;
-  const years = Math.floor(months / 12);
-  return `${years} y ${months % 12} mo`;
+  if (months < 12) return t("users.duration.months", { count: months });
+  const years = t("users.duration.years", { count: Math.floor(months / 12) });
+  // Whole years read without "0 months".
+  return months % 12 ? `${years} ${t("users.duration.months", { count: months % 12 })}` : years;
 }
 
 function rowLabel(u: Pick<UserRow, "firstName" | "lastName" | "email" | "id">): string {
@@ -122,45 +141,49 @@ function renewsAutomatically(s: UserSubscription | null | undefined): boolean {
   return !!s && s.status === "active" && s.autoRenew;
 }
 
-function describeSubscription(s: UserSubscription): string {
-  return `${s.plan}, ${formatMoney(s.amountUah, "UAH")}/mo, ${s.status.replace("_", " ")}, auto-renew ${s.autoRenew ? "on" : "off"}`;
+/** A subscription's state in the billing ledger, as a badge reads it. */
+const SUB_STATUS: Record<string, { key: Key; tone: BadgeTone }> = {
+  active:   { key: "users.subStatus.active", tone: "ok" },
+  pending:  { key: "users.subStatus.pending", tone: "warn" },
+  past_due: { key: "users.badge.pastDue", tone: "err" },
+  canceled: { key: "users.subStatus.canceled", tone: "neutral" },
+};
+
+function subStatusLabel(status: string, t: T): string {
+  const known = SUB_STATUS[status];
+  return known ? t(known.key) : status.replace("_", " ");
+}
+
+/** "Basic · ₴399/mo · Active · Auto-renew on" — for confirms and warnings. */
+function describeSubscription(s: UserSubscription, t: T, f: Format): string {
+  return [
+    planName(s.plan, t),
+    t("users.sub.perMonth", { amount: f.money(s.amountUah, "UAH") }),
+    subStatusLabel(s.status, t),
+    t(s.autoRenew ? "users.sub.autoRenewOn" : "users.sub.autoRenewOff"),
+  ].join(" · ");
 }
 
 /** "a@b.c, d@e.f and 3 more" — for confirm dialogs. */
-function listLabels(rows: UserRow[], max = 5): string {
+function listLabels(rows: UserRow[], t: T, max = 5): string {
   const shown = rows.slice(0, max).map(rowLabel).join(", ");
-  return rows.length > max ? `${shown} and ${rows.length - max} more` : shown;
+  return rows.length > max ? t("users.list.more", { list: shown, count: rows.length - max }) : shown;
 }
 
 // The admin panel changes the plan in Clerk only; the monobank subscription
 // row is untouched, so an active auto-renewing subscription keeps charging and
-// its next renewal puts the paid plan back. A past_due one is not retried.
-const PLAN_BILLING_NOTE = "Only the plan in Clerk changes — billing does not.";
-const RENEWAL_NOTE = "Charges continue, and the next renewal restores the paid plan.";
-const PAST_DUE_NOTE = "Its last renewal failed and is not retried, so nothing puts the paid plan back on its own.";
+// its next renewal puts the paid plan back (users.note.renewal). A past_due
+// one is not retried (users.note.pastDue).
 
-function deleteSubscriptionWarning(s: UserSubscription | null | undefined): string {
+function deleteSubscriptionWarning(s: UserSubscription | null | undefined, t: T, f: Format): string {
   if (!liveSubscription(s)) return "";
-  return ` This user has an active subscription (${describeSubscription(s)}). ` +
-    "Auto-renew is turned off before the account is deleted, so the saved card is not charged again.";
+  return t("users.note.deleteSub", { sub: describeSubscription(s, t, f) });
 }
 
-const SUB_STATUS_LABEL: Record<string, string> = {
-  active:   "Active",
-  pending:  "Pending",
-  past_due: "Past due",
-  canceled: "Canceled",
-};
-
-const subStatusBadge: Record<string, string> = {
-  active:   "text-[var(--ok)]",
-  pending:  "text-[var(--warn)]",
-  past_due: "text-[var(--err)]",
-  canceled: "text-[var(--foreground-subtle)]",
-};
-
-const inputCls =
-  "bg-transparent border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
+/** Sentences of a confirm's body, the empty ones left out. */
+function sentences(...parts: string[]): string {
+  return parts.filter(Boolean).join(" ");
+}
 
 /** A paid period that ended with no renewal after it: the account still has the plan. */
 function isOverdue(s: UserSubscription | null | undefined): s is UserSubscription {
@@ -183,7 +206,7 @@ function statusBadge(u: UserRow, t: T) {
  */
 function PlanCell({ u, t, f }: { u: UserRow; t: T; f: Format }) {
   const s = u.subscription;
-  const name = PLAN_LABEL[u.plan] ?? u.plan;
+  const name = planName(u.plan, t);
   const billed = s && s.status !== "canceled" ? s : null;
   if (!billed) {
     if (u.plan === "free") return <span className="text-[var(--foreground-muted)]">{name}</span>;
@@ -195,7 +218,7 @@ function PlanCell({ u, t, f }: { u: UserRow; t: T; f: Format }) {
     );
   }
   // What is billed: a payment still pending can be for a plan Clerk does not show yet.
-  const billedName = PLAN_LABEL[billed.plan] ?? billed.plan;
+  const billedName = planName(billed.plan, t);
   const problem =
     billed.status === "past_due"
       ? { text: t("users.sub.pastDue"), tone: "text-[var(--err)]" }
@@ -255,7 +278,7 @@ export default function AdminUsersPage() {
   const [listPartial, setListPartial] = useState(false);
   const [subsError, setSubsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Failure | null>(null);
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState<"all" | typeof PLAN_OPTIONS[number]>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -263,7 +286,7 @@ export default function AdminUsersPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [counts, setCounts] = useState<UserCounts | null>(null);
-  const [countsError, setCountsError] = useState<string | null>(null);
+  const [countsError, setCountsError] = useState<Failure | null>(null);
 
   // Bulk state. Selected rows are kept whole so a selection survives paging
   // (only the current page is loaded) and confirms can see subscriptions.
@@ -299,7 +322,7 @@ export default function AdminUsersPage() {
         setPage(Math.max(0, Math.ceil(body.totalCount / PAGE_SIZE) - 1));
       }
     } catch (e) {
-      if (seq === loadSeq.current) setError(e instanceof Error ? e.message : "Failed to load");
+      if (seq === loadSeq.current) setError(e instanceof Error ? e.message : { key: "users.loadFailed" });
     } finally {
       if (seq === loadSeq.current) setLoading(false);
     }
@@ -313,7 +336,7 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       setCounts(body as UserCounts);
     } catch (e) {
-      setCountsError(e instanceof Error ? e.message : "Failed to load counts");
+      setCountsError(e instanceof Error ? e.message : { key: "users.loadFailed" });
     }
   }, []);
 
@@ -422,17 +445,20 @@ export default function AdminUsersPage() {
     const paying = rows.filter((u) => liveSubscription(u.subscription));
     const renewing = paying.some((u) => renewsAutomatically(u.subscription));
     const warn = paying.length
-      ? `${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
-        `${PLAN_BILLING_NOTE}${renewing ? ` ${RENEWAL_NOTE}` : ""}`
+      ? sentences(
+          t("users.confirm.planPaying", { count: paying.length, list: listLabels(paying, t) }),
+          t("users.note.planBilling"),
+          renewing ? t("users.note.renewal") : "",
+        )
       : "";
     const count = rows.length;
-    const planName = PLAN_LABEL[plan];
+    const name = planName(plan, t);
     if (!(await confirm({
-      title: t("users.confirm.plan", { plan: planName, count }),
+      title: t("users.confirm.plan", { plan: name, count }),
       body: warn || undefined,
       confirmLabel: t("users.confirm.planAction", { count }),
     }))) return;
-    await runBulk(t("users.bulk.planDone", { plan: planName }), rows, patchUser({ plan }));
+    await runBulk(t("users.bulk.planDone", { plan: name }), rows, patchUser({ plan }));
   };
 
   const bulkDelete = async () => {
@@ -440,13 +466,12 @@ export default function AdminUsersPage() {
     if (!rows.length) return;
     const paying = rows.filter((u) => liveSubscription(u.subscription));
     const warn = paying.length
-      ? ` ${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
-        "Auto-renew is turned off before each account is deleted, so saved cards are not charged again."
+      ? t("users.confirm.deletePaying", { count: paying.length, list: listLabels(paying, t) })
       : "";
     const count = rows.length;
     if (!(await confirm({
       title: t("users.confirm.delete", { count }),
-      body: `${t("users.confirm.deleteBody")}${warn}`,
+      body: sentences(t("users.confirm.deleteBody"), warn),
       confirmLabel: t("users.confirm.deleteAction", { count }),
       tone: "danger",
     }))) return;
@@ -471,7 +496,7 @@ export default function AdminUsersPage() {
   const handleDelete = async (u: UserRow) => {
     if (!(await confirm({
       title: t("users.confirm.deleteOne", { name: rowLabel(u) }),
-      body: `This permanently removes the Clerk account.${deleteSubscriptionWarning(u.subscription)}`,
+      body: sentences(t("users.note.deleteAccount"), deleteSubscriptionWarning(u.subscription, t, f)),
       confirmLabel: t("users.confirm.deleteOneAction"),
       tone: "danger",
     }))) return;
@@ -494,14 +519,14 @@ export default function AdminUsersPage() {
 
   const planChips = [
     { value: "all", label: t("filter.all"), count: counts?.total },
-    ...PLAN_OPTIONS.map((p) => ({ value: p, label: PLAN_LABEL[p], count: counts?.[p] })),
+    ...PLAN_OPTIONS.map((p) => ({ value: p, label: planName(p, t), count: counts?.[p] })),
   ];
 
   const statusOptions = (["active", "banned", "locked"] as const).map((s) => ({ value: s, label: t(STATUS_KEY[s]) }));
 
   const activeFilters = [
     ...(planFilter !== "all"
-      ? [{ key: "plan", label: `${t("users.col.plan")}: ${PLAN_LABEL[planFilter]}`, onRemove: () => setPlanFilter("all") }]
+      ? [{ key: "plan", label: `${t("users.col.plan")}: ${planName(planFilter, t)}`, onRemove: () => setPlanFilter("all") }]
       : []),
     ...(statusFilter !== "all"
       ? [{ key: "status", label: `${t("users.f.status")}: ${t(STATUS_KEY[statusFilter])}`, onRemove: () => setStatusFilter("all") }]
@@ -575,7 +600,7 @@ export default function AdminUsersPage() {
         subtitle={
           <>
             {subtitle.length ? subtitle.join(" · ") : "—"}
-            {countsError ? <span className="text-[var(--err)]"> · {t("users.countsFailed", { error: countsError })}</span> : null}
+            {countsError ? <span className="text-[var(--err)]"> · {t("users.countsFailed", { error: sayFailure(countsError, t) })}</span> : null}
             {subsError ? <span className="text-[var(--err)]"> · {t("users.subsFailed", { error: subsError })}</span> : null}
           </>
         }
@@ -646,7 +671,7 @@ export default function AdminUsersPage() {
             thumb: <Avatar u={u} size="lg" />,
             title: name || <span className="text-[var(--foreground-muted)]">{t("users.noName")}</span>,
             badge: statusBadge(u, t),
-            meta: `${u.email ?? "—"} · ${PLAN_LABEL[u.plan] ?? u.plan}`,
+            meta: `${u.email ?? "—"} · ${planName(u.plan, t)}`,
           };
         }}
         selection={{
@@ -675,9 +700,9 @@ export default function AdminUsersPage() {
         empty={
           error ? (
             <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
-              <p className="text-[13px] text-[var(--err)] break-words">{error}</p>
+              <p className="text-[13px] text-[var(--err)] break-words">{sayFailure(error, t)}</p>
               <button onClick={refresh} className={btn("secondary")}>
-                {t("products.retry")}
+                {t("common.retry")}
               </button>
             </div>
           ) : (
@@ -692,7 +717,7 @@ export default function AdminUsersPage() {
                     }}
                     className={btn("secondary")}
                   >
-                    {t("products.clearFilters")}
+                    {t("filter.clearFilters")}
                   </button>
                 ) : undefined
               }
@@ -711,7 +736,7 @@ export default function AdminUsersPage() {
             key: "plan",
             label: t("users.bulk.plan"),
             disabled: bulkLoading,
-            menu: PLAN_OPTIONS.map((p) => ({ label: PLAN_LABEL[p], onSelect: () => void bulkSetPlan(p) })),
+            menu: PLAN_OPTIONS.map((p) => ({ label: planName(p, t), onSelect: () => void bulkSetPlan(p) })),
           },
           { key: "delete", label: t("users.bulk.delete"), onClick: () => void bulkDelete(), disabled: bulkLoading, tone: "danger" },
         ]}
@@ -747,11 +772,12 @@ function UserDrawer({
   onUpdated: (u: UserRow) => void;
   onDeleted: (id: string) => void;
 }) {
+  const t = useT();
   const confirm = useConfirm();
   const f = useFormat();
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Failure | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [firstName, setFirstName] = useState("");
@@ -796,7 +822,7 @@ function UserDrawer({
           setStatsError((await statsRes.json().catch(() => ({}))).error || `HTTP ${statsRes.status}`);
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
+        if (!cancelled) setError(e instanceof Error ? e.message : { key: "users.loadFailed" });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -809,10 +835,9 @@ function UserDrawer({
   const resetStylistUsage = async (scope: "today" | "all") => {
     if (resetting) return;
     if (scope === "all" && !(await confirm({
-      title: "Delete this user's entire AI Stylist message history?",
-      body: "It also disappears from the AI-usage chart in Analytics and cannot be undone. " +
-        "To lift today's limit, \"Reset today's limit\" is enough.",
-      confirmLabel: "Delete message history",
+      title: t("users.stylist.resetAllTitle"),
+      body: t("users.stylist.resetAllBody", { action: t("users.stylist.resetToday") }),
+      confirmLabel: t("users.stylist.resetAllAction"),
       tone: "danger",
     }))) return;
     setResetting(true);
@@ -826,9 +851,9 @@ function UserDrawer({
       // Refresh stats so the counter reflects the reset
       const statsRes = await fetch(`/api/admin/users/${userId}/stats`, { cache: "no-store" });
       if (statsRes.ok) setStats(await statsRes.json() as UserStats);
-      else setError("Usage was reset, but the stats could not be refreshed.");
+      else setError(t("users.stylist.statsStale"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to reset usage");
+      setError(e instanceof Error ? e.message : t("users.stylist.resetFailed"));
     } finally {
       setResetting(false);
     }
@@ -864,7 +889,7 @@ function UserDrawer({
       onUpdated(updated);
       setDetail({ ...detail, ...updated });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      setError(e instanceof Error ? e.message : t("users.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -873,9 +898,9 @@ function UserDrawer({
   const del = async () => {
     if (!detail) return;
     if (!(await confirm({
-      title: `Delete ${rowLabel(detail)}?`,
-      body: `This permanently removes the Clerk account.${deleteSubscriptionWarning(detail.subscription)}`,
-      confirmLabel: "Delete user",
+      title: t("users.confirm.deleteOne", { name: rowLabel(detail) }),
+      body: sentences(t("users.note.deleteAccount"), deleteSubscriptionWarning(detail.subscription, t, f)),
+      confirmLabel: t("users.confirm.deleteOneAction"),
       tone: "danger",
     }))) return;
     setSaving(true);
@@ -884,13 +909,13 @@ function UserDrawer({
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
       onDeleted(userId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Delete failed");
+      setError(e instanceof Error ? e.message : t("users.deleteFailed"));
     } finally {
       setSaving(false);
     }
   };
 
-  const displayName = detail ? rowLabel(detail) : "Loading…";
+  const displayName = detail ? rowLabel(detail) : t("common.loading");
 
   const isSuperAdmin = detail?.isSuperAdmin ?? false;
 
@@ -907,15 +932,15 @@ function UserDrawer({
           <>
             {!isSuperAdmin && (
               <button onClick={del} disabled={saving} className={`${btn("danger")} mr-auto`}>
-                Delete user
+                {t("users.confirm.deleteOneAction")}
               </button>
             )}
             <button onClick={onClose} className={btn("ghost")}>
-              Cancel
+              {t("common.cancel")}
             </button>
             {!isSuperAdmin && (
               <button onClick={save} disabled={!hasChanges || saving} className={btn("primary")}>
-                {saving ? "Saving…" : "Save changes"}
+                {saving ? t("common.saving") : t("common.save")}
               </button>
             )}
           </>
@@ -923,23 +948,23 @@ function UserDrawer({
       }
     >
       {loading && (
-        <div className="py-10 text-xs text-[var(--foreground-subtle)]">Loading…</div>
+        <div className="py-10 text-xs text-[var(--foreground-subtle)]">{t("common.loading")}</div>
       )}
 
       {error && (
-        <div className="my-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-3 py-2">{error}</div>
+        <div role="alert" className="my-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-3 py-2">
+          {sayFailure(error, t)}
+        </div>
       )}
 
       {detail && !loading && (
         <div className="space-y-6">
           {isSuperAdmin && (
             <div className="flex items-center gap-3 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[var(--warn)] flex-shrink-0">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="text-[var(--warn)] flex-shrink-0">
                 <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
               </svg>
-              <p className="text-[12px] text-[var(--warn)]">
-                Super admin — this account is protected and cannot be modified.
-              </p>
+              <p className="text-[12px] text-[var(--warn)]">{t("users.panel.protected")}</p>
             </div>
           )}
           <div className="flex items-center gap-4">
@@ -951,96 +976,92 @@ function UserDrawer({
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm text-[var(--foreground)] truncate">{detail.email ?? "No email"}</p>
+              <p className="text-sm text-[var(--foreground)] truncate">{detail.email ?? t("users.panel.noEmail")}</p>
               <p className="text-[12px] font-mono text-[var(--foreground-subtle)] truncate">{detail.id}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <MetaItem label="Joined"       value={f.date(detail.createdAt)} />
-            <MetaItem label="Updated"      value={f.date(detail.updatedAt)} />
-            <MetaItem label="Last sign-in" value={f.when(detail.lastSignInAt, "Never")} />
-            <MetaItem label="Last active"  value={f.when(detail.lastActiveAt, "Never")} />
-            <MetaItem label="2FA"          value={detail.twoFactorEnabled ? "Enabled" : "Disabled"} />
-            <MetaItem label="Username"     value={detail.username ?? "—"} />
+            <MetaItem label={t("users.col.joined")} value={f.date(detail.createdAt)} />
+            <MetaItem label={t("users.panel.updated")} value={f.date(detail.updatedAt)} />
+            <MetaItem label={t("users.panel.lastSignIn")} value={f.when(detail.lastSignInAt, t("users.never"))} />
+            <MetaItem label={t("users.col.lastActive")} value={f.when(detail.lastActiveAt, t("users.never"))} />
+            <MetaItem
+              label={t("users.panel.twoFactor")}
+              value={t(detail.twoFactorEnabled ? "users.panel.twoFactorOn" : "users.panel.twoFactorOff")}
+            />
+            <MetaItem label={t("users.panel.username")} value={detail.username ?? "—"} />
           </div>
 
           {/* Subscription (monobank billing ledger) */}
           <div>
-            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Subscription</p>
+            <h3 className={SECTION_TITLE}>{t("users.panel.subscription")}</h3>
             {detail.subscription ? (
               <div className="border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-[var(--foreground)]"><span className="capitalize">{detail.subscription.plan}</span> · {f.money(detail.subscription.amountUah, "UAH")}/mo</span>
-                  <span className={`text-[11px] font-medium ${subStatusBadge[detail.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
-                    {SUB_STATUS_LABEL[detail.subscription.status] ?? detail.subscription.status.replace("_", " ")}
+                <div className="flex items-center justify-between gap-3 px-4 py-3">
+                  <span className="text-xs text-[var(--foreground)]">
+                    {planName(detail.subscription.plan, t)} · {t("users.sub.perMonth", { amount: f.money(detail.subscription.amountUah, "UAH") })}
                   </span>
+                  <Badge tone={SUB_STATUS[detail.subscription.status]?.tone ?? "neutral"}>
+                    {subStatusLabel(detail.subscription.status, t)}
+                  </Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-3 px-4 py-3 text-xs">
-                  <MetaItem label="Subscribed for" value={fmtDuration(detail.subscription.startedAt)} />
-                  <MetaItem label="Since"          value={f.date(detail.subscription.startedAt)} />
+                  <MetaItem label={t("users.panel.subscribedFor")} value={fmtDuration(detail.subscription.startedAt, t)} />
+                  <MetaItem label={t("users.panel.since")} value={f.date(detail.subscription.startedAt)} />
                   <MetaItem
-                    label={detail.subscription.autoRenew ? "Next charge" : "Access until"}
+                    label={t(detail.subscription.autoRenew ? "users.panel.nextCharge" : "users.panel.accessUntil")}
                     value={f.date(detail.subscription.currentPeriodEnd)}
                   />
-                  <MetaItem label="Auto-renew" value={detail.subscription.autoRenew ? "On" : "Off"} />
+                  <MetaItem
+                    label={t("users.panel.autoRenew")}
+                    value={t(detail.subscription.autoRenew ? "users.panel.on" : "users.panel.off")}
+                  />
                   {detail.subscription.maskedPan && (
-                    <MetaItem label="Card" value={detail.subscription.maskedPan.replace(/\*+/, "··")} />
+                    <MetaItem label={t("users.panel.card")} value={detail.subscription.maskedPan.replace(/\*+/, "··")} />
                   )}
                 </div>
               </div>
             ) : (
               <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
-                Never subscribed — plan is set manually or free.
+                {t("users.panel.noSubscription")}
               </p>
             )}
           </div>
 
-          {/* Activity stats */}
+          {/* Activity stats. Small cards of their own: KpiStrip is a page-wide
+              strip and would squeeze four columns into the panel. */}
           <div>
-            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Activity</p>
+            <h3 className={SECTION_TITLE}>{t("users.panel.activity")}</h3>
             {!stats ? (
               <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
-                Stats unavailable{statsError ? ` — ${statsError}` : ""}.
+                {statsError ? t("users.panel.statsUnavailableWith", { error: statsError }) : t("users.panel.statsUnavailable")}
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {/* AI Stylist today */}
-                <div className="border border-[var(--border)] rounded-xl p-3">
-                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist today</p>
-                  <p className="font-display text-xl font-light text-[var(--foreground)]">
-                    {stats.stylistMsgToday}
-                    <span className="text-xs text-[var(--foreground-subtle)] ml-1 font-sans">
-                      / {stats.stylistLimitDay === null ? "∞" : stats.stylistLimitDay}
-                    </span>
-                  </p>
-                  <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
-                    {stats.stylistRemaining === null
-                      ? "Unlimited"
-                      : `${stats.stylistRemaining} left`}
-                  </p>
-                </div>
-
-                {/* AI Stylist all-time */}
-                <div className="border border-[var(--border)] rounded-xl p-3">
-                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist total</p>
-                  <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.stylistMsgTotal}</p>
-                  <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">messages sent</p>
-                </div>
-
-                {/* Images generated */}
-                <div className="border border-[var(--border)] rounded-xl p-3">
-                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">AI images</p>
-                  <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.imagesGenerated}</p>
-                  <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">generated</p>
-                </div>
-
-                {/* Looks published */}
-                <div className="border border-[var(--border)] rounded-xl p-3">
-                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Looks</p>
-                  <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.looksPublished}</p>
-                  <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">published</p>
-                </div>
+                <StatCard
+                  label={t("users.stats.stylistToday")}
+                  value={
+                    <>
+                      {f.number(stats.stylistMsgToday)}
+                      <span className="text-xs text-[var(--foreground-subtle)] ml-1 font-sans">
+                        / {stats.stylistLimitDay === null ? "∞" : f.number(stats.stylistLimitDay)}
+                      </span>
+                    </>
+                  }
+                  note={
+                    stats.stylistRemaining === null
+                      ? t("users.stats.unlimited")
+                      : t("users.stats.left", { count: stats.stylistRemaining })
+                  }
+                />
+                <StatCard
+                  label={t("users.stats.stylistTotal")}
+                  value={f.number(stats.stylistMsgTotal)}
+                  note={t("users.stats.messages", { count: stats.stylistMsgTotal })}
+                />
+                <StatCard label={t("users.stats.images")} value={f.number(stats.imagesGenerated)} note={t("users.stats.generated")} />
+                <StatCard label={t("users.stats.looks")} value={f.number(stats.looksPublished)} note={t("users.stats.published")} />
               </div>
             )}
 
@@ -1052,91 +1073,91 @@ function UserDrawer({
                   disabled={resetting || stats.stylistMsgToday === 0}
                   className={btn("secondary")}
                 >
-                  {resetting ? "Resetting…" : "Reset today's limit"}
+                  {resetting ? t("common.resetting") : t("users.stylist.resetToday")}
                 </button>
                 <button
                   onClick={() => resetStylistUsage("all")}
                   disabled={resetting}
                   className={btn("ghost")}
                 >
-                  Reset all-time
+                  {t("users.stylist.resetAll")}
                 </button>
               </div>
             )}
           </div>
 
           <div>
-            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Profile</p>
+            <h3 className={SECTION_TITLE}>{t("users.panel.profile")}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-[12px] font-medium text-[var(--foreground-muted)]">First name</span>
-                <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
+              <label className="flex flex-col">
+                <span className={FIELD_LABEL}>{t("users.panel.firstName")}</span>
+                <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={INPUT} />
               </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Last name</span>
-                <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
+              <label className="flex flex-col">
+                <span className={FIELD_LABEL}>{t("users.panel.lastName")}</span>
+                <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={INPUT} />
               </label>
             </div>
           </div>
 
           <div>
-            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Plan</p>
-            <div className="flex flex-wrap gap-1.5">
-              {PLAN_OPTIONS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPlan(p)}
-                  className={`text-[13px] font-medium px-3 py-2 border rounded-lg transition-colors capitalize ${
-                    plan === p
-                      ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
-                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+            <h3 className={SECTION_TITLE}>{t("users.col.plan")}</h3>
+            {/* One plan of a few: the same chips as the plan filter above the list. */}
+            <FilterChips
+              label={t("users.col.plan")}
+              value={plan}
+              options={PLAN_OPTIONS.map((p) => ({ value: p, label: planName(p, t) }))}
+              onChange={setPlan}
+            />
             {liveSubscription(detail.subscription) && (
               <p className="mt-2 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn)] text-[12px] px-3 py-2">
-                Active subscription ({describeSubscription(detail.subscription)}). {PLAN_BILLING_NOTE}
-                {renewsAutomatically(detail.subscription)
-                  ? ` ${RENEWAL_NOTE}`
-                  : detail.subscription.status === "past_due" ? ` ${PAST_DUE_NOTE}` : ""}
+                {sentences(
+                  t("users.panel.activeSub", { sub: describeSubscription(detail.subscription, t, f) }),
+                  t("users.note.planBilling"),
+                  renewsAutomatically(detail.subscription)
+                    ? t("users.note.renewal")
+                    : detail.subscription.status === "past_due" ? t("users.note.pastDue") : "",
+                )}
               </p>
             )}
           </div>
 
           <div>
-            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Access</p>
+            <h3 className={SECTION_TITLE}>{t("users.panel.access")}</h3>
             <div className="space-y-2">
               {detail.adminViaEnv ? (
                 // ADMIN_USER_IDS grants access regardless of the metadata flag,
                 // so a toggle here would look like it revokes access and not.
-                <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
+                <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs text-[var(--foreground)]">Admin</p>
-                    <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Granted via env (ADMIN_USER_IDS). Remove the id there to revoke.</p>
+                    <p className="text-xs text-[var(--foreground)]">{t("users.panel.admin")}</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{t("users.panel.adminViaEnv")}</p>
                   </div>
-                  <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Via env</span>
+                  <Badge tone="ok">{t("users.panel.viaEnv")}</Badge>
                 </div>
               ) : currentIsSuperAdmin ? (
                 <ToggleRow
-                  label="Admin"
-                  description="Grants access to /goo-studio. Only super admin can change this."
+                  label={t("users.panel.admin")}
+                  description={t("users.panel.adminHint")}
                   checked={isAdmin}
                   onChange={setIsAdmin}
                 />
               ) : detail.isAdmin ? (
-                <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
+                <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs text-[var(--foreground)]">Admin</p>
-                    <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
+                    <p className="text-xs text-[var(--foreground)]">{t("users.panel.admin")}</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{t("users.panel.superAdminOnly")}</p>
                   </div>
-                  <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Enabled</span>
+                  <Badge tone="ok">{t("users.panel.adminOn")}</Badge>
                 </div>
               ) : null}
-              <ToggleRow label="Banned" description="Prevents the user from signing in." checked={banned} onChange={setBanned} danger />
+              <ToggleRow
+                label={t("users.panel.banned")}
+                description={t("users.panel.bannedHint")}
+                checked={banned}
+                onChange={setBanned}
+                danger
+              />
             </div>
           </div>
 
@@ -1145,6 +1166,9 @@ function UserDrawer({
     </SidePanel>
   );
 }
+
+/** A block's name inside the side panel. */
+const SECTION_TITLE = "text-[13px] font-medium text-[var(--foreground)] mb-3";
 
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
@@ -1155,6 +1179,18 @@ function MetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** One activity number in the side panel: the label, the number, a line under it. */
+function StatCard({ label, value, note }: { label: string; value: ReactNode; note: string }) {
+  return (
+    <div className="border border-[var(--border)] rounded-xl p-3">
+      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">{label}</p>
+      <p className="font-display text-xl font-light text-[var(--foreground)] tabular-nums">{value}</p>
+      <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">{note}</p>
+    </div>
+  );
+}
+
+/** A labelled on/off row: the switch recipe of DESIGN_SYSTEM §9, rule 10. */
 function ToggleRow({
   label,
   description,
@@ -1171,15 +1207,18 @@ function ToggleRow({
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between px-3 py-2.5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] transition-colors text-left"
+      className="w-full flex items-center justify-between gap-3 px-3 py-2.5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] transition-colors text-left"
     >
       <div>
         <p className={`text-xs ${danger && checked ? "text-[var(--err)]" : "text-[var(--foreground)]"}`}>{label}</p>
         <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{description}</p>
       </div>
-      <div className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
-        checked ? (danger ? "bg-[var(--err)]" : "bg-[var(--foreground)]") : "bg-[var(--border)]"
+      {/* Off is --border-strong: a --border track vanishes on the panel (GS1-0). */}
+      <div aria-hidden="true" className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
+        checked ? (danger ? "bg-[var(--err)]" : "bg-[var(--foreground)]") : "bg-[var(--border-strong)]"
       }`}>
         <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--surface)] transition-[left] ${
           checked ? "left-[18px]" : "left-0.5"
