@@ -324,5 +324,31 @@ module.exports = {
         await page.getByRole("dialog", { name: "Review submitted look" }).waitFor();
       },
     },
+    // GS4-3 components: the confirm dialog, the toast after the confirmed
+    // action (DELETE has no fixture, so it answers {} and succeeds), and an
+    // explanation opened from its "?".
+    {
+      name: "brands-confirm", url: "/goo-studio/brands", fullPage: false,
+      after: async (page) => {
+        await page.getByRole("button", { name: /^Delete brand / }).first().click();
+        await page.getByRole("alertdialog").waitFor();
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "brands-toast", url: "/goo-studio/brands", fullPage: false,
+      after: async (page) => {
+        await page.getByRole("button", { name: /^Delete brand / }).first().click();
+        await page.getByRole("alertdialog").getByRole("button", { name: "Delete brand" }).click();
+        await page.waitForTimeout(1200);
+      },
+    },
+    {
+      name: "retailers-help", url: "/goo-studio/retailers", fullPage: false,
+      after: async (page) => {
+        await page.getByRole("button", { name: "How retailer rules work" }).click();
+        await page.waitForTimeout(300);
+      },
+    },
   ],
 };
