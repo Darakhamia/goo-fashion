@@ -1,7 +1,8 @@
 // Screenshots of every /goo-studio page with each /api call answered from fixtures.
 // Run setup.sh first (it starts the stubbed app on :3100), then:
 //   NODE_PATH=<work>/pw/node_modules node shoot.js [--only=products,users]
-//     [--theme=light|dark|both] [--vp=desktop|mobile|both] [--out=DIR] [--axe]
+//     [--theme=light|dark|both] [--vp=desktop|mobile|both] [--lang=en|ru] [--out=DIR] [--axe]
+// --lang=ru shoots the admin in Russian (files get a -ru suffix).
 // --axe skips screenshots and runs the axe-core colour-contrast check on each
 // page instead (needs axe-core next to playwright-core, see README.md).
 // See README.md.
@@ -45,6 +46,7 @@ const only = args.only ? args.only.split(",") : null;
 const list = all.filter((p) => !only || only.includes(p.name));
 const themes = args.theme === "both" ? ["light", "dark"] : [args.theme || "light"];
 const vps = args.vp === "both" ? ["desktop", "mobile"] : [args.vp || "desktop"];
+const LANG = args.lang === "ru" ? "ru" : "en";
 const VIEWPORT = { desktop: { width: 1440, height: 900 }, mobile: { width: 390, height: 844 } };
 
 function svg(u) {
@@ -71,12 +73,16 @@ function lookup(method, u) {
   const report = [];
   for (const theme of themes) for (const vp of vps) {
     const ctx = await browser.newContext({ viewport: VIEWPORT[vp], deviceScaleFactor: 1, isMobile: vp === "mobile", hasTouch: vp === "mobile" });
-    await ctx.addInitScript((t) => {
-      try { localStorage.setItem("goo-cookie-consent", "rejected"); localStorage.setItem("goo-admin-theme", t); } catch {}
+    await ctx.addInitScript(([t, lang]) => {
+      try {
+        localStorage.setItem("goo-cookie-consent", "rejected");
+        localStorage.setItem("goo-admin-theme", t);
+        if (lang !== "en") localStorage.setItem("goo-admin-lang", lang);
+      } catch {}
       const fixed = Date.parse("2026-10-05T12:00:00Z"); const RealDate = Date;
       // freeze "now" so relative dates are stable
       Date = class extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } };
-    }, theme);
+    }, [theme, LANG]);
     await ctx.route("https://img.harness/**", (r) => r.fulfill({ contentType: "image/svg+xml", body: svg(new URL(r.request().url())) }));
     await ctx.route(/^https?:\/\/(?!localhost)/, (r) => r.request().url().startsWith("https://img.harness") ? r.fallback() : r.fulfill({ status: 204, body: "" }));
     for (const pg of list) {
@@ -108,7 +114,7 @@ function lookup(method, u) {
           });
           report.push({ page: pg.name, theme, vp, contrast, unmatched: [...unmatched], errors: kept });
         } else {
-          const file = path.join(OUT, `${pg.name}--${theme}-${vp}.png`);
+          const file = path.join(OUT, `${pg.name}--${theme}-${vp}${LANG === "en" ? "" : `-${LANG}`}.png`);
           await page.screenshot({ path: file, fullPage: pg.fullPage !== false });
           report.push({ page: pg.name, theme, vp, file, unmatched: [...unmatched], errors: kept });
         }
