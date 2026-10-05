@@ -17,6 +17,7 @@ import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { useToast } from "@/components/admin/Toast";
 import { btn } from "@/app/goo-studio/_ui/recipes";
+import { useFormat } from "@/app/goo-studio/_i18n";
 
 type Mode = "off" | "suggest" | "auto";
 
@@ -114,21 +115,10 @@ const inputClass = `${fieldBase} bg-transparent`;
 const selectClass = `${fieldBase} bg-[var(--surface)]`;
 const labelClass = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
 
-// Below a dime every figure gets three decimals, so a column of run costs
-// reads $0.010 / $0.005 instead of mixing $0.01 with $0.0052.
-function usd(n: number): string {
-  if (!n) return "$0";
-  return n < 0.1 ? `$${n.toFixed(3)}` : `$${n.toFixed(2)}`;
-}
-
 function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
-function when(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
 
 /** Brand merges arrive as one fix per product; they are read and decided as one line. */
 interface Group {
@@ -159,6 +149,11 @@ export default function CatalogueCheckPage() {
   const stopRef = useRef(false);
   const confirm = useConfirm();
   const toast = useToast();
+  // Costs and times through the admin's one format (GS4-6). Below a dime a
+  // cost gets three places, so a column of runs reads $0.010 / $0.005.
+  const f = useFormat();
+  const usd = (n: number) => f.money(n || 0);
+  const when = f.dateTime;
   const help = useHelp("catalogue-check");
   const runHelp = useHelp("catalogue-check-run");
   const fixedHelp = useHelp("catalogue-check-fixed");

@@ -17,6 +17,7 @@ import { pastedUrl } from "@/lib/url";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { btn, BTN_ICON } from "../_ui/recipes";
 import { AdminPage } from "@/components/admin/AdminPage";
+import { useFormat } from "@/app/goo-studio/_i18n";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -1100,6 +1101,7 @@ function ProductGrid({
   onClear: () => void;
   setProductAt: (i: number, patch: Partial<ParsedProduct>) => void;
 }) {
+  const f = useFormat();
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState<{
@@ -1200,7 +1202,7 @@ function ProductGrid({
                 />
                 <div className="flex items-center justify-between text-[11px] text-[var(--foreground-muted)]">
                   <span className="truncate">{p.brand || "—"}</span>
-                  <span className="font-mono tabular-nums">{p.price ? `${p.price} ${p.currency}` : "—"}</span>
+                  <span className="tabular-nums">{p.price ? f.money(p.price, p.currency || "USD") : "—"}</span>
                 </div>
                 <div className="flex gap-1">
                   <select

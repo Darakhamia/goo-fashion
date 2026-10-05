@@ -5,6 +5,7 @@ import Image from "@/components/ui/Image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { btn } from "./_ui/recipes";
+import { useFormat } from "./_i18n";
 
 type HealthItem = { ok: boolean; detail: string };
 
@@ -57,23 +58,6 @@ function fmtDelta(pct: number | null): { label: string; positive: boolean } | nu
   return { label: `${sign}${pct}% vs last month`, positive: pct >= 0 };
 }
 
-function fmtCount(n: number | null): string {
-  return n === null ? "—" : n.toLocaleString();
-}
-
-function fmtRelative(ts: number | string): string {
-  const t = typeof ts === "number" ? ts : Date.parse(ts);
-  const diff = Date.now() - t;
-  const mins  = Math.round(diff / 60_000);
-  const hours = Math.round(diff / 3_600_000);
-  const days  = Math.round(diff / 86_400_000);
-  if (mins  < 1)   return "just now";
-  if (mins  < 60)  return `${mins}m ago`;
-  if (hours < 24)  return `${hours}h ago`;
-  if (days  < 30)  return `${days}d ago`;
-  return new Date(t).toLocaleDateString();
-}
-
 function initials(first: string | null, last: string | null, email: string | null): string {
   const f = first?.[0] ?? "";
   const l = last?.[0]  ?? "";
@@ -91,6 +75,9 @@ const fadeUp = {
 };
 
 export default function AdminDashboardPage() {
+  const f = useFormat();
+  const fmtCount = f.number;
+  const fmtRelative = f.when;
   const [data, setData] = useState<StatsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

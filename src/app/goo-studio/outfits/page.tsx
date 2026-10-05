@@ -9,7 +9,7 @@ import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
-import { useT } from "@/app/goo-studio/_i18n";
+import { useFormat, useT } from "@/app/goo-studio/_i18n";
 import type { Key } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
 import type { Column } from "@/components/admin/DataTable";
@@ -97,12 +97,7 @@ const SORT_OPTIONS: { value: SortKey; label: Key }[] = [
   { value: "priceDesc", label: "outfits.sort.priceDesc" },
 ];
 
-const fmtUsd = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
-/** "$216" or "$898–$1,391": a look costs the sum of its pieces, within their price spread. */
-function priceRange(o: Outfit): string {
-  return o.totalPriceMax > o.totalPriceMin ? `${fmtUsd(o.totalPriceMin)}–${fmtUsd(o.totalPriceMax)}` : fmtUsd(o.totalPriceMin);
-}
 /** Most pieces an outfit takes — as many as the collage on the site can draw. */
 const MAX_ITEMS = 6;
 /**
@@ -129,6 +124,7 @@ const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] m
 
 export default function AdminOutfitsPage() {
   const t = useT();
+  const f = useFormat();
   const confirm = useConfirm();
   const toast = useToast();
   const cards = useDownloadCards("outfits");
@@ -760,7 +756,7 @@ export default function AdminOutfitsPage() {
       hide: "lg",
       cell: (o) => <span className="text-[var(--foreground-muted)]">{o.items.length}</span>,
     },
-    { key: "price", header: t("outfits.col.price"), align: "right", hide: "md", cell: (o) => priceRange(o) },
+    { key: "price", header: t("outfits.col.price"), align: "right", hide: "md", cell: (o) => f.moneyRange(o.totalPriceMin, o.totalPriceMax) },
     {
       key: "home",
       header: t("outfits.col.homepage"),
@@ -904,7 +900,7 @@ export default function AdminOutfitsPage() {
                         </span>
                       )}
                       {look.total_price != null && (
-                        <span className="text-xs text-[var(--foreground)] font-medium">${look.total_price.toLocaleString()}</span>
+                        <span className="text-xs text-[var(--foreground)] font-medium">{f.money(look.total_price)}</span>
                       )}
                     </div>
                     {look.style_keywords.length > 0 && (
@@ -913,7 +909,7 @@ export default function AdminOutfitsPage() {
                       </p>
                     )}
                     <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
-                      {new Date(look.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      {f.date(look.created_at)}
                       {" · "}{look.pieces.length} pieces
                     </p>
                   </div>
@@ -950,7 +946,7 @@ export default function AdminOutfitsPage() {
                   </span>
                 )}
                 {selectedLook.total_price != null && (
-                  <p className="text-sm font-medium text-[var(--foreground)]">${selectedLook.total_price.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-[var(--foreground)]">{f.money(selectedLook.total_price)}</p>
                 )}
                 {selectedLook.style_keywords.length > 0 && (
                   <p className="font-mono text-[12px] capitalize text-[var(--foreground-muted)]">
@@ -1349,7 +1345,7 @@ export default function AdminOutfitsPage() {
                             <div className="p-2">
                               <p className="text-[12px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
                               <p className="text-xs text-[var(--foreground)] leading-snug line-clamp-2">{product.name}</p>
-                              <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">${product.priceMin}</p>
+                              <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">{f.money(product.priceMin)}</p>
                             </div>
                           </button>
                         );
@@ -1404,7 +1400,7 @@ export default function AdminOutfitsPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
-                                <p className="text-[12px] text-[var(--foreground-muted)]">{item.product.brand} · ${item.product.priceMin}</p>
+                                <p className="text-[12px] text-[var(--foreground-muted)]">{item.product.brand} · {f.money(item.product.priceMin)}</p>
                               </div>
                               {/* Role */}
                               <select
@@ -1468,7 +1464,7 @@ export default function AdminOutfitsPage() {
                         <div className="flex justify-between items-center pt-1 border-t border-[var(--border)]">
                           <span className="text-[12px] text-[var(--foreground-muted)]">Total</span>
                           <span className="text-sm text-[var(--foreground)]">
-                            ${priceMin}–${priceMax}
+                            {f.moneyRange(priceMin, priceMax)}
                           </span>
                         </div>
                       </div>

@@ -19,12 +19,7 @@ import { bareHost, pastedUrl } from "@/lib/url";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
-import { useT, type Key } from "@/app/goo-studio/_i18n";
-
-const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
-
-const fmtDate = (iso?: string) =>
-  iso ? new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—";
+import { useFormat, useT, type Key } from "@/app/goo-studio/_i18n";
 
 // Sort options shown in the admin toolbar dropdown. Each maps to a (key, direction) pair
 // that drives the same sortKey/sortDir state used by the clickable column headers.
@@ -663,6 +658,7 @@ export default function AdminProductsPage() {
   const confirm = useConfirm();
   const toast = useToast();
   const t = useT();
+  const f = useFormat();
 
   const [filterGroup, setFilterGroup] = useState<string>("");
   const [filterSubcategory, setFilterSubcategory] = useState<string>("");
@@ -2160,7 +2156,7 @@ export default function AdminProductsPage() {
       header: t("products.col.price"),
       align: "right",
       sort: sortFor("priceMin"),
-      cell: (p) => `${fmtPrice(p.priceMin)}${p.priceMax !== p.priceMin ? `–${fmtPrice(p.priceMax)}` : ""}`,
+      cell: (p) => f.moneyRange(p.priceMin, p.priceMax),
     },
     {
       key: "stores",
@@ -2174,7 +2170,7 @@ export default function AdminProductsPage() {
       header: t("products.col.added"),
       hide: "md",
       sort: sortFor("createdAt"),
-      cell: (p) => <span className="text-[var(--foreground-muted)]">{fmtDate(p.createdAt)}</span>,
+      cell: (p) => <span className="text-[var(--foreground-muted)]">{f.date(p.createdAt)}</span>,
     },
   ];
 
@@ -2905,7 +2901,7 @@ export default function AdminProductsPage() {
                                 New arrival{" "}
                                 <span className="text-[var(--foreground-subtle)]">
                                   {pastNewWindow
-                                    ? `(unavailable — added ${fmtDate(editingProduct?.createdAt)}, more than 7 days ago)`
+                                    ? `(unavailable — added ${f.date(editingProduct?.createdAt)}, more than 7 days ago)`
                                     : "(badge auto-hides 7 days after the product was added)"}
                                 </span>
                               </label>
@@ -3009,7 +3005,7 @@ export default function AdminProductsPage() {
                                   {lp.imageUrl && <img src={lp.imageUrl} alt={lp.name} loading="lazy" decoding="async" className="w-7 h-9 object-cover shrink-0" />}
                                   <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
                                   <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
-                                  <span className="text-[12px] text-[var(--foreground-subtle)] shrink-0">{fmtPrice(lp.priceMin)}</span>
+                                  <span className="text-[12px] text-[var(--foreground-subtle)] shrink-0">{f.money(lp.priceMin)}</span>
                                   <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className={`${BTN_ICON} shrink-0 ml-1`} aria-label="Remove">
                                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                                   </button>
@@ -3181,7 +3177,7 @@ export default function AdminProductsPage() {
                     {/* Name + swatch */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-[var(--foreground)] truncate">{p.name}</p>
-                      <p className="text-[12px] text-[var(--foreground-muted)] truncate">{p.brand} · {fmtPrice(p.priceMin)}</p>
+                      <p className="text-[12px] text-[var(--foreground-muted)] truncate">{p.brand} · {f.money(p.priceMin)}</p>
 
                       <div className="flex items-center gap-2 mt-2">
                         <input

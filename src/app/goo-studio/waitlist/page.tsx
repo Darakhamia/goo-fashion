@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { useFormat } from "@/app/goo-studio/_i18n";
 
 interface WaitlistEntry {
   id: string;
@@ -18,6 +19,7 @@ const thCls = "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-
 
 export default function WaitlistPage() {
   const confirm = useConfirm();
+  const f = useFormat();
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -161,9 +163,7 @@ export default function WaitlistPage() {
                 >
                   <td className="px-4 py-3 text-[13px] text-[var(--foreground)] font-mono">{entry.email}</td>
                   <td className="px-4 py-3 text-[11px] text-[var(--foreground-muted)] whitespace-nowrap">
-                    {entry.created_at
-                      ? new Date(entry.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                      : "—"}
+                    {f.date(entry.created_at)}
                   </td>
                   <td className="px-2 py-3">
                     <button

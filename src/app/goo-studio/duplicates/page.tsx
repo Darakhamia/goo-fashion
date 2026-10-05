@@ -20,6 +20,7 @@ import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { useToast } from "@/components/admin/Toast";
 import { btn } from "@/app/goo-studio/_ui/recipes";
+import { useFormat } from "@/app/goo-studio/_i18n";
 
 type Reason = "gtin" | "mpn" | "name";
 
@@ -82,13 +83,10 @@ const REASON_LABEL: Record<Reason, string> = {
   name: "Same model and colours",
 };
 
-function money(amount: number, currency: string): string {
-  if (!amount) return "—";
-  try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD", maximumFractionDigits: 2 }).format(amount);
-  } catch {
-    return `${amount} ${currency}`;
-  }
+/** A store's price in its own currency, through the admin's one format (GS4-6); "—" for none. */
+function useMoney() {
+  const f = useFormat();
+  return (amount: number, currency: string) => (amount ? f.money(amount, currency || "USD") : "—");
 }
 
 function GroupCard({
@@ -103,6 +101,7 @@ function GroupCard({
   /** `against` empty: every card in `ids` is a different item. Otherwise each of `ids` differs from each of `against`. */
   onDismiss: (ids: string[], against: string[]) => void;
 }) {
+  const money = useMoney();
   const [keepId, setKeepId] = useState(group.keepId);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const mergeIds = group.products.map((p) => p.id).filter((id) => id !== keepId && !excluded.has(id));
@@ -271,6 +270,7 @@ function ColourwayCard({
   onGroup: () => void;
   onDismiss: () => void;
 }) {
+  const money = useMoney();
   const first = proposal.products[0];
   const colours = [...new Set(proposal.products.map((p) => p.color || "no colour"))];
   return (

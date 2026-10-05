@@ -5,8 +5,9 @@ import Image from "@/components/ui/Image";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
-import { useT } from "@/app/goo-studio/_i18n";
-import type { Key, T } from "@/app/goo-studio/_i18n";
+import { useFormat, useT } from "@/app/goo-studio/_i18n";
+import type { Format, Key, T } from "@/app/goo-studio/_i18n";
+import { formatMoney } from "@/lib/admin-format";
 import { DataTable, EmptyState } from "@/components/admin/DataTable";
 import type { Column } from "@/components/admin/DataTable";
 import { ActiveFilters, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
@@ -91,24 +92,6 @@ function initials(first: string | null, last: string | null, email: string | nul
   return "—";
 }
 
-function fmtDate(ts: number | null | undefined) {
-  if (!ts) return "—";
-  return new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
-function fmtRelative(ts: number | null | undefined) {
-  if (!ts) return "Never";
-  const diff = Date.now() - ts;
-  const mins  = Math.round(diff / 60_000);
-  const hours = Math.round(diff / 3_600_000);
-  const days  = Math.round(diff / 86_400_000);
-  if (mins  < 1)  return "just now";
-  if (mins  < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days  < 30) return `${days}d ago`;
-  return fmtDate(ts);
-}
-
 /** "3 mo", "12 d" — how long since `iso`. */
 function fmtDuration(iso: string): string {
   const days = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
@@ -139,7 +122,7 @@ function renewsAutomatically(s: UserSubscription | null | undefined): boolean {
 }
 
 function describeSubscription(s: UserSubscription): string {
-  return `${s.plan}, ${s.amountUah} ₴/mo, ${s.status.replace("_", " ")}, auto-renew ${s.autoRenew ? "on" : "off"}`;
+  return `${s.plan}, ${formatMoney(s.amountUah, "UAH")}/mo, ${s.status.replace("_", " ")}, auto-renew ${s.autoRenew ? "on" : "off"}`;
 }
 
 /** "a@b.c, d@e.f and 3 more" — for confirm dialogs. */
@@ -183,13 +166,6 @@ function isOverdue(s: UserSubscription | null | undefined): s is UserSubscriptio
   return !!s && s.status === "active" && !!s.currentPeriodEnd && Date.parse(s.currentPeriodEnd) < Date.now();
 }
 
-/** "Sep 10" this year, "Sep 10, 2025" before it. */
-function fmtShortDate(iso: string): string {
-  const d = new Date(iso);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
-}
-
 /** The state worth a badge (ADMIN_DESIGN 5.4): none for an active account in good standing. */
 function statusBadge(u: UserRow, t: T) {
   if (u.banned) return <Badge tone="err">{t("users.badge.banned")}</Badge>;
@@ -200,11 +176,11 @@ function statusBadge(u: UserRow, t: T) {
 }
 
 /**
- * The plan in one line: "Free", "Basic · 399 ₴/mo", "Basic · 399 ₴/mo ·
+ * The plan in one line: "Free", "Basic · ₴399/mo", "Basic · ₴399/mo ·
  * overdue since Sep 10". A paid plan with no subscription behind it was set by
  * hand and says so.
  */
-function PlanCell({ u, t }: { u: UserRow; t: T }) {
+function PlanCell({ u, t, f }: { u: UserRow; t: T; f: Format }) {
   const s = u.subscription;
   const name = PLAN_LABEL[u.plan] ?? u.plan;
   const billed = s && s.status !== "canceled" ? s : null;
@@ -226,9 +202,9 @@ function PlanCell({ u, t }: { u: UserRow; t: T }) {
     billed.status === "past_due"
       ? { text: t("users.sub.pastDue"), tone: "text-[var(--err)]" }
       : billed.status === "pending"
-        ? { text: t("users.sub.pending", { date: fmtShortDate(billed.startedAt) }), tone: "" }
+        ? { text: t("users.sub.pending", { date: f.date(billed.startedAt) }), tone: "" }
         : isOverdue(billed)
-          ? { text: t("users.sub.overdue", { date: fmtShortDate(billed.currentPeriodEnd!) }), tone: "text-[var(--warn)]" }
+          ? { text: t("users.sub.overdue", { date: f.date(billed.currentPeriodEnd) }), tone: "text-[var(--warn)]" }
           : null;
   // On a phone the column keeps to the plan's name, and the badge under the
   // user's name carries the problem.
@@ -237,7 +213,7 @@ function PlanCell({ u, t }: { u: UserRow; t: T }) {
       {billedName}
       <span className="hidden md:inline">
         {" "}
-        · {t("users.sub.perMonth", { amount: billed.amountUah })}
+        · {t("users.sub.perMonth", { amount: f.money(billed.amountUah, "UAH") })}
         {problem && <> · {problem.text}</>}
       </span>
     </span>
@@ -266,6 +242,7 @@ const PENCIL = (
 
 export default function AdminUsersPage() {
   const t = useT();
+  const f = useFormat();
   const confirm = useConfirm();
   const toast = useToast();
   const [currentIsSuperAdmin, setCurrentIsSuperAdmin] = useState(false);
@@ -582,18 +559,18 @@ export default function AdminUsersPage() {
         );
       },
     },
-    { key: "plan", header: t("users.col.plan"), cell: (u) => <PlanCell u={u} t={t} /> },
+    { key: "plan", header: t("users.col.plan"), cell: (u) => <PlanCell u={u} t={t} f={f} /> },
     {
       key: "joined",
       header: t("users.col.joined"),
       hide: "md",
-      cell: (u) => <span className="text-[var(--foreground-muted)]">{fmtDate(u.createdAt)}</span>,
+      cell: (u) => <span className="text-[var(--foreground-muted)]">{f.date(u.createdAt)}</span>,
     },
     {
       key: "active",
       header: t("users.col.lastActive"),
       hide: "md",
-      cell: (u) => <span className="text-[var(--foreground-muted)]">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</span>,
+      cell: (u) => <span className="text-[var(--foreground-muted)]">{f.when(u.lastActiveAt ?? u.lastSignInAt, t("users.never"))}</span>,
     },
   ];
 
@@ -774,6 +751,7 @@ function UserDrawer({
   onDeleted: (id: string) => void;
 }) {
   const confirm = useConfirm();
+  const f = useFormat();
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -982,10 +960,10 @@ function UserDrawer({
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <MetaItem label="Joined"       value={fmtDate(detail.createdAt)} />
-            <MetaItem label="Updated"      value={fmtDate(detail.updatedAt)} />
-            <MetaItem label="Last sign-in" value={fmtRelative(detail.lastSignInAt)} />
-            <MetaItem label="Last active"  value={fmtRelative(detail.lastActiveAt)} />
+            <MetaItem label="Joined"       value={f.date(detail.createdAt)} />
+            <MetaItem label="Updated"      value={f.date(detail.updatedAt)} />
+            <MetaItem label="Last sign-in" value={f.when(detail.lastSignInAt, "Never")} />
+            <MetaItem label="Last active"  value={f.when(detail.lastActiveAt, "Never")} />
             <MetaItem label="2FA"          value={detail.twoFactorEnabled ? "Enabled" : "Disabled"} />
             <MetaItem label="Username"     value={detail.username ?? "—"} />
           </div>
@@ -996,17 +974,17 @@ function UserDrawer({
             {detail.subscription ? (
               <div className="border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-[var(--foreground)]"><span className="capitalize">{detail.subscription.plan}</span> · {detail.subscription.amountUah} ₴/mo</span>
+                  <span className="text-xs text-[var(--foreground)]"><span className="capitalize">{detail.subscription.plan}</span> · {f.money(detail.subscription.amountUah, "UAH")}/mo</span>
                   <span className={`text-[11px] font-medium ${subStatusBadge[detail.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
                     {SUB_STATUS_LABEL[detail.subscription.status] ?? detail.subscription.status.replace("_", " ")}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 px-4 py-3 text-xs">
                   <MetaItem label="Subscribed for" value={fmtDuration(detail.subscription.startedAt)} />
-                  <MetaItem label="Since"          value={fmtDate(Date.parse(detail.subscription.startedAt))} />
+                  <MetaItem label="Since"          value={f.date(detail.subscription.startedAt)} />
                   <MetaItem
                     label={detail.subscription.autoRenew ? "Next charge" : "Access until"}
-                    value={detail.subscription.currentPeriodEnd ? fmtDate(Date.parse(detail.subscription.currentPeriodEnd)) : "—"}
+                    value={f.date(detail.subscription.currentPeriodEnd)}
                   />
                   <MetaItem label="Auto-renew" value={detail.subscription.autoRenew ? "On" : "Off"} />
                   {detail.subscription.maskedPan && (

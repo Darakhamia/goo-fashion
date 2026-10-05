@@ -7,7 +7,7 @@ import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
-import { useT } from "@/app/goo-studio/_i18n";
+import { useFormat, useT } from "@/app/goo-studio/_i18n";
 import type { Key } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
 import type { Column } from "@/components/admin/DataTable";
@@ -80,20 +80,9 @@ function toLocalInputValue(iso: string): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return "";
-  }
-}
-
 export default function AdminBlogPage() {
   const t = useT();
+  const f = useFormat();
   const confirm = useConfirm();
   const toast = useToast();
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -427,7 +416,7 @@ export default function AdminBlogPage() {
       key: "published",
       header: t("blog.col.published"),
       hide: "md",
-      cell: (p) => <span className="text-[var(--foreground-muted)]">{p.isPublished ? formatDate(p.publishedAt) : "—"}</span>,
+      cell: (p) => <span className="text-[var(--foreground-muted)]">{p.isPublished ? f.date(p.publishedAt) : "—"}</span>,
     },
   ];
 
