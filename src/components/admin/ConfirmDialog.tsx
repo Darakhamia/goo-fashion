@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
 import { btn } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
 
 /*
  * The admin's one confirmation (docs/ADMIN_DESIGN.md 5.12), in place of the
@@ -89,6 +90,7 @@ function Dialog({
   const titleId = useId();
   const bodyId = useId();
   const danger = options.tone === "danger";
+  const t = useT();
   useScrollLock(open);
 
   // Focus starts on the safe choice for destructive actions, on the action
@@ -150,7 +152,7 @@ function Dialog({
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <button ref={cancelRef} type="button" onClick={() => onAnswer(false)} className={btn("ghost")}>
-            {options.cancelLabel ?? "Cancel"}
+            {options.cancelLabel ?? t("common.cancel")}
           </button>
           <button
             ref={confirmRef}

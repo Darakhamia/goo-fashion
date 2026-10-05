@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { btn } from "@/app/goo-studio/_ui/recipes";
+import { useT, type Key, type T } from "@/app/goo-studio/_i18n";
 
 interface PromptItem {
   key: string;
@@ -15,10 +16,27 @@ interface PromptItem {
   required: string[];
 }
 
-const CATEGORIES = [
-  { key: "content", label: "Content", description: "Blog & Email" },
-  { key: "image",   label: "Image Gen", description: "Builder output" },
+const CATEGORIES: { key: string; label: Key }[] = [
+  { key: "content", label: "prompts.tab.content" },
+  { key: "image", label: "prompts.tab.image" },
 ];
+
+/** What each prompt is for, in the admin's language; the server's own text is the fallback. */
+const DESCRIPTIONS: Record<string, Key> = {
+  prompt_blog_system: "prompts.desc.prompt_blog_system",
+  prompt_blog_user: "prompts.desc.prompt_blog_user",
+  prompt_blog_brief: "prompts.desc.prompt_blog_brief",
+  prompt_email: "prompts.desc.prompt_email",
+  prompt_image_fidelity: "prompts.desc.prompt_image_fidelity",
+  prompt_image_mannequin: "prompts.desc.prompt_image_mannequin",
+  prompt_image_flatlay: "prompts.desc.prompt_image_flatlay",
+  prompt_image_tryon: "prompts.desc.prompt_image_tryon",
+};
+
+function describe(t: T, item: PromptItem): string {
+  const key = DESCRIPTIONS[item.key];
+  return key ? t(key) : item.description;
+}
 
 function PromptCard({ item, onSave, onReset }: {
   item: PromptItem;
@@ -27,6 +45,7 @@ function PromptCard({ item, onSave, onReset }: {
   onReset: (key: string) => Promise<void>;
 }) {
   const confirm = useConfirm();
+  const t = useT();
   const [text, setText] = useState(item.value ?? item.default);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -50,7 +69,7 @@ function PromptCard({ item, onSave, onReset }: {
       setOk(true);
       setTimeout(() => setOk(false), 2500);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Save failed");
+      setErr(e instanceof Error ? e.message : t("prompts.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -58,9 +77,8 @@ function PromptCard({ item, onSave, onReset }: {
 
   async function handleReset() {
     if (!(await confirm({
-      title: `Сбросить «${item.label}» до дефолтного промта?`,
-      confirmLabel: "Сбросить промт",
-      cancelLabel: "Отмена",
+      title: t("prompts.resetConfirm.title", { label: item.label }),
+      confirmLabel: t("prompts.resetConfirm.action"),
       tone: "danger",
     }))) return;
     setResetting(true); setErr("");
@@ -68,7 +86,7 @@ function PromptCard({ item, onSave, onReset }: {
       await onReset(item.key);
       setText(item.default);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Reset failed");
+      setErr(e instanceof Error ? e.message : t("prompts.resetFailed"));
     } finally {
       setResetting(false);
     }
@@ -84,16 +102,16 @@ function PromptCard({ item, onSave, onReset }: {
             </p>
             {isModified && (
               <span className="text-[11px] font-medium px-2 py-0.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none">
-                Кастом
+                {t("prompts.custom")}
               </span>
             )}
           </div>
           <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
-            {item.description}
+            {describe(t, item)}
           </p>
           {item.required.length > 0 && (
             <p className="text-[12px] text-[var(--foreground-subtle)] leading-relaxed mt-1">
-              Обязательно: <span className="font-mono">{item.required.join(" ")}</span>
+              {t("prompts.required")} <span className="font-mono">{item.required.join(" ")}</span>
             </p>
           )}
         </div>
@@ -112,16 +130,16 @@ function PromptCard({ item, onSave, onReset }: {
         />
         {missing.length > 0 && (
           <p className="text-[12px] text-[var(--warn)] mt-1.5">
-            Не хватает <span className="font-mono">{missing.join(" ")}</span> — без {missing.length > 1 ? "них" : "него"} генерация пойдёт без этих данных.
+            {t("prompts.missing", { count: missing.length, list: missing.join(" ") })}
           </p>
         )}
         {isEmpty && isDirty && (
           <p className="text-[12px] text-[var(--foreground-muted)] mt-1.5">
-            Пустой промт сохранится как сброс до дефолтного.
+            {t("prompts.emptyResets")}
           </p>
         )}
         {err && <p className="text-[12px] text-[var(--err)] mt-1.5">{err}</p>}
-        {ok  && <p className="text-[12px] text-[var(--ok)] mt-1.5">Сохранено.</p>}
+        {ok  && <p className="text-[12px] text-[var(--ok)] mt-1.5">{t("common.saved")}</p>}
       </div>
 
       <div className="px-4 py-3 border-t border-[var(--border)] flex items-center gap-2">
@@ -131,14 +149,14 @@ function PromptCard({ item, onSave, onReset }: {
           className={btn("primary")}
         >
           {saving && <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />}
-          {saving ? "Сохранение…" : "Сохранить"}
+          {t(saving ? "common.saving" : "common.save")}
         </button>
         {isDirty && !saving && (
           <button
             onClick={() => setText(item.value ?? item.default)}
             className={btn("ghost")}
           >
-            Отмена
+            {t("common.cancel")}
           </button>
         )}
         {isModified && (
@@ -147,7 +165,7 @@ function PromptCard({ item, onSave, onReset }: {
             disabled={resetting}
             className={`${btn("ghost")} ml-auto`}
           >
-            {resetting ? "Сброс…" : "Сброс"}
+            {t(resetting ? "common.resetting" : "common.reset")}
           </button>
         )}
       </div>
@@ -156,9 +174,11 @@ function PromptCard({ item, onSave, onReset }: {
 }
 
 export default function PromptsPage() {
+  const t = useT();
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadErr, setLoadErr] = useState("");
+  // Which failure, not its text: the message follows the admin language.
+  const [loadErr, setLoadErr] = useState<"" | "load" | "network">("");
   const [activeTab, setActiveTab] = useState("content");
 
   useEffect(() => { load(); }, []);
@@ -167,10 +187,10 @@ export default function PromptsPage() {
     setLoading(true); setLoadErr("");
     try {
       const res = await fetch("/api/admin/prompts");
-      if (!res.ok) { setLoadErr("Не удалось загрузить промты"); return; }
+      if (!res.ok) { setLoadErr("load"); return; }
       setPrompts(await res.json());
     } catch {
-      setLoadErr("Ошибка сети");
+      setLoadErr("network");
     } finally {
       setLoading(false);
     }
@@ -183,7 +203,7 @@ export default function PromptsPage() {
       body: JSON.stringify({ key, value }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(j.error ?? "Save failed");
+    if (!res.ok) throw new Error(j.error ?? t("prompts.saveFailed"));
     // The server stores the trimmed text, or nothing at all for an empty one.
     const stored = j.reset ? null : value.trim();
     setPrompts((prev) => prev.map((p) => p.key === key ? { ...p, value: stored } : p));
@@ -194,7 +214,7 @@ export default function PromptsPage() {
     const res = await fetch(`/api/admin/prompts?key=${encodeURIComponent(key)}`, { method: "DELETE" });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      throw new Error(j.error ?? "Reset failed");
+      throw new Error(j.error ?? t("prompts.resetFailed"));
     }
     setPrompts((prev) => prev.map((p) => p.key === key ? { ...p, value: null } : p));
   }
@@ -206,10 +226,10 @@ export default function PromptsPage() {
     <div className="max-w-5xl">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
-          Prompts
+          {t("nav.prompts")}
         </h1>
         <p className="text-xs text-[var(--foreground-muted)] mt-1">
-          Промты генерации постов блога, AI-писем и картинок образа. Изменения применяются сразу без редеплоя.
+          {t("prompts.subtitle")}
         </p>
       </div>
 
@@ -227,7 +247,7 @@ export default function PromptsPage() {
                   : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
               }`}
             >
-              {cat.label}
+              {t(cat.label)}
               {count > 0 && (
                 <span className="text-[11px] px-1.5 py-0.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none tabular-nums">
                   {count}
@@ -241,10 +261,10 @@ export default function PromptsPage() {
       {loading && (
         <div className="flex items-center gap-2 text-[var(--foreground-subtle)]">
           <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-          <span className="text-[11px]">Загрузка…</span>
+          <span className="text-[11px]">{t("common.loading")}</span>
         </div>
       )}
-      {loadErr && <p className="text-[11px] text-[var(--err)]">{loadErr}</p>}
+      {loadErr && <p className="text-[11px] text-[var(--err)]">{t(loadErr === "load" ? "prompts.loadFailed" : "common.networkError")}</p>}
 
       {!loading && !loadErr && (
         <div className={`grid gap-4 ${activeTab === "image" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>

@@ -14,6 +14,7 @@ import { bareHost, pastedUrl } from "@/lib/url";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -657,6 +658,7 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const confirm = useConfirm();
   const toast = useToast();
+  const t = useT();
 
   const [filterGroup, setFilterGroup] = useState<string>("");
   const [filterSubcategory, setFilterSubcategory] = useState<string>("");
@@ -687,16 +689,16 @@ export default function AdminProductsPage() {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        toast.err(`Не удалось сохранить кадрирование${json.error ? `: ${json.error}` : ""}`);
+        toast.err(json.error ? t("crop.saveFailedWith", { error: json.error }) : t("crop.saveFailed"));
         return;
       }
       setProducts((prev) =>
         prev.map((p) => (p.id === cropProduct.id ? { ...p, cropData } : p))
       );
-      toast.ok("Кадрирование сохранено.");
+      toast.ok(t("crop.saved"));
       setCropProduct(null);
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Не удалось сохранить кадрирование");
+      toast.err(e instanceof Error ? e.message : t("crop.saveFailed"));
     } finally {
       setCropSaving(false);
     }
@@ -712,15 +714,15 @@ export default function AdminProductsPage() {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        toast.err(`Ошибка сброса${json.error ? `: ${json.error}` : ""}`);
+        toast.err(json.error ? t("crop.clearFailedWith", { error: json.error }) : t("crop.clearFailed"));
         return;
       }
       setProducts((prev) =>
         prev.map((p) => (p.id === product.id ? { ...p, cropData: undefined } : p))
       );
-      toast.ok("Кадрирование сброшено.");
+      toast.ok(t("crop.cleared"));
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Ошибка сброса");
+      toast.err(e instanceof Error ? e.message : t("crop.clearFailed"));
     }
   };
 
@@ -2640,9 +2642,9 @@ export default function AdminProductsPage() {
                         <button
                           onClick={() => setCropProduct(product)}
                           disabled={!canWrite}
-                          title={product.cropData ? "Изменить кадрирование" : "Настроить кадрирование"}
+                          title={t(product.cropData ? "crop.edit" : "crop.setUp")}
                           className={BTN_ICON}
-                          aria-label="Crop image"
+                          aria-label={t("crop.title")}
                         >
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={product.cropData ? "text-[var(--foreground)]" : undefined}>
                             <path d="M3 1v9a1 1 0 001 1h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -3230,14 +3232,14 @@ export default function AdminProductsPage() {
           >
             {/* Заголовок с кнопкой сброса */}
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-4">
-              <h2 className="font-display text-xl font-light text-[var(--foreground)] min-w-0">Кадрирование изображения</h2>
+              <h2 className="font-display text-xl font-light text-[var(--foreground)] min-w-0">{t("crop.title")}</h2>
               <div className="flex items-center gap-3 ml-auto">
                 {cropProduct.cropData && canWrite && (
                   <button
                     onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
                     className={btn("danger")}
                   >
-                    Удалить кадрирование
+                    {t("crop.remove")}
                   </button>
                 )}
                 <button

@@ -9,34 +9,38 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useSetting, writeSetting } from "./_ui/settings";
 import { ConfirmProvider } from "@/components/admin/ConfirmDialog";
 import { ToastProvider } from "@/components/admin/Toast";
+import { LANGS, setLang, useLang, useT, type Key } from "./_i18n";
 
+/** The wordmark: a name, not interface text, so it stays out of the dictionary. */
+const BRAND = "GOO";
 const NAV_ORDER_KEY = "goo-admin-nav-order";
 const NAV_COLLAPSED_KEY = "goo-admin-nav-collapsed";
 const ADMIN_THEME_KEY = "goo-admin-theme";
 
 type NavItem = {
   href: string;
-  label: string;
+  /** Dictionary key of the item's name (_i18n/en.ts). */
+  label: Key;
   icon: React.ReactNode;
   superAdminOnly?: boolean;
   category: string;
 };
 
 const NAV_CATEGORIES = [
-  { key: "overview", label: "Overview" },
-  { key: "catalog", label: "Catalog" },
-  { key: "quality", label: "Quality" },
-  { key: "imports", label: "Import" },
-  { key: "content", label: "Content" },
-  { key: "users", label: "Users" },
-  { key: "data", label: "Data" },
-  { key: "system", label: "System" },
-] as const;
+  { key: "overview", label: "nav.group.overview" },
+  { key: "catalog", label: "nav.group.catalog" },
+  { key: "quality", label: "nav.group.quality" },
+  { key: "imports", label: "nav.group.imports" },
+  { key: "content", label: "nav.group.content" },
+  { key: "users", label: "nav.group.users" },
+  { key: "data", label: "nav.group.data" },
+  { key: "system", label: "nav.group.system" },
+] as const satisfies readonly { key: string; label: Key }[];
 
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/goo-studio",
-    label: "Dashboard",
+    label: "nav.dashboard",
     category: "overview",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -49,7 +53,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/products",
-    label: "Products",
+    label: "nav.products",
     category: "catalog",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -62,7 +66,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/outfits",
-    label: "Outfits",
+    label: "nav.outfits",
     category: "catalog",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -75,7 +79,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/brands",
-    label: "Brands",
+    label: "nav.brands",
     category: "catalog",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -85,7 +89,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/retailers",
-    label: "Retailers",
+    label: "nav.retailers",
     category: "catalog",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -96,7 +100,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/audit",
-    label: "Audit",
+    label: "nav.audit",
     category: "quality",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -108,7 +112,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/duplicates",
-    label: "Duplicates",
+    label: "nav.duplicates",
     category: "quality",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -119,7 +123,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/catalogue-check",
-    label: "AI check",
+    label: "nav.catalogueCheck",
     category: "quality",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -129,7 +133,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/categories",
-    label: "Categories",
+    label: "nav.categories",
     category: "catalog",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -140,7 +144,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/blog",
-    label: "Blog",
+    label: "nav.blog",
     category: "content",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -151,7 +155,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/analytics",
-    label: "Analytics",
+    label: "nav.analytics",
     category: "data",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -162,7 +166,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/subscriptions",
-    label: "Subscriptions",
+    label: "nav.subscriptions",
     category: "data",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -174,7 +178,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/users",
-    label: "Users",
+    label: "nav.users",
     category: "users",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -189,7 +193,7 @@ const NAV_ITEMS: NavItem[] = [
   // 2026): it has no menu entry, the page stays at /goo-studio/waitlist.
   {
     href: "/goo-studio/email",
-    label: "Email",
+    label: "nav.email",
     category: "users",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -200,7 +204,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/import",
-    label: "Import",
+    label: "nav.import",
     category: "imports",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -212,7 +216,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/parser",
-    label: "Parser",
+    label: "nav.parser",
     category: "imports",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -223,7 +227,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/settings",
-    label: "Settings",
+    label: "nav.settings",
     category: "system",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -234,7 +238,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/prompts",
-    label: "Prompts",
+    label: "nav.prompts",
     category: "content",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -244,7 +248,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/goo-studio/activity",
-    label: "Activity",
+    label: "nav.activity",
     category: "system",
     superAdminOnly: true,
     icon: (
@@ -285,8 +289,8 @@ const THEME_BOOT_SCRIPT = `(function(){try{if(localStorage.getItem(${JSON.string
 
 // Nested pages without a menu entry of their own; shown as a third breadcrumb
 // segment under their parent menu item.
-const SUBPAGE_TITLES: Record<string, string> = {
-  "/goo-studio/parser/collect": "Collect",
+const SUBPAGE_TITLES: Record<string, Key> = {
+  "/goo-studio/parser/collect": "nav.sub.collect",
 };
 
 /** Menu item a path belongs to: the longest href it equals or sits under. */
@@ -333,13 +337,14 @@ function parseCollapsedGroups(saved: string | null): string[] {
 
 /** Marks a menu item only super admins see (it was an unexplained "SA" badge). */
 function SuperAdminMark() {
+  const t = useT();
   return (
-    <span title="Visible to super admins only" className="inline-flex items-center text-[var(--foreground-subtle)] flex-shrink-0">
+    <span title={t("shell.superAdminOnly")} className="inline-flex items-center text-[var(--foreground-subtle)] flex-shrink-0">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect x="3.5" y="7" width="9" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
         <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       </svg>
-      <span className="sr-only">Super admins only</span>
+      <span className="sr-only">{t("shell.superAdminOnly.short")}</span>
     </span>
   );
 }
@@ -358,6 +363,8 @@ function GripIcon() {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const t = useT();
+  const lang = useLang();
   const savedTheme = useSetting(ADMIN_THEME_KEY);
   const theme: "light" | "dark" = savedTheme === "dark" ? "dark" : "light";
   const savedNavOrder = useSetting(NAV_ORDER_KEY);
@@ -528,7 +535,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
    * drop from 32px to 28px so the whole menu fits a 1440×900 screen.
    */
   const renderMenu = (compact: boolean, onNavigate?: () => void) => (
-    <nav aria-label="Admin sections" className="flex-1 pt-1 pb-4 flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain">
+    <nav aria-label={t("shell.nav")} className="flex-1 pt-1 pb-4 flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain">
       {NAV_CATEGORIES.map((cat) => {
         const items = navItems.filter((i) => i.category === cat.key);
         if (items.length === 0) return null;
@@ -554,7 +561,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     aria-controls={groupId}
                     className="group/fold w-full min-h-8 md:min-h-0 flex items-center gap-1.5 px-3 py-0.5 rounded-lg text-left text-[11px] leading-4 tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                   >
-                    <span className="flex-1">{cat.label}</span>
+                    <span className="flex-1">{t(cat.label)}</span>
                     <svg
                       width="10"
                       height="10"
@@ -583,7 +590,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     href={item.href}
                     onClick={onNavigate}
                     aria-current={isActive ? "page" : undefined}
-                    title={compact ? item.label : undefined}
+                    title={compact ? t(item.label) : undefined}
                     className={`flex items-center transition-colors rounded-lg ${
                       compact
                         ? "justify-center px-0 py-3 md:py-2"
@@ -605,7 +612,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           transition={{ duration: 0.12 }}
                           className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden whitespace-nowrap"
                         >
-                          {item.label}
+                          {t(item.label)}
                           {item.superAdminOnly && <SuperAdminMark />}
                         </motion.span>
                       )}
@@ -627,9 +634,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       className="flex items-center gap-2.5 pl-5 pr-2 flex-1 min-w-0 whitespace-nowrap"
     >
       <span className="font-display text-xl tracking-[0.2em] uppercase text-[var(--foreground)] hover:opacity-60 transition-opacity">
-        GOO
+        {BRAND}
       </span>
-      <span className="text-[12px] text-[var(--foreground-muted)]">Studio</span>
+      <span className="text-[12px] text-[var(--foreground-muted)]">{t("shell.studio")}</span>
     </Link>
   );
 
@@ -639,6 +646,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div
       suppressHydrationWarning
+      lang={lang}
       className={`flex h-dvh overflow-hidden bg-[var(--background)] text-[var(--foreground)] ${THEME_CLASS[theme]}`}
     >
       {/* Saved dark theme before the first paint — see THEME_BOOT_SCRIPT. */}
@@ -669,8 +677,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </AnimatePresence>
           <button
             onClick={() => setCollapsed((c) => !c)}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={t(collapsed ? "shell.sidebar.expand" : "shell.sidebar.collapse")}
+            aria-label={t(collapsed ? "shell.sidebar.expand" : "shell.sidebar.collapse")}
             className={`flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 rounded-lg hover:bg-[var(--fg-overlay-05)] ${
               collapsed ? "w-[60px] h-14" : "w-8 h-8 mr-2"
             }`}
@@ -703,7 +711,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               ref={menuButtonRef}
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              aria-label="Open menu"
+              aria-label={t("shell.menu.open")}
               aria-expanded={mobileNavOpen}
               aria-controls="admin-mobile-nav"
               className="md:hidden -ml-2 w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
@@ -715,17 +723,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* The page names itself in its own heading. The bar adds the
                 section only where that helps: on nested pages, and on phones,
                 where the menu is closed. */}
-            <nav aria-label="Breadcrumb" className="flex items-center gap-2 min-w-0 text-[13px]">
+            <nav aria-label={t("shell.breadcrumb")} className="flex items-center gap-2 min-w-0 text-[13px]">
               {subpageTitle && activeItem ? (
                 <>
                   <Link href={activeItem.href} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors truncate">
-                    {activeItem.label}
+                    {t(activeItem.label)}
                   </Link>
                   <span className="text-[var(--border-strong)]" aria-hidden="true">/</span>
-                  <span className="text-[var(--foreground)] truncate" aria-current="page">{subpageTitle}</span>
+                  <span className="text-[var(--foreground)] truncate" aria-current="page">{t(subpageTitle)}</span>
                 </>
               ) : (
-                activeItem && <span className="md:hidden font-medium text-[var(--foreground)] truncate">{activeItem.label}</span>
+                activeItem && <span className="md:hidden font-medium text-[var(--foreground)] truncate">{t(activeItem.label)}</span>
               )}
             </nav>
           </div>
@@ -738,7 +746,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               aria-haspopup="menu"
               aria-expanded={accountOpen}
               aria-controls="admin-account-menu"
-              aria-label="Account menu"
+              aria-label={t("shell.account.button")}
               className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold bg-[var(--foreground)] text-[var(--background)] hover:opacity-85 transition-opacity"
             >
               {initials || (
@@ -752,7 +760,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div
                 id="admin-account-menu"
                 role="menu"
-                aria-label="Account"
+                aria-label={t("shell.account.menu")}
                 className="absolute right-0 top-full mt-2 z-50 w-64 rounded-xl border border-[var(--border)] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
                 style={{ background: "var(--surface)" }}
               >
@@ -763,7 +771,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <p className="text-[13px] font-medium text-[var(--foreground)] truncate">{user.name}</p>
                       {isSuperAdmin && (
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--warn-bg)] text-[var(--warn)] flex-shrink-0">
-                          Super admin
+                          {t("shell.account.superAdmin")}
                         </span>
                       )}
                     </div>
@@ -781,8 +789,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       </>
                     )}
                   </svg>
-                  {theme === "light" ? "Dark theme" : "Light theme"}
+                  {t(theme === "light" ? "shell.account.darkTheme" : "shell.account.lightTheme")}
                 </button>
+                {/* Language: the admin switches at once, no reload; the menu
+                    stays open so the change is seen where it was made. */}
+                <div role="group" aria-label={t("shell.account.language")} className="my-1 py-1 border-y border-[var(--border)]">
+                  <p className="px-3 pt-1 pb-1 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]" aria-hidden="true">
+                    {t("shell.account.language")}
+                  </p>
+                  {LANGS.map((l) => (
+                    <button
+                      key={l.code}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={lang === l.code}
+                      lang={l.code}
+                      onClick={() => setLang(l.code)}
+                      className={menuItemCls}
+                    >
+                      <span className="w-4 flex justify-center text-[var(--foreground)]" aria-hidden="true">
+                        {lang === l.code && (
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M2.5 6.5L5 9L9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </span>
+                      {l.name}
+                    </button>
+                  ))}
+                </div>
                 <button
                   type="button"
                   role="menuitem"
@@ -796,13 +831,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                     <path d="M11 2L13 4L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Customize menu
+                  {t("shell.account.customize")}
                 </button>
                 <Link href="/" role="menuitem" className={menuItemCls}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="text-[var(--foreground-muted)]">
                     <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Back to site
+                  {t("shell.account.backToSite")}
                 </Link>
               </div>
             )}
@@ -836,7 +871,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             id="admin-mobile-nav"
             role="dialog"
             aria-modal="true"
-            aria-label="Admin menu"
+            aria-label={t("shell.menu.dialog")}
             initial={{ x: -280, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -280, opacity: 0 }}
@@ -849,7 +884,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <button
                 type="button"
                 onClick={dismissMobileNav}
-                aria-label="Close menu"
+                aria-label={t("shell.menu.close")}
                 autoFocus
                 className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
               >
@@ -889,11 +924,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {/* Header */}
               <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between flex-shrink-0">
-                <h2 id="customize-menu-title" className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Customize menu</h2>
+                <h2 id="customize-menu-title" className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{t("shell.customize.title")}</h2>
                 <button
                   onClick={() => setCustomizing(false)}
                   className="w-10 h-10 md:w-auto md:h-auto md:p-1.5 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors rounded-lg hover:bg-[var(--background)]"
-                  aria-label="Close"
+                  aria-label={t("common.close")}
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -903,7 +938,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               {/* Hint */}
               <p className="px-5 pt-3 pb-1 text-[12px] text-[var(--foreground-muted)]">
-                Drag items or use the arrows to reorder them within a group. Changes save automatically.
+                {t("shell.customize.hint")}
               </p>
 
               {/* Grouped list — the sidebar keeps groups in a fixed order, so
@@ -917,7 +952,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   return (
                     <div key={cat.key}>
                       <p className="px-2 pb-1 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
-                        {cat.label}
+                        {t(cat.label)}
                       </p>
                       <ul className="flex flex-col gap-1">
                         {items.map((item, index) => {
@@ -949,7 +984,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                               </span>
                               <span className="text-[var(--foreground-muted)] flex-shrink-0">{item.icon}</span>
                               <span className="text-[13px] text-[var(--foreground)] flex-1 min-w-0 truncate">
-                                {item.label}
+                                {t(item.label)}
                               </span>
                               {item.superAdminOnly && <SuperAdminMark />}
                               {sortable && (
@@ -958,7 +993,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     type="button"
                                     onClick={() => moveItem(item.href, items[index - 1].href)}
                                     disabled={index === 0}
-                                    aria-label={`Move ${item.label} up`}
+                                    aria-label={t("shell.customize.moveUp", { item: t(item.label) })}
                                     className="w-10 h-10 md:w-auto md:h-auto md:p-1 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                   >
                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -969,7 +1004,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     type="button"
                                     onClick={() => moveItem(item.href, items[index + 1].href)}
                                     disabled={index === items.length - 1}
-                                    aria-label={`Move ${item.label} down`}
+                                    aria-label={t("shell.customize.moveDown", { item: t(item.label) })}
                                     className="w-10 h-10 md:w-auto md:h-auto md:p-1 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                   >
                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -993,13 +1028,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   onClick={resetOrder}
                   className="py-3 md:py-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
-                  Reset to default
+                  {t("shell.customize.reset")}
                 </button>
                 <button
                   onClick={() => setCustomizing(false)}
                   className="text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] px-4 py-3 md:py-0 md:h-8 hover:opacity-85 transition-opacity rounded-lg"
                 >
-                  Done
+                  {t("shell.customize.done")}
                 </button>
               </div>
             </motion.div>

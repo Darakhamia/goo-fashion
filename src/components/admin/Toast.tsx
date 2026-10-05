@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useT } from "@/app/goo-studio/_i18n";
 
 /*
  * The admin's one toast (docs/ADMIN_DESIGN.md 5.12, CEO decision Р14): a
@@ -67,6 +68,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastView({ tone, message, onDismiss }: { tone: Tone; message: string; onDismiss: () => void }) {
+  const t = useT();
   const [paused, setPaused] = useState(false);
   const remaining = useRef(LIFETIME[tone]);
 
@@ -95,8 +97,8 @@ function ToastView({ tone, message, onDismiss }: { tone: Tone; message: string; 
       <button
         type="button"
         onClick={onDismiss}
-        aria-label="Dismiss"
-        title="Dismiss"
+        aria-label={t("common.dismiss")}
+        title={t("common.dismiss")}
         className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
