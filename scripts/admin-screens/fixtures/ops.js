@@ -441,8 +441,8 @@ module.exports = {
         await page.locator("textarea").first().fill(
           "# Autumn is here\n\nWe added 659 new pieces this month, from knitwear to outerwear.\n\n## What's new\n\n- **Autumn edit** — hand-picked layers for cooler days\n- The AI stylist now remembers your sizes\n- Save looks to your profile\n\nSee you on GOO,\nThe GOO team"
         );
-        await page.getByRole("button", { name: /^Send to 14 recipients$/ }).click();
-        await page.getByText(/people\?/).waitFor({ timeout: 10000 });
+        await page.getByRole("button", { name: /^(Send to 14 recipients|Отправить 14 получателям)$/ }).click();
+        await page.getByText(/people\?|получател(ю|ям)\?/).waitFor({ timeout: 10000 });
       },
     },
     {

@@ -70,6 +70,8 @@ export const ru: Partial<Record<Key, Message>> = {
   "nav.prompts": "Промты",
   "nav.activity": "Журнал",
   "nav.sub.collect": "Сбор каталога",
+  "nav.sub.product": "Товар",
+  "nav.sub.newProduct": "Новый товар",
 
   // ── Shell ─────────────────────────────────────────────────────────────────
   "shell.nav": "Разделы админки",

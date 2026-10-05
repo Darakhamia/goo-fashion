@@ -1137,4 +1137,25 @@ export async function checkStatus(): Promise<CheckStatus> {
   return base;
 }
 
+/**
+ * What the check holds about one product, for its admin page (GS6-1): the
+ * fixes waiting for a decision and the latest ones it wrote. Null before the
+ * migration, so the page can leave the block out instead of showing "none".
+ */
+export async function productFixes(productId: string): Promise<{ suggested: FixView[]; applied: FixView[] } | null> {
+  const client = db();
+  const columns = "id, run_id, product_id, field, before, after, reason, confidence, status, source, created_at, products(name, brand)";
+  const [suggested, applied, groups] = await Promise.all([
+    client.from("catalogue_check_fixes").select(columns).eq("product_id", productId).eq("status", "suggested").order("id", { ascending: false }).limit(20),
+    client.from("catalogue_check_fixes").select(columns).eq("product_id", productId).eq("status", "applied").order("id", { ascending: false }).limit(5),
+    getAllColorGroups(),
+  ]);
+  if (suggested.error || applied.error) return null;
+  const groupName = new Map(groups.map((g) => [g.id, g.name]));
+  return {
+    suggested: ((suggested.data ?? []) as Record<string, unknown>[]).map((r) => toFixView(r, groupName)),
+    applied: ((applied.data ?? []) as Record<string, unknown>[]).map((r) => toFixView(r, groupName)),
+  };
+}
+
 export { NotMigrated };

@@ -296,6 +296,14 @@ const SUBPAGE_TITLES: Record<string, Key> = {
   "/goo-studio/parser/collect": "nav.sub.collect",
 };
 
+/** The same, for pages under a path: a product's own page (GS6-1). */
+function subpageTitleFor(pathname: string): Key | undefined {
+  if (SUBPAGE_TITLES[pathname]) return SUBPAGE_TITLES[pathname];
+  if (pathname === "/goo-studio/products/new") return "nav.sub.newProduct";
+  if (pathname.startsWith("/goo-studio/products/")) return "nav.sub.product";
+  return undefined;
+}
+
 /** Menu item a path belongs to: the longest href it equals or sits under. */
 function navItemFor(pathname: string): NavItem | undefined {
   let match: NavItem | undefined;
@@ -482,7 +490,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     writeSetting(ADMIN_THEME_KEY, theme === "light" ? "dark" : "light");
 
   const activeItem = navItemFor(pathname);
-  const subpageTitle = SUBPAGE_TITLES[pathname];
+  const subpageTitle = subpageTitleFor(pathname);
 
   // The browser tab names the page in the admin's language (GS4-7):
   // "Collect · Parser · GOO Admin". The server layouts give the same title in

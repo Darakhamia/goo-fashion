@@ -76,6 +76,8 @@ export const en = {
   "nav.prompts": "Prompts",
   "nav.activity": "Activity",
   "nav.sub.collect": "Collect",
+  "nav.sub.product": "Product",
+  "nav.sub.newProduct": "New product",
 
   // ── Shell ─────────────────────────────────────────────────────────────────
   "shell.nav": "Admin sections",

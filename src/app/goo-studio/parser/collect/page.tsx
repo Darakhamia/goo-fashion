@@ -27,6 +27,7 @@
  * pressed cannot land one more product after it.
  */
 
+import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { CrawlItemResult } from "@/lib/server/parser/types";
@@ -526,12 +527,12 @@ export default function CollectPage() {
                   <span className="text-[var(--foreground-muted)]">{t("parser.count.updated", { count: updated })}</span>
                   {failed > 0 && <span className="text-[var(--warn)]">{t("parser.count.skipped", { count: failed })}</span>}
                   {!running && results.length > 0 && (
-                    <a
+                    <Link
                       href="/goo-studio/products"
                       className="underline hover:no-underline text-[var(--foreground)]"
                     >
                       {t("parser.viewProducts")}
-                    </a>
+                    </Link>
                   )}
                 </div>
               </div>

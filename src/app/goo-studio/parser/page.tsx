@@ -535,7 +535,7 @@ function CollectTab({
                 <span className="text-[var(--foreground-muted)]">{t("parser.count.updated", { count: updated })}</span>
                 {failed > 0 && <span className="text-[var(--warn)]">{t("parser.count.skipped", { count: failed })}</span>}
                 {(phase === "done" || phase === "stopped") && (
-                  <a href="/goo-studio/products" className="underline hover:no-underline text-[var(--foreground)]">{t("parser.viewProducts")}</a>
+                  <Link href="/goo-studio/products" className="underline hover:no-underline text-[var(--foreground)]">{t("parser.viewProducts")}</Link>
                 )}
               </div>
             </div>
@@ -1128,7 +1128,7 @@ function SingleProductEditor({
                 {t("parser.openProduct")}
               </a>
             )}
-            <a href="/goo-studio/products" className="underline hover:no-underline">{t("parser.allProducts")}</a>
+            <Link href="/goo-studio/products" className="underline hover:no-underline">{t("parser.allProducts")}</Link>
           </span>
         )}
         {imported && importDetails(imported, t) && (
@@ -1223,7 +1223,7 @@ function ProductGrid({
               ]
                 .filter(Boolean)
                 .join(" · ")}
-              <a href="/goo-studio/products" className="underline hover:no-underline ml-2">{t("parser.grid.view")}</a>
+              <Link href="/goo-studio/products" className="underline hover:no-underline ml-2">{t("parser.grid.view")}</Link>
             </span>
           )}
           <button onClick={importSelected} disabled={importing || !selected.size} className={btn("primary")}>
