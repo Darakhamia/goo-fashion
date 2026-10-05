@@ -1,9 +1,22 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON } from "../_ui/recipes";
+import { PageHeader, PLUS } from "@/components/admin/PageHeader";
+import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
+import { SearchField } from "@/components/admin/FilterBar";
+import { RowMenu, type MenuItem } from "@/components/admin/Menu";
+import { SidePanel } from "@/components/admin/SidePanel";
+import { btn, BTN_ICON_SM, FIELD_LABEL, INPUT } from "../_ui/recipes";
+import { useT } from "../_i18n";
+
+/*
+ * Brands (docs/ADMIN_DESIGN.md §6, mockup "Brands", GS4-12): the directory
+ * product autocomplete draws on, and the logo shown beside the store of the
+ * same name in "Where to buy". A brand is added in the side panel; a row's
+ * logo and its deletion are the row's actions.
+ */
 
 interface Brand {
   name: string;
@@ -11,17 +24,74 @@ interface Brand {
 }
 
 /** Same ceiling /api/admin/brand-logo enforces; checked here to fail before the upload. */
-const LOGO_MAX_BYTES = 5 * 1024 * 1024;
+const LOGO_MAX_MB = 5;
+const LOGO_MAX_BYTES = LOGO_MAX_MB * 1024 * 1024;
 
-const inputCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)] w-full";
+/** Why the list did not load: the server's own words, or its HTTP status. */
+type LoadError = { text?: string; status?: number };
 
-const errorMessage = (e: unknown) => (e instanceof Error && e.message ? e.message : "Could not reach the server.");
+/** "ZA" for Zara, "AO" for adidas Originals, "AP" for A.P.C.: what stands in for a missing logo. */
+function initials(name: string): string {
+  const words = name
+    .split(/\s+/)
+    .map((w) => [...w].filter((c) => /[\p{L}\p{N}]/u.test(c)))
+    .filter((w) => w.length > 0);
+  const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? []).slice(0, 2).join("");
+  return letters.toUpperCase();
+}
+
+/**
+ * The logo in the row's 40px tile (56px on a phone's card). White behind it
+ * on purpose, like a product photo: it is how the storefront's store chip
+ * shows it. Without a logo, the initials in a dashed tile.
+ */
+function LogoTile({ brand, size = "md" }: { brand: Brand; size?: "md" | "lg" }) {
+  const t = useT();
+  const box = size === "lg" ? "w-14 h-14 rounded-lg" : "w-10 h-10 rounded-md";
+  if (!brand.logoUrl) {
+    return (
+      <span
+        title={t("brands.noLogo")}
+        className={`${box} flex-shrink-0 inline-flex items-center justify-center border border-dashed border-[var(--border-strong)] text-[11px] font-semibold text-[var(--foreground-muted)]`}
+      >
+        <span aria-hidden="true">{initials(brand.name)}</span>
+      </span>
+    );
+  }
+  const px = size === "lg" ? 56 : 40;
+  return (
+    <span className={`${box} flex-shrink-0 overflow-hidden inline-flex items-center justify-center bg-white border border-[var(--border)]`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={brand.logoUrl}
+        alt={t("brands.logoAlt", { name: brand.name })}
+        width={px}
+        height={px}
+        className="object-contain w-full h-full p-1"
+      />
+    </span>
+  );
+}
+
+const TRASH = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path
+      d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 export default function AdminBrandsPage() {
+  const t = useT();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState<LoadError | null>(null);
+  /** The "Add brand" form is open in the side panel. */
+  const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
   // Guards against a second Enter landing before the re-render that disables the form.
@@ -34,20 +104,23 @@ export default function AdminBrandsPage() {
   const confirm = useConfirm();
   const toast = useToast();
 
+  /** A failed request in the words of the error, or "could not reach the server". */
+  const failure = (e: unknown) => (e instanceof Error && e.message ? e.message : t("brands.unreachable"));
+
   const fetchBrands = async () => {
     setLoading(true);
-    setLoadError("");
+    setLoadError(null);
     try {
       const res = await fetch("/api/brands", { cache: "no-store" });
       const data = await res.json().catch(() => null);
       if (!res.ok || !Array.isArray(data)) {
-        setLoadError(data?.error || `Could not load brands (HTTP ${res.status}).`);
+        setLoadError({ text: data?.error, status: res.status });
         setBrands([]);
         return;
       }
       setBrands(data as Brand[]);
     } catch (e) {
-      setLoadError(errorMessage(e));
+      setLoadError({ text: e instanceof Error ? e.message : undefined });
       setBrands([]);
     } finally {
       setLoading(false);
@@ -56,11 +129,16 @@ export default function AdminBrandsPage() {
 
   useEffect(() => { fetchBrands(); }, []);
 
+  const openAdd = () => {
+    setNewName("");
+    setAddOpen(true);
+  };
+
   const handleAdd = async () => {
     const name = newName.trim();
     if (!name || savingRef.current) return;
     if (brands.some((b) => b.name.toLowerCase() === name.toLowerCase())) {
-      toast.err("Brand already exists.");
+      toast.err(t("brands.exists"));
       return;
     }
     savingRef.current = true;
@@ -73,16 +151,17 @@ export default function AdminBrandsPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.err(json.error || `Could not add the brand (HTTP ${res.status}).`);
+        toast.err(json.error || t("brands.addFailed", { status: res.status }));
         return;
       }
       setBrands((prev) =>
         [...prev, { name: json.name ?? name, logoUrl: null }].sort((a, b) => a.name.localeCompare(b.name))
       );
       setNewName("");
-      toast.ok("Brand added.");
+      setAddOpen(false);
+      toast.ok(t("brands.added"));
     } catch (e) {
-      toast.err(errorMessage(e));
+      toast.err(failure(e));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -90,19 +169,19 @@ export default function AdminBrandsPage() {
   };
 
   const handleDelete = async (name: string) => {
-    if (!(await confirm({ title: `Delete brand "${name}"?`, confirmLabel: "Delete brand", tone: "danger" }))) return;
+    if (!(await confirm({ title: t("brands.confirm.delete", { name }), confirmLabel: t("brands.confirm.deleteAction"), tone: "danger" }))) return;
     setDeletingName(name);
     try {
       const res = await fetch(`/api/brands/${encodeURIComponent(name)}`, { method: "DELETE" });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        toast.err(json.error || `Could not delete the brand (HTTP ${res.status}).`);
+        toast.err(json.error || t("brands.deleteFailed", { status: res.status }));
         return;
       }
       setBrands((prev) => prev.filter((b) => b.name !== name));
-      toast.ok("Brand deleted.");
+      toast.ok(t("brands.deleted"));
     } catch (e) {
-      toast.err(errorMessage(e));
+      toast.err(failure(e));
     } finally {
       setDeletingName(null);
     }
@@ -119,11 +198,11 @@ export default function AdminBrandsPage() {
 
   const handleLogoUpload = async (name: string, file: File) => {
     if (!file.type.startsWith("image/")) {
-      toast.err("The logo must be an image file.");
+      toast.err(t("brands.logo.notImage"));
       return;
     }
     if (file.size > LOGO_MAX_BYTES) {
-      toast.err("The logo must be 5 MB or smaller.");
+      toast.err(t("brands.logo.tooBig", { mb: LOGO_MAX_MB }));
       return;
     }
     setLogoBusyName(name);
@@ -134,13 +213,13 @@ export default function AdminBrandsPage() {
       const res = await fetch("/api/admin/brand-logo", { method: "POST", body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.err(json.error || `Could not upload the logo (HTTP ${res.status}).`);
+        toast.err(json.error || t("brands.logo.uploadFailed", { status: res.status }));
         return;
       }
       setBrands((prev) => prev.map((b) => (b.name === name ? { ...b, logoUrl: json.logoUrl ?? null } : b)));
-      toast.ok("Logo updated.");
+      toast.ok(t("brands.logo.updated"));
     } catch (e) {
-      toast.err(errorMessage(e));
+      toast.err(failure(e));
     } finally {
       setLogoBusyName(null);
     }
@@ -148,9 +227,9 @@ export default function AdminBrandsPage() {
 
   const handleLogoRemove = async (name: string) => {
     const ok = await confirm({
-      title: `Remove the logo of "${name}"?`,
-      body: "The storefront falls back to the store's site icon.",
-      confirmLabel: "Remove logo",
+      title: t("brands.confirm.removeLogo", { name }),
+      body: t("brands.confirm.removeLogoBody"),
+      confirmLabel: t("brands.row.remove"),
       tone: "danger",
     });
     if (!ok) return;
@@ -159,13 +238,13 @@ export default function AdminBrandsPage() {
       const res = await fetch(`/api/admin/brand-logo?name=${encodeURIComponent(name)}`, { method: "DELETE" });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        toast.err(json.error || `Could not remove the logo (HTTP ${res.status}).`);
+        toast.err(json.error || t("brands.logo.removeFailed", { status: res.status }));
         return;
       }
       setBrands((prev) => prev.map((b) => (b.name === name ? { ...b, logoUrl: null } : b)));
-      toast.ok("Logo removed.");
+      toast.ok(t("brands.logo.removed"));
     } catch (e) {
-      toast.err(errorMessage(e));
+      toast.err(failure(e));
     } finally {
       setLogoBusyName(null);
     }
@@ -175,62 +254,63 @@ export default function AdminBrandsPage() {
     b.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Said once, in the list, with the server's own words when it gave any.
+  const loadErrorText = loadError
+    ? loadError.text || (loadError.status ? t("brands.loadFailed", { status: loadError.status }) : t("brands.unreachable"))
+    : "";
+
+  // The logo's actions; deleting the brand is the icon beside the menu.
+  const rowItems = (b: Brand): MenuItem[] => {
+    const busy = logoBusyName === b.name;
+    return [
+      { label: t(b.logoUrl ? "brands.row.replace" : "brands.row.upload"), onSelect: () => pickLogo(b.name), disabled: busy },
+      ...(b.logoUrl
+        ? [{ label: t("brands.row.remove"), onSelect: () => void handleLogoRemove(b.name), tone: "danger" as const, disabled: busy }]
+        : []),
+    ];
+  };
+
+  const columns: Column<Brand>[] = [
+    {
+      key: "brand",
+      header: t("brands.col.brand"),
+      grow: true,
+      cell: (b) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <LogoTile brand={b} />
+          <span className="font-medium truncate" title={b.name}>
+            {b.name}
+          </span>
+          {logoBusyName === b.name && (
+            <span role="status" className="flex-shrink-0 text-[12px] text-[var(--foreground-muted)]">
+              {t("brands.logoBusy")}
+            </span>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div>
-      {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Brands</h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
-            {loading || loadError
-              ? "Used in product autocomplete"
-              : `${brands.length} brand${brands.length !== 1 ? "s" : ""} · used in product autocomplete`}
-            {" "}· a logo shows beside the store of that name in &ldquo;Where to buy&rdquo;
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t("nav.brands")}
+        subtitle={loading || loadError ? t("brands.subtitleNoCount") : t("brands.subtitle", { count: brands.length })}
+        primary={{ key: "add", label: t("brands.add"), icon: PLUS, onClick: openAdd }}
+      />
 
-      {/* Load failure — said once, with the server's own words */}
-      {loadError && (
-        <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3">
-          <p className="text-[13px] text-[var(--err)] leading-relaxed">{loadError}</p>
-          <button onClick={fetchBrands} className={`${btn("secondary")} mt-3`}>
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Add brand */}
-      <div className="mb-8 rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--surface)" }}>
-        <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">Add brand</h2>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-            placeholder="e.g. Toteme, Arket, Sandro…"
-            className={inputCls}
-          />
-          <button
-            onClick={handleAdd}
-            disabled={saving || !newName.trim()}
-            className={`${btn("primary")} shrink-0`}
-          >
-            {saving ? "…" : "Add"}
-          </button>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="mb-4">
-        <input
-          type="text"
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <SearchField
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search brands…"
-          className={inputCls}
+          onChange={setSearch}
+          placeholder={t("brands.search.placeholder")}
+          label={t("brands.search.label")}
         />
+        {search && !loading && !loadError && (
+          <span className="ml-auto text-[12px] text-[var(--foreground-muted)] tabular-nums">
+            {t("filter.count", { shown: filtered.length, total: brands.length })}
+          </span>
+        )}
       </div>
 
       {/* One file picker for every row; the row that opened it is in logoTargetRef. */}
@@ -246,88 +326,78 @@ export default function AdminBrandsPage() {
         }}
       />
 
-      {/* Brand list */}
-      <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
-        {loading ? (
-          <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-            Loading…
-          </div>
-        ) : loadError ? (
-          <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-            Could not load brands.
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-            {search ? "No brands match your search." : "No brands yet."}
-          </div>
-        ) : (
-          <ul>
-            {filtered.map((brand, i) => {
-              const logoBusy = logoBusyName === brand.name;
-              return (
-                <li
-                  key={brand.name}
-                  className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3 ${
-                    i !== filtered.length - 1 ? "border-b border-[var(--border)]" : ""
-                  } hover:bg-[var(--background)] transition-colors`}
-                >
-                  <span className="flex items-center gap-3 min-w-0">
-                    {brand.logoUrl ? (
-                      // White behind the logo on purpose, like a product photo:
-                      // it is how the storefront's store chip shows it.
-                      <span className="w-8 h-8 shrink-0 rounded-full bg-white border border-[var(--border)] overflow-hidden flex items-center justify-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={brand.logoUrl}
-                          alt={`${brand.name} logo`}
-                          width={32}
-                          height={32}
-                          className="object-contain w-full h-full p-1"
-                        />
-                      </span>
-                    ) : (
-                      <span
-                        aria-hidden="true"
-                        className="w-8 h-8 shrink-0 rounded-full border border-dashed border-[var(--border)]"
-                      />
-                    )}
-                    <span className="text-sm text-[var(--foreground)] truncate">{brand.name}</span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => pickLogo(brand.name)}
-                      disabled={logoBusy}
-                      className={btn("secondary", "sm")}
-                    >
-                      {logoBusy ? "Working…" : brand.logoUrl ? "Replace logo" : "Upload logo"}
-                    </button>
-                    {brand.logoUrl && (
-                      <button
-                        onClick={() => handleLogoRemove(brand.name)}
-                        disabled={logoBusy}
-                        className={btn("danger", "sm")}
-                      >
-                        Remove logo
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(brand.name)}
-                      disabled={deletingName === brand.name}
-                      title="Delete brand"
-                      aria-label={`Delete brand ${brand.name}`}
-                      className={`${BTN_ICON} ml-1`}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      <DataTable
+        label={t("nav.brands")}
+        rows={filtered}
+        rowKey={(b) => b.name}
+        columns={columns}
+        loading={loading}
+        resetKey={search}
+        card={(b) => ({
+          thumb: <LogoTile brand={b} size="lg" />,
+          title: b.name,
+          meta: logoBusyName === b.name ? t("brands.logoBusy") : b.logoUrl ? undefined : t("brands.noLogo"),
+        })}
+        actions={(b) => {
+          const label = t("brands.row.delete", { name: b.name });
+          return (
+            <>
+              <button
+                onClick={() => handleDelete(b.name)}
+                disabled={deletingName === b.name}
+                aria-label={label}
+                title={label}
+                className={BTN_ICON_SM}
+              >
+                {TRASH}
+              </button>
+              <RowMenu size="sm" label={t("menu.moreFor", { name: b.name })} items={rowItems(b)} />
+            </>
+          );
+        }}
+        empty={
+          loadError ? (
+            <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+              <p className="text-[13px] text-[var(--err)] break-words">{loadErrorText}</p>
+              <button onClick={fetchBrands} className={btn("secondary")}>
+                {t("common.retry")}
+              </button>
+            </div>
+          ) : (
+            <EmptyState text={t(search ? "brands.empty.filtered" : "brands.empty.none")} />
+          )
+        }
+      />
+
+      {/* ── Add brand, in the side panel (ADMIN_DESIGN 5.10) ── */}
+      <SidePanel
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title={t("brands.add")}
+        footer={
+          <>
+            <button onClick={() => setAddOpen(false)} className={btn("ghost")}>
+              {t("common.cancel")}
+            </button>
+            <button onClick={handleAdd} disabled={saving || !newName.trim()} className={btn("primary")}>
+              {saving ? t("brands.adding") : t("brands.add")}
+            </button>
+          </>
+        }
+      >
+        <label htmlFor="brand-name" className={FIELD_LABEL}>
+          {t("brands.field.name")}
+        </label>
+        <input
+          id="brand-name"
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+          placeholder={t("brands.field.placeholder")}
+          className={`${INPUT} w-full`}
+        />
+      </SidePanel>
     </div>
   );
 }

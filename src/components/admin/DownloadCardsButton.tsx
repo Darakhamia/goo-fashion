@@ -2,11 +2,13 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
 
 /**
- * Downloading cards out of the studio: one piece from its row, or everything in
- * the table from the toolbar.
+ * Downloading cards out of the studio (`useDownloadCards`): one row's card or
+ * everything in the table, started from a row's "…", the page header's menu or
+ * the selection bar. (The file keeps the name of the buttons it used to export;
+ * GS4-4 moved those actions into the menus.)
  *
  * Both go to /api/admin/export-images, which draws the card as the site draws it
  * — photo, brand, name, price — and answers with a PNG for a single card or a
@@ -14,29 +16,13 @@ import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
  * card of every piece in it, so even one look comes back as an archive.
  * Hence `saveCards` below rather than a plain link:
  * the response is a POST body that has to be read and saved by hand, and while
- * it is being read the toolbar button can show the megabytes as they land. That
+ * it is being read the page can show the megabytes as they land. That
  * counter is not decoration — three hundred cards take a minute or two to fetch
  * and draw, and a button that only says "Downloading…" for that long is
  * indistinguishable from one that has hung.
  */
 
 type Kind = "products" | "outfits";
-
-interface Props {
-  kind: Kind;
-  /**
-   * Which cards to export: `null` asks the server for every card of this kind,
-   * a list asks for exactly those. Passing null rather than "all the ids I have
-   * on screen" keeps a full-catalogue export a short request.
-   */
-  ids: string[] | null;
-  /** How many cards this click will fetch, for the label. */
-  count: number;
-  disabled?: boolean;
-  title?: string;
-  /** Where the outcome is reported; the admin toast when left out. */
-  onNotify?: (message: string, type: "ok" | "err") => void;
-}
 
 type Notify = (message: string, type: "ok" | "err") => void;
 
@@ -158,11 +144,11 @@ async function saveCards(
 }
 
 /**
- * The download behind DownloadCardsButton, for callers that start it from
- * somewhere else — a menu item or the selection bar. `received` counts the
- * bytes as they arrive while `busy`.
+ * The download, started from a menu item or the selection bar. `received`
+ * counts the bytes as they arrive while `busy`.
  */
 export function useDownloadCards(kind: Kind, onNotify?: Notify) {
+  const t = useT();
   const notify = useNotify(onNotify);
   const [busy, setBusy] = useState(false);
   const [received, setReceived] = useState(0);
@@ -183,129 +169,17 @@ export function useDownloadCards(kind: Kind, onNotify?: Notify) {
             setReceived(total);
           }
         });
-        notify(
-          zipped
-            ? `Cards downloaded (${(bytes / MB).toFixed(1)} MB). See _export.txt inside for anything that failed.`
-            : `Card downloaded (${(bytes / MB).toFixed(1)} MB).`,
-          "ok",
-        );
+        const mb = (bytes / MB).toFixed(1);
+        notify(t(zipped ? "cards.downloadedZip" : "cards.downloadedOne", { mb }), "ok");
       } catch (e) {
-        notify(e instanceof Error ? e.message : "Export failed.", "err");
+        notify(e instanceof Error ? e.message : t("cards.failed"), "err");
       } finally {
         setBusy(false);
         setReceived(0);
       }
     },
-    [busy, kind, notify],
+    [busy, kind, notify, t],
   );
 
   return { busy, received, download };
-}
-
-export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotify }: Props) {
-  const { busy, received, download } = useDownloadCards(kind, onNotify);
-  const handleClick = useCallback(() => {
-    if (count) void download(ids);
-  }, [count, download, ids]);
-
-  const label = busy
-    ? received
-      ? `Packing… ${(received / MB).toFixed(1)} MB`
-      : "Packing…"
-    : ids
-      ? `Download cards (${count})`
-      : "Download cards";
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={disabled || busy || !count}
-      aria-busy={busy}
-      title={
-        title ??
-        (ids
-          ? `Download the ${count} selected cards as pictures`
-          : "Download every card here as a picture, in one ZIP")
-      }
-      className={btn("secondary")}
-    >
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-        <path
-          d="M6 1v6.5M3.5 5L6 7.5 8.5 5M1.5 8.5v1.2a.8.8 0 00.8.8h7.4a.8.8 0 00.8-.8V8.5"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      {label}
-    </button>
-  );
-}
-
-interface RowProps {
-  kind: Kind;
-  /** The one card to draw. */
-  id: string;
-  /** Where the outcome is reported; the admin toast when left out. */
-  onNotify?: (message: string, type: "ok" | "err") => void;
-}
-
-/**
- * The same download, for one row of the table: that row's card, in one click.
- *
- * A piece comes back as a PNG; a look comes back as an archive holding its own
- * card and the card of every piece in it, which is why the label the toast
- * writes is decided by what arrived rather than by the row that was clicked.
- *
- * It sits among the row's other icons, so it is an icon too — the work it starts
- * is reported through the page's own toast rather than in a label, and the arrow
- * dims while the card is being drawn.
- */
-export function DownloadCardButton({ kind, id, onNotify }: RowProps) {
-  const notify = useNotify(onNotify);
-  const [busy, setBusy] = useState(false);
-
-  const handleClick = useCallback(async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const { zipped } = await saveCards(kind, [id]);
-      notify(
-        zipped
-          ? "Card downloaded, with the cards of everything in it."
-          : "Card downloaded.",
-        "ok",
-      );
-    } catch (e) {
-      notify(e instanceof Error ? e.message : "Could not draw the card.", "err");
-    } finally {
-      setBusy(false);
-    }
-  }, [busy, id, kind, notify]);
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={busy}
-      aria-busy={busy}
-      aria-label="Download card"
-      title={
-        kind === "outfits"
-          ? "Download this look's card together with the card of every piece in it"
-          : "Download this card as a PNG — photo, brand, name and price"
-      }
-      className={BTN_ICON}
-    >
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-        <path
-          d="M7 1.5v7M4.2 5.8L7 8.6l2.8-2.8M2 10v1.5a1 1 0 001 1h8a1 1 0 001-1V10"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>
-  );
 }

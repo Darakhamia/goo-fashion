@@ -6,9 +6,9 @@ import { estimateReadTime, slugify } from "@/lib/blog-render";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
+import { btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT } from "@/app/goo-studio/_i18n";
-import type { Key } from "@/app/goo-studio/_i18n";
+import type { Key, Vars } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
 import type { Column } from "@/components/admin/DataTable";
 import { ActiveFilters, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
@@ -17,6 +17,7 @@ import type { MenuItem } from "@/components/admin/Menu";
 import { Badge } from "@/components/admin/Badge";
 import { PageHeader, PLUS } from "@/components/admin/PageHeader";
 import { Modal } from "@/components/admin/Modal";
+import { Tabs, tabPanel } from "@/components/admin/Tabs";
 
 interface BlogFormState {
   slug: string;
@@ -53,6 +54,13 @@ const defaultForm: BlogFormState = {
 /** Modes of the AI draft modal — a URL to rewrite, or a brief to announce. */
 type AiMode = "url" | "brief";
 
+/**
+ * A message to show: the server's own words as they came, or a dictionary key.
+ * Kept as a key where a callback that outlives a language switch sets it, so
+ * the text still follows the admin language.
+ */
+type Msg = string | { key: Key; vars?: Vars };
+
 type StatusFilter = "" | "published" | "draft";
 type SortKey = "newest" | "oldest" | "title";
 const SORT_OPTIONS: { value: SortKey; label: Key }[] = [
@@ -68,8 +76,6 @@ const postTime = (p: BlogPost) => Date.parse(p.isPublished ? p.publishedAt : p.c
 const fieldBase =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
 const inputCls = `${fieldBase} text-sm`;
-const labelCls =
-  "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
 
 /**
  * ISO timestamp → the "YYYY-MM-DDTHH:mm" a datetime-local input expects, in
@@ -85,6 +91,7 @@ function toLocalInputValue(iso: string): string {
 export default function AdminBlogPage() {
   const t = useT();
   const f = useFormat();
+  const say = (m: Msg) => (typeof m === "string" ? m : t(m.key, m.vars));
   const confirm = useConfirm();
   const toast = useToast();
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -97,7 +104,7 @@ export default function AdminBlogPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState<Msg | null>(null);
 
   const [autoSlug, setAutoSlug] = useState(true);
   const [autoReadTime, setAutoReadTime] = useState(true);
@@ -114,23 +121,23 @@ export default function AdminBlogPage() {
 
   const loadPosts = useCallback(() => {
     setLoading(true);
-    setLoadError("");
+    setLoadError(null);
     fetch("/api/blog")
       .then(async (r) => {
         const data = await r.json().catch(() => null);
         if (!r.ok) {
-          setLoadError(data?.error ?? `Could not load posts (HTTP ${r.status}).`);
+          setLoadError(data?.error ?? { key: "blog.loadFailedHttp", vars: { status: r.status } });
           return;
         }
         // A 200 that is not a list (e.g. an expired session answered with the
         // sign-in page) is a failed load too, not an empty blog.
         if (!Array.isArray(data)) {
-          setLoadError("Could not load posts: unexpected response. Reload the page.");
+          setLoadError({ key: "blog.loadFailedShape" });
           return;
         }
         setPosts(data);
       })
-      .catch((e) => setLoadError(e instanceof Error ? e.message : "Network error."))
+      .catch((e) => setLoadError(e instanceof Error ? e.message : { key: "common.networkError" }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -197,12 +204,12 @@ export default function AdminBlogPage() {
 
   const handleSave = async () => {
     if (!form.title.trim()) {
-      setSaveError("Title is required.");
+      setSaveError(t("blog.editor.titleRequired"));
       return;
     }
     const finalSlug = form.slug.trim() || slugify(form.title);
     if (!finalSlug) {
-      setSaveError("Could not generate a URL slug — edit it manually.");
+      setSaveError(t("blog.editor.slugFailed"));
       return;
     }
 
@@ -238,7 +245,7 @@ export default function AdminBlogPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setSaveError(err.error ?? "Failed to save.");
+        setSaveError(err.error ?? t("blog.editor.saveFailed"));
         return;
       }
 
@@ -250,7 +257,7 @@ export default function AdminBlogPage() {
       }
       closeModal();
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Network error.");
+      setSaveError(e instanceof Error ? e.message : t("common.networkError"));
     } finally {
       setSaving(false);
     }
@@ -300,7 +307,7 @@ export default function AdminBlogPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setAiError(data.error ?? "Generation failed.");
+        setAiError(data.error ?? t("blog.ai.failed"));
         return;
       }
       setShowAiModal(false);
@@ -327,7 +334,7 @@ export default function AdminBlogPage() {
       setSaveError("");
       setShowModal(true);
     } catch (e) {
-      setAiError(e instanceof Error ? e.message : "Network error.");
+      setAiError(e instanceof Error ? e.message : t("common.networkError"));
     } finally {
       setAiLoading(false);
     }
@@ -422,7 +429,7 @@ export default function AdminBlogPage() {
     },
   ];
 
-  const previewSlug = form.slug.trim() || slugify(form.title) || "your-post-slug";
+  const previewSlug = form.slug.trim() || slugify(form.title) || t("blog.editor.slugFallback");
 
   return (
     <div>
@@ -525,7 +532,7 @@ export default function AdminBlogPage() {
         empty={
           loadError ? (
             <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
-              <p className="text-[13px] text-[var(--err)] break-words">{loadError}</p>
+              <p className="text-[13px] text-[var(--err)] break-words">{say(loadError)}</p>
               <button onClick={loadPosts} className={btn("secondary")}>
                 {t("common.retry")}
               </button>
@@ -562,16 +569,14 @@ export default function AdminBlogPage() {
       {showAiModal && (
         <Modal
           onClose={() => setShowAiModal(false)}
-          label="AI Draft"
+          label={t("blog.aiDraft")}
           panelClassName="rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto"
         >
           <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
             <div>
-              <h2 className="font-display text-xl font-light text-[var(--foreground)]">AI Draft</h2>
+              <h2 className="font-display text-xl font-light text-[var(--foreground)]">{t("blog.aiDraft")}</h2>
               <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                {aiMode === "url"
-                  ? "Rewrite an article, brand page or collection"
-                  : "Announce a release in GOO's own name"}
+                {aiMode === "url" ? t("blog.ai.subtitle.url") : t("blog.ai.subtitle.brief")}
               </p>
             </div>
             {/* Locked while generating, like Cancel: a reply landing after the
@@ -580,82 +585,72 @@ export default function AdminBlogPage() {
               onClick={() => setShowAiModal(false)}
               disabled={aiLoading}
               className={BTN_ICON}
-              aria-label="Close"
+              aria-label={t("common.close")}
+              title={t("common.close")}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
             </button>
           </div>
           <div className="px-6 py-5 flex flex-col gap-4">
             {/* Mode switch — the two modes run different prompts and pick from
-                different halves of the taxonomy, so the choice is explicit. */}
-            <div
-              role="tablist"
-              aria-label="Draft source"
-              className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
-            >
-              {([
-                { id: "url" as const, label: "From URL" },
-                { id: "brief" as const, label: "From brief" },
-              ]).map((m) => (
-                <button
-                  key={m.id}
-                  role="tab"
-                  aria-selected={aiMode === m.id}
-                  onClick={() => { setAiMode(m.id); setAiError(""); }}
-                  disabled={aiLoading}
-                  className="px-5 py-2 text-[13px] font-medium rounded-full transition-colors duration-200 disabled:opacity-40"
-                  style={
-                    aiMode === m.id
-                      ? { background: "var(--foreground)", color: "var(--surface)" }
-                      : { color: "var(--foreground-muted)" }
-                  }
-                >
-                  {m.label}
-                </button>
-              ))}
+                different halves of the taxonomy, so the choice is explicit. It
+                holds still while a draft is being written. */}
+            <Tabs
+              label={t("blog.ai.source")}
+              idBase="blog-ai"
+              tabs={[
+                { key: "url", label: t("blog.ai.fromUrl") },
+                { key: "brief", label: t("blog.ai.fromBrief") },
+              ]}
+              value={aiMode}
+              onChange={(m: AiMode) => {
+                if (aiLoading) return;
+                setAiMode(m);
+                setAiError("");
+              }}
+            />
+
+            <div {...tabPanel("blog-ai", aiMode)}>
+              {aiMode === "url" ? (
+                <div>
+                  <label htmlFor="blog-ai-url" className={FIELD_LABEL}>{t("blog.ai.url")}</label>
+                  <input
+                    id="blog-ai-url"
+                    type="url"
+                    value={aiUrl}
+                    onChange={(e) => setAiUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
+                    placeholder={t("blog.ai.urlPlaceholder")}
+                    className={inputCls}
+                    autoFocus
+                    disabled={aiLoading}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label htmlFor="blog-ai-brief" className={FIELD_LABEL}>{t("blog.ai.brief")}</label>
+                  <textarea
+                    id="blog-ai-brief"
+                    value={aiBrief}
+                    onChange={(e) => setAiBrief(e.target.value)}
+                    placeholder={t("blog.ai.briefPlaceholder")}
+                    rows={6}
+                    maxLength={4000}
+                    className={`${inputCls} resize-y leading-relaxed`}
+                    autoFocus
+                    disabled={aiLoading}
+                  />
+                  <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">{t("blog.ai.briefHint")}</p>
+                </div>
+              )}
             </div>
 
-            {aiMode === "url" ? (
-              <div>
-                <label className={labelCls}>URL</label>
-                <input
-                  type="url"
-                  value={aiUrl}
-                  onChange={(e) => setAiUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
-                  placeholder="https://vogue.com/article/..."
-                  className={inputCls}
-                  autoFocus
-                  disabled={aiLoading}
-                />
-              </div>
-            ) : (
-              <div>
-                <label className={labelCls}>Brief</label>
-                <textarea
-                  value={aiBrief}
-                  onChange={(e) => setAiBrief(e.target.value)}
-                  placeholder={"Shipped the new outfit builder: drag and drop, up to 6 items per look, saves to your profile.\n\nWorks on mobile now."}
-                  rows={6}
-                  maxLength={4000}
-                  className={`${inputCls} resize-y leading-relaxed`}
-                  autoFocus
-                  disabled={aiLoading}
-                />
-                <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">
-                  A few lines is enough. The post can only claim what you write here — nothing is invented.
-                </p>
-              </div>
-            )}
-
-            {aiError && <p className="text-xs text-[var(--err)]">{aiError}</p>}
+            {aiError && <p role="alert" className="text-xs text-[var(--err)]">{aiError}</p>}
             {aiLoading && (
-              <p className="text-xs text-[var(--foreground-muted)] animate-pulse">
-                {aiMode === "url"
-                  ? "Reading article and writing post — this takes about 10 seconds..."
-                  : "Writing the post — this takes about 10 seconds..."}
+              <p role="status" className="text-xs text-[var(--foreground-muted)] animate-pulse">
+                {aiMode === "url" ? t("blog.ai.working.url") : t("blog.ai.working.brief")}
               </p>
             )}
           </div>
@@ -665,24 +660,24 @@ export default function AdminBlogPage() {
               disabled={!aiInputReady || aiLoading}
               className={`${btn("primary")} flex-1`}
             >
-              {aiLoading ? "Generating..." : "Generate post"}
+              {aiLoading ? t("blog.ai.generating") : t("blog.ai.generate")}
             </button>
             <button
               onClick={() => setShowAiModal(false)}
               disabled={aiLoading}
               className={btn("ghost")}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </Modal>
       )}
 
-      {/* Modal */}
+      {/* Post editor */}
       {showModal && (
         <Modal
           onClose={closeModal}
-          label={editingId ? "Edit Post" : "New Post"}
+          label={editingId ? t("blog.editor.edit") : t("blog.new")}
           panelClassName="rounded-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden"
           closeOnScrim={false}
         >
@@ -690,18 +685,19 @@ export default function AdminBlogPage() {
           <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-[var(--border)] shrink-0">
             <div className="min-w-0">
               <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                {editingId ? "Edit Post" : "New Post"}
+                {editingId ? t("blog.editor.edit") : t("blog.new")}
               </h2>
               <p className="text-[12px] text-[var(--foreground-subtle)] mt-1 font-mono break-all">
-                /blog/{previewSlug}
+                {`/blog/${previewSlug}`}
               </p>
             </div>
             <button
               onClick={closeModal}
               className={`${BTN_ICON} shrink-0`}
-              aria-label="Close"
+              aria-label={t("common.close")}
+              title={t("common.close")}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path
                   d="M3 3L13 13M13 3L3 13"
                   stroke="currentColor"
@@ -716,12 +712,13 @@ export default function AdminBlogPage() {
           <div className="px-6 py-5 flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
             {/* Title */}
             <div>
-              <label className={labelCls}>Title *</label>
+              <label htmlFor="blog-title" className={FIELD_LABEL}>{t("blog.editor.title")} *</label>
               <input
+                id="blog-title"
                 type="text"
                 value={form.title}
                 onChange={(e) => handleTitleChange(e.target.value)}
-                placeholder="Post title"
+                placeholder={t("blog.editor.titlePlaceholder")}
                 className={`${fieldBase} text-base`}
                 autoFocus
               />
@@ -729,12 +726,13 @@ export default function AdminBlogPage() {
 
             {/* Cover image + preview */}
             <div>
-              <label className={labelCls}>Cover image URL</label>
+              <label htmlFor="blog-cover" className={FIELD_LABEL}>{t("blog.editor.cover")}</label>
               <input
+                id="blog-cover"
                 type="url"
                 value={form.coverImageUrl}
                 onChange={(e) => setForm((f) => ({ ...f, coverImageUrl: e.target.value }))}
-                placeholder="https://..."
+                placeholder={t("blog.editor.urlPlaceholder")}
                 className={inputCls}
               />
               {form.coverImageUrl && (
@@ -742,7 +740,7 @@ export default function AdminBlogPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={form.coverImageUrl}
-                    alt="Cover preview"
+                    alt={t("blog.editor.coverAlt")}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -751,16 +749,17 @@ export default function AdminBlogPage() {
 
             {/* Excerpt */}
             <div>
-              <label className={labelCls}>
-                Excerpt
+              <label htmlFor="blog-excerpt" className={FIELD_LABEL}>
+                {t("blog.editor.excerpt")}
                 <span className="text-[var(--foreground-subtle)] font-normal ml-2">
-                  (short summary)
+                  {t("blog.editor.excerptHint")}
                 </span>
               </label>
               <textarea
+                id="blog-excerpt"
                 value={form.excerpt}
                 onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
-                placeholder="One or two sentences describing the post."
+                placeholder={t("blog.editor.excerptPlaceholder")}
                 rows={2}
                 className={`${inputCls} resize-y`}
               />
@@ -768,54 +767,51 @@ export default function AdminBlogPage() {
 
             {/* Body */}
             <div>
-              <label className={labelCls}>
-                Article body
+              <label htmlFor="blog-body" className={FIELD_LABEL}>
+                {t("blog.editor.body")}
                 <span className="text-[var(--foreground-subtle)] font-normal ml-2">
-                  — plain text works. HTML is supported too.
+                  {t("blog.editor.bodyHint")}
                 </span>
               </label>
               <textarea
+                id="blog-body"
                 value={form.body}
                 onChange={(e) => handleBodyChange(e.target.value)}
-                placeholder={
-                  "Write your article here.\n\nLeave a blank line between paragraphs.\n\nFor headings or links, use HTML: <h2>Heading</h2> or <a href=\"...\">link</a>."
-                }
+                placeholder={t("blog.editor.bodyPlaceholder")}
                 rows={14}
                 className={`${inputCls} resize-y leading-relaxed`}
               />
               {form.body && (
                 <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">
-                  ≈ {estimateReadTime(form.body)} read
+                  {t("blog.editor.readTimeEstimate", { time: estimateReadTime(form.body) })}
                 </p>
               )}
             </div>
 
-            {/* Publish toggle */}
+            {/* Publish toggle — the switch recipe of DESIGN_SYSTEM.md §9 */}
             <div className="flex items-center gap-3 py-1">
               <button
                 type="button"
                 role="switch"
                 aria-checked={form.isPublished}
-                aria-label="Published"
+                aria-label={t("blog.status.published")}
                 onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
-                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                className={`relative w-9 h-5 flex-shrink-0 rounded-full transition-colors ${
                   form.isPublished ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface)] transition-transform ${
-                    form.isPublished ? "translate-x-6" : "translate-x-1"
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--surface)] transition-[left] ${
+                    form.isPublished ? "left-[18px]" : "left-0.5"
                   }`}
                 />
               </button>
               <div>
                 <p className="text-sm text-[var(--foreground)]">
-                  {form.isPublished ? "Published" : "Draft"}
+                  {form.isPublished ? t("blog.status.published") : t("blog.status.draft")}
                 </p>
                 <p className="text-[11px] text-[var(--foreground-muted)]">
-                  {form.isPublished
-                    ? "Visible to everyone on /blog."
-                    : "Hidden from the public site."}
+                  {form.isPublished ? t("blog.editor.publishedHint") : t("blog.editor.draftHint")}
                 </p>
               </div>
             </div>
@@ -825,47 +821,51 @@ export default function AdminBlogPage() {
               <button
                 type="button"
                 onClick={() => setShowAdvanced((v) => !v)}
-                className="flex items-center gap-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                aria-expanded={showAdvanced}
+                className={`${btn("ghost")} -ml-3`}
               >
                 <svg
                   width="10"
                   height="10"
                   viewBox="0 0 10 10"
                   fill="none"
+                  aria-hidden="true"
                   className={`transition-transform ${showAdvanced ? "rotate-90" : ""}`}
                 >
                   <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Advanced options
+                {t("blog.editor.advanced")}
               </button>
               {showAdvanced && (
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="md:col-span-2">
-                    <label className={labelCls}>
-                      Slug
+                    <label htmlFor="blog-slug" className={FIELD_LABEL}>
+                      {t("blog.editor.slug")}
                       <span className="text-[var(--foreground-subtle)] font-normal ml-2">
-                        {autoSlug ? "(auto from title)" : "(manual)"}
+                        {autoSlug ? t("blog.editor.autoFromTitle") : t("blog.editor.manual")}
                       </span>
                     </label>
                     <input
+                      id="blog-slug"
                       type="text"
                       value={form.slug}
                       onChange={(e) => {
                         setAutoSlug(false);
                         setForm((f) => ({ ...f, slug: slugify(e.target.value) }));
                       }}
-                      placeholder="post-slug"
+                      placeholder={t("blog.editor.slugPlaceholder")}
                       className={`${inputCls} font-mono`}
                     />
                   </div>
                   <div>
-                    <label className={labelCls}>Category</label>
+                    <label htmlFor="blog-category" className={FIELD_LABEL}>{t("blog.editor.category")}</label>
                     <input
+                      id="blog-category"
                       list="blog-categories"
                       type="text"
                       value={form.category}
                       onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                      placeholder="e.g. Style Guide"
+                      placeholder={t("blog.editor.categoryPlaceholder")}
                       className={inputCls}
                     />
                     <datalist id="blog-categories">
@@ -877,26 +877,28 @@ export default function AdminBlogPage() {
                     </datalist>
                   </div>
                   <div>
-                    <label className={labelCls}>
-                      Read time
+                    <label htmlFor="blog-read-time" className={FIELD_LABEL}>
+                      {t("blog.editor.readTime")}
                       <span className="text-[var(--foreground-subtle)] font-normal ml-2">
-                        {autoReadTime ? "(auto)" : "(manual)"}
+                        {autoReadTime ? t("blog.editor.auto") : t("blog.editor.manual")}
                       </span>
                     </label>
                     <input
+                      id="blog-read-time"
                       type="text"
                       value={form.readTime}
                       onChange={(e) => {
                         setAutoReadTime(false);
                         setForm((f) => ({ ...f, readTime: e.target.value }));
                       }}
-                      placeholder="5 min"
+                      placeholder={t("blog.editor.readTimePlaceholder")}
                       className={inputCls}
                     />
                   </div>
                   <div>
-                    <label className={labelCls}>Author</label>
+                    <label htmlFor="blog-author" className={FIELD_LABEL}>{t("blog.editor.author")}</label>
                     <input
+                      id="blog-author"
                       type="text"
                       value={form.authorName}
                       onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))}
@@ -904,8 +906,9 @@ export default function AdminBlogPage() {
                     />
                   </div>
                   <div>
-                    <label className={labelCls}>Publish date override</label>
+                    <label htmlFor="blog-published-at" className={FIELD_LABEL}>{t("blog.editor.publishDate")}</label>
                     <input
+                      id="blog-published-at"
                       type="datetime-local"
                       value={form.publishedAt}
                       onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.value }))}
@@ -921,56 +924,63 @@ export default function AdminBlogPage() {
               <button
                 type="button"
                 onClick={() => setShowSeo((v) => !v)}
-                className="flex items-center gap-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                aria-expanded={showSeo}
+                className={`${btn("ghost")} -ml-3`}
               >
                 <svg
                   width="10"
                   height="10"
                   viewBox="0 0 10 10"
                   fill="none"
+                  aria-hidden="true"
                   className={`transition-transform ${showSeo ? "rotate-90" : ""}`}
                 >
                   <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                SEO overrides
-                <span className="text-[var(--foreground-subtle)] font-normal ml-1">
-                  (optional)
+                {t("blog.editor.seo")}
+                <span className="text-[var(--foreground-subtle)] font-normal">
+                  {t("blog.editor.optional")}
                 </span>
               </button>
               {showSeo && (
                 <div className="mt-4 flex flex-col gap-3">
                   <div>
-                    <label className={labelCls}>Meta title</label>
+                    <label htmlFor="blog-meta-title" className={FIELD_LABEL}>{t("blog.editor.metaTitle")}</label>
                     <input
+                      id="blog-meta-title"
                       type="text"
                       value={form.metaTitle}
                       onChange={(e) => setForm((f) => ({ ...f, metaTitle: e.target.value }))}
-                      placeholder={`${form.title || "Post title"} — GOO Journal`}
+                      placeholder={t("blog.editor.metaTitlePlaceholder", {
+                        title: form.title || t("blog.editor.titlePlaceholder"),
+                      })}
                       className={inputCls}
                     />
                   </div>
                   <div>
-                    <label className={labelCls}>Meta description</label>
+                    <label htmlFor="blog-meta-description" className={FIELD_LABEL}>{t("blog.editor.metaDescription")}</label>
                     <textarea
+                      id="blog-meta-description"
                       value={form.metaDescription}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, metaDescription: e.target.value }))
                       }
-                      placeholder="Defaults to excerpt. Keep under 160 characters."
+                      placeholder={t("blog.editor.metaDescriptionPlaceholder")}
                       rows={2}
                       className={`${inputCls} resize-y`}
                     />
-                    <p className="mt-1 text-[12px] text-[var(--foreground-subtle)]">
+                    <p className="mt-1 text-[12px] text-[var(--foreground-subtle)] tabular-nums">
                       {(form.metaDescription || form.excerpt).length} / 160
                     </p>
                   </div>
                   <div>
-                    <label className={labelCls}>Open Graph image URL</label>
+                    <label htmlFor="blog-og-image" className={FIELD_LABEL}>{t("blog.editor.ogImage")}</label>
                     <input
+                      id="blog-og-image"
                       type="url"
                       value={form.ogImage}
                       onChange={(e) => setForm((f) => ({ ...f, ogImage: e.target.value }))}
-                      placeholder="Defaults to cover image."
+                      placeholder={t("blog.editor.ogImagePlaceholder")}
                       className={inputCls}
                     />
                   </div>
@@ -979,7 +989,7 @@ export default function AdminBlogPage() {
             </div>
 
             {saveError && (
-              <p className="text-xs text-[var(--err)]">{saveError}</p>
+              <p role="alert" className="text-xs text-[var(--err)]">{saveError}</p>
             )}
           </div>
 
@@ -991,18 +1001,18 @@ export default function AdminBlogPage() {
               className={`${btn("primary")} flex-1`}
             >
               {saving
-                ? "Saving..."
+                ? t("common.saving")
                 : editingId
-                ? "Save changes"
+                ? t("blog.editor.saveChanges")
                 : form.isPublished
-                ? "Publish post"
-                : "Save draft"}
+                ? t("blog.editor.publish")
+                : t("blog.editor.saveDraft")}
             </button>
             <button
               onClick={closeModal}
               className={btn("ghost")}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </Modal>

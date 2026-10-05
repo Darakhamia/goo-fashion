@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { AttentionList, type AttentionRow } from "@/components/admin/AttentionList";
 import { KpiStrip, type Kpi } from "@/components/admin/KpiStrip";
 import { Badge } from "@/components/admin/Badge";
-import { btn } from "./_ui/recipes";
+import { BANNER, btn } from "./_ui/recipes";
 import { useFormat, useT, type Key, type T } from "./_i18n";
 
 /*
@@ -198,7 +198,7 @@ export default function AdminDashboardPage() {
     return (
       <div>
         {header}
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]">
+        <div role="alert" className={`${BANNER.err} flex flex-wrap items-center justify-between gap-4`}>
           <span className="min-w-0 break-words">{error}</span>
           <button onClick={() => void load(true)} className={`shrink-0 ${btn("secondary")}`}>
             {t("common.retry")}
@@ -262,7 +262,7 @@ export default function AdminDashboardPage() {
       {header}
 
       {error && (
-        <div role="alert" className="-mt-2 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]">
+        <div role="alert" className={`${BANNER.err} -mt-2`}>
           {error}
         </div>
       )}

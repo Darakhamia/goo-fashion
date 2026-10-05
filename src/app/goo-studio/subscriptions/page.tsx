@@ -1,8 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useFormat } from "@/app/goo-studio/_i18n";
+import type { ReactNode } from "react";
+import { useFormat, useT, type Key, type T } from "@/app/goo-studio/_i18n";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { AttentionList, type AttentionRow } from "@/components/admin/AttentionList";
+import { KpiStrip, type Kpi } from "@/components/admin/KpiStrip";
+import { Badge, type BadgeTone } from "@/components/admin/Badge";
 import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
+import { CRON_FIX } from "@/lib/billing-cron";
+import { BANNER } from "@/app/goo-studio/_ui/recipes";
+
+/*
+ * Subscriptions (docs/ADMIN_DESIGN.md §6, mockup "Subscriptions", GS4-12):
+ * what is wrong with billing first, then the key numbers, the subscribers and
+ * the transaction log. Read-only; everything comes from
+ * GET /api/admin/subscriptions.
+ */
 
 // ── Types (mirror /api/admin/subscriptions) ───────────────────────────────────
 interface ByPlan { plan: string; count: number; mrrUah: number }
@@ -53,186 +67,81 @@ interface TxItem {
 }
 interface Payload { summary: Summary; subscriptions: SubItem[]; transactions: TxItem[] }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Words for stored values ───────────────────────────────────────────────────
 // Hryvnia amounts and dates go through useFormat (GS4-6): "₴1,224", "Oct 5, 2026".
 
-// Admin status recipe (DESIGN_SYSTEM.md §9): bg-X-400/15 text-X-500 border-X-400/30.
-const OK = "text-[var(--ok)] border-[var(--ok-line)] bg-[var(--ok-bg)]";
-const WARN = "text-[var(--warn)] border-[var(--warn-line)] bg-[var(--warn-bg)]";
-const BAD = "text-[var(--err)] border-[var(--err-line)] bg-[var(--err-bg)]";
-const NEUTRAL = "text-[var(--foreground-muted)] border-[var(--border)] bg-[var(--background)]";
+const PLAN: Record<string, Key> = { free: "plan.free", basic: "plan.basic", pro: "plan.pro", premium: "plan.premium" };
 
-const STATUS_STYLE: Record<string, string> = {
-  active: OK,
-  past_due: WARN,
-  canceled: BAD,
-  pending: NEUTRAL,
+/**
+ * A subscription's state as the table shows it. "overdue" is not a stored
+ * status: an active subscription whose paid period ended without a renewal.
+ * Active is the usual state and gets no badge (ADMIN_DESIGN 5.4).
+ */
+const STATUS: Record<string, { label: Key; tone: BadgeTone }> = {
+  active: { label: "subs.status.active", tone: "ok" },
+  overdue: { label: "subs.status.overdue", tone: "warn" },
+  past_due: { label: "subs.status.past_due", tone: "warn" },
+  canceled: { label: "subs.status.canceled", tone: "err" },
+  pending: { label: "subs.status.pending", tone: "neutral" },
 };
-const EVENT_STYLE: Record<string, string> = {
-  payment_success: OK,
-  payment_failed: BAD,
-  checkout_started: NEUTRAL,
-  canceled: WARN,
-  ledger_error: BAD,
-  card_token_missing: WARN,
-  card_token_recovered: OK,
-  renewal_skipped: WARN,
-  cron_run: NEUTRAL,
-  cron_misconfigured: BAD,
-};
-const EVENT_LABEL: Record<string, string> = {
-  payment_success: "Payment",
-  payment_failed: "Failed",
-  checkout_started: "Checkout",
-  canceled: "Canceled",
+
+const EVENT: Record<string, { label: Key; tone: BadgeTone }> = {
+  payment_success: { label: "subs.event.payment_success", tone: "ok" },
+  payment_failed: { label: "subs.event.payment_failed", tone: "err" },
+  checkout_started: { label: "subs.event.checkout_started", tone: "neutral" },
+  canceled: { label: "subs.event.canceled", tone: "warn" },
   // Money moved but the subscription row did not — must not read as routine.
-  ledger_error: "Ledger error",
-  card_token_missing: "No card",
-  card_token_recovered: "Card found",
-  renewal_skipped: "Skipped",
-  cron_run: "Cron ran",
-  cron_misconfigured: "Cron broken",
+  ledger_error: { label: "subs.event.ledger_error", tone: "err" },
+  card_token_missing: { label: "subs.event.card_token_missing", tone: "warn" },
+  card_token_recovered: { label: "subs.event.card_token_recovered", tone: "ok" },
+  renewal_skipped: { label: "subs.event.renewal_skipped", tone: "warn" },
+  cron_run: { label: "subs.event.cron_run", tone: "neutral" },
+  cron_misconfigured: { label: "subs.event.cron_misconfigured", tone: "err" },
 };
 
-function Badge({ value, map }: { value: string; map: Record<string, string> }) {
-  const cls = map[value] ?? NEUTRAL;
-  const raw = value.replace(/_/g, " ");
-  return (
-    <span className={`flex-shrink-0 text-[11px] font-medium px-2 py-0.5 border rounded-full leading-none ${cls}`}>
-      {EVENT_LABEL[value] ?? raw.charAt(0).toUpperCase() + raw.slice(1)}
-    </span>
-  );
+/** A stored key the dictionary does not know, as a label: "past_due" → "Past due". */
+function sentence(raw: string): string {
+  const s = raw.replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Like StatCard, but the number carries a verdict: green is fine, red is not. */
-function HealthCard({ label, value, bad, note }: { label: string; value: string; bad: boolean; note: string }) {
-  return (
-    // A bad check is a panel with a red border and a red value, not a red
-    // fill: muted text on --err-bg falls under 4.5:1.
-    <div className={`rounded-xl border px-4 py-3 min-w-0 ${bad ? "border-[var(--err-line)]" : "border-[var(--border)]"}`}
-      style={{ background: "var(--surface)" }}>
-      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1.5">{label}</p>
-      <p className={`font-display text-2xl md:text-3xl font-light break-words ${bad ? "text-[var(--err)]" : "text-[var(--ok)]"}`}>{value}</p>
-      <p className="text-[12px] text-[var(--foreground-muted)] mt-1">{note}</p>
-    </div>
-  );
+function planLabel(plan: string, t: T): string {
+  return PLAN[plan] ? t(PLAN[plan]) : sentence(plan);
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
-      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
-      <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-1 break-words">{value}</p>
-      {sub && <p className="text-[12px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">{sub}</p>}
-    </div>
-  );
+function stateOf(s: SubItem): string {
+  return s.overdue ? "overdue" : s.status;
 }
 
-/** Active subscribers and MRR per plan. */
-function ByPlanCard({ rows }: { rows: ByPlan[] }) {
-  const f = useFormat();
+function StatusBadge({ state, t }: { state: string; t: T }) {
+  const known = STATUS[state];
+  return <Badge tone={known?.tone ?? "neutral"}>{known ? t(known.label) : sentence(state)}</Badge>;
+}
+
+function EventBadge({ type, t }: { type: string; t: T }) {
+  const known = EVENT[type];
+  return <Badge tone={known?.tone ?? "neutral"}>{known ? t(known.label) : sentence(type)}</Badge>;
+}
+
+/** A section title with a muted count beside it. */
+function SectionTitle({ title, note }: { title: string; note?: string }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
-      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">By plan</p>
-      {rows.length === 0 ? (
-        <p className="font-display text-3xl font-light text-[var(--foreground)]">—</p>
-      ) : (
-        <ul className="space-y-1">
-          {rows.map((p) => (
-            <li key={p.plan} className="flex flex-wrap items-baseline justify-between gap-x-3 text-xs">
-              <span className="capitalize text-[var(--foreground)]">{p.count} {p.plan}</span>
-              <span className="text-[var(--foreground-muted)]">{f.money(p.mrrUah, "UAH")}/mo</span>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{title}</h2>
+      {note && <span className="text-[12px] text-[var(--foreground-muted)]">{note}</span>}
     </div>
   );
 }
 
 // ── Page ────────────────────────────────────────────────────────────────────
 export default function SubscriptionsPage() {
+  const t = useT();
   const f = useFormat();
   const uah = (n: number) => f.money(n, "UAH");
-
-  /** When the paid period ends, and what happens then; nothing before the first payment. */
-  const renewal = (s: SubItem) =>
-    !s.currentPeriodEnd
-      ? []
-      : [s.overdue ? `overdue — ${f.date(s.currentPeriodEnd)}` : s.autoRenew ? `renews ${f.date(s.currentPeriodEnd)}` : `ends ${f.date(s.currentPeriodEnd)}`];
-
-  const subColumns: Column<SubItem>[] = [
-    { key: "customer", header: "Customer", grow: true, cell: (s) => <span className="block truncate">{s.email}</span> },
-    { key: "plan", header: "Plan", cell: (s) => <span className="capitalize">{s.plan}</span> },
-    { key: "status", header: "Status", cell: (s) => <Badge value={s.status} map={STATUS_STYLE} /> },
-    { key: "price", header: "Price", align: "right", cell: (s) => `${uah(s.amountUah)}/mo` },
-    {
-      key: "card",
-      header: "Card",
-      hide: "lg",
-      // The token, not the masked number, is what renewal needs — report on
-      // that so a display-only gap doesn't read as broken.
-      cell: (s) =>
-        s.hasCardToken ? (
-          <span className="text-[var(--foreground-muted)]">{s.maskedPan ? `•• ${s.maskedPan.slice(-4)}` : "saved"}</span>
-        ) : (
-          <span className="text-[var(--err)]">no card</span>
-        ),
-    },
-    {
-      key: "renewal",
-      header: "Next renewal",
-      cell: (s) => (
-        <span className="text-[var(--foreground-muted)]">
-          {s.overdue ? (
-            <span className="text-[var(--err)]" title="Paid period ended and the renewal has not gone through">
-              overdue — {f.date(s.currentPeriodEnd)}
-            </span>
-          ) : s.autoRenew ? (
-            f.date(s.currentPeriodEnd)
-          ) : (
-            <span className="text-[var(--foreground-subtle)]">ends {f.date(s.currentPeriodEnd)}</span>
-          )}
-          {s.failedCharges > 0 && (
-            <span className="ml-2 text-[12px] text-[var(--warn)]" title="Consecutive failed charges; three downgrades to free">
-              {s.failedCharges} failed
-            </span>
-          )}
-        </span>
-      ),
-    },
-  ];
-
-  const txColumns: Column<TxItem>[] = [
-    { key: "when", header: "When", cell: (t) => <span className="text-[var(--foreground-muted)]">{f.dateTime(t.createdAt)}</span> },
-    { key: "customer", header: "Customer", cell: (t) => t.email },
-    {
-      key: "event",
-      header: "Event",
-      cell: (t) => (
-        <span className="inline-flex items-center gap-1.5">
-          <Badge value={t.eventType} map={EVENT_STYLE} />
-          {t.kind === "renewal" && <span className="text-[12px] text-[var(--foreground-muted)]">Renewal</span>}
-        </span>
-      ),
-    },
-    { key: "plan", header: "Plan", hide: "lg", cell: (t) => <span className="capitalize text-[var(--foreground-muted)]">{t.plan ?? "—"}</span> },
-    { key: "amount", header: "Amount", align: "right", cell: (t) => (t.amountUah != null ? uah(t.amountUah) : "—") },
-    {
-      key: "detail",
-      header: "Detail",
-      grow: true,
-      cell: (t) => (
-        <span className="block truncate text-[var(--foreground-subtle)]" title={t.detail ?? ""}>
-          {t.detail ?? t.status ?? "—"}
-        </span>
-      ),
-    },
-  ];
-  const approxUsd = (n: number, rate: number) => `≈ ${f.money(Math.round(n / rate))}`;
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // The server's message; "" when it gave none, worded on screen in the admin's language.
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -240,10 +149,10 @@ export default function SubscriptionsPage() {
       try {
         const res = await fetch("/api/admin/subscriptions");
         const body = await res.json();
-        if (!res.ok) throw new Error(body.error ?? "Failed to load");
+        if (!res.ok) throw new Error(body.error ?? "");
         if (active) setData(body as Payload);
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load");
+        if (active) setError(e instanceof Error ? e.message : "");
       } finally {
         if (active) setLoading(false);
       }
@@ -251,161 +160,283 @@ export default function SubscriptionsPage() {
     return () => { active = false; };
   }, []);
 
-  if (loading) {
-    return <div className="text-sm text-[var(--foreground-muted)]">Loading subscriptions…</div>;
-  }
-  if (error || !data) {
-    return <div className="text-sm text-[var(--err)]">{error ?? "No data"}</div>;
+  const summary = data?.summary;
+  const rate = summary?.usdUahRate ?? 0;
+  const approxUsd = (n: number) => (rate > 0 ? `≈ ${f.money(Math.round(n / rate))}` : null);
+
+  const header = (
+    <PageHeader
+      title={t("nav.subscriptions")}
+      subtitle={summary ? t("subs.subtitle", { rate: uah(rate) }) : loading ? t("common.loading") : t("subs.loadFailed")}
+    />
+  );
+
+  if (!loading && !data) {
+    return (
+      <div>
+        {header}
+        <div role="alert" className={BANNER.err}>
+          {error || t("subs.loadFailed")}
+        </div>
+      </div>
+    );
   }
 
-  const { summary, subscriptions, transactions } = data;
-  const rate = summary.usdUahRate;
-  // Cron heartbeat and payment totals come from billing_events; when it can't
-  // be read, "never ran" would be a guess, not a fact.
-  const eventsReadable = summary.eventsAvailable && !summary.eventsError;
-  // The renewal cron is where the money comes from: while it is not running,
-  // nobody is charged and nothing else on the site says so.
-  const cronStale =
-    eventsReadable && (summary.hoursSinceCronRun === null || summary.hoursSinceCronRun >= 36);
+  // ── Needs attention: only billing's own items, in place of the old banners ──
+  const rows: AttentionRow[] = [];
+  if (summary) {
+    // Cron heartbeat and payment totals come from billing_events; when it can't
+    // be read, "never ran" would be a guess, not a fact.
+    const eventsReadable = summary.eventsAvailable && !summary.eventsError;
+    // The renewal cron is where the money comes from: while it is not running,
+    // nobody is charged and nothing else on the site says so. It should run daily.
+    if (eventsReadable && (summary.hoursSinceCronRun === null || summary.hoursSinceCronRun >= 36)) {
+      rows.push({
+        key: "cron",
+        tone: "err",
+        title: t("attn.cron.title"),
+        text: summary.lastCronRunAt ? t("attn.cron.stale", { when: f.when(summary.lastCronRunAt) }) : t("attn.cron.never"),
+        fix: CRON_FIX,
+      });
+    }
+    if (summary.eventsError) {
+      rows.push({
+        key: "eventsError",
+        tone: "err",
+        title: t("subs.attn.eventsError.title"),
+        text: t("subs.attn.eventsError.text", { error: summary.eventsError }),
+      });
+    }
+    if (!summary.eventsAvailable) {
+      rows.push({
+        key: "noEvents",
+        tone: "warn",
+        title: t("subs.attn.noEvents.title"),
+        text: t("subs.attn.noEvents.text"),
+        fix: ["supabase-migration-billing-events.sql"],
+      });
+    }
+    if (summary.overdue > 0) {
+      rows.push({ key: "overdue", tone: "warn", title: t("attn.overdue.title", { count: summary.overdue }), text: t("attn.overdue.text") });
+    }
+    if (summary.activeWithoutCard > 0) {
+      rows.push({
+        key: "noCard",
+        tone: "warn",
+        title: t("attn.noCard.title", { count: summary.activeWithoutCard }),
+        text: t("subs.attn.noCard.text"),
+      });
+    }
+    if (summary.failedCharges > 0) {
+      rows.push({
+        key: "failedCharges",
+        tone: "warn",
+        title: t("attn.failedCharges.title", { count: summary.failedCharges }),
+        text: t("attn.failedCharges.text"),
+      });
+    }
+  }
+
+  // ── Key numbers ───────────────────────────────────────────────────────────
+  const notes = (...parts: (string | null | false | undefined)[]) => parts.filter(Boolean).join(" · ") || undefined;
+  const num = (n: number | undefined) => (n === undefined ? "—" : f.number(n));
+  const money = (n: number | undefined) => (n === undefined ? "—" : uah(n));
+  const overdueSince = (data?.subscriptions ?? [])
+    .filter((s) => s.overdue && s.currentPeriodEnd)
+    .map((s) => s.currentPeriodEnd as string)
+    .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
+  const kpis: Kpi[] = [
+    { key: "mrr", label: t("subs.kpi.mrr"), value: money(summary?.mrrUah), note: summary && notes(approxUsd(summary.mrrUah)) },
+    {
+      key: "active",
+      label: t("subs.kpi.active"),
+      value: num(summary?.activeSubscriptions),
+      note:
+        summary &&
+        notes(
+          summary.byPlan.map((p) => `${f.number(p.count)} ${planLabel(p.plan, t)}`).join(" · "),
+          summary.autoRenewOff > 0 && t("subs.note.wontRenew", { count: summary.autoRenewOff })
+        ),
+      // MRR per plan, where the "By plan" card used to show it.
+      noteTitle: summary?.byPlan.map((p) => `${planLabel(p.plan, t)}: ${t("subs.perMonth", { amount: uah(p.mrrUah) })}`).join(", "),
+    },
+    {
+      key: "overdue",
+      label: t("subs.kpi.overdue"),
+      value: num(summary?.overdue),
+      note: summary?.overdue && overdueSince ? t("subs.note.since", { date: f.date(overdueSince) }) : undefined,
+    },
+    { key: "pending", label: t("subs.kpi.pending"), value: num(summary?.pending), note: summary && t("subs.note.pending") },
+    { key: "pastDue", label: t("subs.kpi.pastDue"), value: num(summary?.pastDue), note: summary && t("subs.note.canceled", { count: summary.canceled }) },
+    {
+      key: "earned",
+      label: t("subs.kpi.earned"),
+      value: money(summary?.earnedTotalUah),
+      note: summary && notes(approxUsd(summary.earnedTotalUah), t("subs.note.thisMonth", { amount: uah(summary.earnedThisMonthUah) })),
+      noteTitle: summary && t("subs.note.payments", { count: summary.paymentsTotal }),
+    },
+  ];
+
+  // ── Subscribers ───────────────────────────────────────────────────────────
+  const price = (s: SubItem) => t("subs.perMonth", { amount: uah(s.amountUah) });
+
+  /** When the paid period ends, and what happens then, in words; null before the first payment of a non-pending row. */
+  const renewalText = (s: SubItem): string | null => {
+    if (s.overdue) return t("subs.next.overdue", { date: f.date(s.currentPeriodEnd) });
+    if (!s.currentPeriodEnd) return s.status === "pending" ? t("subs.next.firstPayment") : null;
+    return s.autoRenew ? t("subs.next.renews", { date: f.date(s.currentPeriodEnd) }) : t("subs.next.ends", { date: f.date(s.currentPeriodEnd) });
+  };
+
+  const renewalCell = (s: SubItem): ReactNode => {
+    let when: ReactNode;
+    if (s.overdue) {
+      when = (
+        <span className="text-[var(--warn)]" title={t("subs.next.overdueHint")}>
+          {t("subs.next.overdue", { date: f.date(s.currentPeriodEnd) })}
+        </span>
+      );
+    } else if (!s.currentPeriodEnd) {
+      when = <span className="text-[var(--foreground-muted)]">{s.status === "pending" ? t("subs.next.firstPayment") : "—"}</span>;
+    } else if (s.autoRenew) {
+      when = f.date(s.currentPeriodEnd);
+    } else {
+      when = <span className="text-[var(--foreground-muted)]">{t("subs.next.ends", { date: f.date(s.currentPeriodEnd) })}</span>;
+    }
+    return (
+      <>
+        {when}
+        {s.failedCharges > 0 && (
+          <span className="ml-2 text-[12px] text-[var(--warn)]" title={t("subs.failedHint")}>
+            {t("subs.failed", { count: s.failedCharges })}
+          </span>
+        )}
+      </>
+    );
+  };
+
+  const subColumns: Column<SubItem>[] = [
+    {
+      key: "customer",
+      header: t("subs.col.customer"),
+      grow: true,
+      cell: (s) => (
+        <span className="block truncate" title={s.email}>
+          {s.email}
+        </span>
+      ),
+    },
+    { key: "plan", header: t("subs.col.plan"), cell: (s) => planLabel(s.plan, t) },
+    {
+      key: "status",
+      header: t("subs.col.status"),
+      cell: (s) =>
+        stateOf(s) === "active" ? (
+          <span className="text-[var(--foreground-muted)]">{t("subs.status.active")}</span>
+        ) : (
+          <StatusBadge state={stateOf(s)} t={t} />
+        ),
+    },
+    { key: "price", header: t("subs.col.price"), align: "right", cell: price },
+    {
+      key: "card",
+      header: t("subs.col.card"),
+      hide: "lg",
+      // The token, not the masked number, is what renewal needs — report on
+      // that so a display-only gap doesn't read as broken. Only a subscription
+      // still being billed is missing something without one.
+      cell: (s) =>
+        s.hasCardToken ? (
+          <span className="text-[var(--foreground-muted)]">{s.maskedPan ? `•• ${s.maskedPan.slice(-4)}` : t("subs.card.saved")}</span>
+        ) : s.status === "active" || s.status === "past_due" ? (
+          <span className="text-[var(--warn)]">{t("subs.card.none")}</span>
+        ) : (
+          <span className="text-[var(--foreground-muted)]">—</span>
+        ),
+    },
+    { key: "renewal", header: t("subs.col.next"), cell: renewalCell },
+  ];
+
+  // ── Transaction log ───────────────────────────────────────────────────────
+  const txColumns: Column<TxItem>[] = [
+    {
+      key: "when",
+      header: t("subs.col.when"),
+      cell: (x) => <span className="text-[var(--foreground-muted)] tabular-nums">{f.dateTime(x.createdAt)}</span>,
+    },
+    { key: "customer", header: t("subs.col.customer"), cell: (x) => x.email },
+    {
+      key: "event",
+      header: t("subs.col.event"),
+      cell: (x) => (
+        <span className="inline-flex items-center gap-1.5">
+          <EventBadge type={x.eventType} t={t} />
+          {x.kind === "renewal" && <span className="text-[12px] text-[var(--foreground-muted)]">{t("subs.kind.renewal")}</span>}
+        </span>
+      ),
+    },
+    {
+      key: "plan",
+      header: t("subs.col.plan"),
+      hide: "lg",
+      cell: (x) => <span className="text-[var(--foreground-muted)]">{x.plan ? planLabel(x.plan, t) : "—"}</span>,
+    },
+    { key: "amount", header: t("subs.col.amount"), align: "right", cell: (x) => (x.amountUah != null ? uah(x.amountUah) : "—") },
+    {
+      key: "detail",
+      header: t("subs.col.detail"),
+      grow: true,
+      cell: (x) => (
+        <span className="block truncate text-[var(--foreground-muted)]" title={x.detail ?? ""}>
+          {x.detail ?? x.status ?? "—"}
+        </span>
+      ),
+    },
+  ];
+
+  const subscriptions = data?.subscriptions ?? [];
+  const transactions = data?.transactions ?? [];
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Subscriptions & Revenue</h1>
-        <p className="text-xs text-[var(--foreground-muted)] mt-1">
-          monobank billing — real charges in UAH, $ shown approximately (rate {rate}).
-        </p>
-      </div>
+    <div className="flex flex-col gap-6 md:gap-8">
+      {header}
 
-      {/* Above the numbers on purpose: this is the one to see first. */}
-      {cronStale && (
-        <div role="alert" className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-xs text-[var(--warn)] space-y-1.5">
-          <p className="font-medium">
-            {summary.hoursSinceCronRun === null
-              ? "The renewal cron has never run."
-              : `The renewal cron last ran ${summary.hoursSinceCronRun} hours ago; it should run daily.`}{" "}
-            Until it runs, no subscription is renewed or charged and no one is downgraded.
-          </p>
-          <p>
-            Production runs on Coolify, and nothing else schedules renewals: they are
-            started by a Scheduled Task in Coolify. It must call
-            <code className="mx-1">GET /api/billing/cron/renew</code> once a day (e.g. <code>0 9 * * *</code>) with
-            the header <code>Authorization: Bearer $CRON_SECRET</code>. Check in Coolify that the
-            task exists and its runs succeed, and that <code>CRON_SECRET</code> is set in the
-            app&apos;s environment — without it every call is rejected with 401.
-          </p>
-        </div>
-      )}
+      <AttentionList rows={rows} loading={!data} />
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total earned" value={uah(summary.earnedTotalUah)} sub={approxUsd(summary.earnedTotalUah, rate)} />
-        <StatCard label="Earned this month" value={uah(summary.earnedThisMonthUah)} sub={`${summary.paymentsTotal} payment${summary.paymentsTotal === 1 ? "" : "s"} total`} />
-        <StatCard label="MRR" value={uah(summary.mrrUah)} sub={approxUsd(summary.mrrUah, rate)} />
-        <StatCard label="Active subscribers" value={f.number(summary.activeSubscriptions)} sub={summary.autoRenewOff > 0 ? `${summary.autoRenewOff} won't renew` : "all auto-renew"} />
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Past due" value={f.number(summary.pastDue)} />
-        <StatCard label="Canceled" value={f.number(summary.canceled)} />
-        <StatCard label="Pending checkout" value={f.number(summary.pending)} />
-        <ByPlanCard rows={summary.byPlan} />
-      </div>
+      <KpiStrip label={t("subs.kpis")} items={kpis} />
 
-      {/* Billing health — the answer to "is billing working?" without opening SQL. */}
-      <section>
-        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
-          Billing health
-        </p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <HealthCard
-            label="Renewal cron"
-            value={!eventsReadable ? "unknown" : summary.hoursSinceCronRun === null ? "never ran" : f.when(summary.lastCronRunAt)}
-            bad={!eventsReadable || summary.hoursSinceCronRun === null || summary.hoursSinceCronRun >= 36}
-            note={!summary.eventsAvailable ? "billing_events table missing" : !eventsReadable ? "billing_events unreadable" : summary.lastCronRunAt ? f.dateTime(summary.lastCronRunAt) : "no heartbeat recorded"}
-          />
-          <HealthCard
-            label="Active without card"
-            value={f.number(summary.activeWithoutCard)}
-            bad={summary.activeWithoutCard > 0}
-            note="never come up for renewal"
-          />
-          <HealthCard
-            label="Overdue"
-            value={f.number(summary.overdue)}
-            bad={summary.overdue > 0}
-            note="paid period ended, not renewed"
-          />
-          <HealthCard
-            label="Failed charges"
-            value={f.number(summary.failedCharges)}
-            bad={summary.failedCharges > 0}
-            note="consecutive, active & past-due only"
-          />
-        </div>
-      </section>
-
-      {summary.activeWithoutCard > 0 && (
-        <div className="rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-xs text-[var(--err)]">
-          {summary.activeWithoutCard} active {summary.activeWithoutCard === 1 ? "subscription has" : "subscriptions have"} no
-          saved card. The renewal sweep skips these, so they will never be charged again — they are
-          paid plans running for free. The daily cron retries the card lookup; if the number does not
-          fall, the card was never tokenized and the customer has to re-subscribe.
-        </div>
-      )}
-
-      {summary.eventsError && (
-        <div className="rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-xs text-[var(--err)]">
-          Could not read <code>billing_events</code>: {summary.eventsError}. Revenue totals, the cron
-          heartbeat and the transaction log below are incomplete.
-        </div>
-      )}
-
-      {!summary.eventsAvailable && (
-        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-xs text-[var(--warn)]">
-          The <code>billing_events</code> table isn&apos;t set up yet — run
-          <code className="mx-1">supabase-migration-billing-events.sql</code>. Revenue totals and the
-          transaction log will populate once it exists and payments flow through.
-        </div>
-      )}
-
-      {/* Subscribers table */}
-      <section>
-        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
-          Subscribers ({subscriptions.length})
-        </p>
+      <section className="flex flex-col gap-3">
+        <SectionTitle title={t("subs.subscribers")} note={data ? t("subs.subscribers.count", { count: subscriptions.length }) : undefined} />
         <DataTable
-          label="Subscribers"
+          label={t("subs.subscribers")}
           rows={subscriptions}
           rowKey={(s) => s.userId}
           columns={subColumns}
+          loading={!data}
           // On a phone: who, the state when it is not the usual one, and what is
           // charged next.
           card={(s) => ({
             title: s.email,
-            badge: s.status === "active" ? undefined : <Badge value={s.status} map={STATUS_STYLE} />,
-            meta: [`${s.plan.charAt(0).toUpperCase()}${s.plan.slice(1)}`, `${uah(s.amountUah)}/mo`, ...renewal(s)].join(" · "),
+            badge: stateOf(s) === "active" ? undefined : <StatusBadge state={stateOf(s)} t={t} />,
+            meta: notes(planLabel(s.plan, t), price(s), renewalText(s)),
           })}
-          empty={<EmptyState text="No subscribers yet." />}
+          empty={<EmptyState text={t("subs.empty.subscribers")} />}
         />
       </section>
 
-      {/* Transactions log */}
-      <section>
-        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
-          Transaction log ({transactions.length})
-        </p>
+      <section className="flex flex-col gap-3">
+        <SectionTitle title={t("subs.log")} note={data ? t("subs.log.count", { count: transactions.length }) : undefined} />
         <DataTable
-          label="Transaction log"
+          label={t("subs.log")}
           rows={transactions}
-          rowKey={(t) => String(t.id)}
+          rowKey={(x) => String(x.id)}
           columns={txColumns}
-          card={(t) => ({
-            title: t.email,
-            badge: <Badge value={t.eventType} map={EVENT_STYLE} />,
-            meta: [f.dateTime(t.createdAt), ...(t.amountUah != null ? [uah(t.amountUah)] : []), ...(t.detail ? [t.detail] : [])].join(" · "),
+          loading={!data}
+          card={(x) => ({
+            title: x.email,
+            badge: <EventBadge type={x.eventType} t={t} />,
+            meta: notes(f.dateTime(x.createdAt), x.amountUah != null && uah(x.amountUah), x.detail),
           })}
-          empty={<EmptyState text="No transactions logged yet." />}
+          empty={<EmptyState text={t("subs.empty.log")} />}
         />
       </section>
     </div>

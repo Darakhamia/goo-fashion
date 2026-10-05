@@ -25,14 +25,37 @@ const args = new Set(process.argv.slice(2));
 /** Admin files whose interface text is fully in the dictionary. */
 const TRANSLATED = [
   "src/app/goo-studio/_ui/AdminShell.tsx",
+  "src/app/goo-studio/activity/page.tsx",
+  "src/app/goo-studio/analytics/Charts.tsx",
+  "src/app/goo-studio/analytics/page.tsx",
+  "src/app/goo-studio/audit/page.tsx",
+  "src/app/goo-studio/blog/page.tsx",
+  "src/app/goo-studio/brands/page.tsx",
+  "src/app/goo-studio/catalogue-check/page.tsx",
+  "src/app/goo-studio/categories/page.tsx",
+  "src/app/goo-studio/duplicates/page.tsx",
+  "src/app/goo-studio/email/page.tsx",
+  "src/app/goo-studio/import/page.tsx",
+  "src/app/goo-studio/outfits/page.tsx",
   "src/app/goo-studio/page.tsx",
+  "src/app/goo-studio/parser/collect/page.tsx",
+  "src/app/goo-studio/parser/page.tsx",
+  "src/app/goo-studio/products/page.tsx",
   "src/app/goo-studio/prompts/page.tsx",
+  "src/app/goo-studio/retailers/page.tsx",
+  "src/app/goo-studio/settings/EmbeddingsCard.tsx",
+  "src/app/goo-studio/settings/page.tsx",
+  "src/app/goo-studio/settings/recipes.tsx",
+  "src/app/goo-studio/subscriptions/page.tsx",
+  "src/app/goo-studio/users/page.tsx",
+  "src/app/goo-studio/waitlist/page.tsx",
   "src/components/admin/ConfirmDialog.tsx",
   "src/components/admin/Toast.tsx",
   "src/components/admin/HelpToggle.tsx",
   "src/components/admin/ImageCropEditor.tsx",
   "src/components/admin/AttentionList.tsx",
   "src/components/admin/DataTable.tsx",
+  "src/components/admin/DownloadCardsButton.tsx",
   "src/components/admin/FilterBar.tsx",
   "src/components/admin/KpiStrip.tsx",
   "src/components/admin/PageHeader.tsx",
@@ -42,10 +65,21 @@ const TRANSLATED = [
 /** Attributes that carry text a person reads or hears. */
 const TEXT_ATTRS = new Set(["placeholder", "title", "aria-label", "alt", "label"]);
 
-/** Keys of the object literal exported from a dictionary file. */
+/**
+ * Keys of the object literal exported from a dictionary file, including the
+ * ones it spreads in from the screen files it imports (`...productsEn` from
+ * "./screens/products.en").
+ */
 function dictKeys(file) {
   const src = ts.createSourceFile(file, fs.readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
   const keys = new Set();
+  // Imported names → the file they come from.
+  const imports = new Map();
+  for (const st of src.statements) {
+    if (!ts.isImportDeclaration(st) || !st.importClause?.namedBindings || !ts.isNamedImports(st.importClause.namedBindings)) continue;
+    const from = path.join(path.dirname(file), `${st.moduleSpecifier.text}.ts`);
+    for (const el of st.importClause.namedBindings.elements) imports.set(el.name.text, from);
+  }
   const visit = (node) => {
     if (ts.isVariableDeclaration(node) && node.initializer) {
       let init = node.initializer;
@@ -53,6 +87,9 @@ function dictKeys(file) {
       if (ts.isObjectLiteralExpression(init)) {
         for (const p of init.properties) {
           if (ts.isPropertyAssignment(p)) keys.add(p.name.text ?? p.name.getText(src));
+          else if (ts.isSpreadAssignment(p) && ts.isIdentifier(p.expression) && imports.has(p.expression.text)) {
+            for (const k of dictKeys(imports.get(p.expression.text))) keys.add(k);
+          }
         }
         return;
       }

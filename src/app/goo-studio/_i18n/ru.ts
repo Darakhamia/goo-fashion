@@ -1,4 +1,22 @@
 import type { Key, Message } from "./en";
+import { productsRu } from "./screens/products.ru";
+import { usersRu } from "./screens/users.ru";
+import { outfitsRu } from "./screens/outfits.ru";
+import { blogRu } from "./screens/blog.ru";
+import { settingsRu } from "./screens/settings.ru";
+import { subscriptionsRu } from "./screens/subscriptions.ru";
+import { activityRu } from "./screens/activity.ru";
+import { brandsRu } from "./screens/brands.ru";
+import { retailersRu } from "./screens/retailers.ru";
+import { categoriesRu } from "./screens/categories.ru";
+import { emailRu } from "./screens/email.ru";
+import { analyticsRu } from "./screens/analytics.ru";
+import { catalogueCheckRu } from "./screens/catalogueCheck.ru";
+import { duplicatesRu } from "./screens/duplicates.ru";
+import { importerRu } from "./screens/importer.ru";
+import { parserRu } from "./screens/parser.ru";
+import { auditRu } from "./screens/audit.ru";
+import { waitlistRu } from "./screens/waitlist.ru";
 
 /*
  * goo-studio interface text, Russian (GS4-8). Partial on purpose: a key
@@ -106,6 +124,9 @@ export const ru: Partial<Record<Key, Message>> = {
   "cards.downloadOne": "Скачать карточку",
   "cards.packing": "Собираю карточки…",
   "cards.packingMb": "Собираю карточки… {mb} МБ",
+  "cards.downloadedZip": "Карточки скачаны ({mb} МБ). Что не получилось — в _export.txt внутри архива.",
+  "cards.downloadedOne": "Карточка скачана ({mb} МБ).",
+  "cards.failed": "Не удалось выгрузить карточки.",
   "bulk.selected": { one: "Выбран {count}", few: "Выбрано {count}", many: "Выбрано {count}", other: "Выбрано {count}" },
   "bulk.clear": "Снять выделение",
   "menu.more": "Ещё действия",
@@ -347,6 +368,7 @@ export const ru: Partial<Record<Key, Message>> = {
 
   // ── Prompts ───────────────────────────────────────────────────────────────
   "prompts.subtitle": "Промты генерации постов блога, AI-писем и картинок образа. Изменения применяются сразу, без редеплоя.",
+  "prompts.tabs": "Группы промтов",
   "prompts.tab.content": "Контент",
   "prompts.tab.image": "Картинки",
   "prompts.custom": "Изменён",
@@ -535,4 +557,24 @@ export const ru: Partial<Record<Key, Message>> = {
   "act.stylist_usage.reset": "Сброшен лимит стилиста",
   "act.email.sent": "Отправлено письмо",
   "act.waitlist.deleted": "Удалён из листа ожидания",
+
+  // ── Screens (screens/<screen>.ru.ts) ─────────────────────────────────────
+  ...productsRu,
+  ...usersRu,
+  ...outfitsRu,
+  ...blogRu,
+  ...settingsRu,
+  ...subscriptionsRu,
+  ...activityRu,
+  ...brandsRu,
+  ...retailersRu,
+  ...categoriesRu,
+  ...emailRu,
+  ...analyticsRu,
+  ...catalogueCheckRu,
+  ...duplicatesRu,
+  ...importerRu,
+  ...parserRu,
+  ...auditRu,
+  ...waitlistRu,
 };

@@ -27,10 +27,15 @@
  * pressed cannot land one more product after it.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { CrawlItemResult } from "@/lib/server/parser/types";
-import { btn } from "../../_ui/recipes";
+import { BANNER, btn, PANEL } from "../../_ui/recipes";
 import { AdminPage } from "@/components/admin/AdminPage";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { Badge, type BadgeTone } from "@/components/admin/Badge";
+import { EmptyState } from "@/components/admin/DataTable";
+import { useT, type Key, type T } from "@/app/goo-studio/_i18n";
 
 // ── Wire protocol ────────────────────────────────────────────────────────────
 
@@ -51,7 +56,6 @@ interface ExtMessage {
 
 /** Inline label that leads a row of facts (robots.txt, Looking for ours). */
 const labelCls = "text-[12px] font-medium text-[var(--foreground-muted)]";
-const cardCls = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 
 const Spinner = () => (
   <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -59,19 +63,34 @@ const Spinner = () => (
 
 type Phase = "idle" | "planning" | "collecting" | "done" | "stopped" | "halted";
 
-/** The two things a run can do with a store's pages. */
-const MODES = [
-  {
-    label: "Make cards",
-    linksOnly: false,
-    says: "New pieces become products. A piece we already have gains this store as a place to buy.",
-  },
-  {
-    label: "Links only",
-    linksOnly: true,
-    says: "Looks through this store for the pieces we already have and adds its link and price to them. Nothing new is created, and pages that are not ours are not opened.",
-  },
-] as const;
+/** The two things a run can do with a store's pages (dictionary keys). */
+const MODES: { label: Key; linksOnly: boolean; says: Key }[] = [
+  { label: "collect.mode.cards", linksOnly: false, says: "collect.mode.cardsSays" },
+  { label: "collect.mode.links", linksOnly: true, says: "collect.mode.linksSays" },
+];
+
+/**
+ * Names of things outside the admin, shown as they are: a Chrome address, a
+ * folder of the repository, a button of the extension (which speaks English).
+ */
+const LITERAL = {
+  extensionsPage: "chrome://extensions",
+  folder: "extension/",
+  extensionButton: "Collect this store",
+  robots: "robots.txt",
+  crawlDelay: "crawl-delay",
+} as const;
+
+/**
+ * A message with {name} slots filled by elements, for the words inside a
+ * sentence that are set apart. t() leaves a slot it has no value for as it
+ * is, so the slots survive it.
+ */
+function fill(text: string, parts: Record<string, ReactNode>): ReactNode[] {
+  return text
+    .split(/\{(\w+)\}/g)
+    .map((piece, i) => (i % 2 ? <Fragment key={i}>{parts[piece] ?? `{${piece}}`}</Fragment> : piece));
+}
 
 /**
  * Where the chosen mode is kept, so every collect tab runs in it: the extension
@@ -116,6 +135,7 @@ interface RobotsInfo {
 }
 
 export default function CollectPage() {
+  const t = useT();
   const [connected, setConnected] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [store, setStore] = useState("");
@@ -212,10 +232,10 @@ export default function CollectPage() {
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
-      throw new Error(data?.error ?? `Request failed (${res.status})`);
+      throw new Error(data?.error ?? t("collect.requestFailed", { status: String(res.status) }));
     }
     return data as Record<string, unknown>;
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     async function onMessage(event: MessageEvent) {
@@ -238,7 +258,7 @@ export default function CollectPage() {
         }
 
         case "plan": {
-          if (stoppedRef.current) return reply(msg.id, false, "Stopped by the admin");
+          if (stoppedRef.current) return reply(msg.id, false, t("collect.stoppedByAdmin"));
           setConnected(true);
           setPhase("planning");
           setNotice("");
@@ -257,11 +277,11 @@ export default function CollectPage() {
             setDelayMs(Number(data.delayMs) || 0);
             setRobots((data.robots as RobotsInfo) ?? null);
             setLinkSearch((data.links as LinkSearch) ?? null);
-            if (typeof data.linksNote === "string") setNotice(`Links only: ${data.linksNote}.`);
+            if (typeof data.linksNote === "string") setNotice(t("collect.linksNote", { note: data.linksNote }));
             if (urls.length) setPhase("collecting");
             reply(msg.id, true, data);
           } catch (err) {
-            const message = err instanceof Error ? err.message : "Plan failed";
+            const message = err instanceof Error ? err.message : t("collect.planFailed");
             setNotice(message);
             setPhase("idle");
             reply(msg.id, false, message);
@@ -272,7 +292,7 @@ export default function CollectPage() {
         case "ingest": {
           // Refusing here is what makes Stop immediate: a worker already
           // mid-page cannot land one more product after the button.
-          if (stoppedRef.current) return reply(msg.id, false, "Stopped by the admin");
+          if (stoppedRef.current) return reply(msg.id, false, t("collect.stoppedByAdmin"));
           setConnected(true);
           setPhase("collecting");
           try {
@@ -290,7 +310,7 @@ export default function CollectPage() {
             if (result) setResults((prev) => [...prev, result]);
             reply(msg.id, true, data);
           } catch (err) {
-            const message = err instanceof Error ? err.message : "Ingest failed";
+            const message = err instanceof Error ? err.message : t("collect.ingestFailed");
             const url = typeof payload.url === "string" ? payload.url : "";
             setResults((prev) => [...prev, { url, status: "failed", reason: message }]);
             reply(msg.id, false, message);
@@ -308,7 +328,7 @@ export default function CollectPage() {
 
         case "error": {
           // The worker stopping itself — two refusals in a row, most often.
-          setNotice(typeof payload.message === "string" ? payload.message : "The run stopped");
+          setNotice(typeof payload.message === "string" ? payload.message : t("collect.runStopped"));
           setPhase("halted");
           return;
         }
@@ -322,7 +342,7 @@ export default function CollectPage() {
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [callApi, reply, reset]);
+  }, [callApi, reply, reset, t]);
 
   function chooseMode(value: boolean) {
     linksOnlyRef.current = value;
@@ -346,21 +366,16 @@ export default function CollectPage() {
   const running = phase === "planning" || phase === "collecting";
   const pct = planned ? Math.min(100, Math.round((done / planned) * 100)) : 0;
 
+  // The emphasis a step of the install puts on what to look for on screen.
+  const strong = (text: string) => <span className="text-[var(--foreground)]">{text}</span>;
+
   return (
     <AdminPage layout="form">
-      <div className="space-y-5">
-        <header>
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
-            Collect with the browser extension
-          </h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-1">
-            Keep this tab open. The extension opens store pages on your machine and this tab imports
-            what they contain, signed in as you.
-          </p>
-        </header>
+      <PageHeader title={t("collect.title")} subtitle={t("collect.subtitle")} />
 
+      <div className="space-y-5">
         {/* Connection */}
-        <div className={`${cardCls} px-5 py-4 flex items-center gap-3 flex-wrap`}>
+        <div className={`${PANEL} px-5 py-4 flex items-center gap-3 flex-wrap`}>
           <span
             aria-hidden="true"
             className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -368,7 +383,7 @@ export default function CollectPage() {
             }`}
           />
           <p className="text-[13px] font-medium text-[var(--foreground)]">
-            {connected ? "Extension connected" : "Waiting for the extension"}
+            {connected ? t("collect.connected") : t("collect.waiting")}
           </p>
           {store && (
             <span className="text-[11px] text-[var(--foreground-muted)] truncate max-w-full md:max-w-[420px]">
@@ -377,13 +392,13 @@ export default function CollectPage() {
           )}
           <div className="ml-auto flex items-center gap-2">
             {running ? (
-              <button onClick={stop} className={btn("secondary")} aria-label="Stop the run">
-                Stop
+              <button onClick={stop} className={btn("secondary")} aria-label={t("collect.stopRun")}>
+                {t("parser.stop")}
               </button>
             ) : (
               results.length > 0 && (
                 <button onClick={reset} className={btn("ghost")}>
-                  Clear
+                  {t("parser.clear")}
                 </button>
               )
             )}
@@ -391,10 +406,10 @@ export default function CollectPage() {
         </div>
 
         {/* What the run does with each page — set before starting it */}
-        <div className={`${cardCls} px-5 py-4 flex items-center gap-4 flex-wrap`}>
+        <div className={`${PANEL} px-5 py-4 flex items-center gap-4 flex-wrap`}>
           <div
             role="group"
-            aria-label="What this run does"
+            aria-label={t("collect.modes")}
             className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
           >
             {MODES.map((m) => {
@@ -412,90 +427,81 @@ export default function CollectPage() {
                       : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                   }`}
                 >
-                  {m.label}
+                  {t(m.label)}
                 </button>
               );
             })}
           </div>
           <p className="text-[11px] text-[var(--foreground-muted)] flex-1 min-w-[220px]">
-            {MODES.find((m) => m.linksOnly === linksOnly)?.says}
-            {running && " Change it between runs."}
+            {t(MODES.find((m) => m.linksOnly === linksOnly)?.says ?? "collect.mode.cardsSays")}
+            {running && ` ${t("collect.mode.betweenRuns")}`}
           </p>
         </div>
 
         {!connected && (
-          <div className={`${cardCls} px-5 py-4 space-y-2`}>
-            <h2 className="text-[13px] font-medium text-[var(--foreground)]">Install it once</h2>
+          <div className={`${PANEL} px-5 py-4 space-y-2`}>
+            <h2 className="text-[13px] font-medium text-[var(--foreground)]">{t("collect.install.title")}</h2>
             <ol className="text-[12px] text-[var(--foreground-muted)] space-y-1 list-decimal pl-4">
+              <li>{fill(t("collect.install.step1"), { page: strong(LITERAL.extensionsPage) })}</li>
               <li>
-                Open <span className="text-[var(--foreground)]">chrome://extensions</span> and turn on
-                Developer mode.
+                {fill(t("collect.install.step2"), {
+                  button: strong(t("collect.install.loadUnpacked")),
+                  folder: strong(LITERAL.folder),
+                })}
               </li>
-              <li>
-                Choose <span className="text-[var(--foreground)]">Load unpacked</span> and pick the{" "}
-                <span className="text-[var(--foreground)]">extension/</span> folder from the
-                repository.
-              </li>
-              <li>
-                Open the store you want, click the Goo icon, set how many products to collect and
-                press <span className="text-[var(--foreground)]">Collect this store</span>.
-              </li>
-              <li>Chrome will ask once for permission to read that store. Grant it.</li>
+              <li>{fill(t("collect.install.step3"), { button: strong(LITERAL.extensionButton) })}</li>
+              <li>{t("collect.install.step4")}</li>
             </ol>
           </div>
         )}
 
         {notice && (
-          <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-5 py-3 text-[12px] text-[var(--warn)]">
+          <div className={BANNER.warn}>
             {notice}
           </div>
         )}
 
         {robots && (
-          <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
-            <span className={labelCls}>robots.txt</span>
+          <div className={`${PANEL} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
+            <span className={labelCls}>{LITERAL.robots}</span>
             <span className="text-[var(--foreground-muted)]">
-              {robots.parsed ? "read" : "none published"}
+              {robots.parsed ? t("collect.robots.read") : t("collect.robots.none")}
             </span>
             <span className="text-[var(--foreground-muted)]">
-              crawl-delay{" "}
+              {LITERAL.crawlDelay}{" "}
               <span className="text-[var(--foreground)] tabular-nums">
-                {robots.crawlDelayMs ? `${(robots.crawlDelayMs / 1000).toFixed(1)}s` : "not set"}
+                {robots.crawlDelayMs ? seconds(robots.crawlDelayMs, t) : t("collect.robots.notSet")}
               </span>
             </span>
             <span className="text-[var(--foreground-muted)]">
-              pacing at{" "}
-              <span className="text-[var(--foreground)] tabular-nums">
-                {(delayMs / 1000).toFixed(1)}s
-              </span>
+              {t("collect.robots.pacing")}{" "}
+              <span className="text-[var(--foreground)] tabular-nums">{seconds(delayMs, t)}</span>
             </span>
             {robots.blocked > 0 && (
-              <span className="text-[var(--warn)] tabular-nums">{robots.blocked} disallowed, skipped</span>
+              <span className="text-[var(--warn)] tabular-nums">{t("collect.robots.blocked", { count: robots.blocked })}</span>
             )}
           </div>
         )}
 
         {linkSearch && (
-          <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
-            <span className={labelCls}>Looking for ours</span>
-            <span className="text-[var(--foreground-muted)]">
-              <span className="text-[var(--foreground)] tabular-nums">{linkSearch.matched}</span> store
-              pages name one of our {linkSearch.cards} cards
+          <div className={`${PANEL} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
+            <span className={labelCls}>{t("collect.links.label")}</span>
+            <span className="text-[var(--foreground-muted)] tabular-nums">
+              {t("collect.links.matched", { count: linkSearch.matched, cards: linkSearch.cards })}
             </span>
             {linkSearch.unnamed > 0 && (
-              <span className="text-[var(--foreground-muted)]">
-                <span className="tabular-nums">{linkSearch.unnamed}</span> name nothing by their
-                address, opened after
+              <span className="text-[var(--foreground-muted)] tabular-nums">
+                {t("collect.links.unnamed", { count: linkSearch.unnamed })}
               </span>
             )}
             {linkSearch.linked > 0 && (
-              <span className="text-[var(--foreground-muted)]">
-                <span className="tabular-nums">{linkSearch.linked}</span> already on a card
+              <span className="text-[var(--foreground-muted)] tabular-nums">
+                {t("collect.links.linked", { count: linkSearch.linked })}
               </span>
             )}
             {linkSearch.other > 0 && (
-              <span className="text-[var(--foreground-subtle)]">
-                <span className="tabular-nums">{linkSearch.other}</span> not ours, not opened
+              <span className="text-[var(--foreground-subtle)] tabular-nums">
+                {t("collect.links.other", { count: linkSearch.other })}
               </span>
             )}
           </div>
@@ -503,28 +509,28 @@ export default function CollectPage() {
 
         {/* Progress + outcomes */}
         {(running || results.length > 0) && (
-          <div className={`${cardCls} overflow-hidden`}>
+          <div className={`${PANEL} overflow-hidden`}>
             <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
               <div className="flex items-center gap-4 flex-wrap">
                 <p className="text-[13px] font-medium text-[var(--foreground)] inline-flex items-center gap-1.5">
                   {running && <Spinner />}
-                  {phase === "planning" && "Reading the store…"}
-                  {phase === "collecting" && `Collecting ${done}/${planned || "…"}`}
-                  {phase === "done" && "Finished"}
-                  {phase === "stopped" && "Stopped"}
-                  {phase === "halted" && "Halted"}
-                  {phase === "idle" && "Ready"}
+                  {phase === "planning" && t("collect.reading")}
+                  {phase === "collecting" && t("parser.run.collecting", { done, total: planned || "…" })}
+                  {phase === "done" && t("parser.run.finished")}
+                  {phase === "stopped" && t("parser.run.stopped")}
+                  {phase === "halted" && t("collect.halted")}
+                  {phase === "idle" && t("collect.ready")}
                 </p>
                 <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
-                  <span className="text-[var(--ok)]">{imported} new</span>
-                  <span className="text-[var(--foreground-muted)]">{updated} updated</span>
-                  {failed > 0 && <span className="text-[var(--warn)]">{failed} skipped</span>}
+                  <span className="text-[var(--ok)]">{t("parser.count.new", { count: imported })}</span>
+                  <span className="text-[var(--foreground-muted)]">{t("parser.count.updated", { count: updated })}</span>
+                  {failed > 0 && <span className="text-[var(--warn)]">{t("parser.count.skipped", { count: failed })}</span>}
                   {!running && results.length > 0 && (
                     <a
                       href="/goo-studio/products"
                       className="underline hover:no-underline text-[var(--foreground)]"
                     >
-                      View products →
+                      {t("parser.viewProducts")}
                     </a>
                   )}
                 </div>
@@ -537,11 +543,11 @@ export default function CollectPage() {
               </div>
               {photos > 0 && (
                 <p className="text-[12px] text-[var(--foreground-subtle)]">
-                  {photos} photo{photos === 1 ? "" : "s"} copied to our storage
+                  {t("parser.photosCopied", { count: photos })}
                 </p>
               )}
               {warnings.map((w) => (
-                <p key={w} className="rounded-lg border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)]">
+                <p key={w} className={BANNER.warn}>
                   {w}
                 </p>
               ))}
@@ -554,7 +560,7 @@ export default function CollectPage() {
                     key={`${r.url}-${i}`}
                     className="px-5 py-2.5 flex items-center gap-3 text-[11px]"
                   >
-                    <StatusPill status={r.status} />
+                    <StatusBadge status={r.status} />
                     <span className="text-[var(--foreground)] truncate flex-1 min-w-0">
                       {r.name || r.url.replace(/^https?:\/\/(www\.)?/, "")}
                     </span>
@@ -566,19 +572,19 @@ export default function CollectPage() {
                         {r.reason}
                       </span>
                     )}
-                    {!r.reason && detailLine(r) && (
+                    {!r.reason && detailLine(r, t) && (
                       <span
                         className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
-                        title={detailLine(r)}
+                        title={detailLine(r, t)}
                       >
-                        {detailLine(r)}
+                        {detailLine(r, t)}
                       </span>
                     )}
                     <a
                       href={r.url}
                       target="_blank"
                       rel="noreferrer"
-                      aria-label="Open this page in a new tab"
+                      aria-label={t("collect.openPage")}
                       className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
                     >
                       ↗
@@ -590,67 +596,67 @@ export default function CollectPage() {
           </div>
         )}
 
-        {!running && results.length === 0 && connected && (
-          <p className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-            Nothing collected yet. Start a run from the extension on a store page.
-          </p>
-        )}
+        {!running && results.length === 0 && connected && <EmptyState text={t("collect.empty")} />}
       </div>
     </AdminPage>
   );
 }
 
+/** Milliseconds as seconds with one decimal at most, in the admin's language: "2.5s" / "2,5 с". */
+function seconds(ms: number, t: T): string {
+  return t("collect.robots.seconds", { s: Math.round(ms / 100) / 10 });
+}
+
 /**
  * What a finished page has to say for itself beyond "imported".
  *
- * Two questions the admin would otherwise have to open the catalogue to answer:
+ * Two questions the admin would otherwise have to open the catalog to answer:
  * how many photos came across, and what happened to the price. The second one
- * matters most on a store that does not price in dollars — the catalogue stores
+ * matters most on a store that does not price in dollars — the catalog stores
  * dollars, so the row says which rate turned ₴4,000 into a number, rather than
  * leaving the admin to wonder whether it did. A brand read off the product name
  * is said too, since it replaced whatever the page gave.
  */
-function detailLine(r: CrawlItemResult): string {
+function detailLine(r: CrawlItemResult, t: T): string {
   const parts: string[] = [];
-  if (r.images) parts.push(`${r.images} photo${r.images === 1 ? "" : "s"}`);
+  if (r.images) parts.push(t("collect.row.photos", { count: r.images }));
   if (r.priceNote) parts.push(r.priceNote);
   if (r.brandNote) parts.push(r.brandNote);
   if (r.colorNote) parts.push(r.colorNote);
   if (r.linkNote) parts.push(r.linkNote);
   if (r.genderNote) parts.push(r.genderNote);
   if (r.styleNote) parts.push(r.styleNote);
-  if (r.variantsLinked) {
-    parts.push(`grouped with ${r.variantsLinked} colour${r.variantsLinked === 1 ? "" : "s"}`);
-  }
+  if (r.variantsLinked) parts.push(t("parser.note.grouped", { count: r.variantsLinked }));
   // A merge is the interesting outcome on this row: the page did not create a
   // product, it added a place to buy one we already had.
   if (r.merged) {
     const filled = (r.mergedFields ?? []).filter((f) => f !== "retailer");
     // Said, because a name match is a judgement where a code match is a fact,
     // and the admin is the one who can undo a wrong one.
-    const how = r.mergedBy === "name" ? " (same piece by name and colour)" : "";
+    const byName = r.mergedBy === "name";
     parts.push(
       filled.length
-        ? `added as a store to an existing product${how}, filling ${filled.join(", ")}`
-        : `added as a store to an existing product${how}`,
+        ? t(byName ? "collect.row.mergedByNameFilling" : "collect.row.mergedFilling", { fields: filled.join(", ") })
+        : t(byName ? "collect.row.mergedByName" : "parser.note.merged"),
     );
   }
   return parts.join(" · ");
 }
 
-function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
-  const map: Record<CrawlItemResult["status"], { label: string; cls: string }> = {
-    imported: { label: "New", cls: "text-[var(--ok)] bg-[var(--ok-bg)] border-[var(--ok-line)]" },
-    updated: { label: "Upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)] border-[var(--border)]" },
-    skipped: { label: "Skip", cls: "text-[var(--warn)] bg-[var(--warn-bg)] border-[var(--warn-line)]" },
-    failed: { label: "Fail", cls: "text-[var(--err)] bg-[var(--err-bg)] border-[var(--err-line)]" },
-  };
-  const { label, cls } = map[status];
+const STATUS_BADGE: Record<CrawlItemResult["status"], { tone: BadgeTone; label: Key }> = {
+  imported: { tone: "ok", label: "parser.status.imported" },
+  updated: { tone: "neutral", label: "parser.status.updated" },
+  skipped: { tone: "warn", label: "parser.status.skipped" },
+  failed: { tone: "err", label: "parser.status.failed" },
+};
+
+/** A collected page's outcome. Its column keeps one width, so the names after it line up. */
+function StatusBadge({ status }: { status: CrawlItemResult["status"] }) {
+  const t = useT();
+  const { tone, label } = STATUS_BADGE[status];
   return (
-    <span
-      className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full border flex-shrink-0 w-10 text-center ${cls}`}
-    >
-      {label}
+    <span className="w-[72px] flex-shrink-0">
+      <Badge tone={tone}>{t(label)}</Badge>
     </span>
   );
 }

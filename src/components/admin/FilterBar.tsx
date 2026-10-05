@@ -293,7 +293,7 @@ export function FilterMenu({
                 }}
                 placeholder={t("filter.search")}
                 aria-label={t("filter.searchIn", { label })}
-                className="w-full min-h-0 h-10 md:h-8 px-2 rounded-md bg-transparent outline-none text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
+                className="w-full min-h-0 h-10 md:h-8 px-2 rounded-md bg-transparent focus:bg-[var(--fg-overlay-05)] outline-none text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
               />
             </div>
           )}

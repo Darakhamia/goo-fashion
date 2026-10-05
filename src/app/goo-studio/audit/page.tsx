@@ -3,7 +3,7 @@
 /**
  * Audit — the products whose labels look wrong, and one click each to fix them.
  *
- * The catalogue's own labelling is the standard everything else is measured
+ * The catalog's own labeling is the standard everything else is measured
  * against, so a mistake in it spreads: a hoodie filed as footwear teaches the
  * classifier that hoodies are shoes. This page is where those get found.
  *
@@ -11,7 +11,7 @@
  * disagreeing with a label means one of the two is wrong, and which one is a
  * judgement — so there is no "apply all" here, and there should not be. The
  * checks that are exact are marked as such; the rest are suggestions. The one
- * exception is a colour that is a size or a file name: that is never a matter
+ * exception is a color that is a size or a file name: that is never a matter
  * of judgement, and an import can leave a whole store of them, so that section
  * can be applied at once — still one checked write per product.
  */
@@ -19,10 +19,13 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { Badge } from "@/components/admin/Badge";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { useToast } from "@/components/admin/Toast";
-import { btn } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, PANEL } from "@/app/goo-studio/_ui/recipes";
+import { useFormat, useT, type Key, type T } from "@/app/goo-studio/_i18n";
 
 interface Suspect {
   id: string;
@@ -49,6 +52,9 @@ interface AuditReport {
   dismissalsError: string | null;
 }
 
+/** The server's own message, or ours when it gave none. Kept as a key so the text follows the language switch. */
+type Failure = { key: Key } | { text: string };
+
 /** One suggestion, keyed exactly as the API keys a dismissal. */
 function claimKey(s: Suspect): string {
   return [s.id, s.field, s.stored, s.suggested].join("\u0000");
@@ -56,67 +62,51 @@ function claimKey(s: Suspect): string {
 
 /**
  * What an Apply settles. A single-valued field holds one answer, so applying
- * any suggestion for it settles the others for that product too; a colour
+ * any suggestion for it settles the others for that product too; a color
  * group is added alongside the rest, so it settles only its own suggestion.
  */
 function appliedKey(s: Suspect): string {
   return s.field === "colour group" ? claimKey(s) : `${s.field}:${s.id}`;
 }
 
-/** Section copy: what the check is, and how much it can be trusted. */
-const SECTIONS: { key: string; title: string; note: string; exact?: boolean; bulk?: boolean }[] = [
+/** Section copy: what the check is, and how much it can be trusted. Keyed by the API's section key. */
+const SECTIONS: { key: string; title: Key; note: Key; exact?: boolean; bulk?: boolean }[] = [
   {
     key: "colour_label_not_a_colour",
-    title: "Colour that is not a colour",
-    note: "The colour label is a size or a file name — a size row built from swatches reads to the importer like the picked colour. Applying replaces it with the colourway the name ends with (“Mia Jacket - Beige/White”), or the colour the name mentions, or clears it.",
+    title: "audit.check.colorNotColor.title",
+    note: "audit.check.colorNotColor.note",
     exact: true,
     bulk: true,
   },
-  {
-    key: "subcategory_not_in_tree",
-    title: "Subcategory that no longer exists",
-    note: "The label is not in the category tree at all — usually left behind by an edit under Categories. Pick a new one in the product editor.",
-    exact: true,
-  },
+  { key: "subcategory_not_in_tree", title: "audit.check.subcategoryGone.title", note: "audit.check.subcategoryGone.note", exact: true },
   {
     key: "category_contradicts_subcategory",
-    title: "Category contradicts the subcategory",
-    note: "The tree files this subcategory under a different category. Wrong by definition, not by guesswork.",
+    title: "audit.check.categoryContradicts.title",
+    note: "audit.check.categoryContradicts.note",
     exact: true,
   },
-  {
-    key: "filed_under_the_wrong_group",
-    title: "The name says a different kind of thing",
-    note: "A t-shirt among the watches, or filed as knitwear. Its category and subcategory agree with each other, so the checks below stay quiet about it — only its own name gives it away. The subcategory is what has to change, so fix it in the product editor and the category will follow.",
-  },
+  { key: "filed_under_the_wrong_group", title: "audit.check.wrongGroup.title", note: "audit.check.wrongGroup.note" },
   {
     key: "subcategory_named_in_the_name",
-    title: "The name names a different subcategory",
-    note: "The name says one thing and the label says another — a piece called “T-Shirt” filed as Hoodies. Both may sit in the same category, which is why nothing else notices. Where a name mentions two, the more specific one wins, so a “Long Sleeve T-Shirt” is read as Long Sleeves. Applying sets the category to match.",
+    title: "audit.check.nameNamesSubcategory.title",
+    note: "audit.check.nameNamesSubcategory.note",
     exact: true,
   },
-  {
-    key: "same_phrase_filed_two_ways",
-    title: "Filed differently from its near-identical siblings",
-    note: "The catalogue disagreeing with itself: this piece's name matches a phrase that is filed the other way almost every time.",
-  },
-  {
-    key: "category_disputed_by_name",
-    title: "Category disputed by the name",
-    note: "The product's own name argues for a different category. Two mechanisms agreeing is marked ×2 and is worth looking at first.",
-  },
-  {
-    key: "subcategory_disputed_by_name",
-    title: "Subcategory disputed by the name",
-    note: "Applying this sets the category to match, since the tree already says where the label belongs.",
-  },
-  { key: "gender_disputed_by_name", title: "Gender disputed by the name", note: "The name or description names a different gender." },
-  {
-    key: "colour_group_possibly_missing",
-    title: "Colour filter possibly missing",
-    note: "A colour this piece has is reliably filed under a group it does not carry, so it may be invisible to that colour filter. Applying adds the group without removing any.",
-  },
+  { key: "same_phrase_filed_two_ways", title: "audit.check.siblingsDisagree.title", note: "audit.check.siblingsDisagree.note" },
+  { key: "category_disputed_by_name", title: "audit.check.categoryDisputed.title", note: "audit.check.categoryDisputed.note" },
+  { key: "subcategory_disputed_by_name", title: "audit.check.subcategoryDisputed.title", note: "audit.check.subcategoryDisputed.note" },
+  { key: "gender_disputed_by_name", title: "audit.check.genderDisputed.title", note: "audit.check.genderDisputed.note" },
+  { key: "colour_group_possibly_missing", title: "audit.check.colorGroupMissing.title", note: "audit.check.colorGroupMissing.note" },
 ];
+
+/** The fields the API names, in words; any other shows as it came. */
+const FIELD_LABEL: Record<string, Key> = {
+  category: "audit.field.category",
+  subcategory: "audit.field.subcategory",
+  gender: "audit.field.gender",
+  "colour group": "audit.field.colorGroup",
+  colour: "audit.field.color",
+};
 
 /** Title for a section this page has no copy for, from its key. */
 function fallbackTitle(key: string): string {
@@ -131,12 +121,12 @@ function fallbackTitle(key: string): string {
  * copy added here vanished from the list while still counting in the header.
  * Unknown is now merely unexplained, not invisible.
  */
-function sectionsToRender(report: AuditReport) {
+function sectionsToRender(report: AuditReport, t: T) {
   const known = new Set(SECTIONS.map((s) => s.key));
   const extra = Object.keys(report.suspects)
     .filter((key) => !known.has(key))
     .map((key) => ({ key, title: fallbackTitle(key), note: "", exact: false, bulk: false }));
-  return [...SECTIONS, ...extra];
+  return [...SECTIONS.map((s) => ({ ...s, title: t(s.title), note: t(s.note) })), ...extra];
 }
 
 /** Fields this page can write. Anything else is for the product editor. */
@@ -157,12 +147,14 @@ function SectionHeader({
   note: string;
   children: ReactNode;
 }) {
+  const t = useT();
   const help = useHelp(`audit-${sectionKey}`);
   return (
     <header className="px-5 py-3.5 border-b border-[var(--border)]">
-      <div className="flex items-center gap-2">
+      {/* Wraps on a phone: the longer Russian badge and "Apply all" do not fit one row there. */}
+      <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-sm text-[var(--foreground)]">{title}</h2>
-        {note && <HelpButton help={help} label={`About “${title}”`} />}
+        {note && <HelpButton help={help} label={t("audit.section.about", { title })} />}
         {children}
       </div>
       {note && help.open && (
@@ -177,9 +169,11 @@ function SectionHeader({
 }
 
 export default function AdminAuditPage() {
+  const t = useT();
+  const f = useFormat();
   const [report, setReport] = useState<AuditReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Failure | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -195,7 +189,7 @@ export default function AdminAuditPage() {
       const res = await fetch(`/api/admin/label-audit?limit=${LIMIT}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error ?? "Could not run the audit.");
+        setError(json.error ? { text: json.error } : { key: "audit.loadFailed" });
         setReport(null);
       } else {
         setReport(json);
@@ -203,7 +197,7 @@ export default function AdminAuditPage() {
         setHidden(new Set());
       }
     } catch {
-      setError("Could not reach the server.");
+      setError({ key: "audit.unreachable" });
     } finally {
       setLoading(false);
     }
@@ -222,14 +216,14 @@ export default function AdminAuditPage() {
         body: JSON.stringify({ id: s.id, field: s.field, value: s.suggested }),
       });
       const json = await res.json();
-      if (!res.ok) return json.error ?? "Could not apply.";
+      if (!res.ok) return json.error ?? t("audit.applyFailed");
       // Struck through in place rather than removed: seeing what was just
       // changed is the point, and a list that reshuffles under the cursor is
       // hard to work through.
       setDone((prev) => new Set(prev).add(appliedKey(s)));
       return null;
     } catch {
-      return "Could not reach the server.";
+      return t("audit.unreachable");
     }
   };
 
@@ -245,12 +239,11 @@ export default function AdminAuditPage() {
   const applyAll = async (key: string, list: Suspect[]) => {
     const todo = list.filter((s) => !s.dismissed && !done.has(appliedKey(s)) && !hidden.has(claimKey(s)));
     if (!todo.length) return;
-    const fixes = `${todo.length} fix${todo.length === 1 ? "" : "es"}`;
     if (
       !(await confirm({
-        title: `Apply ${fixes} in this section?`,
-        body: "Each product is written separately.",
-        confirmLabel: `Apply ${fixes}`,
+        title: t("audit.confirm.title", { count: todo.length }),
+        body: t("audit.confirm.body"),
+        confirmLabel: t("audit.confirm.action", { count: todo.length }),
       }))
     )
       return;
@@ -262,8 +255,8 @@ export default function AdminAuditPage() {
       else fixed++;
     }
     setBusyKey(null);
-    if (refused) toast.err(`Fixed ${fixed}; ${refused} refused — re-check to see why`);
-    else toast.ok(`Fixed ${fixed}`);
+    if (refused) toast.err(t("audit.fixedPartly", { fixed, refused }));
+    else toast.ok(t("audit.fixed", { count: fixed }));
   };
 
   const claimBody = (s: Suspect) => ({
@@ -285,19 +278,15 @@ export default function AdminAuditPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        toast.err(
-          json.code === "TABLE_MISSING"
-            ? "Dismissals need migration 012 — run it in Supabase first."
-            : json.error ?? "Could not dismiss.",
-        );
+        toast.err(json.code === "TABLE_MISSING" ? t("audit.needsMigration") : json.error ?? t("audit.dismissFailed"));
         return;
       }
       // Hidden rather than removed, so the row stays where it was until the
       // next re-check and the list does not jump under the cursor.
       setHidden((prev) => new Set(prev).add(key));
-      toast.ok(`Dismissed — "${s.stored} → ${s.suggested}" won't be raised again`);
+      toast.ok(t("audit.dismissedToast", { stored: s.stored, suggested: s.suggested }));
     } catch {
-      toast.err("Could not reach the server.");
+      toast.err(t("audit.unreachable"));
     } finally {
       setBusyKey(null);
     }
@@ -311,13 +300,13 @@ export default function AdminAuditPage() {
       const res = await fetch(`/api/admin/label-audit/dismiss?${q}`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) {
-        toast.err(json.error ?? "Could not restore.");
+        toast.err(json.error ?? t("audit.restoreFailed"));
         return;
       }
       setHidden((prev) => new Set(prev).add(key));
-      toast.ok("Restored — it will be raised again on the next check.");
+      toast.ok(t("audit.restoredToast"));
     } catch {
-      toast.err("Could not reach the server.");
+      toast.err(t("audit.unreachable"));
     } finally {
       setBusyKey(null);
     }
@@ -328,90 +317,73 @@ export default function AdminAuditPage() {
 
   return (
     <div>
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Audit</h1>
-            <HelpButton help={help} label="How the audit works" />
-          </div>
-          <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
-            {report
-              ? `${total} thing${total === 1 ? "" : "s"} worth a second look across ${report.catalogue.products} products`
-              : "Checking the catalogue's labelling…"}
-          </p>
-          {help.open && (
-            <div className="mt-3">
-              <HelpPanel help={help}>
-                <p>
-                  A suggestion is not a verdict: where a rule disagrees with a label, either one of them can be the wrong one —
-                  a piece genuinely called &ldquo;Low Rise&rdquo; will be argued at by a rule that learned &ldquo;low&rdquo; from
-                  sneakers. Fixing a subcategory sets the category with it, since the tree already says where the label belongs.
-                  Re-check after a run of edits to see what is left. &ldquo;Fix categories&rdquo; on Products applies the same
-                  keyword table in bulk, but only to products with no subcategory.
-                </p>
-              </HelpPanel>
-            </div>
-          )}
+      <PageHeader
+        title={t("nav.audit")}
+        titleExtra={<HelpButton help={help} label={t("audit.help.label")} />}
+        subtitle={
+          report
+            ? [t("audit.summary.findings", { count: total }), t("audit.summary.products", { count: report.catalogue.products })].join(" · ")
+            : loading
+              ? t("audit.checking")
+              : undefined
+        }
+        actions={[
+          // Shows the suggestions dismissed before, in place, so a dismissal can be undone.
+          {
+            key: "dismissed",
+            label: showDismissed
+              ? t("audit.dismissed.hide")
+              : report
+                ? t("audit.dismissed.showCount", { count: report.dismissed })
+                : t("audit.dismissed.show"),
+            onClick: () => setShowDismissed((v) => !v),
+            disabled: !report,
+            title: t("audit.dismissed.hint"),
+          },
+          {
+            key: "recheck",
+            label: loading ? t("audit.checkingShort") : t("audit.recheck"),
+            onClick: () => void load(),
+            disabled: loading,
+          },
+        ]}
+      />
+      {help.open && (
+        <div className="-mt-4 mb-6">
+          <HelpPanel help={help}>
+            <p>{t("audit.help.text")}</p>
+          </HelpPanel>
         </div>
-        <div className="shrink-0 flex items-center gap-2">
-          <button
-            onClick={() => setShowDismissed((v) => !v)}
-            disabled={!report}
-            aria-pressed={showDismissed}
-            title="Suggestions you rejected. Shown so a dismissal can be undone."
-            className={`border rounded-lg px-3 py-2 text-[13px] font-medium transition-colors disabled:opacity-40 ${
-              showDismissed
-                ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
-                : "border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
-            }`}
-          >
-            Dismissed{report ? ` (${report.dismissed})` : ""}
-          </button>
-          <button onClick={() => load()} disabled={loading} className={btn("secondary")}>
-            {loading ? "Checking…" : "Re-check"}
-          </button>
-        </div>
-      </div>
+      )}
 
       {error && (
-        <div className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-xs text-[var(--err)]">{error}</div>
+        <div role="alert" className={`${BANNER.err} mb-6`}>
+          {"key" in error ? t(error.key) : error.text}
+        </div>
       )}
 
       {report && !report.dismissalsAvailable && (
-        <div className="mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
-            Dismiss cannot be remembered until supabase/migrations/012_label_audit_dismissals.sql is run. Applying
-            works without it.
-          </p>
-        </div>
+        <p className={`${BANNER.warn} mb-6`}>{t("audit.migrationMissing")}</p>
       )}
 
       {report?.dismissalsError && (
-        <div className="mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3">
-          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
-            Could not read the dismissed suggestions, so ones you dismissed are listed again: {report.dismissalsError}
-          </p>
-        </div>
+        <p className={`${BANNER.warn} mb-6`}>{t("audit.dismissalsError", { error: report.dismissalsError })}</p>
       )}
 
       {loading && !report && (
-        <div className="px-6 py-16 text-center text-xs text-[var(--foreground-muted)] tracking-wide">
-          Running the checks…
-        </div>
+        <div className="px-6 py-16 text-center text-xs text-[var(--foreground-muted)] tracking-wide">{t("audit.running")}</div>
       )}
 
       {report && total === 0 && !(showDismissed && report.dismissed > 0) && (
-        <div className="rounded-xl border border-[var(--border)] px-6 py-16 text-center" style={{ background: "var(--surface)" }}>
-          <p className="text-sm text-[var(--foreground)]">Nothing to flag.</p>
-          <p className="text-xs text-[var(--foreground-muted)] mt-2">
-            Every subcategory sits in the tree, no category contradicts one, and no name argues with its label.
-          </p>
+        <div className={`${PANEL} px-6 py-16 text-center`}>
+          <p className="text-sm text-[var(--foreground)]">{t("audit.empty.title")}</p>
+          <p className="text-xs text-[var(--foreground-muted)] mt-2">{t("audit.empty.text")}</p>
         </div>
       )}
 
       <div className="flex flex-col gap-5">
         {report &&
-          sectionsToRender(report).map(({ key, title, note, exact, bulk }) => {
+          sectionsToRender(report, t).map(({ key, title, note, exact, bulk }) => {
             // Dismissed ones arrive with every run and are only shown or hidden here.
             const all = report.suspects[key] ?? [];
             const list = showDismissed ? all : all.filter((s) => !s.dismissed);
@@ -421,30 +393,26 @@ export default function AdminAuditPage() {
             const openShown = all.filter((s) => !s.dismissed).length;
             const dismissedShown = all.length - openShown;
             const cut: string[] = [];
-            if (openTotal > openShown) cut.push(`showing ${openShown} of ${openTotal}`);
+            if (openTotal > openShown) cut.push(t("audit.cut.open", { shown: openShown, total: openTotal }));
             if (showDismissed && dismissedTotal > dismissedShown) {
-              cut.push(`showing ${dismissedShown} of ${dismissedTotal} dismissed`);
+              cut.push(t("audit.cut.dismissed", { shown: dismissedShown, total: dismissedTotal }));
             }
             const open = all.filter((s) => !s.dismissed && !done.has(appliedKey(s)) && !hidden.has(claimKey(s))).length;
             return (
-              <section key={key} className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
+              <section key={key} className={PANEL}>
                 <SectionHeader sectionKey={key} title={title} note={note}>
-                  <span className="text-[12px] text-[var(--foreground-muted)]">
-                    {openTotal}
-                    {showDismissed && dismissedTotal > 0 ? ` · ${dismissedTotal} dismissed` : ""}
+                  <span className="text-[12px] text-[var(--foreground-muted)] tabular-nums">
+                    {f.number(openTotal)}
+                    {showDismissed && dismissedTotal > 0 ? ` · ${t("audit.section.dismissedCount", { count: dismissedTotal })}` : ""}
                   </span>
-                  {exact && (
-                    <span className="text-[11px] font-medium border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--foreground-muted)]">
-                      Exact
-                    </span>
-                  )}
+                  {exact && <Badge>{t("audit.exact")}</Badge>}
                   {bulk && open > 0 && (
                     <button
                       onClick={() => applyAll(key, list)}
                       disabled={busyKey !== null}
                       className={`${btn("primary")} ml-auto shrink-0`}
                     >
-                      {busyKey === `section:${key}` ? "Fixing…" : `Apply all ${open}`}
+                      {busyKey === `section:${key}` ? t("audit.fixing") : t("audit.applyAll", { count: open })}
                     </button>
                   )}
                 </SectionHeader>
@@ -470,17 +438,13 @@ export default function AdminAuditPage() {
                               href={`/goo-studio/products?search=${encodeURIComponent(s.name)}`}
                               className={`text-sm text-[var(--foreground)] hover:underline ${applied || gone ? "line-through" : ""}`}
                             >
-                              {s.name || "(no name)"}
+                              {s.name || t("audit.noName")}
                             </Link>
-                            {s.agreement > 1 && (
-                              <span className="text-[11px] font-medium bg-[var(--foreground)] text-[var(--surface)] rounded-full px-1.5 py-0.5">
-                                ×{s.agreement}
-                              </span>
-                            )}
+                            {s.agreement > 1 && <Badge tone="inverse">×{s.agreement}</Badge>}
                           </div>
                           <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
-                            <span className="font-medium">{s.field}</span>{" "}
-                            <span className="font-mono">{s.stored || "(none)"}</span>
+                            <span className="font-medium">{FIELD_LABEL[s.field] ? t(FIELD_LABEL[s.field]) : s.field}</span>{" "}
+                            <span className="font-mono">{s.stored || t("audit.none")}</span>
                             {canApply && <> → <span className="font-mono text-[var(--foreground)]">{s.suggested}</span></>}
                           </p>
                           {s.evidence.map((e, i) => (
@@ -492,10 +456,10 @@ export default function AdminAuditPage() {
 
                         <div className="shrink-0 pt-0.5 flex items-center gap-3">
                           {applied ? (
-                            <span className="text-[11px] font-medium text-[var(--foreground-muted)]">Applied</span>
+                            <span className="text-[11px] font-medium text-[var(--foreground-muted)]">{t("audit.applied")}</span>
                           ) : gone ? (
                             <span className="text-[11px] font-medium text-[var(--foreground-muted)]">
-                              {s.dismissed ? "Restored" : "Dismissed"}
+                              {s.dismissed ? t("audit.restored") : t("audit.dismissed")}
                             </span>
                           ) : (
                             <>
@@ -505,7 +469,7 @@ export default function AdminAuditPage() {
                                   disabled={busyKey === rowKey}
                                   className={btn("secondary", "sm")}
                                 >
-                                  {busyKey === rowKey ? "…" : "Apply"}
+                                  {busyKey === rowKey ? "…" : t("audit.apply")}
                                 </button>
                               )}
                               {!canApply && !s.dismissed && (
@@ -513,20 +477,16 @@ export default function AdminAuditPage() {
                                   href={`/goo-studio/products?search=${encodeURIComponent(s.name)}`}
                                   className={btn("ghost", "sm")}
                                 >
-                                  Edit by hand
+                                  {t("audit.editByHand")}
                                 </Link>
                               )}
                               <button
                                 onClick={() => (s.dismissed ? restore(s) : dismiss(s))}
                                 disabled={busyKey === rowKey}
-                                title={
-                                  s.dismissed
-                                    ? "Raise this again on future checks"
-                                    : "This suggestion is wrong — stop raising it"
-                                }
+                                title={s.dismissed ? t("audit.restoreHint") : t("audit.dismissHint")}
                                 className={btn("ghost", "sm")}
                               >
-                                {s.dismissed ? "Restore" : "Dismiss"}
+                                {s.dismissed ? t("audit.restore") : t("audit.dismiss")}
                               </button>
                             </>
                           )}
@@ -537,14 +497,13 @@ export default function AdminAuditPage() {
                 </ul>
                 {cut.length > 0 && (
                   <p className="px-5 py-3 border-t border-[var(--border)] text-[11px] text-[var(--foreground-muted)]">
-                    {cut.join(" · ")} — work through these and re-check to see the rest.
+                    {t("audit.cut.tail", { list: cut.join(" · ") })}
                   </p>
                 )}
               </section>
             );
           })}
       </div>
-
     </div>
   );
 }

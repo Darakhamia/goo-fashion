@@ -6,6 +6,28 @@
  * or plural forms chosen by vars.count (see index.ts).
  */
 
+// Each screen's own keys live in screens/<screen>.en.ts (GS4-12), so screens
+// are moved onto the dictionary side by side without all editing this file.
+// The common words, the shell and the shared components stay here.
+import { productsEn } from "./screens/products.en";
+import { usersEn } from "./screens/users.en";
+import { outfitsEn } from "./screens/outfits.en";
+import { blogEn } from "./screens/blog.en";
+import { settingsEn } from "./screens/settings.en";
+import { subscriptionsEn } from "./screens/subscriptions.en";
+import { activityEn } from "./screens/activity.en";
+import { brandsEn } from "./screens/brands.en";
+import { retailersEn } from "./screens/retailers.en";
+import { categoriesEn } from "./screens/categories.en";
+import { emailEn } from "./screens/email.en";
+import { analyticsEn } from "./screens/analytics.en";
+import { catalogueCheckEn } from "./screens/catalogueCheck.en";
+import { duplicatesEn } from "./screens/duplicates.en";
+import { importerEn } from "./screens/importer.en";
+import { parserEn } from "./screens/parser.en";
+import { auditEn } from "./screens/audit.en";
+import { waitlistEn } from "./screens/waitlist.en";
+
 export type Message = string | { one?: string; few?: string; many?: string; other: string };
 
 export const en = {
@@ -108,6 +130,9 @@ export const en = {
   "cards.downloadOne": "Download card",
   "cards.packing": "Packing cards…",
   "cards.packingMb": "Packing cards… {mb} MB",
+  "cards.downloadedZip": "Cards downloaded ({mb} MB). See _export.txt inside for anything that failed.",
+  "cards.downloadedOne": "Card downloaded ({mb} MB).",
+  "cards.failed": "Could not export the cards.",
   "bulk.selected": { one: "{count} selected", other: "{count} selected" },
   "bulk.clear": "Clear selection",
   "menu.more": "More actions",
@@ -349,6 +374,7 @@ export const en = {
 
   // ── Prompts ───────────────────────────────────────────────────────────────
   "prompts.subtitle": "Prompts for blog posts, AI-written emails and outfit images. Changes apply right away, without a redeploy.",
+  "prompts.tabs": "Prompt groups",
   "prompts.tab.content": "Content",
   "prompts.tab.image": "Image generation",
   "prompts.custom": "Custom",
@@ -535,6 +561,26 @@ export const en = {
   "act.stylist_usage.reset": "Reset a stylist limit",
   "act.email.sent": "Sent an email",
   "act.waitlist.deleted": "Removed from the waitlist",
+
+  // ── Screens ───────────────────────────────────────────────────────────────
+  ...productsEn,
+  ...usersEn,
+  ...outfitsEn,
+  ...blogEn,
+  ...settingsEn,
+  ...subscriptionsEn,
+  ...activityEn,
+  ...brandsEn,
+  ...retailersEn,
+  ...categoriesEn,
+  ...emailEn,
+  ...analyticsEn,
+  ...catalogueCheckEn,
+  ...duplicatesEn,
+  ...importerEn,
+  ...parserEn,
+  ...auditEn,
+  ...waitlistEn,
 } as const satisfies Record<string, Message>;
 
 export type Key = keyof typeof en;

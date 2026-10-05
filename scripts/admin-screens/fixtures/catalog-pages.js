@@ -211,20 +211,20 @@ const ROW = "[data-row]";
    that the input itself is on top. */
 const tick = (box) => box.check({ force: true });
 const waitRows = async (page) => {
-  await page.waitForSelector(`${ROW} button[aria-label^="Edit "]:not([disabled])`, { state: "attached", timeout: 30000 });
+  await page.waitForSelector(`${ROW} button:is([aria-label^="Edit "], [aria-label^="Изменить "]):not([disabled])`, { state: "attached", timeout: 30000 });
 };
 const openFirstEditor = async (page) => {
   await waitRows(page);
   // The row's Edit icon is labelled with the product's name ("Edit Athleticz …");
   // on a phone it is hidden and Edit is the first item of the row's "…".
   const row = page.locator(ROW).first();
-  const edit = row.locator('button[aria-label^="Edit "]');
+  const edit = row.locator('button:is([aria-label^="Edit "], [aria-label^="Изменить "])');
   if (await edit.isVisible()) await edit.click();
   else {
     await row.locator('button[aria-haspopup="menu"]').click();
-    await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+    await page.getByRole("menuitem", { name: /^(Edit|Изменить)$/ }).click();
   }
-  await page.getByRole("heading", { name: "Edit Product" }).waitFor();
+  await page.getByRole("heading", { name: /^(Edit product|Изменить товар)$/i }).waitFor();
   await page.waitForTimeout(400);
 };
 const expandAll = async (page) => {
@@ -367,7 +367,7 @@ module.exports = {
     {
       name: "outfits-pending", url: "/goo-studio/outfits",
       after: async (page) => {
-        await page.getByRole("tab", { name: /^Pending/ }).click();
+        await page.getByRole("tab", { name: /^(Pending|На проверке)/ }).click();
         await page.waitForSelector('img[alt="Look"]', { timeout: 15000 });
         await unclip(page);
       },
@@ -375,7 +375,7 @@ module.exports = {
     {
       name: "outfits-pending-review", url: "/goo-studio/outfits", fullPage: false,
       after: async (page) => {
-        await page.getByRole("tab", { name: /^Pending/ }).click();
+        await page.getByRole("tab", { name: /^(Pending|На проверке)/ }).click();
         await page.locator('img[alt="Look"]').first().click();
         await page.getByRole("dialog", { name: "Review submitted look" }).waitFor();
       },
@@ -386,7 +386,7 @@ module.exports = {
     {
       name: "brands-confirm", url: "/goo-studio/brands", fullPage: false,
       after: async (page) => {
-        await page.getByRole("button", { name: /^Delete brand / }).first().click();
+        await page.getByRole("button", { name: /^(Delete brand|Удалить бренд) / }).first().click();
         await page.getByRole("alertdialog").waitFor();
         await page.waitForTimeout(400);
       },
@@ -394,15 +394,15 @@ module.exports = {
     {
       name: "brands-toast", url: "/goo-studio/brands", fullPage: false,
       after: async (page) => {
-        await page.getByRole("button", { name: /^Delete brand / }).first().click();
-        await page.getByRole("alertdialog").getByRole("button", { name: "Delete brand" }).click();
+        await page.getByRole("button", { name: /^(Delete brand|Удалить бренд) / }).first().click();
+        await page.getByRole("alertdialog").getByRole("button", { name: /^(Delete brand|Удалить бренд)$/ }).click();
         await page.waitForTimeout(1200);
       },
     },
     {
       name: "retailers-help", url: "/goo-studio/retailers", fullPage: false,
       after: async (page) => {
-        await page.getByRole("button", { name: "How retailer rules work" }).click();
+        await page.getByRole("button", { name: /^(How retailer rules work|Как работают правила магазинов)$/ }).click();
         await page.waitForTimeout(300);
       },
     },

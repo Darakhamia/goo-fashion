@@ -68,3 +68,21 @@ export const INPUT = `${FIELD_BASE} bg-transparent`;
 export const SELECT = `${FIELD_BASE} bg-[var(--surface)]`;
 
 export const FIELD_LABEL = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
+
+/**
+ * A block's card: the surface on the page background with a hairline border
+ * (DESIGN_SYSTEM §9). The call site adds padding, overflow and layout.
+ */
+export const PANEL = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
+
+/**
+ * A notice across the content: the page failed to load, or a step is missing
+ * (DESIGN_SYSTEM §9). What is broken and how to fix it, with a count and a
+ * link, is an AttentionList row instead. The error banner gets role="alert".
+ * A call site adds layout (`flex`, `mb-6`), never a second padding or colour.
+ */
+export const BANNER = {
+  err: "rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)] break-words",
+  warn: "rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[13px] text-[var(--warn)] break-words",
+  ok: "rounded-xl border border-[var(--ok-line)] bg-[var(--ok-bg)] px-4 py-3 text-[13px] text-[var(--ok)] break-words",
+} as const;

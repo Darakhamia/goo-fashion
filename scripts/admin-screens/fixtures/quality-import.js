@@ -611,7 +611,8 @@ module.exports = {
       after: async (page) => {
         await page.route("**/api/admin/catalogue-check", (r) => r.fulfill({ json: CHECK_READY }));
         await page.reload({ waitUntil: "networkidle" });
-        await page.getByText("Fixed by the check").waitFor({ timeout: 20000 });
+        // The progress bar shows once the status has loaded; it waits in any language.
+        await page.getByRole("progressbar").waitFor({ timeout: 20000 });
         await page.waitForTimeout(600);
       },
     },
@@ -620,7 +621,7 @@ module.exports = {
       url: "/goo-studio/import",
       after: async (page) => {
         await page.setInputFiles('input[type="file"]', { name: "awin_feed_1823341_2026-10-05.csv", mimeType: "text/csv", buffer: Buffer.from(CSV_TEXT) });
-        await page.getByText(/merchants? detected/).waitFor({ timeout: 20000 });
+        await page.getByText(/merchants? detected|найден[оы]? \d+ магазин/).waitFor({ timeout: 20000 });
         await page.getByText("END. Clothing", { exact: true }).click();
         await page.getByText("size?", { exact: true }).click();
         await page.mouse.move(1, 1);
@@ -631,7 +632,7 @@ module.exports = {
       url: "/goo-studio/import",
       after: async (page) => {
         await page.setInputFiles('input[type="file"]', { name: "awin_feed_1823341_2026-10-05.csv", mimeType: "text/csv", buffer: Buffer.from(CSV_TEXT) });
-        await page.getByText(/merchants? detected/).waitFor({ timeout: 20000 });
+        await page.getByText(/merchants? detected|найден[оы]? \d+ магазин/).waitFor({ timeout: 20000 });
         await page.getByText("Selfridges", { exact: true }).click();
         await page.getByRole("button", { name: /^Preview/ }).click();
         await page.getByText(/will be created/).waitFor({ timeout: 20000 });
@@ -643,7 +644,7 @@ module.exports = {
       name: "parser-parse",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: "Parse URL", exact: true }).click();
+        await page.getByRole("button", { name: /^(Parse URL|Разбор ссылки|Ссылка)$/ }).click();
         await page.getByPlaceholder("https://www.farfetch.com/shopping/men/...").fill(PARSE_URL);
         await page.getByRole("button", { name: "Parse", exact: true }).click();
         await page.getByText("Preview & edit").waitFor({ timeout: 20000 });
@@ -655,8 +656,8 @@ module.exports = {
       name: "parser-recipes",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: /^(Site recipes|Recipes)$/ }).click();
-        await page.getByRole("button", { name: "Edit", exact: true }).nth(2).click();
+        await page.getByRole("button", { name: /^(Site recipes|Recipes|Рецепты сайтов|Рецепты)$/ }).click();
+        await page.getByRole("button", { name: /^(Edit|Изменить)$/ }).nth(2).click();
         await page.mouse.move(1, 1);
       },
     },
@@ -664,7 +665,7 @@ module.exports = {
       name: "parser-fetch",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: /^(Fetch & anti-bot|Anti-bot)$/ }).click();
+        await page.getByRole("button", { name: /^(Fetch & anti-bot|Anti-bot|Загрузка и антибот|Антибот)$/ }).click();
         await page.mouse.move(1, 1);
       },
     },
@@ -674,8 +675,8 @@ module.exports = {
       after: async (page) => {
         await page.getByPlaceholder("https://www.balenciaga.com/en-us/men/ready-to-wear").fill(CRAWL_URL);
         // On a phone the first tab is named "Collect" too; the run's button comes after it.
-        await page.getByRole("button", { name: "Collect", exact: true }).last().click();
-        await page.getByText("Finished", { exact: true }).waitFor({ timeout: 30000 });
+        await page.getByRole("button", { name: /^(Collect|Собрать)$/ }).last().click();
+        await page.getByText(/^(Finished|Готово)$/).waitFor({ timeout: 30000 });
         await page.waitForLoadState("networkidle");
         await page.mouse.move(1, 1);
       },
@@ -700,7 +701,7 @@ module.exports = {
           await sleep(500);
           send("done", 99, {});
         }, { store: COLLECT_STORE, urls, titles });
-        await page.getByText("Finished", { exact: true }).waitFor({ timeout: 20000 });
+        await page.getByText(/^(Finished|Готово)$/).waitFor({ timeout: 20000 });
       },
     },
   ],

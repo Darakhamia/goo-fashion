@@ -396,7 +396,7 @@ const pages = [
     url: "/goo-studio/analytics",
     wait: 1800,
     after: async (page) => {
-      await page.getByRole("button", { name: "30d", exact: true }).click();
+      await page.getByRole("button", { name: /^(30d|30 дн\.)$/ }).click();
       await page.waitForLoadState("networkidle");
       await page.waitForTimeout(1200);
       await unclip(page);
@@ -407,7 +407,7 @@ const pages = [
     url: "/goo-studio/prompts",
     wait: 1800,
     after: async (page) => {
-      await page.getByRole("button", { name: /Image generation|Картинки/ }).click();
+      await page.getByRole("tab", { name: /Image generation|Картинки/ }).click();
       await page.waitForTimeout(400);
       await unclip(page);
     },
@@ -419,7 +419,7 @@ const pages = [
     fullPage: false,
     wait: 1800,
     after: async (page) => {
-      await page.locator("#showcase").getByRole("button", { name: /^Remove / }).first().click();
+      await page.locator("#showcase").getByRole("button", { name: /^(Remove|Убрать) / }).first().click();
       await page.getByRole("region", { name: /Save changes|Сохранение/ }).waitFor();
       await page.waitForTimeout(600);
     },
@@ -436,7 +436,7 @@ const pages = [
       if (await edit.isVisible()) await edit.click();
       else {
         await row.locator('button[aria-haspopup="menu"]').click();
-        await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+        await page.getByRole("menuitem", { name: /^(Edit|Изменить)$/ }).click();
       }
       await page.getByRole("dialog").waitFor();
     },

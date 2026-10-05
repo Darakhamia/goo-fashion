@@ -393,7 +393,7 @@ module.exports = {
       name: "dashboard-fix", url: "/goo-studio", fullPage: false,
       after: async (page) => {
         // On a phone the rows are links and "How to fix" stays on a computer.
-        await page.getByText("Needs attention", { exact: true }).waitFor();
+        await page.getByText(/^(Needs attention|Требует внимания)$/).waitFor();
         const fix = page.locator("section li button[aria-expanded]").first();
         if (await fix.count()) await fix.click();
         await page.waitForTimeout(300);
@@ -413,7 +413,7 @@ module.exports = {
       after: async (page) => {
         await page.getByText("Maria Koval", { exact: true }).first().click();
         await page.getByRole("dialog").waitFor({ timeout: 15000 });
-        await page.getByText("Stylist today").waitFor({ timeout: 15000 });
+        await page.getByText(/Stylist today|Стилист сегодня/).waitFor({ timeout: 15000 });
         await page.waitForTimeout(600);
       },
     },
@@ -437,7 +437,7 @@ module.exports = {
       name: "email-confirm",
       url: "/goo-studio/email",
       after: async (page) => {
-        await page.getByPlaceholder("e.g. New features in GOO this month").fill("New in GOO: autumn edit and a smarter stylist");
+        await page.getByPlaceholder(/New features in GOO|Что нового в GOO/).fill("New in GOO: autumn edit and a smarter stylist");
         await page.locator("textarea").first().fill(
           "# Autumn is here\n\nWe added 659 new pieces this month, from knitwear to outerwear.\n\n## What's new\n\n- **Autumn edit** — hand-picked layers for cooler days\n- The AI stylist now remembers your sizes\n- Save looks to your profile\n\nSee you on GOO,\nThe GOO team"
         );

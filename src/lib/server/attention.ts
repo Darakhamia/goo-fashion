@@ -1,4 +1,5 @@
 import type { ServiceCheck } from "@/lib/server/system-health";
+import { CRON_FIX } from "@/lib/billing-cron";
 
 /*
  * "Needs attention" on the dashboard (GS1-2, ADMIN_DESIGN 5.5): what is broken
@@ -59,12 +60,7 @@ export function buildAttention(input: AttentionInput): AttentionItem[] {
       tone: "err",
       at: cron.at,
       href: "/goo-studio/subscriptions",
-      // The task as BILLING.md "Renewal cron on Coolify" gives it.
-      fix: [
-        "Coolify → the app → Scheduled Tasks: billing-renew, 0 9 * * *",
-        'curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET" "http://127.0.0.1:${PORT:-3000}/api/billing/cron/renew"',
-        "CRON_SECRET set in the app's environment (BILLING.md)",
-      ],
+      fix: CRON_FIX,
     });
   }
 
