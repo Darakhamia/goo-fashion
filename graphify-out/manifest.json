@@ -480,9 +480,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/blog/page.tsx": {
-    "mtime": 1791222069.864522,
-    "seen": 1791222384.6548872,
-    "ast_hash": "6d287f00f35fcb30f8bf0b693de57089",
+    "mtime": 1791223057.3290315,
+    "seen": 1791223820.1006904,
+    "ast_hash": "a632f8549aa6d9cfcf1bb839fa3db978",
     "semantic_hash": ""
   },
   "src/app/goo-studio/brands/page.tsx": {
@@ -492,9 +492,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/email/page.tsx": {
-    "mtime": 1791220959.2462947,
-    "seen": 1791221854.0934727,
-    "ast_hash": "b8e4ffe13fe2944eb4e5dc6395b590db",
+    "mtime": 1791223057.3304017,
+    "seen": 1791223820.1009727,
+    "ast_hash": "9fcac4069ce44a458c8ac359d321cd68",
     "semantic_hash": ""
   },
   "src/app/goo-studio/layout.tsx": {
@@ -504,9 +504,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/outfits/page.tsx": {
-    "mtime": 1791222102.3310142,
-    "seen": 1791222384.6551104,
-    "ast_hash": "f1d62aa129a16e6bf6509439d0b71a35",
+    "mtime": 1791223078.7553966,
+    "seen": 1791223820.101097,
+    "ast_hash": "aff4980b6c4802741ee4107815bf6e81",
     "semantic_hash": ""
   },
   "src/app/goo-studio/page.tsx": {
@@ -516,27 +516,27 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/parser/page.tsx": {
-    "mtime": 1791222150.73704,
-    "seen": 1791222384.6551654,
-    "ast_hash": "362ffc3628f9350bc7f3664c09dcec24",
+    "mtime": 1791223410.4645495,
+    "seen": 1791223820.1012273,
+    "ast_hash": "6311c78ecfce84d28a4f5c18080d927d",
     "semantic_hash": ""
   },
   "src/app/goo-studio/products/page.tsx": {
-    "mtime": 1791222081.5709763,
-    "seen": 1791222384.6551678,
-    "ast_hash": "663328d20f0858f5b0747af96b50427a",
+    "mtime": 1791223086.2762706,
+    "seen": 1791223820.101274,
+    "ast_hash": "72936f2d967dd381325176647d83009b",
     "semantic_hash": ""
   },
   "src/app/goo-studio/prompts/page.tsx": {
-    "mtime": 1791220959.2454283,
-    "seen": 1791221854.0935972,
-    "ast_hash": "f166858b8f95326b4cf953c08b3913e1",
+    "mtime": 1791223410.4651463,
+    "seen": 1791223820.1013207,
+    "ast_hash": "e367eff6eed55f931fe0a92da8c664e1",
     "semantic_hash": ""
   },
   "src/app/goo-studio/settings/page.tsx": {
-    "mtime": 1791221119.6251194,
-    "seen": 1791221854.093603,
-    "ast_hash": "3feb4dd5caeb45fdab0a02b028feea2a",
+    "mtime": 1791223078.7525887,
+    "seen": 1791223820.1015074,
+    "ast_hash": "64de77f0986cf6d3787af9969905118a",
     "semantic_hash": ""
   },
   "src/app/goo-studio/subscriptions/page.tsx": {
@@ -2036,9 +2036,9 @@
     "semantic_hash": ""
   },
   "DESIGN_SYSTEM.md": {
-    "mtime": 1791222904.12746,
-    "seen": 1791222914.9107218,
-    "ast_hash": "909ca0dd649095adf122d6509cc31b89",
+    "mtime": 1791223675.6706991,
+    "seen": 1791223820.1083903,
+    "ast_hash": "7d1e79d06863816a419db9f843841ceb",
     "semantic_hash": ""
   },
   "MIGRATION_RUNBOOK.md": {
@@ -2264,9 +2264,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/shoot.js": {
-    "mtime": 1791214385.9457588,
-    "seen": 1791214676.5658138,
-    "ast_hash": "5d98764a7ad3ae69150cc6380d16a787",
+    "mtime": 1791223101.569917,
+    "seen": 1791223820.0967407,
+    "ast_hash": "210e0f5bf6e8823a4038e04bd19c8145",
     "semantic_hash": ""
   },
   "docs/ADMIN_DESIGN.md": {
@@ -2276,9 +2276,9 @@
     "semantic_hash": ""
   },
   "docs/ADMIN_ROADMAP.md": {
-    "mtime": 1791222904.1257353,
-    "seen": 1791222914.9108114,
-    "ast_hash": "0c4223c226ff72b599f2e3d39201eda0",
+    "mtime": 1791223675.6721005,
+    "seen": 1791223820.1085377,
+    "ast_hash": "d12b53259918bdf03c197d0cfe3cf776",
     "semantic_hash": ""
   },
   "docs/ADMIN_UX_REVIEW_2026-10.md": {
@@ -2288,9 +2288,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/README.md": {
-    "mtime": 1791221211.228761,
-    "seen": 1791221854.100807,
-    "ast_hash": "90418235426e920712a8c7f9228ca46c",
+    "mtime": 1791223101.570615,
+    "seen": 1791223820.108811,
+    "ast_hash": "bad44f9c24d1c140fa88368d0edbb695",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_ui/recipes.ts": {
@@ -2402,9 +2402,9 @@
     "semantic_hash": ""
   },
   "src/components/admin/SidePanel.tsx": {
-    "mtime": 1791220827.8773694,
-    "seen": 1791221854.0949707,
-    "ast_hash": "cf75aa2f92e43c8bfe6c4813feccb3ec",
+    "mtime": 1791223021.38467,
+    "seen": 1791223820.1028194,
+    "ast_hash": "b6cf3214ba7a8a16afbbe48a99ea45fc",
     "semantic_hash": ""
   },
   "src/lib/admin-format.ts": {
@@ -2537,6 +2537,18 @@
     "mtime": 1791222484.262062,
     "seen": 1791222914.9045987,
     "ast_hash": "a036a663a4b6cc0412098988c4bbbdee",
+    "semantic_hash": ""
+  },
+  "src/components/admin/Modal.tsx": {
+    "mtime": 1791223011.8030996,
+    "seen": 1791223820.1027877,
+    "ast_hash": "84e2cb496c7db24144f61ab90d5167a8",
+    "semantic_hash": ""
+  },
+  "src/components/admin/useDialog.ts": {
+    "mtime": 1791223595.2917125,
+    "seen": 1791223820.1028802,
+    "ast_hash": "22c1865d1364ab7e3a6278b6da955d18",
     "semantic_hash": ""
   }
 }
