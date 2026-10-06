@@ -1241,20 +1241,21 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 Макет: «Детали · шапка», все экраны v2.
 
 ```tsx
-<header className="mx-3 mt-2 h-[52px] rounded-full border border-[var(--border)] bg-[var(--surface)]
-                   flex items-center pl-[18px] pr-1">   {/* с кнопкой «назад»: px-1, вордмарк по центру */}
+<header className="sticky top-0 z-50 pt-1.5 px-3">   {/* обёртка; капсула внутри: */}
+<nav className="h-[50px] rounded-full border border-[var(--border)] bg-[var(--surface)]
+                flex items-center pl-[18px] pr-1">   {/* с кнопкой «назад»: px-1, вордмарк по центру */}
   {/* вордмарк GOO (рецепт хедера), затем AI и корзина — кнопки w-11 h-11, счётчик — бейдж-счётчик 5.11 */}
 </header>
 ```
 
-Без тени. Кнопка «назад» (`w-11 h-11`, шеврон 20 px) — на товаре, образе, статье, оформлении подписки.
+Без тени. Кнопка «назад» (`w-11 h-11`, шеврон 20 px) — на товаре, образе, образе пользователя, статье, оформлении подписки. Капсула 50 px и отступ 6 px сверху — чтобы шапка с нижним меню занимали не больше 112 px (план, «Готово, когда» п. 7); в макете 52 px. Код: `src/components/layout/Navigation.tsx` (R-03).
 
 ### 12.4 Нижнее меню-капсула
 
 Макет: «Детали · нижнее меню».
 
 ```tsx
-<nav className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+12px)] z-40 h-14 px-1.5
+<nav className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)] z-40 h-[50px] px-1.5
                 rounded-full border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md
                 flex items-center justify-between">
   {/* вкладка: w-11 h-11 rounded-full, иконка 21 px, stroke 1.3, цвет --foreground-muted
@@ -1320,7 +1321,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 Макеты: v1 «Б · Товар», «Б · Где купить», «Б · Образ», v2 «Б · Оформление подписки».
 
 ```tsx
-<div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+12px)] z-40 h-16
+<div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)] z-40 h-16
                 rounded-3xl border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md
                 flex items-center gap-2 pl-[18px] pr-2.5">
   <div className="flex-1 min-w-0">
@@ -1396,5 +1397,5 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | Инфо-чип (тег) | `h-7 px-3 rounded-full bg-[var(--fg-overlay-08)] text-[12px]`, не кликабелен | v1 «Б · Образ», v2 «Статья» |
 | Выделенная плашка | плашка 12.2 с кольцом `shadow-[inset_0_0_0_1.5px_var(--foreground)]` и пилюлей-меткой (`h-[26px] px-2.5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[12px] font-semibold`) — популярный тариф | v2 «Тарифы» |
 | Скелетон | та же плашка, что у загружаемого элемента; блоки текста и фото — `bg-[var(--fg-overlay-08)] animate-pulse`, полосы `h-[11px] rounded-md` | v2 «Каталог — загрузка» |
-| Баннер cookies | плашка `rounded-3xl bg-[var(--surface)] border border-[var(--border)] p-4` над нижним меню (`bottom` = высота меню + 12 px), две кнопки в ряд: мягкая «Decline» и primary «Accept» | v2 «Баннер cookies» |
+| Баннер cookies | плашка `rounded-3xl bg-[var(--surface)] border border-[var(--border)] p-4` над нижним меню (`bottom` = отступ меню + высота меню + 8 px), две кнопки в ряд: мягкая «Decline» и primary «Accept» | v2 «Баннер cookies» |
 | Наличие и лучшая цена | точка наличия — как сейчас на странице товара (`bg-green-500` / `bg-amber-500`, 6 px) с подписью `--foreground-muted`; метка «Best price» — `text-[11px] font-medium text-[var(--foreground)]` под ценой. В макете метка зелёная, но зелёный текст в светлой теме не проходит по контрасту, а статусных токенов с поддержкой тем на сайте нет (5.12) — поэтому монохром | v1 «Б · Где купить» |
