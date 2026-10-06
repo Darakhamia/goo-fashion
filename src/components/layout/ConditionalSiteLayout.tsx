@@ -59,7 +59,9 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
   return (
     <>
       <Navigation />
-      <main className={!isBuilder ? "md:pb-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))]" : ""}>
+      {/* The room for the phone tab bar is added once, under the footer — the
+          last thing in the flow. The builder has no footer and lays itself out. */}
+      <main>
         {/* Раньше здесь стоял PageTransition: он держал каждую страницу
             прозрачной 350 мс после того, как контент уже приехал с сервера,
             и делал это через shorthand `y` Framer Motion — то есть через rAF
@@ -73,7 +75,7 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
       </main>
       {/* Footer: hidden entirely on builder */}
       {!isBuilder && (
-        <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+        <div className="pb-[calc(env(safe-area-inset-bottom)+68px)] md:pb-0">
           <Footer />
         </div>
       )}
