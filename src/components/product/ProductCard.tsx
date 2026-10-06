@@ -77,7 +77,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
 
   return (
     <motion.div
-      className="group relative flex flex-col overflow-hidden rounded-xl bg-[var(--surface)] border border-[var(--border)]"
+      className="group relative flex flex-col overflow-hidden rounded-2xl md:rounded-xl bg-[var(--surface)] md:border md:border-[var(--border)] max-md:h-full"
       initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once: true, margin: "-40px" }}
@@ -118,18 +118,24 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
             ))}
           </div>
 
-          <ImageCycleDots count={allImages.length} activeIdx={activeIdx} />
+          {/* The pips follow a hover cycle, which a phone never starts. */}
+          <div className="hidden md:contents">
+            <ImageCycleDots count={allImages.length} activeIdx={activeIdx} />
+          </div>
 
+          {/* Below md the badge is a light pill, like every control on the
+              photo (DESIGN_SYSTEM.md §12.6). */}
           {product.isNew && (
-            <div className="absolute top-3 left-3 z-10">
-              <span className="text-[9px] tracking-[0.18em] uppercase font-bold bg-[var(--foreground)] text-[var(--background)] px-2.5 py-1 rounded-sm block">
+            <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-10">
+              <span className="block rounded-full md:rounded-sm bg-white/80 text-black md:bg-[var(--foreground)] md:text-[var(--background)] text-[10px] md:text-[9px] font-semibold md:font-bold md:tracking-[0.18em] md:uppercase px-2 py-[3px] md:px-2.5 md:py-1">
                 New
               </span>
             </div>
           )}
 
+          {/* Desktop hover strip. Phones show the store count beside the price. */}
           {product.retailers.length > 1 && (
-            <div className="absolute bottom-0 left-0 right-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-10">
+            <div className="absolute bottom-0 left-0 right-0 hidden md:block md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-10">
               <div className="bg-[var(--bg-overlay-95)] backdrop-blur-sm px-3 py-2 rounded-b-xl">
                 <p className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
                   {product.retailers.length} stores
@@ -140,11 +146,12 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         </div>
       </Link>
 
-      {/* Cart button */}
+      {/* Cart button — desktop only: on a phone a piece goes into the bag from
+          its own page (DESIGN_SYSTEM.md §12.5). */}
       <button
         onClick={handleAddToCart}
         aria-label={inCart ? "Remove from cart" : "Add to cart"}
-        className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
+        className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 hidden md:flex md:w-7 md:h-7 items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100`}
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="text-white">
           <path d="M1 1h2l1.5 7.5" />
@@ -154,42 +161,61 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         </svg>
       </button>
 
-      {/* Like button */}
+      {/* Like button. Below md: a 44px target around a small light circle
+          (DESIGN_SYSTEM.md §12.6); the circle's box dissolves on desktop. */}
       <button
         onClick={handleLike}
         aria-label={!isLoggedIn ? "Sign in to save item" : liked ? "Unlike item" : "Like item"}
-        className={`absolute top-3 right-3 z-20 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
+        className={`absolute top-0.5 right-0.5 md:top-3 md:right-3 z-20 w-11 h-11 md:w-7 md:h-7 flex items-center justify-center md:bg-black/80 md:backdrop-blur-sm md:rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100`}
       >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white">
-          <path
-            d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            fill={liked ? "currentColor" : "none"}
-          />
-        </svg>
+        <span className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center md:contents">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="md:hidden text-black" aria-hidden="true">
+            <path
+              d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+              fill={liked ? "currentColor" : "none"}
+            />
+          </svg>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="hidden md:block text-white">
+            <path
+              d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              fill={liked ? "currentColor" : "none"}
+            />
+          </svg>
+        </span>
       </button>
 
       {/* Info */}
-      <Link href={linkHref} className="block px-5 pt-4 pb-5">
+      <Link href={linkHref} className="block px-3 pt-2.5 pb-3 md:px-5 md:pt-4 md:pb-5">
         {showBrand && (
-          <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
+          <h3 className="text-[13px] md:text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {product.brand}
           </h3>
         )}
-        <p className="text-[13px] text-[var(--foreground-muted)] truncate mt-0.5 leading-snug">
+        <p className="text-[12.5px] md:text-[13px] text-[var(--foreground-muted)] truncate md:mt-0.5 leading-snug">
           {displayName}
         </p>
-        <div className="flex items-baseline gap-1.5 mt-2">
-          <p className="text-[14px] font-medium text-[var(--foreground)]">
+        <div className="flex max-md:flex-wrap items-baseline justify-between md:justify-start gap-1.5 max-md:gap-y-0.5 mt-1.5 md:mt-2">
+          <p className="text-[13px] md:text-[14px] font-medium text-[var(--foreground)] max-md:min-w-0 max-md:truncate">
             {displayPriceMin === displayPriceMax
               ? formatPrice(displayPriceMin, product.currency)
               : `${formatPrice(displayPriceMin, product.currency)}–${formatPrice(displayPriceMax, product.currency)}`}
           </p>
+          {/* Phones: the store count in place of the hover strip, dropping under a long
+              price rather than cutting it; colours wait for the product page. */}
+          {product.retailers.length > 1 && (
+            <span className="md:hidden shrink-0 text-[11px] text-[var(--foreground-muted)]">
+              {product.retailers.length} stores
+            </span>
+          )}
           {colorCount > 1 && (
             <>
-              <span className="text-[var(--foreground-subtle)] text-[12px] leading-none">·</span>
-              <span className="text-[12px] text-[var(--foreground-subtle)]">
+              <span className="hidden md:inline text-[var(--foreground-subtle)] text-[12px] leading-none">·</span>
+              <span className="hidden md:inline text-[12px] text-[var(--foreground-subtle)]">
                 {colorCount} colors
               </span>
             </>
