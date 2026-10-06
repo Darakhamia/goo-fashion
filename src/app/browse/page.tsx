@@ -246,23 +246,29 @@ export default function BrowsePage() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [catalogOutfits, setCatalogOutfits] = useState<Outfit[]>([]);
   const [loadingOutfits, setLoadingOutfits] = useState(true);
+  // A failed load is an error, not an empty catalogue: phones say so and offer
+  // "Try again", which bumps the attempt and re-runs the fetch.
+  const [productsFailed, setProductsFailed] = useState(false);
+  const [outfitsFailed, setOutfitsFailed] = useState(false);
+  const [productsAttempt, setProductsAttempt] = useState(0);
+  const [outfitsAttempt, setOutfitsAttempt] = useState(0);
   const [colorGroups, setColorGroups] = useState<ColorGroup[]>(DEFAULT_COLOR_GROUPS);
 
   useEffect(() => {
     fetch("/api/products")
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setCatalogProducts(d); })
-      .catch(() => {})
+      .then((r) => { if (!r.ok) throw new Error(`products ${r.status}`); return r.json(); })
+      .then((d) => { if (!Array.isArray(d)) throw new Error("products: not a list"); setCatalogProducts(d); setProductsFailed(false); })
+      .catch(() => setProductsFailed(true))
       .finally(() => setLoadingProducts(false));
-  }, []);
+  }, [productsAttempt]);
 
   useEffect(() => {
     fetch("/api/outfits")
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setCatalogOutfits(d); })
-      .catch(() => {})
+      .then((r) => { if (!r.ok) throw new Error(`outfits ${r.status}`); return r.json(); })
+      .then((d) => { if (!Array.isArray(d)) throw new Error("outfits: not a list"); setCatalogOutfits(d); setOutfitsFailed(false); })
+      .catch(() => setOutfitsFailed(true))
       .finally(() => setLoadingOutfits(false));
-  }, []);
+  }, [outfitsAttempt]);
 
   useEffect(() => {
     fetch("/api/color-groups")
@@ -1763,10 +1769,12 @@ export default function BrowsePage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              className="mt-3 md:mt-10 pb-16"
+              className="mt-3 md:mt-10 md:pb-16"
             >
               {view === "outfits" && loadingOutfits ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+                <>
+                <PhoneSkeleton noun="outfits" />
+                <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
                       <div className="animate-pulse p-2">
@@ -1777,8 +1785,11 @@ export default function BrowsePage() {
                     </div>
                   ))}
                 </div>
+                </>
               ) : view === "pieces" && loadingProducts ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+                <>
+                <PhoneSkeleton noun="pieces" />
+                <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
                       <div className="animate-pulse p-2">
@@ -1789,6 +1800,7 @@ export default function BrowsePage() {
                     </div>
                   ))}
                 </div>
+                </>
               ) : view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
                   <motion.div
@@ -1808,7 +1820,13 @@ export default function BrowsePage() {
                     ))}
                   </motion.div>
                 ) : (
-                  <EmptyState onClear={clearAll} noun="outfits" />
+                  <CatalogEmpty
+                    noun="outfits"
+                    failed={outfitsFailed}
+                    canClear={activeFiltersCount > 0 || searchQuery.trim() !== ""}
+                    onClear={clearAll}
+                    onRetry={() => { setLoadingOutfits(true); setOutfitsFailed(false); setOutfitsAttempt((n) => n + 1); }}
+                  />
                 )
               ) : displayItems.length > 0 ? (
                 <motion.div
@@ -1828,16 +1846,22 @@ export default function BrowsePage() {
                   ))}
                 </motion.div>
               ) : (
-                <EmptyState onClear={clearAll} noun="pieces" />
+                <CatalogEmpty
+                  noun="pieces"
+                  failed={productsFailed}
+                  canClear={activeFiltersCount > 0 || searchQuery.trim() !== ""}
+                  onClear={clearAll}
+                  onRetry={() => { setLoadingProducts(true); setProductsFailed(false); setProductsAttempt((n) => n + 1); }}
+                />
               )}
 
               {/* ── Show more — appends the next page below the current one, so the
                   catalog can be read straight through without paging ── */}
               {hasMore && (
-                <div className="flex justify-center pt-10">
+                <div className="flex justify-center pt-5 md:pt-10">
                   <button
                     onClick={() => setExtraPages((n) => n + 1)}
-                    className="rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] px-6 py-3 text-xs tracking-[0.14em] uppercase font-medium transition-colors duration-200"
+                    className="w-full md:w-auto h-12 md:h-auto rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border-strong)] text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:border-[var(--foreground)] md:hover:text-[var(--foreground)] md:px-6 md:py-3 text-[15px] md:text-xs md:tracking-[0.14em] md:uppercase font-medium transition-colors duration-200"
                   >
                     Show more
                   </button>
@@ -1846,18 +1870,41 @@ export default function BrowsePage() {
 
               {/* ── Pagination ── */}
               {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-6 border-t border-[var(--border)] mt-6">
-                  <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-1 md:gap-4 pt-3 md:pt-8 md:pb-6 md:border-t md:border-[var(--border)] md:mt-6">
+                  {/* Phones: the page numbers first and this line under them (mockup v2 «Б · Подвал»). */}
+                  <span className="order-last sm:order-none text-[13px] md:text-[10px] md:tracking-[0.14em] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)]">
                     Showing {(page - 1) * PAGE_SIZE + 1}–{shownEnd} of {count} {view === "outfits" ? "outfits" : "pieces"}
                   </span>
-                  <div className="flex flex-wrap items-center justify-center gap-1 max-w-full">
+                  <nav aria-label="Pages" className="flex flex-wrap items-center justify-center gap-1 max-w-full">
                     <button
                       onClick={() => { setPage((p) => Math.max(1, p - 1)); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                       disabled={page === 1}
-                      className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                      aria-label="Previous page"
+                      className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
                     >
-                      <svg width="7" height="11" viewBox="0 0 7 11" fill="none"><path d="M6 1L1 5.5L6 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="md:hidden" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                      <svg width="7" height="11" viewBox="0 0 7 11" fill="none" className="hidden md:block"><path d="M6 1L1 5.5L6 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
+                    {/* Phones: five slots, so the row of 44px circles fits 360px. */}
+                    <div className="contents md:hidden">
+                      {phonePageSlots(page, totalPages).map((p, i) =>
+                        p === -1 ? (
+                          <span key={`m-gap-${i}`} aria-hidden="true" className="w-6 text-center text-[13px] text-[var(--foreground-muted)]">…</span>
+                        ) : (
+                          <button
+                            key={`m-${p}`}
+                            onClick={() => { setPage(p); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                            aria-current={page === p ? "page" : undefined}
+                            className={`w-11 h-11 rounded-full flex items-center justify-center text-[14px] transition-colors duration-150 ${
+                              page === p ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "text-[var(--foreground)]"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+                    </div>
+                    <div className="hidden md:contents">
                     {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => {
                       let p: number;
                       if (totalPages <= 7) {
@@ -1886,14 +1933,17 @@ export default function BrowsePage() {
                         </button>
                       );
                     })}
+                    </div>
                     <button
                       onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                       disabled={page === totalPages}
-                      className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                      aria-label="Next page"
+                      className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
                     >
-                      <svg width="7" height="11" viewBox="0 0 7 11" fill="none"><path d="M1 1L6 5.5L1 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="md:hidden" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                      <svg width="7" height="11" viewBox="0 0 7 11" fill="none" className="hidden md:block"><path d="M1 1L6 5.5L1 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
-                  </div>
+                  </nav>
                 </div>
               )}
             </motion.div>
@@ -1912,6 +1962,86 @@ export default function BrowsePage() {
       />
 
     </div>
+  );
+}
+
+/** Five page slots for phones: first, last, current, gaps (-1) between. */
+function phonePageSlots(page: number, total: number): number[] {
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+  if (page <= 3) return [1, 2, 3, -1, total];
+  if (page >= total - 2) return [1, -1, total - 2, total - 1, total];
+  return [1, -1, page, -1, total];
+}
+
+/** Phone skeleton: the card plaque with soft blocks (mockup v2 «Б · Каталог — загрузка»). */
+function PhoneSkeleton({ noun }: { noun: string }) {
+  return (
+    <div role="status" aria-label={`Loading ${noun}`} className="md:hidden grid grid-cols-2 gap-2.5">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-2xl bg-[var(--surface)] overflow-hidden animate-pulse">
+          <div className="aspect-[3/4] bg-[var(--fg-overlay-08)]" />
+          <div className="p-3">
+            <div className="h-[11px] w-3/5 rounded-md bg-[var(--fg-overlay-08)]" />
+            <div className="mt-2 h-[11px] w-[85%] rounded-md bg-[var(--fg-overlay-08)]" />
+            <div className="mt-3 h-[11px] w-2/5 rounded-md bg-[var(--fg-overlay-08)]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Nothing to show. Phones tell an empty result from a failed load (DESIGN_SYSTEM.md
+ * §12.12): the error says so and offers "Try again". Desktop keeps its block as is.
+ */
+function CatalogEmpty({
+  noun,
+  failed,
+  canClear,
+  onClear,
+  onRetry,
+}: {
+  noun: string;
+  failed: boolean;
+  canClear: boolean;
+  onClear: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      <div role={failed ? "alert" : undefined} className="md:hidden rounded-2xl bg-[var(--surface)] px-6 py-12 text-center">
+        <span className="mx-auto w-14 h-14 rounded-full bg-[var(--fg-overlay-08)] grid place-items-center text-[var(--foreground-muted)]">
+          {failed ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5" />
+            </svg>
+          ) : (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M16 16l4 4" />
+            </svg>
+          )}
+        </span>
+        <h2 className="mt-4 text-[19px] font-semibold text-[var(--foreground)]">
+          {failed ? "Couldn’t load the catalogue" : `No ${noun} found`}
+        </h2>
+        <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--foreground-muted)]">
+          {failed ? "Check your connection and try again." : "Try adjusting your search or filters."}
+        </p>
+        {(failed || canClear) && (
+          <button
+            onClick={failed ? onRetry : onClear}
+            className="mt-5 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold"
+          >
+            {failed ? "Try again" : "Clear all filters"}
+          </button>
+        )}
+      </div>
+      <div className="hidden md:block">
+        <EmptyState onClear={onClear} noun={noun} />
+      </div>
+    </>
   );
 }
 
