@@ -804,7 +804,12 @@ In order:
    none or gave the shop's own name (`brand-from-name.ts`, matched only against
    the Brands list and brands already in the catalogue). The store's name and
    "official" flag come from the admin's domain rules (`retailer-domains.ts`),
-   else from the link.
+   else from the link. A brand the Brands list does not have under any spelling
+   ("Levi's" = "LEVIS") is **added to it** once the card is written (an insert
+   or an update — not a merge or a links-only page), and the run's row says
+   "added to Brands". Not added: a value that names no brand ("Unknown"), and
+   the store's own name where a domain rule says the store is not the brand's
+   own shop.
 6. **Colour filter** (`color_group_ids`): from the colour label, else the name's
    colour words, else the photo (a studio shot only, `bg-color.ts`).
 7. **Gender and style**, when the page said nothing: the store's default gender
