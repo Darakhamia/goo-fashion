@@ -490,6 +490,14 @@ export const COLOR_KEYS =
 export const BRAND_KEYS =
   /^(?:brand|designer|label|maker|manufacturer|marke|marque|marca|бренд|виробник|производитель|торгов\p{L}*\s*марка)(?![\p{L}\p{N}])/iu;
 
+/**
+ * Key names that say what kind of thing the piece is — "Type: Sneakers",
+ * "Вид взуття: Кеди". The whole key, not its start: "Тип застібки" (the kind
+ * of fastening) and "Type of sole" are other questions.
+ */
+export const KIND_KEYS =
+  /^(?:(?:product|item|garment|shoe|footwear)\s+)?(?:type|kind|category|sub\s*category)$|^(?:тип|вид|категорія|категория|підкатегорія|подкатегория)(?:\s+(?:товару|товара|виробу|изделия|взуття|обуви|одягу|одежды))?$/iu;
+
 /** Key names that mean the store's own article number. */
 export const CODE_KEYS =
   /^(?:sku|mpn|style\s*(?:code|no|number|#)?|product\s*(?:code|id|number)|item\s*(?:code|no|number)|article\s*(?:code|no|number)?|ref(?:erence)?|артикул|код\s*товару|код\s*товара)(?![\p{L}\p{N}])/iu;

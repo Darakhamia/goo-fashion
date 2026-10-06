@@ -531,7 +531,13 @@ Relative image URLs are resolved; results are deduped. On top of that:
   or declared language and marked (`currencyBasis`, e.g. "the .ua address"), so
   the import note says why a price was read as hryvnia.
 - **Subcategory** is resolved against the admin's category tree (from the name,
-  then the breadcrumbs) and written only when the tree has such a label.
+  then the spec table's "Type" / "Тип" / "Вид взуття" row, then the
+  breadcrumbs) and written only when the tree has such a label. When none of
+  them says which kind — a shoe named for its model ("Etnies Josl1n") and filed
+  under "Shoes" — the page's address and then its description are read for a
+  label **of the category already decided** (`garmentLabelIn`): "skate shoe" in
+  the description files it under Sneakers, while "wear them with jeans" changes
+  nothing. The spec row also decides the category when the name does not.
 - **Style keywords** are inferred from the name, description, material,
   subcategory and breadcrumbs: the words that name one of the five styles
   (casual, minimal, classic, streetwear, sporty) and the words that say what the
@@ -804,7 +810,12 @@ In order:
    none or gave the shop's own name (`brand-from-name.ts`, matched only against
    the Brands list and brands already in the catalogue). The store's name and
    "official" flag come from the admin's domain rules (`retailer-domains.ts`),
-   else from the link.
+   else from the link. A brand the Brands list does not have under any spelling
+   ("Levi's" = "LEVIS") is **added to it** once the card is written (an insert
+   or an update — not a merge or a links-only page), and the run's row says
+   "added to Brands". Not added: a value that names no brand ("Unknown"), and
+   the store's own name where a domain rule says the store is not the brand's
+   own shop.
 6. **Colour filter** (`color_group_ids`): from the colour label, else the name's
    colour words, else the photo (a studio shot only, `bg-color.ts`).
 7. **Gender and style**, when the page said nothing: the store's default gender
@@ -830,8 +841,11 @@ In order:
    the refresh path): the photo backdrop colour is sampled (`bg_color`), and
    the row is grouped with its other colourways (`variant_group_id`) — by the
    sibling URLs the page or feed named (every spelling of each address), and,
-   on every import, by the same maker + the same piece name in a different
-   colour (`variant-group.ts`). The maker is matched under any spelling the
+   on every import, by the same maker + the same piece name **in any colour**
+   (`isSamePieceByName` in `variant-group.ts`). The colour used to have to
+   differ, so two colourways whose pages state no colour — both read off their
+   photos as "White" — and a listing the merge refused on price stayed as cards
+   of their own beside their model. The maker is matched under any spelling the
    stores use ("adidas" / "adidas Originals", "Carhartt" / "Carhartt WIP",
    Jordan / Nike, a card saved without a brand whose name carries it), the
    cards are read the same way the same-item search reads them, and the price

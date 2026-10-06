@@ -31,11 +31,15 @@
  * spelling only, and the importer read only the cards filed under exactly that
  * spelling — so one jacket collected from two sites stayed two cards.
  *
- * It also insists the colours differ. Two rows of the same piece in the same
- * colour are not variants of each other — they are the same thing twice, which
- * is a different problem with a different fix (the retailer list, see
- * `same-item.ts`). The price never enters it: one colourway of a piece often
- * costs more than another.
+ * Two rows of the same piece in the same colour are the same thing twice, and
+ * the first fix for that is the retailer list (`same-item.ts`): the importer
+ * merges such a page into the card before it ever makes one. What the merge
+ * leaves — a colour field that is a reading of the photo, a price too far off
+ * where one side names no brand — the importer still groups, in any colour
+ * (`isSamePieceByName`); the Duplicates screen's colourway test still insists
+ * the colours differ (`isColorSiblingByName`), and proposes the rest as merges.
+ * The price never enters either: one colourway of a piece often costs more
+ * than another.
  */
 import { colourRelation, sameModelFamily, samePiece, variantsDiffer } from "./piece-name";
 import { brandsFit } from "./brand-from-name";
@@ -53,8 +57,19 @@ export interface VariantCandidate {
   isGroupPrimary?: boolean | null;
 }
 
-/** True when `candidate` is our piece in a different colour, by name alone. */
-export function isColorSiblingByName(
+/**
+ * True when `candidate` is our piece, by name alone — in any colour, at any
+ * price.
+ *
+ * What the importer groups by. A new card is made only when the page is not
+ * another store's listing of a card we have (`pickSameItemByName`), and that
+ * leaves cards of one model that the colour test below kept apart: two
+ * colourways whose page states no colour, both read off their white photos as
+ * "White"; one listing that missed the merge on price, where a side names no
+ * brand. Each stood as its own card beside its own model. One model is one
+ * card on the storefront, whatever its swatches say.
+ */
+export function isSamePieceByName(
   ours: { brand: string; name: string; colors: string[]; category?: string | null },
   candidate: VariantCandidate,
 ): boolean {
@@ -66,7 +81,20 @@ export function isColorSiblingByName(
   const oneUnbranded = !ours.brand?.trim() !== !candidate.brand?.trim();
   if (!fit && !oneUnbranded) return false;
   const brands = [ours.brand ?? "", candidate.brand ?? ""].filter((b) => b.trim());
-  if (!samePiece(brands, ours, candidate, { strict: !fit })) return false;
+  return samePiece(brands, ours, candidate, { strict: !fit });
+}
+
+/**
+ * True when `candidate` is our piece in a different colour, by name alone.
+ *
+ * The Duplicates screen's colourway test: the same piece in the same colour is
+ * proposed there as one card to merge, not as a colour group.
+ */
+export function isColorSiblingByName(
+  ours: { brand: string; name: string; colors: string[]; category?: string | null },
+  candidate: VariantCandidate,
+): boolean {
+  if (!isSamePieceByName(ours, candidate)) return false;
 
   // Two names that each state a variant, and different ones — "(Black/White)"
   // and "(Grey/Black)" — are two colourways, whatever the colour fields read

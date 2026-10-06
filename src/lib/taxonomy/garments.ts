@@ -895,6 +895,48 @@ export function garmentCategory(text: string): Category | null {
 const labelKey = (label: string) => label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
 /**
+ * The tree label running text gives a piece whose category is already known —
+ * the page's address, its description — or undefined.
+ *
+ * Not `garmentLabel`, which reads a title, where the head noun is the piece. A
+ * description names other things as well ("wear them with cropped trousers"),
+ * so only garments of `category` count, and the label mentioned most wins,
+ * then the one mentioned first: a description says what the piece is before
+ * what to wear it with. Weak words, and types with no label of their own
+ * ("shoes"), say nothing about which kind.
+ */
+export function garmentLabelIn(
+  text: string,
+  category: string,
+  labels: Record<string, string>,
+): string | undefined {
+  const byKey = new Map(Object.keys(labels).map((l) => [labelKey(l), l]));
+  const labelOf = (type: GarmentType) => {
+    for (const wanted of type.labels) {
+      const label = byKey.get(labelKey(wanted));
+      if (label && labels[label] === category) return label;
+    }
+    return undefined;
+  };
+  // A mention is where it ends: "chelsea boots" is one, though "chelsea",
+  // "boots" and "chelsea boot" all match it.
+  const found = new Map<string, { ends: Set<number>; first: number }>();
+  for (const hit of hitsIn(text)) {
+    if (hit.term.weak || hit.term.type.category !== category) continue;
+    const label = labelOf(hit.term.type);
+    if (!label) continue;
+    const seen = found.get(label);
+    if (seen) {
+      seen.ends.add(hit.end);
+      seen.first = Math.min(seen.first, hit.start);
+    } else {
+      found.set(label, { ends: new Set([hit.end]), first: hit.start });
+    }
+  }
+  return [...found.entries()].sort(([, a], [, b]) => b.ends.size - a.ends.size || a.first - b.first)[0]?.[0];
+}
+
+/**
  * The tree label for a title: the first of its type's labels that the tree
  * actually has, spelled the way the tree spells it. `labels` is the tree's
  * label → category map — the live tree's, when the caller has it, because an

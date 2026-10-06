@@ -20,7 +20,7 @@ import {
 } from "@/lib/server/product-fields";
 import { toUsd } from "@/lib/server/fx";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
-import { isColorSiblingByName, sameModelFamily, type VariantCandidate } from "./variant-group";
+import { isSamePieceByName, sameModelFamily, type VariantCandidate } from "./variant-group";
 import { joinColourGroup } from "@/lib/server/colour-group";
 import {
   gtinSpellings,
@@ -33,11 +33,11 @@ import {
   type IncomingItem,
   type NamedItem,
 } from "./same-item";
-import { brandSearchWord, brandVocabulary, decideBrand } from "./brand-from-name";
+import { brandSearchWord, brandVocabulary, brandWords, decideBrand, foldBrand, isNotABrand } from "./brand-from-name";
 import { articleCodePatterns, articleCodes, modelWord, pieceName } from "./piece-name";
 import { listingKey, sameListing, urlSpellings } from "./listing-url";
 import { buildCatalogueIndex, type CatalogueIndex, type CataloguePiece } from "./catalogue-match";
-import { loadRetailerRules, resolveRetailer, storeDefaultGender } from "@/lib/server/retailer-domains";
+import { loadRetailerRules, resolveRetailer, storeDefaultGender, type ResolvedRetailer } from "@/lib/server/retailer-domains";
 import { loadCatalogueProfile, proposeGender, proposeStyles } from "@/lib/server/catalogue-profile";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
 import { sampleGarmentColours, storeBackgroundColor } from "@/lib/server/bg-color";
@@ -100,12 +100,23 @@ async function colorGroupIdsFor(names: string[]): Promise<number[] | undefined> 
 // seconds, and the list changes when an admin adds a brand, not per product.
 
 const BRAND_TTL_MS = 5 * 60_000;
-let brandCache: { at: number; brands: string[] } | null = null;
+let brandCache: {
+  at: number;
+  brands: string[];
+  /** The Brands list by `brandKey`; null when it could not be read (no table). */
+  listed: Set<string> | null;
+} | null = null;
+
+/** One key for every spelling of a brand: "Levi's" and "LEVIS", "Off-White" and "Off White". */
+function brandKey(value: string): string {
+  return brandWords(value).replace(/ /g, "");
+}
 
 async function loadKnownBrands(): Promise<string[]> {
   if (brandCache && Date.now() - brandCache.at < BRAND_TTL_MS) return brandCache.brands;
   const curated: string[] = [];
   const catalogue: string[] = [];
+  let listed: Set<string> | null = null;
   try {
     const [table, rows] = await Promise.all([
       supabase!.from("brands").select("name"),
@@ -115,12 +126,46 @@ async function loadKnownBrands(): Promise<string[]> {
     // the other still gives a usable list.
     for (const r of (table.data ?? []) as { name: string | null }[]) if (r.name) curated.push(r.name);
     for (const r of (rows.data ?? []) as { brand: string | null }[]) if (r.brand) catalogue.push(r.brand);
+    if (!table.error) listed = new Set(curated.map(brandKey).filter(Boolean));
   } catch {
     /* no connection — no list, and the page's own brand stands as it was */
   }
   const brands = brandVocabulary(curated, catalogue);
-  brandCache = { at: Date.now(), brands };
+  brandCache = { at: Date.now(), brands, listed };
   return brands;
+}
+
+/**
+ * Put the brand a product was just saved under on the admin's Brands list,
+ * when the list has it under no spelling. Answers whether it was added.
+ *
+ * A collect run brought in pieces of brands the list had never heard of, and
+ * the brand stayed off the Brands page and out of the editor's brand picker
+ * until someone typed it in by hand. Now the product brings its brand with it.
+ * Not added: a value that names no brand ("Unknown"), and the store's own name
+ * in the brand's place — a store an admin's rule says is not the brand's own
+ * shop. A list that cannot be read is left alone, never written blind.
+ */
+async function listBrand(brand: string, store: ResolvedRetailer | null): Promise<boolean> {
+  const name = brand.replace(/\s+/g, " ").trim();
+  const key = brandKey(name);
+  if (!key || isNotABrand(name)) return false;
+  if (store?.matchedDomain && !store.isOfficial && brandKey(store.name) === key) return false;
+  await loadKnownBrands();
+  const cache = brandCache;
+  if (!cache?.listed || cache.listed.has(key)) return false;
+  try {
+    const { error } = await supabase!
+      .from("brands")
+      .upsert({ name }, { onConflict: "name", ignoreDuplicates: true });
+    if (error) return false;
+  } catch {
+    return false;
+  }
+  cache.listed.add(key);
+  // Read in the next page's name straight away, not after the cache expires.
+  if (!cache.brands.some((b) => foldBrand(b) === foldBrand(name))) cache.brands.push(name);
+  return true;
 }
 
 /** What the run's row says when a page's link was taken off another variant's card. */
@@ -323,6 +368,8 @@ async function linkColorVariants(input: {
     // By name, on every import: the colour row only ever names this store's
     // colourways, and the same piece collected from another site — under its
     // own spelling of the brand, at its own price — is found by name alone.
+    // In any colour: a card of this model the merge did not take is grouped
+    // with it, not left standing beside it (`isSamePieceByName`).
     const ours = {
       brand: input.brand,
       name: input.name,
@@ -338,7 +385,7 @@ async function linkColorVariants(input: {
       for (const row of (data ?? []) as unknown as VariantRow[]) {
         if (row.id === input.productId || siblings.has(row.id)) continue;
         const candidate = toCandidate(row);
-        if (isColorSiblingByName(ours, candidate)) siblings.set(row.id, candidate);
+        if (isSamePieceByName(ours, candidate)) siblings.set(row.id, candidate);
       }
     }
 
@@ -951,7 +998,7 @@ export async function importParsedProduct(
     known: await loadKnownBrands(),
   });
   const brand = brandDecision.brand.slice(0, 80);
-  const brandNote = brandDecision.fromName
+  let brandNote = brandDecision.fromName
     ? `brand ${brand} from the name${statedBrand ? ` (page said ${statedBrand})` : ""}`
     : undefined;
 
@@ -1317,6 +1364,11 @@ export async function importParsedProduct(
   // the column null and the batch job in the admin picks the row up.
   if (productId && imageUrl) {
     await storeBackgroundColor(productId, imageUrl);
+  }
+
+  // The brand this card was saved under, on the Brands list if it is not yet.
+  if (productId && brand && (await listBrand(brand, resolved))) {
+    brandNote = brandNote ? `${brandNote} · added to Brands` : `brand ${brand} added to Brands`;
   }
 
   // Group this colourway with the ones already in the table.
