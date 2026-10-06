@@ -24,7 +24,6 @@ const STATUS = {
 
 // ── Parse ────────────────────────────────────────────────────────────────────
 const lines = fs.readFileSync(MD, "utf8").split("\n");
-const title = lines[0].replace(/^#\s*/, "");
 const waiting = [];
 const stages = [];
 let section = null;
