@@ -18,7 +18,8 @@ const TABS = [
 ];
 
 /** Pages whose own buy bar stands where the tab bar would (DESIGN_SYSTEM.md §12.8). */
-export const hasBuyBar = (pathname: string) => pathname.startsWith("/product/");
+export const hasBuyBar = (pathname: string) =>
+  ["/product/", "/outfit/", "/look/"].some((prefix) => pathname.startsWith(prefix));
 
 /**
  * The phone tab bar: a thin floating capsule (DESIGN_SYSTEM.md §12.4). Every tab

@@ -104,9 +104,9 @@ export default async function SharedLookPage(props: Props) {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
-        {/* Breadcrumb */}
-        <div className="pt-8 flex items-center gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+      <div className="max-w-[1440px] mx-auto px-3 md:px-12">
+        {/* Breadcrumb — desktop only: phones go back with the header's back button */}
+        <div className="hidden md:flex pt-8 items-center gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
           <Link href="/" className="hover:text-[var(--foreground)] transition-colors duration-200">
             Home
           </Link>
@@ -119,9 +119,10 @@ export default async function SharedLookPage(props: Props) {
         </div>
 
         {/* Main layout */}
-        <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-          {/* Left: look image (or a collage of the pieces) */}
-          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)]">
+        <div className="mt-3 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+          {/* Left: look image (or a collage of the pieces) — on phones a
+              borderless card, the pieces on one light field (DESIGN_SYSTEM.md §12.5) */}
+          <div className="rounded-3xl md:rounded-2xl overflow-hidden md:border md:border-[var(--border)] bg-[var(--background)]">
             <div className="relative aspect-[3/4] overflow-hidden">
               {look.generatedImage ? (
                 <Image
@@ -134,9 +135,9 @@ export default async function SharedLookPage(props: Props) {
                   unoptimized
                 />
               ) : collagePieces.length > 0 ? (
-                <div className="absolute inset-0 grid grid-cols-2 gap-px bg-[var(--border)]">
+                <div className="absolute inset-0 grid grid-cols-2 gap-px bg-white md:bg-[var(--border)]">
                   {collagePieces.map((piece) => (
-                    <div key={piece.productId} className="relative overflow-hidden bg-[var(--surface)]">
+                    <div key={piece.productId} className="relative overflow-hidden bg-white md:bg-[var(--surface)]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={piece.imageUrl as string}
@@ -152,8 +153,8 @@ export default async function SharedLookPage(props: Props) {
                 </div>
               )}
               {look.generatedImage && (
-                <div className="absolute top-4 left-4">
-                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full block">
+                <div className="absolute top-3.5 left-3.5 md:top-4 md:left-4">
+                  <span className="block rounded-full bg-white/80 md:bg-black/60 md:backdrop-blur-sm text-black md:text-white text-[11px] md:text-[9px] font-semibold md:font-medium md:tracking-[0.16em] md:uppercase px-[9px] py-1 md:px-3 md:py-1.5">
                     AI Generated
                   </span>
                 </div>
@@ -162,13 +163,15 @@ export default async function SharedLookPage(props: Props) {
           </div>
 
           {/* Right: look info + pieces */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-6 md:px-10 py-8 md:py-12 flex flex-col">
+          <div className="md:rounded-2xl md:border md:border-[var(--border)] md:bg-[var(--background)] px-1 md:px-10 md:py-12 flex flex-col">
             {/* Header */}
-            <div className="mb-8 md:mb-10">
-              <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
-                Shared Look
+            <div className="mb-3 md:mb-10">
+              <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
+                Shared look
               </p>
-              <h1 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight mb-4">
+              {/* Desktop's −0.015em is spelled out: any tracking class turns off the
+                  size-based rule in globals.css (DESIGN_SYSTEM.md §12.13). */}
+              <h1 className="text-[22px] md:text-4xl font-semibold md:font-bold md:uppercase tracking-[-0.01em] md:tracking-[-0.015em] text-[var(--foreground)] leading-tight mb-2 md:mb-4">
                 {heading}
               </h1>
               {look.description?.trim() && (
@@ -177,7 +180,8 @@ export default async function SharedLookPage(props: Props) {
                 </p>
               )}
 
-              <div className="mt-6 flex items-center gap-6">
+              {/* Total and count — phones read them in the bar */}
+              <div className="mt-6 hidden md:flex items-center gap-6">
                 {look.totalPrice != null && (
                   <div>
                     <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">
@@ -199,11 +203,11 @@ export default async function SharedLookPage(props: Props) {
 
             {/* Style tags */}
             {look.styleKeywords.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-10">
+              <div className="flex flex-wrap gap-1.5 md:gap-2 mb-5 md:mb-10">
                 {look.styleKeywords.map((kw) => (
                   <span
                     key={kw}
-                    className="text-[9px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] px-3 py-1.5 rounded-full capitalize"
+                    className="inline-flex md:inline items-center h-7 md:h-auto px-3 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[12px] md:text-[9px] md:tracking-[0.16em] md:uppercase text-[var(--foreground)] md:text-[var(--foreground-muted)] capitalize"
                   >
                     {kw}
                   </span>
@@ -213,7 +217,7 @@ export default async function SharedLookPage(props: Props) {
 
             {/* Pieces in look */}
             <div>
-              <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-6">
+              <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-2.5 md:mb-6">
                 Pieces in this look
               </p>
 
@@ -221,7 +225,7 @@ export default async function SharedLookPage(props: Props) {
                 {pieces.map((piece) => {
                   const inner = (
                     <>
-                      <div className="w-12 h-12 shrink-0 overflow-hidden relative bg-[var(--surface)] rounded-lg">
+                      <div className="w-12 h-12 shrink-0 overflow-hidden relative bg-white md:bg-[var(--surface)] rounded-[10px] md:rounded-lg">
                         {piece.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -233,19 +237,19 @@ export default async function SharedLookPage(props: Props) {
                       </div>
                       <div className="flex-1 min-w-0">
                         {piece.brand && (
-                          <p className="text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-0.5">
+                          <p className="max-md:truncate text-[12px] md:text-[9px] md:tracking-[0.16em] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] md:mb-0.5">
                             {piece.brand}
                           </p>
                         )}
-                        <p className="text-sm text-[var(--foreground)] truncate">{piece.name}</p>
+                        <p className="text-sm max-md:font-medium text-[var(--foreground)] truncate">{piece.name}</p>
                       </div>
                       {piece.priceMin != null && (
                         <div className="text-right shrink-0">
-                          <p className="text-sm text-[var(--foreground)]">
+                          <p className="text-sm max-md:font-semibold text-[var(--foreground)]">
                             From <Price amount={piece.priceMin} />
                           </p>
                           {piece.retailerCount > 0 && (
-                            <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">
+                            <p className="text-[11px] md:text-[9px] text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mt-0.5">
                               {piece.retailerCount} {piece.retailerCount === 1 ? "store" : "stores"}
                             </p>
                           )}
@@ -254,14 +258,15 @@ export default async function SharedLookPage(props: Props) {
                     </>
                   );
 
+                  // Phones: soft plaques without a border, as on the outfit page.
                   const className =
-                    "group flex items-center gap-4 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] transition-colors duration-200";
+                    "group flex items-center gap-3 md:gap-4 max-md:min-h-16 py-2 pl-2 pr-3 md:p-3 rounded-[14px] md:rounded-xl md:border md:border-[var(--border)] bg-[var(--surface)] md:bg-[var(--background)] transition-colors duration-200";
 
                   return piece.productExists ? (
                     <Link
                       key={piece.productId}
                       href={`/product/${piece.productId}`}
-                      className={`${className} hover:border-[var(--foreground-muted)] hover:shadow-sm hover:bg-[var(--surface)]`}
+                      className={`${className} md:hover:border-[var(--foreground-muted)] md:hover:shadow-sm md:hover:bg-[var(--surface)]`}
                     >
                       {inner}
                     </Link>
@@ -276,8 +281,29 @@ export default async function SharedLookPage(props: Props) {
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="mt-16 md:mt-24 mb-20 text-center">
+        {/* Phones: the bar stands where the tab bar would (DESIGN_SYSTEM.md §12.8),
+            carrying the total and the page's one action. */}
+        <div className="md:hidden fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)] z-40 h-16 rounded-3xl border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md flex items-center gap-2 pl-[18px] pr-2.5">
+          <div className="flex-1 min-w-0">
+            {look.totalPrice != null && (
+              <p className="truncate text-[15px] font-semibold text-[var(--foreground)]">
+                <Price amount={look.totalPrice} />
+              </p>
+            )}
+            <p className="text-[12px] text-[var(--foreground-muted)]">
+              {pieces.length} {pieces.length === 1 ? "piece" : "pieces"}
+            </p>
+          </div>
+          <Link
+            href="/builder"
+            className="shrink-0 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold flex items-center"
+          >
+            Build your own look
+          </Link>
+        </div>
+
+        {/* CTA — desktop; phones have it in the bar */}
+        <div className="hidden md:block mt-16 md:mt-24 mb-20 text-center">
           <Link
             href="/builder"
             className="inline-flex items-center gap-2.5 bg-[var(--foreground)] text-[var(--background)] rounded-full px-8 py-3.5 text-[15px] font-semibold tracking-[-0.01em] hover:opacity-90 transition-opacity"

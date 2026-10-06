@@ -84,16 +84,19 @@ export default async function OutfitDetailPage({ params }: Props) {
   return (
     <div className="min-h-screen">
       <JsonLd data={[outfitJsonLd(outfit, heading), breadcrumb]} />
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
+      <div className="max-w-[1440px] mx-auto px-3 md:px-12">
         <RecordRecentView kind="outfit" id={outfit.id} />
 
-        <Breadcrumbs items={outfitCrumbs} />
+        {/* Phones go back with the header's back button; the trail is desktop's. */}
+        <div className="hidden md:block">
+          <Breadcrumbs items={outfitCrumbs} />
+        </div>
 
         {/* Main layout — same column sizing as the product page, so the image
             keeps a sane width and the info panel takes the rest. */}
-        <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-6 md:gap-10">
-          {/* Left: Editorial Image */}
-          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)] md:self-start">
+        <div className="mt-3 md:mt-12 grid grid-cols-1 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-4 md:gap-10">
+          {/* Left: Editorial Image — on phones a borderless card (DESIGN_SYSTEM.md §12.2) */}
+          <div className="rounded-3xl md:rounded-2xl overflow-hidden md:border md:border-[var(--border)] bg-[var(--background)] md:self-start">
             <div className="relative aspect-[3/4] overflow-hidden">
               {outfit.imageUrl ? (
                 <Image
@@ -112,8 +115,8 @@ export default async function OutfitDetailPage({ params }: Props) {
                 />
               )}
               {outfit.isAIGenerated && (
-                <div className="absolute top-4 left-4">
-                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full block">
+                <div className="absolute top-3.5 left-3.5 md:top-4 md:left-4">
+                  <span className="block rounded-full bg-white/80 md:bg-black/60 md:backdrop-blur-sm text-black md:text-white text-[11px] md:text-[9px] font-semibold md:font-medium md:tracking-[0.16em] md:uppercase px-[9px] py-1 md:px-3 md:py-1.5">
                     AI Generated
                   </span>
                 </div>
@@ -124,26 +127,30 @@ export default async function OutfitDetailPage({ params }: Props) {
           </div>
 
           {/* Right: Outfit Info + Items */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-6 md:px-10 py-8 md:py-12 flex flex-col">
+          <div className="md:rounded-2xl md:border md:border-[var(--border)] md:bg-[var(--background)] px-1 md:px-10 md:py-12 flex flex-col">
             {/* Header */}
-            <div className="mb-8 md:mb-10">
-              <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 capitalize">
+            <div className="mb-3 md:mb-10">
+              <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3 capitalize">
                 {outfit.occasion} · {outfit.season !== "all" ? outfit.season : "All Season"}
               </p>
               {/* One line each, chevron for the rest: outfit names and blurbs are
                   generated from the pieces, so they run long and would otherwise
-                  push the bag button and the piece list off the screen. */}
-              <div className="mb-4">
+                  push the bag button and the piece list off the screen. Phones
+                  show the whole name — the bag button lives in the bar there.
+                  Desktop's −0.015em is spelled out: any tracking class turns off
+                  the size-based rule in globals.css (DESIGN_SYSTEM.md §12.13). */}
+              <div className="mb-2 md:mb-4">
                 <ClampedHeading
                   text={heading}
                   label="outfit name"
                   lines={1}
-                  className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight"
+                  className="max-md:line-clamp-none text-[22px] md:text-4xl font-semibold md:font-bold md:uppercase tracking-[-0.01em] md:tracking-[-0.015em] text-[var(--foreground)] leading-tight"
                 />
               </div>
-              <ClampedDescription text={outfit.description || seoDescription} lines={1} />
+              <ClampedDescription text={outfit.description || seoDescription} lines={1} className="max-md:line-clamp-none" />
 
-              <div className="mt-6 flex items-center gap-6">
+              {/* Total and count — phones read them in the buy bar */}
+              <div className="mt-6 hidden md:flex items-center gap-6">
                 <div>
                   <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">
                     Total
@@ -168,11 +175,11 @@ export default async function OutfitDetailPage({ params }: Props) {
             </div>
 
             {/* Style tags */}
-            <div className="flex flex-wrap gap-2 mb-10">
+            <div className="flex flex-wrap gap-1.5 md:gap-2 mb-5 md:mb-10">
               {outfit.styleKeywords.map((kw) => (
                 <span
                   key={kw}
-                  className="text-[9px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] px-3 py-1.5 rounded-full capitalize"
+                  className="inline-flex md:inline items-center h-7 md:h-auto px-3 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[12px] md:text-[9px] md:tracking-[0.16em] md:uppercase text-[var(--foreground)] md:text-[var(--foreground-muted)] capitalize"
                 >
                   {kw}
                 </span>
@@ -180,7 +187,7 @@ export default async function OutfitDetailPage({ params }: Props) {
             </div>
 
             {/* Actions */}
-            <OutfitActions outfitId={outfit.id} items={outfit.items} />
+            <OutfitActions outfitId={outfit.id} items={outfit.items} priceMin={outfit.totalPriceMin} priceMax={outfit.totalPriceMax} />
 
             {/* Items in outfit */}
             <OutfitPieces items={outfit.items} />
@@ -189,17 +196,17 @@ export default async function OutfitDetailPage({ params }: Props) {
 
         {/* Related Outfits */}
         {relatedOutfits.length > 0 && (
-          <section className="mt-20 md:mt-28">
-            <div className="mb-8">
-              <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
-                Similar Outfits
+          <section className="mt-10 md:mt-28">
+            <div className="mb-3 md:mb-8">
+              <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
+                Similar outfits
               </p>
-              <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
+              <h2 className="text-[20px] md:text-3xl font-semibold md:font-bold md:uppercase max-md:tracking-[-0.01em] text-[var(--foreground)]">
                 You might also like
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-4">
               {relatedOutfits.map((related) => (
                 <div key={related.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200">
                   <OutfitCard outfit={related} />
