@@ -312,7 +312,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
         </div>
 
         {/* ── Right: Product info ── */}
-        <div className="md:rounded-2xl md:border md:border-[var(--border)] md:bg-[var(--background)] px-1 md:px-10 pb-8 md:py-12 flex flex-col">
+        <div className="md:rounded-2xl md:border md:border-[var(--border)] md:bg-[var(--background)] px-1 md:px-10 md:py-12 flex flex-col">
 
           {/* Brand + Name */}
           <div className="mb-6">
@@ -398,8 +398,8 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
           {/* Material */}
           {product.material && (
-            <div className="mb-8 pb-8 border-b border-[var(--border)]">
-              <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
+            <div className="mb-6 md:mb-8 md:pb-8 md:border-b md:border-[var(--border)]">
+              <p className="text-[13px] md:text-[10px] md:tracking-[0.14em] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-2">
                 Material
               </p>
               <p className="text-sm text-[var(--foreground-muted)]">{product.material}</p>
@@ -473,17 +473,18 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
           {/* Sizes */}
           {product.sizes.length > 0 && (
-            <div className="mb-10 pb-8 border-b border-[var(--border)]">
-              <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-3">
+            <div className="mb-7 md:mb-10 md:pb-8 md:border-b md:border-[var(--border)]">
+              <p className="text-[13px] md:text-[10px] md:tracking-[0.14em] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-2.5 md:mb-3">
                 Sizes
               </p>
               {/* Informational only: nothing on the site picks a size, so these
-                  are plain chips, not buttons that do nothing when pressed. */}
+                  are plain chips, not buttons that do nothing when pressed.
+                  Phones: soft pills (DESIGN_SYSTEM.md §12.14, info chip). */}
               <div className="flex flex-wrap gap-2">
                 {product.sizes.map((size) => (
                   <span
                     key={size}
-                    className="px-4 py-2 rounded-full border border-[var(--border-strong)] text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]"
+                    className="inline-flex md:inline items-center justify-center h-9 md:h-auto max-md:min-w-9 px-3 md:px-4 md:py-2 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border-strong)] text-[13px] md:text-[11px] md:tracking-[0.12em] md:uppercase md:font-medium text-[var(--foreground)] md:text-[var(--foreground-muted)]"
                   >
                     {size}
                   </span>
@@ -495,23 +496,69 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           {/* Where to buy — the phone buy bar scrolls here */}
           {product.retailers.length > 0 && (
             <div id="where-to-buy" className="scroll-mt-20">
-              <div className="flex items-center justify-between gap-3 mb-5">
-                <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--foreground)]">
+              <div className="flex items-baseline md:items-center justify-between gap-3 mb-2.5 md:mb-5">
+                <h2 className="text-[18px] md:text-sm font-semibold md:uppercase max-md:tracking-[-0.01em] md:tracking-[0.12em] text-[var(--foreground)]">
                   Where to buy
                 </h2>
-                <span className="shrink-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] rounded-full px-2.5 py-1">
+                <span className="shrink-0 text-[13px] md:text-[10px] md:tracking-[0.12em] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] md:border md:border-[var(--border)] md:rounded-full md:px-2.5 md:py-1">
                   {product.retailers.length} stores
                 </span>
               </div>
 
-              <div className="space-y-2">
+              {/* Phones: one plaque of rows — the whole row is the link
+                  (DESIGN_SYSTEM.md §12.11, mockup v1 «Б · Где купить»). */}
+              <div className="md:hidden rounded-2xl bg-[var(--surface)] overflow-hidden">
                 {[...product.retailers]
                   .sort((a, b) => a.price - b.price)
                   .map((retailer, i) => {
-                    let domain = "";
-                    try { domain = new URL(retailer.url).hostname.replace("www.", ""); } catch {}
-                    // Prefer the store logo from the admin library (matched by
-                    // name); fall back to the site favicon, then to initials.
+                    const soldOut = retailer.availability === "sold out";
+                    const note = [
+                      retailer.availability.charAt(0).toUpperCase() + retailer.availability.slice(1),
+                      retailer.isOfficial ? "Official store" : null,
+                      retailer.rating != null ? `★ ${retailer.rating.toFixed(1)}` : null,
+                    ].filter(Boolean).join(" · ");
+                    return (
+                      <a
+                        key={retailer.name}
+                        href={retailer.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`min-h-[70px] flex items-center gap-3 px-3.5 py-3 ${i > 0 ? "shadow-[inset_0_1px_0_var(--border)]" : ""}`}
+                      >
+                        <RetailerLogo
+                          name={retailer.name}
+                          url={retailer.url}
+                          libraryLogo={retailerLogos[retailer.name.trim().toLowerCase()] ?? null}
+                          className="w-[38px] h-[38px]"
+                        />
+                        <span className="flex-1 min-w-0">
+                          <span className="block truncate text-[15px] font-medium text-[var(--foreground)]">{retailer.name}</span>
+                          <span className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[var(--foreground-muted)]">
+                            <span
+                              aria-hidden="true"
+                              className={`w-1.5 h-1.5 shrink-0 rounded-full ${
+                                retailer.availability === "in stock" ? "bg-green-500" : retailer.availability === "low stock" ? "bg-amber-500" : "bg-[var(--foreground-subtle)]"
+                              }`}
+                            />
+                            <span className={`truncate ${soldOut ? "line-through" : ""}`}>{note}</span>
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-right">
+                          <span className="block text-[15px] font-semibold text-[var(--foreground)]">{formatPrice(retailer.price, retailer.currency)}</span>
+                          {i === 0 && <span className="block text-[11px] font-medium text-[var(--foreground)]">Best price</span>}
+                        </span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-[var(--foreground-muted)]">
+                          <path d="M9 6l6 6-6 6" />
+                        </svg>
+                      </a>
+                    );
+                  })}
+              </div>
+
+              <div className="hidden md:block space-y-2">
+                {[...product.retailers]
+                  .sort((a, b) => a.price - b.price)
+                  .map((retailer, i) => {
                     const libraryLogo = retailerLogos[retailer.name.trim().toLowerCase()] ?? null;
                     return (
                     <a
@@ -523,41 +570,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         {/* Retailer logo */}
-                        <div className="w-10 h-10 shrink-0 rounded-full bg-white border border-[var(--border)] flex items-center justify-center overflow-hidden">
-                          {libraryLogo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={libraryLogo}
-                              alt={retailer.name}
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-contain p-1.5"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).style.display = "none";
-                                (e.currentTarget.nextSibling as HTMLElement | null)?.style && ((e.currentTarget.nextSibling as HTMLElement).style.display = "flex");
-                              }}
-                            />
-                          ) : domain ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-                              alt={retailer.name}
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).style.display = "none";
-                                (e.currentTarget.nextSibling as HTMLElement | null)?.style && ((e.currentTarget.nextSibling as HTMLElement).style.display = "flex");
-                              }}
-                            />
-                          ) : null}
-                          <span
-                            className="text-[11px] font-bold text-[var(--foreground-muted)] hidden items-center justify-center w-full h-full"
-                            style={{ display: "none" }}
-                          >
-                            {retailer.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        </div>
+                        <RetailerLogo name={retailer.name} url={retailer.url} libraryLogo={libraryLogo} className="w-10 h-10" />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="text-sm text-[var(--foreground)] truncate">{retailer.name}</p>
@@ -625,7 +638,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   );
                   })}
               </div>
-              <p className="text-[10px] text-[var(--foreground-subtle)] mt-4">
+              <p className="mt-2.5 md:mt-4 px-1 md:px-0 text-[12px] md:text-[10px] max-md:leading-relaxed text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)]">
                 Prices updated regularly. GOO is not responsible for pricing changes.
               </p>
             </div>
@@ -634,24 +647,24 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
       </div>
 
       {/* How to wear it — unique on-page styling copy */}
-      <section className="mt-16 md:mt-20">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-6 md:px-10 py-8 md:py-10">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+      <section className="mt-5 md:mt-20">
+        <div className="rounded-2xl md:border md:border-[var(--border)] bg-[var(--surface)] p-4 md:px-10 md:py-10">
+          <p className="text-[15px] md:text-[10px] font-semibold md:font-medium md:tracking-[0.18em] md:uppercase text-[var(--foreground)] md:text-[var(--foreground-subtle)] mb-1.5 md:mb-3">
             How to wear it
           </p>
           <p className="text-sm md:text-base text-[var(--foreground-muted)] leading-relaxed max-w-2xl">
             {styling.text}
           </p>
           {styling.pairWith.length > 0 && (
-            <div className="mt-5 flex flex-wrap items-center gap-2">
-              <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mr-1">
+            <div className="mt-4 md:mt-5 flex flex-wrap items-center gap-2">
+              <span className="basis-full md:basis-auto text-[13px] md:text-[10px] md:tracking-[0.14em] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mr-1">
                 Pairs with
               </span>
               {styling.pairWith.map((cat) => (
                 <Link
                   key={cat}
                   href={`/browse?category=${cat}`}
-                  className="text-[11px] capitalize border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] rounded-full px-3 py-1.5 transition-colors duration-200"
+                  className="inline-flex md:inline items-center h-9 md:h-auto px-3.5 md:px-3 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[13px] md:text-[11px] capitalize text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] md:hover:border-[var(--foreground-muted)] transition-colors duration-200"
                 >
                   {cat}
                 </Link>
@@ -663,16 +676,16 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
       {/* Outfits featuring this item */}
       {outfitsWithProduct.length > 0 && (
-        <section className="mt-20 md:mt-28 mb-4">
-          <div className="mb-8">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+        <section className="mt-10 md:mt-28 mb-4">
+          <div className="mb-3 md:mb-8">
+            <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
               Style it with
             </p>
-            <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
+            <h2 className="text-[20px] md:text-3xl font-semibold md:font-bold md:uppercase max-md:tracking-[-0.01em] text-[var(--foreground)]">
               Outfits with this piece
             </h2>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-4">
             {outfitsWithProduct.slice(0, 4).map((outfit) => (
               <div key={outfit.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200">
                 <OutfitCard outfit={outfit} />
@@ -684,16 +697,16 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (
-        <section className="mt-20 md:mt-28 mb-4">
-          <div className="mb-8">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+        <section className="mt-10 md:mt-28 mb-4">
+          <div className="mb-3 md:mb-8">
+            <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
               More {product.category}
             </p>
-            <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
+            <h2 className="text-[20px] md:text-3xl font-semibold md:font-bold md:uppercase max-md:tracking-[-0.01em] text-[var(--foreground)]">
               You may also like
             </h2>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-4">
             {relatedProducts.map((related) => (
               <div key={related.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200">
                 <ProductCard product={related} />
@@ -738,5 +751,51 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * A store's mark: the logo from the admin store library, else the site's
+ * favicon, else its initials. Size comes from `className`.
+ */
+function RetailerLogo({ name, url, libraryLogo, className }: { name: string; url: string; libraryLogo: string | null; className: string }) {
+  let domain = "";
+  try { domain = new URL(url).hostname.replace("www.", ""); } catch {}
+  return (
+    <div className={`${className} shrink-0 rounded-full bg-white border border-[var(--border)] flex items-center justify-center overflow-hidden`}>
+      {libraryLogo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={libraryLogo}
+          alt={name}
+          width={40}
+          height={40}
+          className="w-full h-full object-contain p-1.5"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+            (e.currentTarget.nextSibling as HTMLElement | null)?.style && ((e.currentTarget.nextSibling as HTMLElement).style.display = "flex");
+          }}
+        />
+      ) : domain ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+          alt={name}
+          width={40}
+          height={40}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+            (e.currentTarget.nextSibling as HTMLElement | null)?.style && ((e.currentTarget.nextSibling as HTMLElement).style.display = "flex");
+          }}
+        />
+      ) : null}
+      <span
+        className="text-[11px] font-bold text-[var(--foreground-muted)] hidden items-center justify-center w-full h-full"
+        style={{ display: "none" }}
+      >
+        {name.slice(0, 2).toUpperCase()}
+      </span>
+    </div>
   );
 }
