@@ -109,6 +109,7 @@ export default function BrowsePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
   const [searchExpandedWidth, setSearchExpandedWidth] = useState(220);
   useEffect(() => {
     const update = () => setSearchExpandedWidth(window.innerWidth < 480 ? 140 : 220);
@@ -312,6 +313,17 @@ export default function BrowsePage() {
 
   const toggleColorGroup = (id: number) =>
     setSelectedColorGroupIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  // Shared by the desktop pill and the phone toggle: a new view starts unfiltered.
+  const switchView = (v: View) => {
+    if (v === view) return;
+    setView(v);
+    setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+    setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
+    setSearchQuery(""); setSearchOpen(false); setSelectedStyles([]);
+    const url = new URL(window.location.href); url.searchParams.set("view", v);
+    window.history.replaceState({}, "", url.toString());
+  };
 
   const activeFiltersCount =
     selectedBrands.length +
@@ -957,8 +969,10 @@ export default function BrowsePage() {
   return (
     <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto">
-        {/* ── Page header ── */}
-        <div className="px-6 md:px-12 pt-12 md:pt-16">
+        {/* ── Page header — desktop only: on a phone the catalogue starts right
+            under the header capsule (DESIGN_SYSTEM.md §12.1) ── */}
+        <h1 className="sr-only md:hidden">Browse</h1>
+        <div className="hidden md:block px-6 md:px-12 pt-12 md:pt-16">
           <div className="mb-8">
             <h1 className="text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
               Browse
@@ -1022,9 +1036,104 @@ export default function BrowsePage() {
 
         {/* Main content */}
         <div>
-          <main className="px-6 md:px-8 lg:px-10">
+          <main className="px-3 md:px-8 lg:px-10">
+            {/* Phone toolbar: one row — view toggle, search, filters (DESIGN_SYSTEM.md
+                §12.5, mockup v2 «Б · Каталог»). Search swaps the row for a field. */}
+            <div className="md:hidden pt-3">
+              {!searchOpen ? (
+                <div className="flex items-center gap-2">
+                  {/* Each half is a full 44px target; the frame is an inset shadow and the
+                      active pill sits 3px inside, so no edge of the control is dead. */}
+                  <div role="group" aria-label="Show" className="flex-1 h-11 grid grid-cols-2 rounded-full bg-[var(--surface)] shadow-[inset_0_0_0_1px_var(--border)]">
+                    {(["pieces", "outfits"] as View[]).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => switchView(v)}
+                        aria-pressed={view === v}
+                        className={`relative h-11 rounded-full text-[14px] capitalize transition-colors duration-200 ${
+                          view === v ? "text-[var(--background)] font-semibold" : "text-[var(--foreground-muted)] font-medium"
+                        }`}
+                      >
+                        {view === v && <span aria-hidden="true" className="absolute inset-[3px] rounded-full bg-[var(--foreground)]" />}
+                        <span className="relative">{v}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => { setSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
+                    aria-label="Search"
+                    className="shrink-0 w-11 h-11 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] flex items-center justify-center"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                      <circle cx="11" cy="11" r="6.5" />
+                      <path d="M16 16l4 4" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => { setStylistOpen(false); setFiltersOpen(true); }}
+                    aria-label={activeFiltersCount > 0 ? `Filters, ${activeFiltersCount} on` : "Filters"}
+                    className="relative shrink-0 w-11 h-11 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] flex items-center justify-center"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                      <path d="M4 7h16M7 12h10M10 17h4" />
+                    </svg>
+                    {activeFiltersCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[9px] font-bold leading-4 text-center">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1 -mr-2">
+                    <label className="flex-1 min-w-0 h-11 flex items-center gap-2 pl-3.5 rounded-full border border-[var(--border-strong)] focus-within:border-[var(--foreground)] bg-[var(--surface)] text-[var(--foreground-muted)] transition-colors">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" className="shrink-0">
+                        <circle cx="11" cy="11" r="6.5" />
+                        <path d="M16 16l4 4" />
+                      </svg>
+                      {/* The capsule shows focus; `!` because the global :focus-visible
+                          ring is unlayered and beats a plain utility. */}
+                      <input
+                        ref={mobileSearchRef}
+                        type="search"
+                        enterKeyHint="search"
+                        aria-label={`Search ${view}`}
+                        placeholder={`Search ${view}`}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1 min-w-0 bg-transparent outline-none! text-base text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] [&::-webkit-search-cancel-button]:hidden"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => { setSearchQuery(""); mobileSearchRef.current?.focus(); }}
+                          aria-label="Clear search"
+                          className="shrink-0 w-11 h-11 -my-px rounded-full flex items-center justify-center"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                            <path d="M7 7l10 10M17 7L7 17" />
+                          </svg>
+                        </button>
+                      )}
+                    </label>
+                    <button
+                      onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                      className="shrink-0 h-11 px-3 text-[15px] text-[var(--foreground)]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {searchQuery.trim() && (
+                    <p className="pt-3.5 px-1 text-[13px] text-[var(--foreground-muted)]" aria-live="polite">
+                      {count} {view === "outfits" ? (count === 1 ? "outfit" : "outfits") : (count === 1 ? "piece" : "pieces")} for “{searchQuery.trim()}”
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
             {/* Toolbar: flex row, items-end so chips align with bottom pill */}
-            <div className="pt-4 pb-4 border-b border-[var(--border)]">
+            <div className="hidden md:block pt-4 pb-4 border-b border-[var(--border)]">
               <div className="flex flex-wrap items-end gap-x-3 gap-y-3 sm:flex-nowrap">
 
                 {/* Left column: Filter+Search on top, Pieces/Outfits below.
@@ -1115,16 +1224,7 @@ export default function BrowsePage() {
                     {(["pieces", "outfits"] as View[]).map((v) => (
                       <button
                         key={v}
-                        onClick={() => {
-                          if (v !== view) {
-                            setView(v);
-                            setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
-                            setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
-                            setSearchQuery(""); setSearchOpen(false); setSelectedStyles([]);
-                            const url = new URL(window.location.href); url.searchParams.set("view", v);
-                            window.history.replaceState({}, "", url.toString());
-                          }
-                        }}
+                        onClick={() => switchView(v)}
                         className="relative z-10 flex-1 py-2.5 text-[11px] tracking-[0.14em] uppercase font-bold whitespace-nowrap transition-colors duration-200 text-center"
                         style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
                       >
@@ -1346,7 +1446,7 @@ export default function BrowsePage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              className="mt-10 pb-16"
+              className="mt-3 md:mt-10 pb-16"
             >
               {view === "outfits" && loadingOutfits ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
@@ -1375,7 +1475,7 @@ export default function BrowsePage() {
               ) : view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
                   <motion.div
-                    className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 stagger-children"
+                    className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 md:gap-4 stagger-children"
                     variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
                     initial="hidden"
                     animate="show"
@@ -1395,7 +1495,7 @@ export default function BrowsePage() {
                 )
               ) : displayItems.length > 0 ? (
                 <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 stagger-children"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 md:gap-4 stagger-children"
                   variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
                   initial="hidden"
                   animate="show"

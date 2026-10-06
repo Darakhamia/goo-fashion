@@ -1356,6 +1356,8 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 
 - **Чип** (фильтры, категории, теги): `h-9 px-3.5 rounded-full text-[13px]`; обычный — `bg-[var(--fg-overlay-08)] text-[var(--foreground)]`, выбранный — `bg-[var(--foreground)] text-[var(--background)] font-semibold`. Снимаемый фильтр — тот же чип с крестиком 13 px справа, `h-8`.
 - **Сегментированный контрол** (Pieces / Outfits, вкладки «Лайков» и профиля): контейнер `h-11 p-[3px] rounded-full bg-[var(--surface)] grid grid-cols-N` (на странице — ещё `border border-[var(--border)]`), пункт `rounded-full text-[14px]`, выбранный — `bg-[var(--foreground)] text-[var(--background)] font-semibold`, остальные — `--foreground-muted`. Счётчик в пункте — тем же цветом с `opacity-60`.
+- **Цель 44 px у сегментов.** Так пункт был бы 36 px, а рамка и отступ вокруг него не нажимались бы. Поэтому `p-[3px]` и `border` на контейнер не ставят: рамка — `shadow-[inset_0_0_0_1px_var(--border)]`, пункт — `relative h-11`, подложка выбранного — вложенный `<span className="absolute inset-[3px] rounded-full bg-[var(--foreground)]">`. Выглядит так же, как в макете. Код: `src/app/browse/page.tsx` (R-08).
+- **Поле поиска в строке инструментов:** капсула `h-11 rounded-full border border-[var(--border-strong)] focus-within:border-[var(--foreground)] bg-[var(--surface)]`, справа «Cancel» текстом. Фокус показывает капсула, у самого `<input>` — `outline-none!`. Общее кольцо `:focus-visible` в `globals.css` стоит вне слоёв, и обычный `outline-none` из слоя utilities его не перебивает.
 
 ### 12.11 Строки и группы
 
