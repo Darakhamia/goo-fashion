@@ -1058,6 +1058,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 14. Если поставил `outline-none` — рядом стоит видимая замена фокуса: `outline-none` отключает общее кольцо `:focus-visible` (раздел 5.12). Если замены нет — не ставь `outline-none`.
 15. Ничего не восстановлено и не скопировано из мёртвого кода с конкурирующим языком. Эти файлы удалены 2026-09-27 по код-ревью 2026-09 (коммит `7898c3f`) и в истории git остаются только как пример того, чего не делать: `src/components/ui/button.tsx`, `src/components/blocks/hero-section-1.tsx`, `src/components/ui/animated-group.tsx`, `src/components/ui/parallax-floating.tsx`, `HeroBackground.tsx`, `SectionLabel.tsx`, `ProductGallery.tsx`, `ProductReviews.tsx`, `PriceHistoryChart.tsx`, `OutfitCarousel.tsx`, `FeaturesBento.tsx`, `HowItWorksGrid.tsx`, `AIStylistChat.tsx`, `HeroProductCycle.tsx`, `src/app/coming-soon/` (с `FeatureCarousel.tsx`), `src/app/goo-studio/image-tools/`.
 16. Элемент админки открыт на ширине 375px и прошёл мобильные правила раздела 9 (цель касания 40px, поле без своего размера шрифта ниже `md`, hover-only элемент виден на тач-экране, таблица прокручивается в своём контейнере, модалка помещается в экран) и проверен в обеих темах админки, в том числе светлая админка при тёмной теме сайта.
+17. Элемент публичного сайта на телефоне (ниже `md`) собран по разделу 12 и снят на стенде `scripts/site-screens` на 390 и 360 px в обеих темах; десктоп 1440 при этом не изменился.
 
 ---
 
@@ -1208,3 +1209,192 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/goo-studio/products/page.tsx:2100` (также `:2507,3048,3091`) | Четыре модалки products без `role="dialog"` / `aria-modal` (у остальных модалок админки они есть); у bulk-модалки `shadow-xl` (`:2102`); бейдж «New» в таблице без радиуса (`:2434`) | Рецепт модалки §9 п.11; бейдж `rounded-full` | ✓ исправлено (GS4-9, 2026-10-05): все 11 модалок админки — на `Modal` (`role="dialog"`, название, Escape, фокус внутри); бейдж New — `rounded-full` с GS4-4. `shadow-xl` у bulk-модалки остался — тень у модалки допустима |
 | `src/app/goo-studio/users/page.tsx:1192-1208` (и `blog/page.tsx:801-813`) | Переключатель в users — вся строка-кнопка без `role="switch"` / `aria-checked`; в blog переключатель другого размера (`h-6 w-11` против `w-9 h-5` у `parser/page.tsx:522-533`) | Рецепт переключателя §9 п.7 | low |
 | `src/app/not-found.tsx:28` (также `error.tsx:41`, `MyLooksPanel.tsx:1049`, `HeroSection.tsx:59`, `builder/page.tsx:1676`, `StylistPersonalizationModal.tsx:92`) | Модификатор непрозрачности на переменной расползся: `border-[var(--foreground)]/20`, `hover:bg-[var(--foreground)]/5`, `bg-[var(--background)]/85`, `/80`, `bg-[var(--surface)]/50` — вопреки договорённости раздела 1 (на Tailwind v4 технически работает) | Предвычисленные `--bg-overlay-*` / `--fg-overlay-*` или `opacity-*` на элементе | low |
+
+---
+
+## 12. Мобильная версия сайта (вариант Б)
+
+**Статус:** целевые рецепты мобильного трека (решение CEO 2026-10-06: `docs/MOBILE_PLAN.md`, вариант Б на всех экранах). Это не снимок кода, как разделы 1–9: по рецептам переделываются экраны в задачах `docs/MOBILE_ROADMAP.md`. Когда задача закрыта, её экран живёт по этому разделу. Макеты: холст https://claude.ai/artifact/TJiTGG5bV46G8R3CNeyTR8, страницы «v1» (вариант Б) и «v2», общие детали — на странице «Детали».
+
+Действует только **ниже `md` (<768 px)**. Tailwind пишется mobile-first: рецепт ложится в классы без префикса, а прежний вид десктопа переезжает в `md:`. Десктоп не меняется.
+
+### 12.1 Правила
+
+1. **Один акцент на экран.** Залитая кнопка (primary) на экране одна, остальные действия — мягкой кнопкой, текстом или иконкой.
+2. **Капс — только у мелкого надзаголовка** (рецепт eyebrow из раздела 2, не больше одного на экран). Кнопки, табы, чипы, пункты меню, заголовки страниц и карточек — обычным регистром.
+3. **Нет рамки внутри рамки.** Группы отделяются воздухом и разделителем `box-shadow: inset 0 1px 0 var(--border)` / `border-t`, а не вложенными карточками.
+4. **Фото — главное.** Поверх фото — только светлые контролы (12.6), ничего тёмного.
+5. **Цель касания — 44×44.** Иконка может быть мельче, но кнопка вокруг неё — `w-11 h-11`.
+6. **Ничего не едет вбок на 360 px.** Широкое (таблица, лента) — в своём контейнере с `overflow-x-auto`, лучше — переложенное в столбик.
+7. **Заголовок страницы спокойный:** `text-2xl font-semibold tracking-[-0.015em]` (24 px) обычным регистром вместо `text-4xl font-black uppercase`.
+8. **Поле ввода — 16 px** (`text-base`), иначе iOS зумит страницу при фокусе.
+
+### 12.2 Глубина и токены
+
+- **Плашка вместо рамки.** Карточки и группы на телефоне — `bg-[var(--surface)]` без рамки: в тёмной теме `#141414` на `#0A0A0A`, в светлой белое на `#F4F2EE`. Это осознанное отличие от правила раздела 4 «глубина — границей»: на телефоне рамки и есть тот шум, который убираем. Рамку `border-[var(--border)]` оставляют только капсулам шапки и меню и полям ввода.
+- **Мягкая заливка** (вторичная кнопка, чип, иконка-кнопка на плашке, «пузырь» чата) — `bg-[var(--fg-overlay-08)]`.
+- **Плавающие панели** (нижнее меню, полоса покупки) — `bg-[var(--surface-overlay-92)] backdrop-blur-md`. Токен `--surface-overlay-92` добавлен в `globals.css` для этого (обе темы).
+- **Радиусы на телефоне:** `rounded-full` — капсулы, пилюли, иконки-кнопки, чипы; `rounded-2xl` (16) — карточки, группы строк, плашки пустых состояний, поля; `rounded-3xl` (24) — листы снизу, крупное фото товара и холст конструктора. `rounded-3xl` в шкале раздела 4 нет — это добавление для телефона.
+
+### 12.3 Шапка-капсула
+
+Макет: «Детали · шапка», все экраны v2.
+
+```tsx
+<header className="mx-3 mt-2 h-[52px] rounded-full border border-[var(--border)] bg-[var(--surface)]
+                   flex items-center pl-[18px] pr-1">   {/* с кнопкой «назад»: px-1, вордмарк по центру */}
+  {/* вордмарк GOO (рецепт хедера), затем AI и корзина — кнопки w-11 h-11, счётчик — бейдж-счётчик 5.11 */}
+</header>
+```
+
+Без тени. Кнопка «назад» (`w-11 h-11`, шеврон 20 px) — на товаре, образе, статье, оформлении подписки.
+
+### 12.4 Нижнее меню-капсула
+
+Макет: «Детали · нижнее меню».
+
+```tsx
+<nav className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+12px)] z-40 h-14 px-1.5
+                rounded-full border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md
+                flex items-center justify-between">
+  {/* вкладка: w-11 h-11 rounded-full, иконка 21 px, stroke 1.3, цвет --foreground-muted
+      активная: h-11 pl-3 pr-3.5 rounded-full bg-[var(--fg-overlay-08)] text-[var(--foreground)],
+      иконка stroke 1.7 + подпись text-[12px] font-semibold обычным регистром */}
+</nav>
+```
+
+Подпись видна только у активной вкладки; у остальных вкладок есть `aria-label`. Без тени.
+
+### 12.5 Карточка на плашке
+
+Макет: v1 «Б · Каталог», v2 «Б · Каталог — образы».
+
+```tsx
+<div className="rounded-2xl bg-[var(--surface)] overflow-hidden">        {/* без рамки */}
+  <div className="relative aspect-[3/4] bg-white" style={photoBackdrop(...)}>  {/* правило раздела 1 */}
+    {/* светлое сердце 12.6 справа сверху, бейдж New 12.6 слева сверху */}
+  </div>
+  <div className="px-3 pt-2.5 pb-3">
+    <p className="text-[13px] font-semibold truncate">{brand}</p>
+    <p className="text-[12.5px] text-[var(--foreground-muted)] truncate">{name}</p>
+    <div className="mt-1.5 flex items-baseline justify-between gap-1.5">
+      <span className="text-[13px] font-medium">{price}</span>
+      <span className="text-[11px] text-[var(--foreground-muted)]">{n} stores</span>
+    </div>
+  </div>
+</div>
+```
+
+Корзины на карточке нет (решение CEO): в корзину кладут со страницы товара. Отдельной полосы «N STORES» нет — число магазинов стоит строкой у цены. Сетка — `grid-cols-2 gap-2.5 px-3`.
+
+### 12.6 Контролы поверх фото
+
+Фото товаров на сайте светлые в обеих темах (`bg-white` и замеренный фон, раздел 1), поэтому контрол поверх фото светлый в обеих темах. Это то же исключение из правила цвета, что `bg-black/NN` в разделе 1: фон здесь — фотография, а не тема.
+
+- **Сердце:** кнопка `absolute top-0.5 right-0.5 w-11 h-11 grid place-items-center`, внутри кружок `w-7 h-7 rounded-full bg-white/80`, сердце 14 px, `stroke` чёрный (`text-black`), у сохранённого — заливка.
+- **Бейдж New:** `absolute top-2.5 left-2.5 rounded-full bg-white/80 text-black text-[10px] font-semibold px-2 py-[3px]`, обычным регистром. Не пересекается с сердцем.
+- **Счётчик фото** («1 / 2») — как бейдж, справа снизу.
+
+### 12.7 Лист снизу
+
+Макеты: v1 «Б · Фильтры и сортировка», v2 «Б · AI-стилист», «Б · Корзина», «Б · Конструктор — сохранить образ», «Б · Окно „нужен тариф“».
+
+```tsx
+<div className="ov-scrim fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+<section role="dialog" aria-modal="true" aria-label="…"
+         className="ov-rise fixed inset-x-0 bottom-0 z-50 max-h-[calc(100%-56px)] rounded-t-3xl
+                    bg-[var(--surface)] flex flex-col pb-[calc(env(safe-area-inset-bottom)+16px)]">
+  <div className="mx-auto mt-2 w-9 h-1 rounded-full bg-[var(--border-strong)]" />   {/* ручка */}
+  <div className="flex items-center pl-4 pr-1.5">
+    <h2 className="flex-1 text-[18px] font-semibold">Sort &amp; filter</h2>
+    {/* закрыть: w-11 h-11, крестик 18 px, --foreground-muted */}
+  </div>
+  {/* содержимое; внизу — ряд действий: мягкая «Clear» + primary-пилюля «Show N pieces» */}
+</section>
+```
+
+Появление и уход — `.ov-scrim` / `.ov-rise` с `useOverlayPresence` (раздел 7), блокировка прокрутки `useScrollLock`, закрытие по Escape и по тапу на скрим. Уровень — как у drawer (`z-50`, раздел 3).
+
+### 12.8 Полоса покупки
+
+Макеты: v1 «Б · Товар», «Б · Где купить», «Б · Образ», v2 «Б · Оформление подписки».
+
+```tsx
+<div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+12px)] z-40 h-16
+                rounded-3xl border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md
+                flex items-center gap-2 pl-[18px] pr-2.5">
+  <div className="flex-1 min-w-0">
+    <p className="text-[15px] font-semibold">From $890</p>
+    <p className="text-[12px] text-[var(--foreground-muted)]">3 stores</p>
+  </div>
+  {/* иконка-кнопка (мягкая, w-11 h-11): Add to bag / Share */}
+  {/* primary-пилюля h-11: Where to buy / Add all to bag / Continue to payment */}
+</div>
+```
+
+На странице с полосой покупки нижнее меню скрыто: полоса стоит на его месте. Так сделано на товаре, образе, образе пользователя и оформлении подписки (решения CEO).
+
+### 12.9 Кнопки на телефоне
+
+Рецепты раздела 5.3 остаются для десктопа (`md:`). На телефоне кнопки — пилюли обычным регистром:
+
+| Роль | Классы |
+|---|---|
+| Primary | `h-12 px-6 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold` (в полосе покупки и шапке листа — `h-11 px-5`) |
+| Мягкая (вторичная) | `h-12 px-5 rounded-full bg-[var(--fg-overlay-08)] text-[var(--foreground)] text-[15px] font-medium` |
+| Иконка | `w-11 h-11 rounded-full` — на плашке `bg-[var(--fg-overlay-08)]`, на странице `bg-[var(--surface)] border border-[var(--border)]` |
+| Текстовая | `h-11 px-3 text-[15px] text-[var(--foreground)]` (второстепенная — `--foreground-muted`) |
+
+Общий примитив кнопки по-прежнему не заводится (раздел 6): классы пишутся по месту по этой таблице.
+
+### 12.10 Чип и сегментированный контрол
+
+- **Чип** (фильтры, категории, теги): `h-9 px-3.5 rounded-full text-[13px]`; обычный — `bg-[var(--fg-overlay-08)] text-[var(--foreground)]`, выбранный — `bg-[var(--foreground)] text-[var(--background)] font-semibold`. Снимаемый фильтр — тот же чип с крестиком 13 px справа, `h-8`.
+- **Сегментированный контрол** (Pieces / Outfits, вкладки «Лайков» и профиля): контейнер `h-11 p-[3px] rounded-full bg-[var(--surface)] grid grid-cols-N` (на странице — ещё `border border-[var(--border)]`), пункт `rounded-full text-[14px]`, выбранный — `bg-[var(--foreground)] text-[var(--background)] font-semibold`, остальные — `--foreground-muted`. Счётчик в пункте — тем же цветом с `opacity-60`.
+
+### 12.11 Строки и группы
+
+Магазины, вещи образа, настройки профиля, FAQ, ссылки подвала — строки в одной плашке:
+
+```tsx
+<div className="rounded-2xl bg-[var(--surface)] overflow-hidden">
+  <a className="h-14 flex items-center gap-2.5 px-4">…</a>   {/* следующие строки: shadow-[inset_0_1px_0_var(--border)] */}
+</div>
+```
+
+Значение справа — `--foreground-muted`, шеврон 15 px. Строка целиком — ссылка или кнопка, цель касания не меньше 56 px в высоту.
+
+### 12.12 Пустое состояние и ошибка
+
+Макеты: v2 «Б · Каталог — ничего не найдено», «Б · Каталог — ошибка», «Б · Корзина — пусто», «Б · Лайки — пусто», «Б · Ошибка».
+
+```tsx
+<div className="rounded-2xl bg-[var(--surface)] px-6 py-12 text-center">   {/* role="alert" у ошибки */}
+  <span className="mx-auto w-14 h-14 rounded-full bg-[var(--fg-overlay-08)] grid place-items-center text-[var(--foreground-muted)]">{icon}</span>
+  <h2 className="mt-4 text-[19px] font-semibold">No pieces found</h2>
+  <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--foreground-muted)]">…</p>
+  {/* одно действие: primary-пилюля h-11 («Clear all filters», «Try again», «Browse pieces») */}
+</div>
+```
+
+Ошибка отличается от пустого состояния текстом (что случилось и что сделать) и действием «Try again», которое повторяет запрос. Молча показывать «ничего не найдено» вместо ошибки нельзя.
+
+### 12.13 Заметки
+
+- Подвал на телефоне — плашка: вордмарк, слоган, три группы ссылок строками с переносом, копирайт (макет «Б · Подвал»). Отступ под нижнее меню задаётся один раз.
+- Корзина везде называется «Bag» (решение CEO): «Open bag», «Your bag», «Add to bag».
+- Состояния экранов сверяются на стенде `scripts/site-screens` (снимки 390 и 360 px, обе темы, `--metrics`, `--overflow`).
+
+### 12.14 Остальные элементы
+
+| Элемент | Рецепт | Макет |
+|---|---|---|
+| Поле ввода | `h-12 rounded-2xl border border-[var(--border-strong)] bg-transparent px-3.5 text-base outline-none focus:border-[var(--foreground)]`; подпись над полем — `text-[13px] text-[var(--foreground-muted)]` обычным регистром. В листе фильтров поле мягкое: `bg-[var(--fg-overlay-08)]` без рамки | v2 «Вход», «Конструктор — сохранить образ», v1 «Б · Фильтры» |
+| Поле поиска | пилюля `h-11 rounded-full border border-[var(--border-strong)] bg-[var(--surface)]`, лупа слева, крестик «очистить» справа, рядом текстовая кнопка «Cancel» | v2 «Каталог — поиск» |
+| Переключатель | дорожка `w-11 h-[26px] rounded-full`, бегунок 20 px; выкл. — дорожка `--border-strong`, вкл. — `--foreground`; строка целиком — `<label>` высотой 52 px | v1 «Б · Фильтры» |
+| Свотч цвета | кнопка `w-11 h-11`, внутри круг 28–30 px цвета товара с `ring-1` цвета `--border`; выбранный — двойное кольцо: 2 px фона и 1.5 px `--foreground` | v1 «Б · Товар», «Б · Фильтры» |
+| Инфо-чип (тег) | `h-7 px-3 rounded-full bg-[var(--fg-overlay-08)] text-[12px]`, не кликабелен | v1 «Б · Образ», v2 «Статья» |
+| Выделенная плашка | плашка 12.2 с кольцом `shadow-[inset_0_0_0_1.5px_var(--foreground)]` и пилюлей-меткой (`h-[26px] px-2.5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[12px] font-semibold`) — популярный тариф | v2 «Тарифы» |
+| Скелетон | та же плашка, что у загружаемого элемента; блоки текста и фото — `bg-[var(--fg-overlay-08)] animate-pulse`, полосы `h-[11px] rounded-md` | v2 «Каталог — загрузка» |
+| Баннер cookies | плашка `rounded-3xl bg-[var(--surface)] border border-[var(--border)] p-4` над нижним меню (`bottom` = высота меню + 12 px), две кнопки в ряд: мягкая «Decline» и primary «Accept» | v2 «Баннер cookies» |
+| Наличие и лучшая цена | точка наличия — как сейчас на странице товара (`bg-green-500` / `bg-amber-500`, 6 px) с подписью `--foreground-muted`; метка «Best price» — `text-[11px] font-medium text-[var(--foreground)]` под ценой. В макете метка зелёная, но зелёный текст в светлой теме не проходит по контрасту, а статусных токенов с поддержкой тем на сайте нет (5.12) — поэтому монохром | v1 «Б · Где купить» |
