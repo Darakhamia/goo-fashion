@@ -3,137 +3,69 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { useTheme } from "@/lib/context/theme-context";
 import { useLikes } from "@/lib/context/likes-context";
 
+const TABS = [
+  { href: "/browse", label: "Browse", d: "M17.5 11a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0 M16 16l4 4" },
+  { href: "/builder", label: "Builder", d: "M7 4L3 8v2.5L5.5 9V20h13V9l2.5 1.5V8l-4-4S15.5 6 12 6 7 4 7 4Z" },
+  {
+    href: "/blog",
+    label: "Journal",
+    d: "M5 5.5A2.5 2.5 0 0 1 7.5 3H19v14H7.5A2.5 2.5 0 0 0 5 19.5v-14Z M5 19.5A2.5 2.5 0 0 1 7.5 17H19v4H7.5A2.5 2.5 0 0 1 5 19.5Z M9 7.5h6M9 10.5h4",
+  },
+  { href: "/saved", label: "My likes", d: "M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z" },
+  { href: "/profile", label: "Profile", d: "M16 8a4 4 0 1 1-8 0a4 4 0 1 1 8 0 M4.5 20.5c0-4.1 3.4-7.5 7.5-7.5s7.5 3.4 7.5 7.5" },
+];
+
+/**
+ * The phone tab bar: a thin floating capsule (DESIGN_SYSTEM.md §12.4). Every tab
+ * is a 44px target; only the current one carries its label, sitting in a soft
+ * pill that slides between tabs. Colours come from tokens, so the bar follows
+ * the theme through the CSS cascade rather than through JS.
+ */
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const { theme } = useTheme();
   const { unseenCount } = useLikes();
-  const isDark = theme === "dark";
 
-  const tabs = [
-    {
-      href: "/browse",
-      label: "Browse",
-      icon: (active: boolean) => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.3"
-            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0} />
-          <path d="M17 17l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      ),
-    },
-    {
-      href: "/builder",
-      label: "Builder",
-      icon: (active: boolean) => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M7 4L3 8v2.5L5.5 9V20h13V9l2.5 1.5V8l-4-4S15.5 6 12 6 7 4 7 4Z"
-            stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
-            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.16 : 0}
-          />
-        </svg>
-      ),
-    },
-    {
-      href: "/blog",
-      label: "Journal",
-      icon: (active: boolean) => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v14H7.5A2.5 2.5 0 0 0 5 19.5v-14Z"
-            stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"
-            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.14 : 0}
-          />
-          <path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19v4H7.5A2.5 2.5 0 0 1 5 19.5Z"
-            stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-          <path d="M9 7.5h6M9 10.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
-      ),
-    },
-    {
-      href: "/saved",
-      label: "My Likes",
-      icon: (active: boolean) => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path d="M12 20.5C12 20.5 2.5 14.5 2.5 8C2.5 5.015 4.985 2.5 8 2.5C9.93 2.5 11.64 3.515 12.6 5.05C13.56 3.515 15.27 2.5 17.2 2.5C20.215 2.5 22.7 4.985 22.7 8C22.7 14.5 12 20.5 12 20.5Z"
-            stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
-            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.85 : 0}
-          />
-        </svg>
-      ),
-    },
-    {
-      href: "/profile",
-      label: "Profile",
-      icon: (active: boolean) => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.3"
-            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.18 : 0} />
-          <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"
-            stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
-      ),
-    },
-  ];
-
-  // Floating pill — same vocabulary as the desktop header (rounded surface,
-  // 1px border, theme-aware shadow, overlay background + blur) so the mobile
-  // nav reads as a continuation of the site rather than a separate bar.
   return (
-    <div
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 pointer-events-none px-3"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
-    >
+    <div className="md:hidden fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)] z-40">
       <nav
-        className="pointer-events-auto mx-auto max-w-md flex items-stretch h-14 rounded-full border border-[var(--border)] bg-[var(--bg-overlay-95)] backdrop-blur-md"
-        style={{ boxShadow: isDark ? "0 6px 28px rgba(0,0,0,0.55)" : "0 6px 28px rgba(0,0,0,0.12)" }}
+        aria-label="Main"
+        className="h-[50px] px-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md flex items-center justify-between"
       >
-        {tabs.map(({ href, label, icon }) => {
-          const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+        {TABS.map(({ href, label, d }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}
               href={href}
+              aria-label={label}
               aria-current={active ? "page" : undefined}
-              className="group relative flex-1 flex flex-col items-center justify-center gap-1"
+              className={`relative h-11 rounded-full flex items-center justify-center transition-colors duration-200 ${
+                active
+                  ? "pl-3 pr-3.5 gap-[7px] text-[var(--foreground)]"
+                  : "w-11 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+              }`}
             >
-              {/* Active icon sits in the same subtle highlight (fg overlay +
-                  border) the desktop header's icon buttons use; it slides
-                  between tabs with the spring the Browse toggle uses. */}
-              <span className="relative flex items-center justify-center w-10 h-7 transition-transform duration-200 active:scale-90">
-                {active && (
-                  <motion.span
-                    layoutId="bottomNavHighlight"
-                    transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
-                    className="absolute inset-0 rounded-full bg-[var(--fg-overlay-08)] border border-[var(--border)]"
-                  />
-                )}
-                <span className={`relative z-10 transition-colors duration-200 ${
-                  active
-                    ? "text-[var(--foreground)]"
-                    : "text-[var(--foreground-muted)] group-hover:text-[var(--foreground)] group-active:text-[var(--foreground)]"
-                }`}>
-                  {icon(active)}
-                </span>
+              {active && (
+                <motion.span
+                  layoutId="bottomNavHighlight"
+                  transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
+                  className="absolute inset-0 rounded-full bg-[var(--fg-overlay-08)]"
+                />
+              )}
+              <span className="relative">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 1.7 : 1.3}
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d={d} />
+                </svg>
                 {href === "/saved" && unseenCount > 0 && (
-                  <span
-                    className="absolute z-20 flex items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--background)] font-bold"
-                    style={{ top: -2, right: 4, minWidth: 16, height: 16, padding: "0 4px", fontSize: 9, lineHeight: 1 }}
-                  >
+                  <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[9px] font-bold leading-4 text-center">
                     {unseenCount > 9 ? "9+" : unseenCount}
                   </span>
                 )}
               </span>
-              <span className={`font-mono text-[9px] tracking-[0.06em] uppercase leading-none transition-colors duration-200 ${
-                active
-                  ? "text-[var(--foreground)]"
-                  : "text-[var(--foreground-subtle)] group-hover:text-[var(--foreground-muted)]"
-              }`}>
-                {label}
-              </span>
+              {active && <span className="relative text-[12px] font-semibold leading-none">{label}</span>}
             </Link>
           );
         })}
