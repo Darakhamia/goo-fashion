@@ -1113,7 +1113,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/browse/page.tsx:92` | Три несовместимых рецепта чипа на одном экране (9px/`--foreground` в `ActiveChip`, 10-11px/`--border`, 12px/`--border-strong`) | Один масштаб чипа, `--border-strong` в покое | актуально |
 | `src/components/product/PriceHistoryChart.tsx:167` (и `:199`) | Ось Y и метки хардкодят `$`, тултип использует `formatPrice` | `{formatPrice(tick)}` | ✓ файл удалён (ревью 2026-09): фейковый график снят со страницы товара, затем файл удалён |
 | `src/components/product/ProductClient.tsx:248` | Eyebrow в одном файле написан вручную много раз с разными tracking: `0.2em` здесь, рядом `0.12`/`0.14`/`0.16`/`0.18em` | Один рецепт eyebrow | актуально |
-| `src/components/outfit/OutfitCard.tsx:40` (и `:44`) | `rounded-2xl` + tween 0.35s против канона `rounded-xl` + spring с блюром (`ProductCard.tsx:80-84`); карточки стоят в одних сетках | Привести к рецепту `ProductCard` | актуально |
+| `src/components/outfit/OutfitCard.tsx:40` (и `:44`) | `rounded-2xl` + tween 0.35s против канона `rounded-xl` + spring с блюром (`ProductCard.tsx:80-84`); карточки стоят в одних сетках | Привести к рецепту `ProductCard` | актуально → на телефоне ✓ (мобильный трек R-06, R-07, 2026-10-06): обе карточки — плашка `rounded-2xl` без рамки по §12.2. На десктопе расхождение радиуса и анимации остаётся: мобильный трек десктоп не меняет |
 | `src/components/look/MyLooksPanel.tsx:618` (также `:1107`, `builder/page.tsx:2035`, `:2314`, `saved/page.tsx:59`) | Алгоритм коллажа переписан несколько раз вместо `OutfitCollage`; копии разошлись, один и тот же образ рисуется по-разному (`saved/page.tsx:59` — упрощённая сетка 2×2 на 4 вещи) | Один параметризованный `OutfitCollage` | актуально; копии из `saved/page.tsx:455,861` переехали в `MyLooksPanel.tsx` |
 | `src/app/saved/page.tsx:68` (также `MyLooksPanel.tsx:716`, `:1037`) | Оверлей-бейдж написан тремя способами: токен (`OutfitCard.tsx:68`), `bg-black/55 text-white` 8px `rounded-md` (здесь), `bg-black/60 … text-white` (`outfit/[id]/page.tsx:116`) | `bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)]` | актуально |
 | `src/app/saved/page.tsx:224` | Два соседних сегментированных контрола расходятся по типографике: `text-xs tracking-[0.12em]` против `text-[10px] tracking-[0.16em]` (`profile/page.tsx:217`) | Одна шкала подписи | актуально |
@@ -1289,6 +1289,8 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 Корзины на карточке нет (решение CEO): в корзину кладут со страницы товара. Отдельной полосы «N STORES» нет — число магазинов стоит строкой у цены. Сетка — `grid-cols-2 gap-2.5 px-3`.
 
 Длинная цена не обрезается: строка цены — `max-md:flex-wrap`, и число магазинов уходит под цену. Карточки в ряду одной высоты (`max-md:h-full`). Число цветов на телефоне не показывается. Код: `src/components/product/ProductCard.tsx` (R-06).
+
+Карточка образа — та же плашка: коллаж или фото, название, цена и «N pieces» вместо числа магазинов, светлое сердце. Швы коллажа ниже `md` белые, вещи лежат на одном светлом поле, как в макетах; бейдж Community — светлый кружок. Код: `src/components/outfit/OutfitCard.tsx`, `OutfitCollage.tsx` (R-07).
 
 ### 12.6 Контролы поверх фото
 

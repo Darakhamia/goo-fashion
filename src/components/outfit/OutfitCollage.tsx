@@ -23,6 +23,9 @@ function itemImageUrl(item: OutfitItem): string {
  *  4 → 2×2 grid
  *  5 → top 2 (57%) + bottom 3 (43%)
  *  6 → top 2 (40%) + mid 3 (33%) + bottom 1 wide (27%)
+ *
+ * Below md the 1px seams go white, so the pieces sit on one light field
+ * (DESIGN_SYSTEM.md §12.5); desktop keeps the grey grid lines.
  */
 export default function OutfitCollage({
   outfit,
@@ -60,7 +63,7 @@ export default function OutfitCollage({
 
   if (n === 2) {
     return (
-      <div className="absolute inset-0 flex gap-px bg-gray-200">
+      <div className="absolute inset-0 flex gap-px bg-white md:bg-gray-200">
         {frames.map((f, i) => cell(f, i))}
       </div>
     );
@@ -68,8 +71,8 @@ export default function OutfitCollage({
 
   if (n === 3) {
     return (
-      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>
+      <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
+        <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 60%" }}>
           {frames.slice(0, 2).map((f, i) => cell(f, i))}
         </div>
         <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 40%" }}>
@@ -81,11 +84,11 @@ export default function OutfitCollage({
 
   if (n === 4) {
     return (
-      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-        <div className="flex gap-px flex-1 bg-gray-200">
+      <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
+        <div className="flex gap-px flex-1 bg-white md:bg-gray-200">
           {frames.slice(0, 2).map((f, i) => cell(f, i))}
         </div>
-        <div className="flex gap-px flex-1 bg-gray-200">
+        <div className="flex gap-px flex-1 bg-white md:bg-gray-200">
           {frames.slice(2, 4).map((f, i) => cell(f, i + 2))}
         </div>
       </div>
@@ -94,11 +97,11 @@ export default function OutfitCollage({
 
   if (n === 5) {
     return (
-      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>
+      <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
+        <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 57%" }}>
           {frames.slice(0, 2).map((f, i) => cell(f, i))}
         </div>
-        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>
+        <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 43%" }}>
           {frames.slice(2, 5).map((f, i) => cell(f, i + 2, "p-2"))}
         </div>
       </div>
@@ -107,11 +110,11 @@ export default function OutfitCollage({
 
   // 6 pieces
   return (
-    <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-      <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
+    <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
+      <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 40%" }}>
         {frames.slice(0, 2).map((f, i) => cell(f, i))}
       </div>
-      <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
+      <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 33%" }}>
         {frames.slice(2, 5).map((f, i) => cell(f, i + 2, "p-2"))}
       </div>
       <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
