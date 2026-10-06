@@ -726,27 +726,27 @@
     "semantic_hash": ""
   },
   "src/components/layout/ConditionalSiteLayout.tsx": {
-    "mtime": 1791290388.3432348,
-    "seen": 1791308599.4809299,
-    "ast_hash": "7d1ccf945ceabc12fcd29b4be75b18f8",
+    "mtime": 1791310365.286552,
+    "seen": 1791310657.2521508,
+    "ast_hash": "077e05ef8926e248ac2e220d64a3927c",
     "semantic_hash": ""
   },
   "src/components/layout/Footer.tsx": {
-    "mtime": 1791290388.3438017,
-    "seen": 1791308599.4809308,
-    "ast_hash": "b0966e5091b8bb90caab0353d93adb14",
+    "mtime": 1791310365.286112,
+    "seen": 1791310657.2521539,
+    "ast_hash": "2e11c38ea762055b2b9295e104ed8bab",
     "semantic_hash": ""
   },
   "src/components/layout/MobileBottomNav.tsx": {
-    "mtime": 1791290388.3438017,
-    "seen": 1791308599.4809318,
-    "ast_hash": "88a796fe8b78cd31a3c6c4a267f81278",
+    "mtime": 1791310174.1274762,
+    "seen": 1791310657.2521553,
+    "ast_hash": "c98deab54f32aee8b92fcadc5f50a23e",
     "semantic_hash": ""
   },
   "src/components/layout/Navigation.tsx": {
-    "mtime": 1791290388.3438017,
-    "seen": 1791308599.4809327,
-    "ast_hash": "9e03002a3909380b6e2ddc22f00591e7",
+    "mtime": 1791309888.2846787,
+    "seen": 1791310657.2521567,
+    "ast_hash": "50db5bd60ccf678d9257e9cd01d342c3",
     "semantic_hash": ""
   },
   "src/components/outfit/OutfitActions.tsx": {
@@ -1982,9 +1982,9 @@
     "semantic_hash": ""
   },
   "DESIGN_SYSTEM.md": {
-    "mtime": 1791290388.237856,
-    "seen": 1791308599.481086,
-    "ast_hash": "ada95c5f6ceea17d12c8a5879ad260ed",
+    "mtime": 1791310643.0252583,
+    "seen": 1791310657.2561476,
+    "ast_hash": "14de941ef2e37583390dfc9cb10518f5",
     "semantic_hash": ""
   },
   "MIGRATION_RUNBOOK.md": {
@@ -2834,9 +2834,9 @@
     "semantic_hash": ""
   },
   "docs/MOBILE_ROADMAP.md": {
-    "mtime": 1791308572.6640093,
-    "seen": 1791308599.4810967,
-    "ast_hash": "2d961a489cd2bc3798cb89646323834c",
+    "mtime": 1791310645.6395042,
+    "seen": 1791310657.2563355,
+    "ast_hash": "5bf225407c72a0dc04c7c5a051106881",
     "semantic_hash": ""
   },
   "docs/mobile-mockups/README.md": {
@@ -3338,9 +3338,9 @@
     "semantic_hash": ""
   },
   "docs/mobile-roadmap.html": {
-    "mtime": 1791308572.6640093,
-    "seen": 1791308599.4812005,
-    "ast_hash": "117e837134a25c8ac2c70baa5d6a9eac",
+    "mtime": 1791310645.6395042,
+    "seen": 1791310657.2587714,
+    "ast_hash": "55ce8cb1f44b00930060ff080c50abb2",
     "semantic_hash": ""
   },
   "scripts/site-screens/README.md": {
