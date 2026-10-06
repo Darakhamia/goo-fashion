@@ -20,7 +20,7 @@ import {
 } from "@/lib/server/product-fields";
 import { toUsd } from "@/lib/server/fx";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
-import { isColorSiblingByName, sameModelFamily, type VariantCandidate } from "./variant-group";
+import { isSamePieceByName, sameModelFamily, type VariantCandidate } from "./variant-group";
 import { joinColourGroup } from "@/lib/server/colour-group";
 import {
   gtinSpellings,
@@ -368,6 +368,8 @@ async function linkColorVariants(input: {
     // By name, on every import: the colour row only ever names this store's
     // colourways, and the same piece collected from another site — under its
     // own spelling of the brand, at its own price — is found by name alone.
+    // In any colour: a card of this model the merge did not take is grouped
+    // with it, not left standing beside it (`isSamePieceByName`).
     const ours = {
       brand: input.brand,
       name: input.name,
@@ -383,7 +385,7 @@ async function linkColorVariants(input: {
       for (const row of (data ?? []) as unknown as VariantRow[]) {
         if (row.id === input.productId || siblings.has(row.id)) continue;
         const candidate = toCandidate(row);
-        if (isColorSiblingByName(ours, candidate)) siblings.set(row.id, candidate);
+        if (isSamePieceByName(ours, candidate)) siblings.set(row.id, candidate);
       }
     }
 

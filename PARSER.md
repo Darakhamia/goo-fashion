@@ -841,8 +841,11 @@ In order:
    the refresh path): the photo backdrop colour is sampled (`bg_color`), and
    the row is grouped with its other colourways (`variant_group_id`) — by the
    sibling URLs the page or feed named (every spelling of each address), and,
-   on every import, by the same maker + the same piece name in a different
-   colour (`variant-group.ts`). The maker is matched under any spelling the
+   on every import, by the same maker + the same piece name **in any colour**
+   (`isSamePieceByName` in `variant-group.ts`). The colour used to have to
+   differ, so two colourways whose pages state no colour — both read off their
+   photos as "White" — and a listing the merge refused on price stayed as cards
+   of their own beside their model. The maker is matched under any spelling the
    stores use ("adidas" / "adidas Originals", "Carhartt" / "Carhartt WIP",
    Jordan / Nike, a card saved without a brand whose name carries it), the
    cards are read the same way the same-item search reads them, and the price
