@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>А · Профиль</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+
+<header style="height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px 0 20px; box-sizing: border-box">
+<a href="#" style="font-family: Poppins, sans-serif; font-weight: 800; font-size: 19px; letter-spacing: 0.16em; color: {{t.fg}}; text-decoration: none">GOO</a>
+<div style="display: flex; align-items: center">
+<button aria-label="Open AI Stylist" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{t.fg}}; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">AI</button>
+<button aria-label="Open bag, 2 items" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{t.fg}}; position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8Z"></path><path d="M9 8V6.5a3 3 0 0 1 6 0V8"></path></svg>
+<span style="position: absolute; top: 8px; right: 7px; min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: {{t.fg}}; color: {{t.bg}}; font-size: 9px; font-weight: 700; line-height: 15px; text-align: center">2</span>
+</button>
+</div>
+</header>
+
+<div style="padding: 12px 20px 0; display: flex; align-items: center; gap: 14px">
+<span style="width: 52px; height: 52px; border-radius: 50%; background: {{t.chip}}; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 500">D</span>
+<div>
+<h1 style="margin: 0; font-size: 24px; line-height: 1.15; font-weight: 600; letter-spacing: -0.015em">Dara Admin</h1>
+<div style="margin-top: 3px; font-size: 13px; color: {{t.muted}}">admin@example.com · since January 2026</div>
+</div>
+</div>
+
+<div role="tablist" style="margin-top: 20px; padding: 0 20px; height: 44px; display: flex; gap: 24px; border-bottom: 1px solid {{t.border}}">
+<sc-for list="{{tabs}}" as="b" hint-placeholder-count="3">
+<button role="tab" aria-selected="{{b.on}}" style="border: 0; background: transparent; padding: 0; font-family: inherit; font-size: 15px; font-weight: 500; color: {{b.color}}; box-shadow: {{b.line}}; cursor: pointer">{{b.label}}</button>
+</sc-for>
+</div>
+
+<div style="padding: 0 20px">
+<a href="#" style="height: 60px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid {{t.border}}; text-decoration: none; color: {{t.fg}}">
+<span><span style="display: block; font-size: 13px; color: {{t.muted}}">Plan</span><span style="display: block; margin-top: 2px; font-size: 15px">Pro</span></span>
+<span style="display: flex; align-items: center; gap: 4px; font-size: 14px">Manage<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{t.muted}}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+</a>
+
+<div style="padding: 16px 0; border-bottom: 1px solid {{t.border}}">
+<div style="font-size: 13px; color: {{t.muted}}">Appearance</div>
+<div role="radiogroup" aria-label="Theme" style="margin-top: 10px; display: inline-flex; padding: 3px; border-radius: 12px; border: 1px solid {{t.border}}">
+<button role="radio" aria-checked="false" style="height: 38px; padding: 0 18px; border: 0; border-radius: 9px; background: transparent; color: {{t.muted}}; font-family: inherit; font-size: 14px; cursor: pointer">Light</button>
+<button role="radio" aria-checked="true" style="height: 38px; padding: 0 18px; border: 0; border-radius: 9px; background: {{t.chip}}; color: {{t.fg}}; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Dark</button>
+</div>
+</div>
+
+<div style="padding: 16px 0 0">
+<div style="font-size: 13px; color: {{t.muted}}">Currency</div>
+<div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{currencies}}" as="c" hint-placeholder-count="7">
+<button aria-pressed="{{c.on}}" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.border}}; background: transparent; color: {{c.color}}; font-family: inherit; font-size: 14px; font-weight: {{c.fw}}; cursor: pointer">{{c.label}}</button>
+</sc-for>
+</div>
+<p style="margin: 10px 0 0; font-size: 12px; color: {{t.muted}}">Prices across the site are shown in US dollars.</p>
+</div>
+
+<button style="margin-top: 18px; height: 44px; padding: 0; border: 0; background: transparent; color: {{t.muted}}; display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 15px; cursor: pointer">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h5v16h-5M10 16l4-4-4-4M14 12H4"></path></svg>
+Sign out
+</button>
+</div>
+
+<nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; padding-bottom: 20px; box-sizing: border-box; background: {{t.overlay}}; border-top: 1px solid {{t.border}}; display: flex; backdrop-filter: blur(12px)">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+<a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: {{n.color}}">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{n.sw}}" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.d}}"></path></svg>
+<span style="font-size: 10px; line-height: 1; font-weight: {{n.fw}}">{{n.label}}</span>
+</a>
+</sc-for>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', fg: '#F0EEE8', muted: '#8E8E89', border: '#222220', overlay: 'rgba(10,10,10,0.92)', chip: '#1C1C1B' }
+: { bg: '#F4F2EE', fg: '#0A0A0A', muted: '#6B6B6B', border: '#E4E1DA', overlay: 'rgba(244,242,238,0.92)', chip: '#FFFFFF' };
+const tabs = ['Account', 'Plan', 'AI stylist'].map((label) => ({
+label, on: label === 'Account', color: label === 'Account' ? t.fg : t.muted, line: label === 'Account' ? 'inset 0 -1.5px 0 ' + t.fg : 'none'
+}));
+const currencies = ['$ USD', '€ EUR', '£ GBP', '₴ UAH', 'Kč CZK', '¥ JPY', '₺ TRY'].map((label, i) => ({
+label, on: i === 0, border: i === 0 ? t.fg : t.border, color: i === 0 ? t.fg : t.muted, fw: i === 0 ? 600 : 400
+}));
+const icons = [
+['Browse', 'M17.5 11a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0 M16 16l4 4'],
+['Builder', 'M7 4L3 8v2.5L5.5 9V20h13V9l2.5 1.5V8l-4-4S15.5 6 12 6 7 4 7 4Z'],
+['Journal', 'M5 5.5A2.5 2.5 0 0 1 7.5 3H19v14H7.5A2.5 2.5 0 0 0 5 19.5v-14Z M5 19.5A2.5 2.5 0 0 1 7.5 17H19v4H7.5A2.5 2.5 0 0 1 5 19.5Z M9 7.5h6M9 10.5h4'],
+['My likes', 'M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z'],
+['Profile', 'M16 8a4 4 0 1 1-8 0a4 4 0 1 1 8 0 M4.5 20.5c0-4.1 3.4-7.5 7.5-7.5s7.5 3.4 7.5 7.5']
+];
+const nav = icons.map(([label, d]) => ({ label, d, color: label === 'Profile' ? t.fg : t.muted, sw: label === 'Profile' ? 1.7 : 1.3, fw: label === 'Profile' ? 600 : 400 }));
+return { t, tabs, currencies, nav };
+}
+}
+</script>
+</body>
+</html>
