@@ -1993,44 +1993,40 @@ export default function BuilderPage() {
         ───────────────────────────────────────────────────────────────────── */}
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
-          {/* Mobile top header: back + ai stylist + save */}
-          <div className="shrink-0 flex items-center justify-between px-4 py-2.5 bg-[var(--background)] border-b border-[var(--border)]">
+          {/* Mobile top header: back, the look's name, AI and Save (DESIGN_SYSTEM.md
+              §12.9, mockup v2 «Б · Конструктор»). Save stays soft until a piece is in. */}
+          <div className="shrink-0 flex items-center gap-2 px-3 pt-2">
             <Link
               href="/"
-              className="w-10 h-10 shrink-0 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--fg-overlay-05)] transition-colors active:scale-95"
+              aria-label="Back"
+              className="w-11 h-11 shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] flex items-center justify-center text-[var(--foreground)]"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 6l-6 6 6 6" />
               </svg>
             </Link>
-            {/* AI Stylist + Save. The AI button is the same round "AI" circle
-                as the site navigation (38px, bold AI label, transparent with a
-                border, inverting while the drawer is open), sized up slightly
-                for a comfortable touch target. Save stays the filled primary
-                pill. */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleStylist}
-                aria-label="Open AI Stylist"
-                className={`w-11 h-11 shrink-0 rounded-full border flex items-center justify-center transition-[color,background-color,border-color,transform] duration-200 active:scale-95 ${
-                  stylistOpen
-                    ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                    : "bg-transparent text-[var(--foreground)] border-[var(--border-strong)]"
-                }`}
-              >
-                <span className="text-[11px] font-bold tracking-[0.04em] leading-none">AI</span>
-              </button>
-              <button
-                onClick={handleMobileSave}
-                disabled={selectedCount === 0}
-                className="flex items-center gap-2 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[13px] font-semibold tracking-[-0.01em] transition-[transform,opacity] duration-200 active:scale-95 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 3.5L9.5 7H13L10.5 9L11.5 12.5L8 10.5L4.5 12.5L5.5 9L3 7H6.5L8 3.5Z" />
-                </svg>
-                {saved ? "Saved" : "Save"}
-              </button>
-            </div>
+            <h1 className="flex-1 min-w-0 ml-1 truncate text-[17px] font-semibold text-[var(--foreground)]">
+              {persistedLookId && pendingLookName.trim() ? pendingLookName.trim() : "New look"}
+            </h1>
+            <button
+              onClick={toggleStylist}
+              aria-label="Open AI Stylist"
+              aria-pressed={stylistOpen}
+              className={`shrink-0 h-11 px-4 rounded-full border text-[14px] font-semibold transition-colors duration-200 ${
+                stylistOpen
+                  ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                  : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+            >
+              AI
+            </button>
+            <button
+              onClick={handleMobileSave}
+              disabled={selectedCount === 0}
+              className="shrink-0 h-11 px-[18px] rounded-full bg-[var(--foreground)] text-[var(--background)] text-[14px] font-semibold transition-colors duration-200 disabled:bg-[var(--fg-overlay-08)] disabled:text-[var(--foreground-muted)] disabled:cursor-not-allowed"
+            >
+              {saved ? "Saved" : "Save"}
+            </button>
           </div>
 
           {/* Mobile collage preview — grows to fill the space the catalog row
@@ -2040,16 +2036,16 @@ export default function BuilderPage() {
 
             {/* Collage canvas — flexes to take the available height (floored at
                 210px so it never collapses on short viewports). */}
-            <div className="relative flex-1 min-h-0 mx-4 mt-3 mb-2 rounded-xl overflow-hidden" style={{ minHeight: 210 }}>
+            <div className="relative flex-1 min-h-0 mx-3 mt-3 rounded-3xl overflow-hidden" style={{ minHeight: 210 }}>
               {selectedCount === 0 ? (
-                <div className="absolute inset-0 border border-dashed border-[var(--border-strong)] rounded-xl flex flex-col items-center justify-center gap-2">
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-[var(--foreground-subtle)]">
-                    <rect x="2" y="2" width="11" height="11" rx="1.5" />
-                    <rect x="15" y="2" width="11" height="11" rx="1.5" />
-                    <rect x="2" y="15" width="11" height="11" rx="1.5" />
-                    <rect x="15" y="15" width="11" height="11" rx="1.5" />
-                  </svg>
-                  <span className="text-[10px] text-[var(--foreground-subtle)] tracking-[0.12em] uppercase font-mono">Add items to build your look</span>
+                <div className="absolute inset-0 rounded-3xl bg-[var(--surface)] shadow-[inset_0_0_0_1px_var(--border)] flex flex-col items-center justify-center text-center px-10">
+                  <span className="w-14 h-14 rounded-full bg-[var(--fg-overlay-08)] flex items-center justify-center text-[var(--foreground-muted)]">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M7 4L3 8v2.5L5.5 9V20h13V9l2.5 1.5V8l-4-4S15.5 6 12 6 7 4 7 4Z" />
+                    </svg>
+                  </span>
+                  <p className="mt-3.5 text-[16px] font-semibold text-[var(--foreground)]">Add pieces to build your look</p>
+                  <p className="mt-1 text-[14px] leading-snug text-[var(--foreground-muted)]">Tap any piece below, or ask the AI stylist to start one for you.</p>
                 </div>
               ) : (() => {
                 const items = SLOTS
@@ -2068,21 +2064,28 @@ export default function BuilderPage() {
 
                 const n = items.length;
 
+                // One light field (DESIGN_SYSTEM.md §12.5): white seams, and the
+                // remove control is a light circle in a 44px target (§12.6).
+                const removeButton = (item: { slotId: string; name: string }) => (
+                  <button
+                    onClick={() => clearSlot(item.slotId as SlotId)}
+                    className="absolute top-0 right-0 w-11 h-11 flex items-center justify-center z-10"
+                    aria-label={`Remove ${item.name}`}
+                  >
+                    <span className="w-7 h-7 rounded-full bg-white/85 flex items-center justify-center text-black">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </span>
+                  </button>
+                );
                 const cell = (item: { slotId: string; name: string; imageUrl?: string }, key: string, pad = "p-2") => (
                   <div key={key} className="relative overflow-hidden flex-1 bg-white">
                     {item.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.imageUrl} alt={item.name} className={`absolute inset-0 w-full h-full object-contain ${pad}`} />
                     )}
-                    <button
-                      onClick={() => clearSlot(item.slotId as SlotId)}
-                      className="absolute top-1 right-1 w-7 h-7 md:w-5 md:h-5 rounded-full bg-black/50 flex items-center justify-center z-10"
-                      aria-label={`Remove ${item.name}`}
-                    >
-                      <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 2L8 8M8 2L2 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </button>
+                    {removeButton(item)}
                   </div>
                 );
 
@@ -2091,14 +2094,14 @@ export default function BuilderPage() {
                 );
 
                 if (n === 2) return (
-                  <div className="absolute inset-0 flex gap-px bg-gray-200">
+                  <div className="absolute inset-0 flex gap-px bg-white">
                     {items.map((s, i) => cell(s, `s${i}`))}
                   </div>
                 );
 
                 if (n === 3) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-white">
+                    <div className="flex gap-px bg-white" style={{ flex: "0 0 60%" }}>
                       {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
                     </div>
                     <div className="relative overflow-hidden flex-1 bg-white">
@@ -2106,41 +2109,39 @@ export default function BuilderPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={items[2].imageUrl} alt={items[2].name} className="absolute inset-0 w-full h-full object-contain p-2" />
                       )}
-                      <button onClick={() => clearSlot(items[2].slotId as SlotId)} className="absolute top-1 right-1 w-7 h-7 md:w-5 md:h-5 rounded-full bg-black/50 flex items-center justify-center z-10" aria-label={`Remove ${items[2].name}`}>
-                        <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                      </button>
+                      {removeButton(items[2])}
                     </div>
                   </div>
                 );
 
                 if (n === 4) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                    <div className="flex gap-px flex-1 bg-gray-200">
+                  <div className="absolute inset-0 flex flex-col gap-px bg-white">
+                    <div className="flex gap-px flex-1 bg-white">
                       {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
                     </div>
-                    <div className="flex gap-px flex-1 bg-gray-200">
+                    <div className="flex gap-px flex-1 bg-white">
                       {items.slice(2, 4).map((s, i) => cell(s, `s${i + 2}`))}
                     </div>
                   </div>
                 );
 
                 if (n === 5) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-white">
+                    <div className="flex gap-px bg-white" style={{ flex: "0 0 57%" }}>
                       {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>
+                    <div className="flex gap-px bg-white" style={{ flex: "0 0 43%" }}>
                       {items.slice(2, 5).map((s, i) => cell(s, `s${i + 2}`))}
                     </div>
                   </div>
                 );
 
                 return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-white">
+                    <div className="flex gap-px bg-white" style={{ flex: "0 0 40%" }}>
                       {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
+                    <div className="flex gap-px bg-white" style={{ flex: "0 0 33%" }}>
                       {items.slice(2, 5).map((s, i) => cell(s, `s${i + 2}`))}
                     </div>
                     <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
@@ -2148,34 +2149,31 @@ export default function BuilderPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={items[5].imageUrl} alt={items[5].name} className="absolute inset-0 w-full h-full object-contain p-2" />
                       )}
-                      <button onClick={() => clearSlot(items[5].slotId as SlotId)} className="absolute top-1 right-1 w-7 h-7 md:w-5 md:h-5 rounded-full bg-black/50 flex items-center justify-center z-10" aria-label={`Remove ${items[5].name}`}>
-                        <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                      </button>
+                      {removeButton(items[5])}
                     </div>
                   </div>
                 );
               })()}
-            </div>
 
-            {/* Total + Clear all */}
-            <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</span>
-                <span className={`text-[20px] font-bold leading-none transition-colors ${
-                  selectedCount > 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
-                }`}>
-                  {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={clearAll}
-                  disabled={selectedCount === 0}
-                  className="text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  Clear all
-                </button>
-              </div>
+              {/* The total and "clear" sit on the canvas as light pills (§12.6). */}
+              {selectedCount > 0 && (
+                <>
+                  <span className="absolute left-3 bottom-3 z-10 h-8 px-3 rounded-full bg-white/85 text-black flex items-center gap-1 text-[13px]">
+                    <b className="font-semibold">{formatPrice(totalPrice)}</b> · {selectedCount} {selectedCount === 1 ? "piece" : "pieces"}
+                  </span>
+                  <button
+                    onClick={clearAll}
+                    aria-label="Clear all"
+                    className="absolute right-1 bottom-1 z-10 w-12 h-12 flex items-center justify-center"
+                  >
+                    <span className="w-8 h-8 rounded-full bg-white/85 flex items-center justify-center text-black">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" />
+                      </svg>
+                    </span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -2187,21 +2185,20 @@ export default function BuilderPage() {
           <div className="shrink-0 flex flex-col bg-[var(--background)] pb-3">
 
             {/* Filters + category chips in one scrollable row */}
-            <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] overflow-x-auto no-scrollbar">
+            {/* 40px pills (§12.10); `py-0.5` on the row lets each hit area reach 44px. */}
+            <div className="shrink-0 flex items-center gap-1.5 px-3 pt-3 pb-0.5 overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setMobileFiltersOpen(true)}
-                className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full border text-[11px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 mr-1 ${
+                aria-label={activeFilterCount > 0 ? `Filters, ${activeFilterCount} on` : "Filters"}
+                className={`relative shrink-0 w-10 h-10 rounded-full border flex items-center justify-center transition-colors ${
                   hasActiveFilters
                     ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                    : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                    : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)]"
                 }`}
               >
-                <svg width="12" height="9" viewBox="0 0 14 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <line x1="1" y1="1.5" x2="13" y2="1.5" />
-                  <line x1="3" y1="5.5" x2="11" y2="5.5" />
-                  <line x1="5" y1="9.5" x2="9" y2="9.5" />
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                  <path d="M4 7h16M7 12h10M10 17h4" />
                 </svg>
-                Filters{activeFilterCount > 0 && <span className="text-[10px] opacity-80"> · {activeFilterCount}</span>}
               </button>
               {MOBILE_CHIPS.map(({ label, value }) => {
                 const isActive = catalogCategory === value && !likedOnly;
@@ -2209,10 +2206,11 @@ export default function BuilderPage() {
                   <button
                     key={label}
                     onClick={() => { setCatalogCategory(catalogCategory === value ? null : value); setLikedOnly(false); }}
-                    className={`shrink-0 px-3 h-8 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors ${
+                    aria-pressed={isActive}
+                    className={`shrink-0 h-10 px-[15px] rounded-full text-[13px] whitespace-nowrap transition-colors ${
                       isActive
-                        ? "bg-[var(--foreground)] text-[var(--background)]"
-                        : "border border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                        ? "bg-[var(--foreground)] text-[var(--background)] font-semibold"
+                        : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
                     }`}
                   >
                     {label}
@@ -2221,10 +2219,11 @@ export default function BuilderPage() {
               })}
               <button
                 onClick={() => { setLikedOnly(v => !v); setCatalogCategory(null); }}
-                className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors ${
+                aria-pressed={likedOnly}
+                className={`shrink-0 flex items-center gap-1.5 h-10 px-[15px] rounded-full text-[13px] whitespace-nowrap transition-colors ${
                   likedOnly
-                    ? "bg-[var(--foreground)] text-[var(--background)]"
-                    : "border border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                    ? "bg-[var(--foreground)] text-[var(--background)] font-semibold"
+                    : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
                 }`}
               >
                 <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -2236,15 +2235,15 @@ export default function BuilderPage() {
 
             {/* Horizontal product scroll — fixed height that fits a card
                 (image + brand/name/price), keeping the catalog compact. */}
-            <div ref={mobileScrollRef} className="shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar" style={{ height: 188 }}>
+            <div ref={mobileScrollRef} className="shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar" style={{ minHeight: 204 }}>
               {expandedCatalogItems.length === 0 ? (
-                <div className="h-full flex items-center justify-center">
-                  <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] opacity-50">
-                    {search ? "No results" : "No items"}
+                <div className="h-[204px] flex items-center justify-center">
+                  <p className="text-[13px] text-[var(--foreground-muted)]">
+                    {search ? "No results" : "No pieces"}
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-2.5 px-4 py-2 items-start">
+                <div className="flex gap-2 px-3 pt-3 pb-1 items-start">
                   {expandedCatalogItems.map(item => {
                     const { product, forcedVariant } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -2267,11 +2266,13 @@ export default function BuilderPage() {
                     const displayImage = shown.imageUrl;
 
                     return (
-                      <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 108 }}>
-                        {/* Image area */}
+                      <div key={item.key} className="shrink-0 w-[124px] flex flex-col rounded-[14px] overflow-hidden bg-[var(--surface)]">
+                        {/* Image area — the badge says what a tap does: "+" adds, "✓" is in the look */}
                         <div
                           role="button"
                           tabIndex={0}
+                          aria-label={isSelected ? `${product.brand} ${shown.name}, in your look` : `Add ${product.brand} ${shown.name}`}
+                          aria-pressed={isSelected}
                           onClick={() => {
                             const hasMultipleColors =
                               Object.keys(product.colorImages ?? {}).length > 1 ||
@@ -2284,12 +2285,7 @@ export default function BuilderPage() {
                             }
                           }}
                           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectProduct(product); } }}
-                          className={`relative overflow-hidden bg-white cursor-pointer transition-colors rounded-xl border ${
-                            isSelected
-                              ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
-                              : "border-[var(--border)]"
-                          }`}
-                          style={{ width: 108, height: 120 }}
+                          className="relative overflow-hidden bg-white cursor-pointer h-[140px]"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -2297,13 +2293,16 @@ export default function BuilderPage() {
                             alt={shown.name}
                             className="absolute inset-0 w-full h-full object-contain"
                           />
-                          {isSelected && (
-                            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
-                              <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
-                                <path d="M2 5.5L4 7.5L8 3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </div>
-                          )}
+                          <span
+                            aria-hidden="true"
+                            className={`absolute right-2 bottom-2 w-[26px] h-[26px] rounded-full flex items-center justify-center pointer-events-none ${
+                              isSelected ? "bg-[var(--foreground)] text-[var(--background)]" : "bg-white/90 text-black"
+                            }`}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d={isSelected ? "M5 12l5 5 9-10" : "M12 6v12M6 12h12"} />
+                            </svg>
+                          </span>
                           {isSelected && ((product.variants?.length ?? 0) > 1 || Object.keys(product.colorImages ?? {}).length > 1) && (
                             <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 pointer-events-none">
                               {(product.variants?.length ?? 0) > 1
@@ -2325,10 +2324,9 @@ export default function BuilderPage() {
                           )}
                         </div>
                         {/* Info */}
-                        <div className="pt-1.5">
-                          <p className="text-[10px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
-                          <p className="text-[9px] text-[var(--foreground-muted)] truncate mt-0.5">{shown.name}</p>
-                          <p className="text-[9px] font-medium text-[var(--foreground)] mt-0.5">{formatPrice(shown.priceMin, product.currency)}</p>
+                        <div className="px-2.5 pt-2 pb-2.5">
+                          <p className="text-[12px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
+                          <p className="text-[12px] text-[var(--foreground-muted)] leading-snug">{formatPrice(shown.priceMin, product.currency)}</p>
                         </div>
                       </div>
                     );
