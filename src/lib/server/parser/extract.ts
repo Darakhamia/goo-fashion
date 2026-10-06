@@ -23,6 +23,7 @@ import {
   COLOR_KEYS,
   BRAND_KEYS,
   CODE_KEYS,
+  KIND_KEYS,
   normalizeGtin,
   normalizeCode,
 } from "@/lib/server/product-fields";
@@ -1093,6 +1094,9 @@ export function extractProduct(
       const fromMarkup = breadcrumbsFromJsonLd(html);
       return fromMarkup.length ? fromMarkup : (evidence?.breadcrumbs ?? []).slice(0, 12);
     })(),
+    // What the spec table calls the piece ("Тип: Кросівки"), for a name and a
+    // trail that say it is a shoe but not which kind.
+    kind: specValue(evidence?.specs, KIND_KEYS) || undefined,
     // The rendered price is the last resort for both fields, and for opposite
     // reasons. For the amount it is a rescue: a page whose markup states no
     // price at all would otherwise be skipped entirely. For the currency it is

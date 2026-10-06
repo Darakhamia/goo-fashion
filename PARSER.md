@@ -531,7 +531,13 @@ Relative image URLs are resolved; results are deduped. On top of that:
   or declared language and marked (`currencyBasis`, e.g. "the .ua address"), so
   the import note says why a price was read as hryvnia.
 - **Subcategory** is resolved against the admin's category tree (from the name,
-  then the breadcrumbs) and written only when the tree has such a label.
+  then the spec table's "Type" / "Тип" / "Вид взуття" row, then the
+  breadcrumbs) and written only when the tree has such a label. When none of
+  them says which kind — a shoe named for its model ("Etnies Josl1n") and filed
+  under "Shoes" — the page's address and then its description are read for a
+  label **of the category already decided** (`garmentLabelIn`): "skate shoe" in
+  the description files it under Sneakers, while "wear them with jeans" changes
+  nothing. The spec row also decides the category when the name does not.
 - **Style keywords** are inferred from the name, description, material,
   subcategory and breadcrumbs: the words that name one of the five styles
   (casual, minimal, classic, streetwear, sporty) and the words that say what the
