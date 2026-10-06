@@ -1,0 +1,677 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "A-builder.dc.html": {
+      "h": 844,
+      "title": "А · Конструктор",
+      "w": 390,
+      "x": 470,
+      "y": 6200
+    },
+    "A-catalog-light.dc.html": {
+      "h": 844,
+      "title": "А · Каталог · светлая",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "A-catalog.dc.html": {
+      "h": 844,
+      "title": "А · Каталог",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "A-filters.dc.html": {
+      "h": 844,
+      "title": "А · Фильтры и сортировка",
+      "w": 390,
+      "x": 470,
+      "y": 1240
+    },
+    "A-outfit.dc.html": {
+      "h": 844,
+      "title": "А · Образ",
+      "w": 390,
+      "x": 470,
+      "y": 4960
+    },
+    "A-pdp-light.dc.html": {
+      "h": 844,
+      "title": "А · Товар · светлая",
+      "w": 390,
+      "x": 1410,
+      "y": 2480
+    },
+    "A-pdp-stores.dc.html": {
+      "h": 844,
+      "title": "А · Где купить",
+      "w": 390,
+      "x": 470,
+      "y": 3720
+    },
+    "A-pdp.dc.html": {
+      "h": 844,
+      "title": "А · Товар",
+      "w": 390,
+      "x": 470,
+      "y": 2480
+    },
+    "A-profile.dc.html": {
+      "h": 844,
+      "title": "А · Профиль",
+      "w": 390,
+      "x": 470,
+      "y": 7440
+    },
+    "B-builder.dc.html": {
+      "h": 844,
+      "title": "Б · Конструктор",
+      "w": 390,
+      "x": 940,
+      "y": 6200
+    },
+    "B-catalog-light.dc.html": {
+      "h": 844,
+      "title": "Б · Каталог · светлая",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "B-catalog.dc.html": {
+      "h": 844,
+      "title": "Б · Каталог",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "B-filters.dc.html": {
+      "h": 844,
+      "title": "Б · Фильтры и сортировка",
+      "w": 390,
+      "x": 940,
+      "y": 1240
+    },
+    "B-outfit.dc.html": {
+      "h": 844,
+      "title": "Б · Образ",
+      "w": 390,
+      "x": 940,
+      "y": 4960
+    },
+    "B-pdp-light.dc.html": {
+      "h": 844,
+      "title": "Б · Товар · светлая",
+      "w": 390,
+      "x": 1880,
+      "y": 2480
+    },
+    "B-pdp-stores.dc.html": {
+      "h": 844,
+      "title": "Б · Где купить",
+      "w": 390,
+      "x": 940,
+      "y": 3720
+    },
+    "B-pdp.dc.html": {
+      "h": 844,
+      "title": "Б · Товар",
+      "w": 390,
+      "x": 940,
+      "y": 2480
+    },
+    "B-profile.dc.html": {
+      "h": 844,
+      "title": "Б · Профиль",
+      "w": 390,
+      "x": 940,
+      "y": 7440
+    },
+    "Main.dc.html": {
+      "h": 844,
+      "title": "Сейчас · Каталог",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Now-builder.dc.html": {
+      "h": 844,
+      "title": "Сейчас · Конструктор",
+      "w": 390,
+      "x": 0,
+      "y": 6200
+    },
+    "Now-filters.dc.html": {
+      "h": 844,
+      "title": "Сейчас · Фильтры",
+      "w": 390,
+      "x": 0,
+      "y": 1240
+    },
+    "Now-outfit.dc.html": {
+      "h": 844,
+      "title": "Сейчас · Образ",
+      "w": 390,
+      "x": 0,
+      "y": 4960
+    },
+    "Now-pdp-stores.dc.html": {
+      "h": 844,
+      "title": "Сейчас · Где купить",
+      "w": 390,
+      "x": 0,
+      "y": 3720
+    },
+    "Now-pdp.dc.html": {
+      "h": 844,
+      "title": "Сейчас · Товар",
+      "w": 390,
+      "x": 0,
+      "y": 2480
+    },
+    "Now-profile.dc.html": {
+      "h": 844,
+      "title": "Сейчас · Профиль",
+      "w": 390,
+      "x": 0,
+      "y": 7440
+    },
+    "Now-home.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Сейчас · Главная",
+      "page": "v2"
+    },
+    "B-home.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Главная — первый экран",
+      "page": "v2"
+    },
+    "B-home-more.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1688,
+      "title": "Б · Главная — дальше по странице",
+      "page": "v2"
+    },
+    "B-catalog-outfits.dc.html": {
+      "x": 0,
+      "y": 2084,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Каталог — образы",
+      "page": "v2"
+    },
+    "B-catalog-search.dc.html": {
+      "x": 470,
+      "y": 2084,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Каталог — поиск",
+      "page": "v2"
+    },
+    "B-catalog-loading.dc.html": {
+      "x": 940,
+      "y": 2084,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Каталог — загрузка",
+      "page": "v2"
+    },
+    "B-catalog-empty.dc.html": {
+      "x": 1410,
+      "y": 2084,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Каталог — ничего не найдено",
+      "page": "v2"
+    },
+    "B-catalog-error.dc.html": {
+      "x": 1880,
+      "y": 2084,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Каталог — ошибка",
+      "page": "v2"
+    },
+    "Now-ai.dc.html": {
+      "x": 0,
+      "y": 3324,
+      "w": 390,
+      "h": 844,
+      "title": "Сейчас · AI-стилист",
+      "page": "v2"
+    },
+    "B-ai.dc.html": {
+      "x": 470,
+      "y": 3324,
+      "w": 390,
+      "h": 844,
+      "title": "Б · AI-стилист",
+      "page": "v2"
+    },
+    "Now-cart.dc.html": {
+      "x": 940,
+      "y": 3324,
+      "w": 390,
+      "h": 844,
+      "title": "Сейчас · Корзина",
+      "page": "v2"
+    },
+    "B-cart.dc.html": {
+      "x": 1410,
+      "y": 3324,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Корзина",
+      "page": "v2"
+    },
+    "B-cart-empty.dc.html": {
+      "x": 1880,
+      "y": 3324,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Корзина — пусто",
+      "page": "v2"
+    },
+    "B-likes.dc.html": {
+      "x": 0,
+      "y": 4564,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Лайки",
+      "page": "v2"
+    },
+    "B-likes-empty.dc.html": {
+      "x": 470,
+      "y": 4564,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Лайки — пусто",
+      "page": "v2"
+    },
+    "Now-plans.dc.html": {
+      "x": 0,
+      "y": 5804,
+      "w": 390,
+      "h": 844,
+      "title": "Сейчас · Тарифы",
+      "page": "v2"
+    },
+    "B-plans.dc.html": {
+      "x": 470,
+      "y": 5804,
+      "w": 390,
+      "h": 2532,
+      "title": "Б · Тарифы — вся страница",
+      "page": "v2"
+    },
+    "B-subscribe.dc.html": {
+      "x": 940,
+      "y": 5804,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Оформление подписки",
+      "page": "v2"
+    },
+    "B-upgrade.dc.html": {
+      "x": 1410,
+      "y": 5804,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Окно «нужен тариф»",
+      "page": "v2"
+    },
+    "Now-blog.dc.html": {
+      "x": 0,
+      "y": 8732,
+      "w": 390,
+      "h": 844,
+      "title": "Сейчас · Журнал",
+      "page": "v2"
+    },
+    "B-blog.dc.html": {
+      "x": 470,
+      "y": 8732,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Журнал",
+      "page": "v2"
+    },
+    "B-article.dc.html": {
+      "x": 940,
+      "y": 8732,
+      "w": 390,
+      "h": 1688,
+      "title": "Б · Статья",
+      "page": "v2"
+    },
+    "B-builder-empty.dc.html": {
+      "x": 0,
+      "y": 10816,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Конструктор — пусто",
+      "page": "v2"
+    },
+    "B-builder-save.dc.html": {
+      "x": 470,
+      "y": 10816,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Конструктор — сохранить образ",
+      "page": "v2"
+    },
+    "B-login.dc.html": {
+      "x": 0,
+      "y": 12056,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Вход",
+      "page": "v2"
+    },
+    "B-404.dc.html": {
+      "x": 470,
+      "y": 12056,
+      "w": 390,
+      "h": 844,
+      "title": "Б · 404",
+      "page": "v2"
+    },
+    "B-error.dc.html": {
+      "x": 940,
+      "y": 12056,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Ошибка",
+      "page": "v2"
+    },
+    "B-cookie.dc.html": {
+      "x": 1410,
+      "y": 12056,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Баннер cookies",
+      "page": "v2"
+    },
+    "B-legal.dc.html": {
+      "x": 0,
+      "y": 13296,
+      "w": 390,
+      "h": 1688,
+      "title": "Б · Политика конфиденциальности",
+      "page": "v2"
+    },
+    "B-footer.dc.html": {
+      "x": 470,
+      "y": 13296,
+      "w": 390,
+      "h": 844,
+      "title": "Б · Подвал",
+      "page": "v2"
+    },
+    "B-part-top.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 366,
+      "h": 52,
+      "title": "Деталь · шапка",
+      "page": "parts"
+    },
+    "B-part-nav.dc.html": {
+      "x": 0,
+      "y": 200,
+      "w": 366,
+      "h": 56,
+      "title": "Деталь · нижнее меню",
+      "page": "parts"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-06T15:05:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "legend": {
+      "size": 24,
+      "text": "Колонки: «Сейчас» — снимок стенда (демо-каталог). «А» — журнальный: без рамок, воздух, тонкие линии. «Б» — как приложение: мягкие плашки, капсулы, всё под пальцем.\n\nТёмная тема включается по умолчанию, поэтому макеты в ней. Светлая — у каталога и товара; у остальных экранов переключатель dark во вкладке Tweaks.\n\nФото товаров — рисованные заглушки: на проде будут настоящие снимки.",
+      "w": 460,
+      "x": -560,
+      "y": 0
+    },
+    "row1": {
+      "kind": "title1",
+      "maxW": 2270,
+      "text": "1 · Каталог — первый экран",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "row2": {
+      "kind": "title1",
+      "maxW": 1330,
+      "text": "2 · Фильтры и сортировка",
+      "w": 240,
+      "x": 0,
+      "y": 940
+    },
+    "row3": {
+      "kind": "title1",
+      "maxW": 2270,
+      "text": "3 · Товар — первый экран",
+      "w": 240,
+      "x": 0,
+      "y": 2180
+    },
+    "row4": {
+      "kind": "title1",
+      "maxW": 1330,
+      "text": "4 · Товар — где купить",
+      "w": 240,
+      "x": 0,
+      "y": 3420
+    },
+    "row5": {
+      "kind": "title1",
+      "maxW": 1330,
+      "text": "5 · Образ",
+      "w": 240,
+      "x": 0,
+      "y": 4660
+    },
+    "row6": {
+      "kind": "title1",
+      "maxW": 1330,
+      "text": "6 · Конструктор",
+      "w": 240,
+      "x": 0,
+      "y": 5900
+    },
+    "row7": {
+      "kind": "title1",
+      "maxW": 1330,
+      "text": "7 · Профиль",
+      "w": 240,
+      "x": 0,
+      "y": 7140
+    },
+    "v2r1": {
+      "x": 0,
+      "y": -300,
+      "text": "1 · Главная",
+      "kind": "title1",
+      "maxW": 1330,
+      "page": "v2"
+    },
+    "v2r2": {
+      "x": 0,
+      "y": 1784,
+      "text": "2 · Каталог: образы, поиск и состояния",
+      "kind": "title1",
+      "maxW": 2270,
+      "page": "v2"
+    },
+    "v2r3": {
+      "x": 0,
+      "y": 3024,
+      "text": "3 · AI-стилист и корзина",
+      "kind": "title1",
+      "maxW": 2270,
+      "page": "v2"
+    },
+    "v2r4": {
+      "x": 0,
+      "y": 4264,
+      "text": "4 · Лайки",
+      "kind": "title1",
+      "maxW": 860,
+      "page": "v2"
+    },
+    "v2r5": {
+      "x": 0,
+      "y": 5504,
+      "text": "5 · Тарифы и подписка",
+      "kind": "title1",
+      "maxW": 1800,
+      "page": "v2"
+    },
+    "v2r6": {
+      "x": 0,
+      "y": 8432,
+      "text": "6 · Журнал",
+      "kind": "title1",
+      "maxW": 1330,
+      "page": "v2"
+    },
+    "v2r7": {
+      "x": 0,
+      "y": 10516,
+      "text": "7 · Конструктор: пусто и сохранение",
+      "kind": "title1",
+      "maxW": 860,
+      "page": "v2"
+    },
+    "v2r8": {
+      "x": 0,
+      "y": 11756,
+      "text": "8 · Вход, ошибки, cookies",
+      "kind": "title1",
+      "maxW": 1800,
+      "page": "v2"
+    },
+    "v2r9": {
+      "x": 0,
+      "y": 12996,
+      "text": "9 · Текстовые страницы и подвал",
+      "kind": "title1",
+      "maxW": 860,
+      "page": "v2"
+    },
+    "v2legend": {
+      "x": -560,
+      "y": 0,
+      "w": 460,
+      "page": "v2",
+      "text": "Вариант Б, выбранный CEO 2026-10-06, на остальных экранах и в состояниях: загрузка, пусто, ошибка.\n\nТёмная тема — по умолчанию; светлая — тумблер dark во вкладке Tweaks у каждого артборда.\n\nШапка и нижнее меню — общие детали со страницы «Детали»: правка там меняет их на всех экранах v2."
+    },
+    "v1chosen": {
+      "x": -560,
+      "y": 760,
+      "w": 460,
+      "text": "Выбор CEO 2026-10-06: вариант Б на всех семи экранах. Остальные экраны — на странице v2.",
+      "fill": "green"
+    },
+    "partsnote": {
+      "x": 480,
+      "y": 0,
+      "w": 420,
+      "page": "parts",
+      "text": "Общие детали варианта Б. Экраны v2 подключают их, поэтому правка здесь меняет все экраны сразу."
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "A-catalog.dc.html",
+    "B-catalog.dc.html",
+    "A-catalog-light.dc.html",
+    "B-catalog-light.dc.html",
+    "Now-filters.dc.html",
+    "A-filters.dc.html",
+    "B-filters.dc.html",
+    "Now-pdp.dc.html",
+    "A-pdp.dc.html",
+    "B-pdp.dc.html",
+    "A-pdp-light.dc.html",
+    "B-pdp-light.dc.html",
+    "Now-pdp-stores.dc.html",
+    "A-pdp-stores.dc.html",
+    "B-pdp-stores.dc.html",
+    "Now-outfit.dc.html",
+    "A-outfit.dc.html",
+    "B-outfit.dc.html",
+    "Now-builder.dc.html",
+    "A-builder.dc.html",
+    "B-builder.dc.html",
+    "Now-profile.dc.html",
+    "A-profile.dc.html",
+    "B-profile.dc.html",
+    "Now-home.dc.html",
+    "B-home.dc.html",
+    "B-home-more.dc.html",
+    "B-catalog-outfits.dc.html",
+    "B-catalog-search.dc.html",
+    "B-catalog-loading.dc.html",
+    "B-catalog-empty.dc.html",
+    "B-catalog-error.dc.html",
+    "Now-ai.dc.html",
+    "B-ai.dc.html",
+    "Now-cart.dc.html",
+    "B-cart.dc.html",
+    "B-cart-empty.dc.html",
+    "B-likes.dc.html",
+    "B-likes-empty.dc.html",
+    "Now-plans.dc.html",
+    "B-plans.dc.html",
+    "B-subscribe.dc.html",
+    "B-upgrade.dc.html",
+    "Now-blog.dc.html",
+    "B-blog.dc.html",
+    "B-article.dc.html",
+    "B-builder-empty.dc.html",
+    "B-builder-save.dc.html",
+    "B-login.dc.html",
+    "B-404.dc.html",
+    "B-error.dc.html",
+    "B-cookie.dc.html",
+    "B-legal.dc.html",
+    "B-footer.dc.html",
+    "B-part-top.dc.html",
+    "B-part-nav.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "v1",
+      "name": "v1 · выбор варианта"
+    },
+    {
+      "id": "v2",
+      "name": "v2 · вариант Б, остальные экраны"
+    },
+    {
+      "id": "parts",
+      "name": "Детали"
+    }
+  ],
+  "title": "GOO mobile — макеты"
+}

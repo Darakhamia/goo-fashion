@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Каталог — образы</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{two}}" hint-size="366px,52px"></dc-import></div>
+
+<div style="padding: 72px 12px 0; display: flex; align-items: center; gap: 8px">
+<div role="group" aria-label="Show" style="flex: 1; height: 44px; box-sizing: border-box; padding: 3px; border-radius: 22px; background: {{t.surface}}; border: 1px solid {{t.border}}; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))">
+<button aria-pressed="false" style="border: 0; border-radius: 19px; background: transparent; color: {{t.muted}}; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Pieces</button>
+<button aria-pressed="true" style="border: 0; border-radius: 19px; background: {{t.fg}}; color: {{t.bg}}; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Outfits</button>
+</div>
+<button aria-label="Search" style="width: 44px; height: 44px; flex: none; border-radius: 50%; border: 1px solid {{t.border}}; background: {{t.surface}}; color: {{t.fg}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg></button>
+<button aria-label="Sort and filter" style="width: 44px; height: 44px; flex: none; border-radius: 50%; border: 1px solid {{t.border}}; background: {{t.surface}}; color: {{t.fg}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"></path></svg></button>
+</div>
+
+<div style="padding: 12px 12px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{outfits}}" as="o" hint-placeholder-count="4">
+<a href="#" style="display: block; border-radius: 14px; overflow: hidden; background: {{t.surface}}; text-decoration: none; color: {{t.fg}}">
+<span style="position: relative; display: block; aspect-ratio: 3 / 4; background: {{t.photo}}">
+<svg viewBox="0 0 120 160" style="position: absolute; left: 6%; top: 10%; width: 54%; height: auto"><path d="{{o.d1}}" fill="{{o.c1}}"></path></svg>
+<svg viewBox="0 0 120 160" style="position: absolute; right: 5%; top: 8%; width: 38%; height: auto"><path d="{{o.d2}}" fill="{{o.c2}}"></path></svg>
+<svg viewBox="0 0 120 160" style="position: absolute; right: 6%; top: 56%; width: 36%; height: auto"><path d="{{o.d3}}" fill="{{o.c3}}"></path></svg>
+<span aria-label="Like" style="position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.78); display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z"></path></svg></span></span>
+</span>
+<span style="display: block; padding: 10px 12px 12px">
+<span style="display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{o.name}}</span>
+<span style="margin-top: 6px; display: flex; justify-content: space-between; gap: 6px"><span style="font-size: 13px; font-weight: 500">{{o.price}}</span><span style="font-size: 11px; color: {{t.muted}}">3 pieces</span></span>
+</span>
+</a>
+</sc-for>
+</div>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="Browse" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', border: '#232321', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', border: '#E8E6E0', photo: '#EFEDE8' };
+const D = {
+coat: 'M44 16 L60 28 L76 16 L95 27 L106 98 L94 101 L86 60 L88 150 L32 150 L34 60 L26 101 L14 98 L25 27 Z',
+blazer: 'M44 20 L60 30 L76 20 L94 30 L104 98 L93 100 L86 64 L88 132 L32 132 L34 64 L27 100 L16 98 L26 30 Z',
+trousers: 'M36 14 L84 14 L91 150 L67 150 L60 56 L53 150 L29 150 Z',
+boots: 'M28 56 L52 56 L52 116 Q66 118 74 126 Q78 138 72 142 L24 142 L24 118 Z M64 46 L88 46 L88 106 Q102 108 110 116 Q114 128 108 132 L60 132 L60 108 Z',
+knit: 'M46 22 Q60 34 74 22 L96 32 L108 96 L96 100 L88 62 L88 132 L32 132 L32 62 L24 100 L12 96 L24 32 Z',
+dress: 'M48 14 L52 14 L55 42 L65 42 L68 14 L72 14 L74 46 L88 150 L32 150 L46 46 Z',
+shirt: 'M47 20 L60 30 L73 20 L95 30 L106 92 L95 96 L88 60 L88 134 L32 134 L32 60 L25 96 L14 92 L25 30 Z'
+};
+const outfits = [
+{ name: 'The Considered Minimal', price: '$2,060–$2,390', d1: D.blazer, c1: '#3E4A57', d2: D.trousers, c2: '#8C877C', d3: D.boots, c3: '#2B2926' },
+{ name: 'Weekend Softness', price: '$1,550–$1,730', d1: D.knit, c1: '#D3CABA', d2: D.trousers, c2: '#3D5675', d3: D.boots, c3: '#6B4F3A' },
+{ name: 'The Sunday Coat', price: '$1,745–$2,070', d1: D.coat, c1: '#B39373', d2: D.trousers, c2: '#4A4640', d3: D.boots, c3: '#2B2926' },
+{ name: 'Office Quiet', price: '$1,615–$1,880', d1: D.shirt, c1: '#F4F1EA', d2: D.trousers, c2: '#5A5550', d3: D.boots, c3: '#5A4636' }
+];
+return { t, dark, no: false, two: 2, outfits };
+}
+}
+</script>
+</body>
+</html>

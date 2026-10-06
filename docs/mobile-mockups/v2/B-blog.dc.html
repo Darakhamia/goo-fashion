@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Журнал</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{two}}" hint-size="366px,52px"></dc-import></div>
+
+<div style="padding: 78px 16px 0">
+<h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.015em">Journal</h1>
+<p style="margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: {{t.muted}}">What we are reading in fashion, and what we are shipping at GOO.</p>
+</div>
+<div style="padding: 14px 0 0 12px; display: flex; gap: 6px; overflow: hidden">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="5">
+<button aria-pressed="{{c.on}}" style="height: 36px; flex: none; padding: 0 14px; border: 0; border-radius: 18px; background: {{c.bg}}; color: {{c.color}}; font-family: inherit; font-size: 13px; font-weight: {{c.fw}}; cursor: pointer">{{c.label}} <span style="opacity: 0.6">{{c.n}}</span></button>
+</sc-for>
+</div>
+
+<a href="#" style="display: block; margin: 14px 12px 0; border-radius: 18px; overflow: hidden; background: {{t.surface}}; text-decoration: none; color: {{t.fg}}">
+<span style="display: flex; height: 190px; background: {{t.photo}}; align-items: center; justify-content: center"><svg viewBox="0 0 120 160" style="width: 92px; height: auto"><path d="M48 14 L52 14 L55 42 L65 42 L68 14 L72 14 L74 46 L88 150 L32 150 L46 46 Z" fill="#C9B8A6"></path></svg></span>
+<span style="display: block; padding: 14px 16px 16px">
+<span style="display: block; font-size: 12px; color: {{t.muted}}">AI stylist · 5 min read</span>
+<span style="display: block; margin-top: 4px; font-size: 18px; line-height: 1.25; font-weight: 600">How AI builds your perfect outfit from scratch</span>
+<span style="display: block; margin-top: 6px; font-size: 14px; line-height: 1.45; color: {{t.muted}}">Behind the scenes of GOO's styling engine — how it weighs color theory, proportions, and occasion context.</span>
+</span>
+</a>
+
+<div style="padding: 6px 12px 0">
+<sc-for list="{{posts}}" as="p" hint-placeholder-count="2">
+<a href="#" style="display: flex; gap: 12px; align-items: center; padding: 10px 4px; box-shadow: {{p.line}}; text-decoration: none; color: {{t.fg}}">
+<span style="width: 76px; height: 76px; flex: none; border-radius: 12px; background: {{t.photo}}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 120 160" style="width: 42px; height: auto"><path d="{{p.d}}" fill="{{p.c}}"></path></svg></span>
+<span style="flex: 1"><span style="display: block; font-size: 12px; color: {{t.muted}}">{{p.meta}}</span><span style="display: block; margin-top: 3px; font-size: 15px; line-height: 1.3; font-weight: 600">{{p.title}}</span></span>
+</a>
+</sc-for>
+</div>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="Journal" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', border: '#232321', soft: 'rgba(240,238,232,0.08)', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', border: '#E8E6E0', soft: 'rgba(10,10,10,0.05)', photo: '#EFEDE8' };
+const cats = [['All', 6], ['Style guide', 2], ['Brands', 1], ['Smart shopping', 1], ['AI stylist', 2]].map(([label, n], i) => ({
+label, n, on: i === 0, bg: i === 0 ? t.fg : t.soft, color: i === 0 ? t.bg : t.fg, fw: i === 0 ? 600 : 400
+}));
+const posts = [
+{ meta: 'Style guide · 7 min read', title: 'The 12-piece capsule wardrobe for 2026', c: '#8A8F7A', d: 'M46 22 Q60 34 74 22 L96 32 L108 96 L96 100 L88 62 L88 132 L32 132 L32 62 L24 100 L12 96 L24 32 Z' },
+{ meta: 'Smart shopping · 4 min read', title: 'Same piece, 11 retailers: what we found', c: '#2F3640', d: 'M47 20 L60 30 L73 20 L95 30 L106 92 L95 96 L88 60 L88 134 L32 134 L32 60 L25 96 L14 92 L25 30 Z' }
+].map((p, i) => ({ ...p, line: i === 0 ? 'none' : 'inset 0 1px 0 ' + t.border }));
+return { t, dark, no: false, two: 2, cats, posts };
+}
+}
+</script>
+</body>
+</html>

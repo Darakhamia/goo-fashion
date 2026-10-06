@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Каталог — поиск</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{two}}" hint-size="366px,52px"></dc-import></div>
+
+<div style="padding: 72px 4px 0 12px; display: flex; align-items: center; gap: 4px">
+<label style="flex: 1; height: 44px; box-sizing: border-box; border-radius: 22px; border: 1px solid {{t.strong}}; background: {{t.surface}}; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 14px; color: {{t.muted}}">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
+<input aria-label="Search pieces" value="coat" style="flex: 1; min-width: 0; border: 0; background: transparent; color: {{t.fg}}; font-family: inherit; font-size: 16px; outline: none">
+<button aria-label="Clear search" style="width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: {{t.muted}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"></path></svg></button>
+</label>
+<button style="height: 44px; padding: 0 12px; border: 0; background: transparent; color: {{t.fg}}; font-family: inherit; font-size: 15px; cursor: pointer">Cancel</button>
+</div>
+
+<div style="padding: 14px 16px 0; font-size: 13px; color: {{t.muted}}">2 pieces for “coat”</div>
+
+<div style="padding: 10px 12px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{cards}}" as="item" hint-placeholder-count="2">
+<a href="#" style="display: block; text-decoration: none; color: {{t.fg}}; background: {{t.surface}}; border-radius: 14px; overflow: hidden">
+<div style="position: relative; aspect-ratio: 3 / 4; background: {{t.photo}}; display: flex; align-items: center; justify-content: center">
+<svg viewBox="0 0 120 160" style="width: 64%; height: auto"><path d="{{item.d}}" fill="{{item.c}}"></path></svg>
+<span aria-label="Like" style="position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.78); display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z"></path></svg></span></span>
+</div>
+<div style="padding: 10px 12px 12px">
+<div style="font-size: 13px; font-weight: 600">{{item.brand}}</div>
+<div style="font-size: 12.5px; color: {{t.muted}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{item.name}}</div>
+<div style="margin-top: 6px; display: flex; justify-content: space-between; gap: 6px"><span style="font-size: 13px; font-weight: 500">{{item.price}}</span><span style="font-size: 11px; color: {{t.muted}}">{{item.stores}}</span></div>
+</div>
+</a>
+</sc-for>
+</div>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="Browse" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', strong: '#3A3A38', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', strong: '#C0BEB8', photo: '#EFEDE8' };
+const coat = 'M44 16 L60 28 L76 16 L95 27 L106 98 L94 101 L86 60 L88 150 L32 150 L34 60 L26 101 L14 98 L25 27 Z';
+const cards = [
+{ brand: 'Toteme', name: 'Oversized Wool Coat', price: '$890–$980', stores: '3 stores', d: coat, c: '#B39373' },
+{ brand: 'Cos', name: 'Oversized Trench Coat', price: '$295–$365', stores: '2 stores', d: coat, c: '#C8B68E' }
+];
+return { t, dark, no: false, two: 2, cards };
+}
+}
+</script>
+</body>
+</html>

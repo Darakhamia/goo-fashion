@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Статья</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 1688px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{yes}}" count="{{two}}" hint-size="366px,52px"></dc-import></div>
+
+<article style="padding: 80px 16px 0">
+<div style="display: flex; align-items: center; gap: 8px"><span style="height: 28px; padding: 0 11px; border-radius: 14px; background: {{t.soft}}; display: flex; align-items: center; font-size: 12px">AI stylist</span><span style="font-size: 12px; color: {{t.muted}}">5 min read</span></div>
+<h1 style="margin: 14px 0 0; font-size: 28px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em">How AI builds your perfect outfit from scratch</h1>
+<p style="margin: 12px 0 0; font-size: 17px; line-height: 1.5; color: {{t.muted}}">Behind the scenes of GOO's styling engine — how it weighs color theory, proportions, and occasion context to assemble looks that feel personal.</p>
+<div style="margin-top: 14px; font-size: 13px; color: {{t.muted}}">GOO · March 18, 2026</div>
+<div style="margin-top: 18px; height: 240px; border-radius: 18px; background: {{t.photo}}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 120 160" style="width: 110px; height: auto"><path d="M48 14 L52 14 L55 42 L65 42 L68 14 L72 14 L74 46 L88 150 L32 150 L46 46 Z" fill="#C9B8A6"></path></svg></div>
+<p style="margin: 22px 0 0; font-size: 17px; line-height: 1.6; color: {{t.muted}}; font-style: italic">Full article coming soon.</p>
+</article>
+
+<div style="padding: 28px 16px 0">
+<div style="font-size: 13px; color: {{t.muted}}">Share</div>
+<div style="margin-top: 10px; display: flex; gap: 8px">
+<sc-for list="{{share}}" as="s" hint-placeholder-count="3">
+<button style="height: 40px; padding: 0 16px; border: 0; border-radius: 20px; background: {{t.soft}}; color: {{t.fg}}; font-family: inherit; font-size: 14px; cursor: pointer">{{s}}</button>
+</sc-for>
+</div>
+</div>
+
+<a href="#" style="display: block; margin: 24px 12px 0; border-radius: 18px; background: {{t.surface}}; padding: 16px; text-decoration: none; color: {{t.fg}}">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: {{t.muted}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg>Older</span>
+<span style="display: block; margin-top: 6px; font-size: 16px; font-weight: 600">The 12-piece capsule wardrobe for 2026</span>
+<span style="display: block; margin-top: 2px; font-size: 12px; color: {{t.muted}}">Style guide</span>
+</a>
+
+<h2 style="margin: 0; padding: 32px 16px 0; font-size: 20px; font-weight: 600">Keep reading</h2>
+<div style="padding: 12px 0 0 12px; display: flex; gap: 10px; overflow: hidden">
+<sc-for list="{{more}}" as="p" hint-placeholder-count="2">
+<a href="#" style="width: 250px; flex: none; border-radius: 16px; overflow: hidden; background: {{t.surface}}; text-decoration: none; color: {{t.fg}}">
+<span style="display: flex; height: 150px; background: {{t.photo}}; align-items: center; justify-content: center"><svg viewBox="0 0 120 160" style="width: 62px; height: auto"><path d="{{p.d}}" fill="{{p.c}}"></path></svg></span>
+<span style="display: block; padding: 12px 14px 14px"><span style="display: block; font-size: 12px; color: {{t.muted}}">{{p.meta}}</span><span style="display: block; margin-top: 3px; font-size: 15px; line-height: 1.3; font-weight: 600">{{p.title}}</span></span>
+</a>
+</sc-for>
+</div>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="Journal" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":1688}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', soft: 'rgba(240,238,232,0.08)', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', soft: 'rgba(10,10,10,0.05)', photo: '#EFEDE8' };
+const more = [
+{ meta: 'AI stylist · 6 min read', title: 'Dressing for your body: what the data actually shows', c: '#3D3A36', d: 'M44 16 L60 28 L76 16 L95 27 L106 98 L94 101 L86 60 L88 150 L32 150 L34 60 L26 101 L14 98 L25 27 Z' },
+{ meta: 'Brands · 8 min read', title: '5 brands worth paying full price for', c: '#A7B1BF', d: 'M47 20 L60 30 L73 20 L95 30 L106 92 L95 96 L88 60 L88 134 L32 134 L32 60 L25 96 L14 92 L25 30 Z' }
+];
+return { t, dark, yes: true, two: 2, share: ['Copy link', 'X', 'Telegram'], more };
+}
+}
+</script>
+</body>
+</html>

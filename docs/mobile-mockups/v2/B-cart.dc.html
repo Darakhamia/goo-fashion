@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Корзина</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{three}}" hint-size="366px,52px"></dc-import></div>
+<div style="position: absolute; inset: 0; background: {{t.scrim}}"></div>
+
+<section role="dialog" aria-modal="true" aria-label="Bag" style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: {{t.sheet}}; border-radius: 20px 20px 0 0; display: flex; flex-direction: column">
+<div style="width: 36px; height: 4px; border-radius: 2px; background: {{t.strong}}; margin: 8px auto 0"></div>
+<div style="display: flex; align-items: center; padding: 6px 6px 6px 16px">
+<h2 style="margin: 0; flex: 1; font-size: 18px; font-weight: 600">Bag <span style="font-weight: 400; color: {{t.muted}}">· 3 pieces</span></h2>
+<button aria-label="Close" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{t.muted}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+
+<div style="flex: 1; padding: 0 16px">
+<sc-for list="{{items}}" as="i" hint-placeholder-count="3">
+<div style="display: flex; gap: 12px; padding: 12px 0; box-shadow: {{i.line}}">
+<span style="width: 72px; height: 92px; flex: none; border-radius: 12px; background: {{t.photo}}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 120 160" style="width: 46px; height: auto"><path d="{{i.d}}" fill="{{i.c}}"></path></svg></span>
+<div style="flex: 1; min-width: 0">
+<div style="display: flex; align-items: flex-start; gap: 6px">
+<div style="flex: 1; min-width: 0"><div style="font-size: 12px; color: {{t.muted}}">{{i.brand}}</div><div style="margin-top: 1px; font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{i.name}}</div></div>
+<button aria-label="Remove {{i.name}}" style="width: 36px; height: 36px; margin: -8px -8px 0 0; border: 0; background: transparent; color: {{t.muted}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"></path></svg></button>
+</div>
+<div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between">
+<span style="font-size: 15px; font-weight: 600">{{i.price}}</span>
+<a href="#" style="height: 34px; padding: 0 12px; border-radius: 17px; background: {{t.soft}}; color: {{t.fg}}; display: flex; align-items: center; gap: 6px; font-size: 13px; text-decoration: none">{{i.store}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 16L16 8M9 8h7v7"></path></svg></a>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+
+<div style="padding: 14px 16px 30px; box-shadow: inset 0 1px 0 {{t.border}}">
+<div style="display: flex; align-items: baseline; justify-content: space-between"><span style="font-size: 14px; color: {{t.muted}}">Total</span><span style="font-size: 18px; font-weight: 600">$2,060</span></div>
+<button style="margin-top: 12px; width: 100%; height: 50px; border: 0; border-radius: 25px; background: {{t.fg}}; color: {{t.sheet}}; font-family: inherit; font-size: 16px; font-weight: 600; cursor: pointer">Open all 3 stores</button>
+<p style="margin: 8px 0 0; text-align: center; font-size: 12px; color: {{t.muted}}">All links verified</p>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', sheet: '#151515', fg: '#F0EEE8', muted: '#8E8E89', border: '#2A2A28', strong: '#3A3A38', soft: 'rgba(240,238,232,0.08)', scrim: 'rgba(0,0,0,0.6)', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', sheet: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', border: '#E8E6E0', strong: '#C0BEB8', soft: 'rgba(10,10,10,0.05)', scrim: 'rgba(0,0,0,0.35)', photo: '#EFEDE8' };
+const items = [
+{ brand: 'Jil Sander', name: 'Structured Blazer', price: '$1,100', store: 'Net-a-Porter', c: '#3E4A57', d: 'M44 20 L60 30 L76 20 L94 30 L104 98 L93 100 L86 64 L88 132 L32 132 L34 64 L27 100 L16 98 L26 30 Z' },
+{ brand: 'Lemaire', name: 'Wide-Leg Trousers', price: '$420', store: 'MyTheresa', c: '#8C877C', d: 'M36 14 L84 14 L91 150 L67 150 L60 56 L53 150 L29 150 Z' },
+{ brand: 'Acne Studios', name: 'Chelsea Boots', price: '$540', store: 'MyTheresa', c: '#2B2926', d: 'M28 56 L52 56 L52 116 Q66 118 74 126 Q78 138 72 142 L24 142 L24 118 Z M64 46 L88 46 L88 106 Q102 108 110 116 Q114 128 108 132 L60 132 L60 108 Z' }
+].map((x, i) => ({ ...x, line: i === 0 ? 'none' : 'inset 0 1px 0 ' + t.border }));
+return { t, dark, no: false, three: 3, items };
+}
+}
+</script>
+</body>
+</html>
