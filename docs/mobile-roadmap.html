@@ -1,0 +1,127 @@
+<meta charset="utf-8">
+<title>Роадмап мобильного GOO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Poppins:wght@800&display=swap">
+<style>
+/* Layout: one reading column; progress first, then what waits for the CEO, then stages as a sequence. Dark-first, like the site. */
+:root {
+  --bg: #0A0A0A; --surface: #141414; --fg: #F0EEE8; --muted: #8E8E89; --line: #232321; --soft: rgba(240,238,232,.07);
+  --ok: #5DB585; --warn: #D9A441; --test: #7FA7D9; --stop: #E07A62;
+  --sans: "Inter Tight", system-ui, -apple-system, "Segoe UI", sans-serif; --mark: Poppins, "Inter Tight", sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #F4F2EE; --surface: #FFFFFF; --fg: #0A0A0A; --muted: #6B6B6B; --line: #E4E1DA; --soft: rgba(10,10,10,.05);
+  --ok: #2F7D50; --warn: #9A6A12; --test: #2F5E99; --stop: #B5462F; color-scheme: light } }
+:root[data-theme="light"] {
+  --bg: #F4F2EE; --surface: #FFFFFF; --fg: #0A0A0A; --muted: #6B6B6B; --line: #E4E1DA; --soft: rgba(10,10,10,.05);
+  --ok: #2F7D50; --warn: #9A6A12; --test: #2F5E99; --stop: #B5462F; color-scheme: light }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased }
+.page { max-width: 760px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 28px }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.mark { font: 800 17px/1 var(--mark); letter-spacing: .16em }
+.updated { font-size: 13px; color: var(--muted) }
+h1 { margin: 0; font-size: clamp(28px, 6vw, 40px); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; text-wrap: balance }
+.lede { margin: 8px 0 0; color: var(--muted); max-width: 60ch }
+.progress { background: var(--surface); border-radius: 20px; padding: 20px; display: grid; gap: 14px }
+.progress-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap }
+.pct { font-size: 48px; line-height: 1; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums }
+.of { color: var(--muted) }
+.bar { display: flex; gap: 4px; height: 10px }
+.seg { background: var(--soft); border-radius: 5px; overflow: hidden }
+.seg-fill { display: block; height: 100%; background: var(--fg); border-radius: 5px }
+.next { font-size: 14px; color: var(--muted) }
+.next strong { color: var(--fg); font-weight: 500 }
+.waiting { border-radius: 20px; padding: 18px 20px; box-shadow: inset 0 0 0 1.5px var(--fg) }
+.waiting.quiet { box-shadow: inset 0 0 0 1px var(--line) }
+.waiting h2 { margin: 0 0 8px; font-size: 16px; font-weight: 600 }
+.waiting ul { margin: 0; padding-left: 18px; display: grid; gap: 6px }
+.waiting p { margin: 0; color: var(--muted) }
+.stages { display: grid; gap: 14px }
+.stage { background: var(--surface); border-radius: 20px; padding: 18px 20px }
+.stage-head { display: flex; align-items: flex-start; gap: 12px }
+.letter { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 14px; background: var(--soft) }
+.stage.done .letter { background: var(--ok); color: var(--bg) }
+.stage.active .letter { background: var(--fg); color: var(--bg) }
+.stage-title { flex: 1; min-width: 0 }
+.stage h2 { margin: 4px 0 0; font-size: 17px; line-height: 1.3; font-weight: 600; text-wrap: balance }
+.promise { margin: 2px 0 0; color: var(--muted); font-size: 14px }
+.count { flex: none; margin-top: 6px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums }
+.see { margin: 14px 0 0; padding: 12px 14px; border-radius: 14px; background: var(--soft); font-size: 14px }
+.see span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px }
+.tasks { list-style: none; margin: 10px 0 0; padding: 0 }
+.task { padding: 12px 0; border-top: 1px solid var(--line) }
+.task:first-child { border-top: 0 }
+.task-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.tid { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 34px }
+.tname { flex: 1 1 220px; min-width: 0; font-weight: 500 }
+.chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; background: var(--soft); font-size: 12px; color: var(--muted) }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor }
+.chip.progress { color: var(--warn) } .chip.testing { color: var(--test) } .chip.done { color: var(--ok) } .chip.blocked { color: var(--stop) }
+.why { margin: 4px 0 0 44px; color: var(--muted); font-size: 14px; max-width: 62ch }
+code { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--soft); padding: 1px 5px; border-radius: 5px }
+footer { color: var(--muted); font-size: 13px; display: grid; gap: 4px }
+footer a { color: var(--fg) }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px }
+@media (max-width: 480px) { .why { margin-left: 0 } .pct { font-size: 40px } }
+</style>
+<main class="page">
+  <div class="top"><span class="mark">GOO</span><span class="updated">Обновлено 6 октября 2026</span></div>
+  <header>
+    <h1>Мобильная версия GOO</h1>
+    <p class="lede">Сайт на телефоне «причёсываем» по выбранному варианту Б: те же экраны и функции, меньше кнопок, рамок и капса, больше воздуха. Десктоп не меняется.</p>
+  </header>
+  <section class="progress" aria-label="Прогресс">
+    <div class="progress-row"><span class="pct">0%</span><span class="of">0 из 25 задач готово · 8 этапов</span></div>
+    <div class="bar" role="img" aria-label="Прогресс по этапам"><span class="seg" style="flex:1" title="Этап A: 0 из 1"><span class="seg-fill" style="width:0%"></span></span><span class="seg" style="flex:4" title="Этап B: 0 из 4"><span class="seg-fill" style="width:0%"></span></span><span class="seg" style="flex:5" title="Этап C: 0 из 5"><span class="seg-fill" style="width:0%"></span></span><span class="seg" style="flex:3" title="Этап D: 0 из 3"><span class="seg-fill" style="width:0%"></span></span><span class="seg" style="flex:2" title="Этап E: 0 из 2"><span class="seg-fill" style="width:0%"></span></span><span class="seg" style="flex:4" title="Этап F: 0 из 4"><span class="seg-fill" style="width:0%"></span></span><span class="seg" style="flex:5" title="Этап G: 0 из 5"><span class="seg-fill" style="width:0%"></span></span><span class="seg" style="flex:1" title="Этап H: 0 из 1"><span class="seg-fill" style="width:0%"></span></span></div>
+    <p class="next">Следующая задача: <strong>R-01 · Стенд снимков публичного сайта</strong></p>
+  </section>
+  <section class="waiting" aria-labelledby="waiting-h"><h2 id="waiting-h">Ждёт вашего решения</h2><ul><li>Подтвердить роадмап («роадмап ок»).</li></ul></section>
+  <div class="stages">
+<section class="stage next" id="stage-a">
+  <div class="stage-head"><span class="letter">A</span><div class="stage-title"><h2>Стенд</h2><p class="promise">Проверять можно без боевых ключей</p></div><span class="count">0/1</span></div>
+  <p class="see"><span>Что увидите</span>Ничего нового на сайте. Это инструмент, без которого каждую правку нельзя честно показать «до» и «после».</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-01</span><span class="tname">Стенд снимков публичного сайта</span><span class="chip planned">В плане</span></div><p class="why">Снимать любой экран сайта на телефоне и десктопе без доступа к базе и входу, считать замеры из плана.</p></li></ol>
+</section>
+<section class="stage next" id="stage-b">
+  <div class="stage-head"><span class="letter">B</span><div class="stage-title"><h2>Основа</h2><p class="promise">Сайт целиком становится легче</p></div><span class="count">0/4</span></div>
+  <p class="see"><span>Что увидите</span>На всех страницах тонкая шапка-капсула и тихое нижнее меню, компактный подвал, пропадает лишняя пустота над ним.</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-02</span><span class="tname">Правила мобильной версии в дизайн-системе</span><span class="chip planned">В плане</span></div><p class="why">Записать рецепты варианта Б до правок, чтобы все экраны собирались одинаково.</p></li><li class="task"><div class="task-head"><span class="tid">R-03</span><span class="tname">Шапка-капсула</span><span class="chip planned">В плане</span></div><p class="why">Шапка на телефоне тоньше и без тени; на внутренних экранах в ней есть кнопка «назад».</p></li><li class="task"><div class="task-head"><span class="tid">R-04</span><span class="tname">Нижнее меню-капсула</span><span class="chip planned">В плане</span></div><p class="why">Меню тоньше и тише, без капса.</p></li><li class="task"><div class="task-head"><span class="tid">R-05</span><span class="tname">Подвал и отступ под меню</span><span class="chip planned">В плане</span></div><p class="why">Подвал — компактная карточка ссылок; пустота перед ним уходит.</p></li></ol>
+</section>
+<section class="stage next" id="stage-c">
+  <div class="stage-head"><span class="letter">C</span><div class="stage-title"><h2>Каталог</h2><p class="promise">Главный экран покупателя</p></div><span class="count">0/5</span></div>
+  <p class="see"><span>Что увидите</span>В каталоге сразу видны товары. Карточки чистые, на фото только сердце. Фильтры и сортировка — в одном листе снизу. Если каталог не загрузился, появляется понятная ошибка.</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-06</span><span class="tname">Карточка товара</span><span class="chip planned">В плане</span></div><p class="why">На фото ничего не кричит, карточка — мягкая плашка.</p></li><li class="task"><div class="task-head"><span class="tid">R-07</span><span class="tname">Карточка образа</span><span class="chip planned">В плане</span></div><p class="why">Та же плашка для образов, один радиус с карточкой товара.</p></li><li class="task"><div class="task-head"><span class="tid">R-08</span><span class="tname">Каталог: верх страницы и поиск</span><span class="chip planned">В плане</span></div><p class="why">Товары начинаются на первом экране.</p></li><li class="task"><div class="task-head"><span class="tid">R-09</span><span class="tname">Каталог: лист фильтров и сортировки</span><span class="chip planned">В плане</span></div><p class="why">Фильтры и сортировка — в одном листе снизу вместо шторки слева и отдельного меню.</p></li><li class="task"><div class="task-head"><span class="tid">R-10</span><span class="tname">Каталог: загрузка, пусто, ошибка, низ страницы</span><span class="chip planned">В плане</span></div><p class="why">У каждого состояния каталога есть понятный вид; ошибка больше не молчит.</p></li></ol>
+</section>
+<section class="stage next" id="stage-d">
+  <div class="stage-head"><span class="letter">D</span><div class="stage-title"><h2>Товар и образ</h2><p class="promise">Покупка в два касания</p></div><span class="count">0/3</span></div>
+  <p class="see"><span>Что увидите</span>Название и цена видны сразу. Внизу закреплена полоса «Add to bag» и «Where to buy». Магазины собраны в аккуратный список.</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-11</span><span class="tname">Страница товара: первый экран и полоса покупки</span><span class="chip planned">В плане</span></div><p class="why">Всё главное без прокрутки; положить вещь в корзину можно со страницы товара.</p></li><li class="task"><div class="task-head"><span class="tid">R-12</span><span class="tname">Страница товара: «Где купить» и ниже</span><span class="chip planned">В плане</span></div><p class="why">Магазины — один аккуратный список, ниже — рекомендации без рамок в рамках.</p></li><li class="task"><div class="task-head"><span class="tid">R-13</span><span class="tname">Страница образа и образа пользователя</span><span class="chip planned">В плане</span></div><p class="why">Заголовок целиком, состав образа списком, покупка — полосой внизу.</p></li></ol>
+</section>
+<section class="stage next" id="stage-e">
+  <div class="stage-head"><span class="letter">E</span><div class="stage-title"><h2>Конструктор</h2></div><span class="count">0/2</span></div>
+  <p class="see"><span>Что увидите</span>В конструкторе меньше кнопок, холст и лента вещей спокойнее, листы фильтров и сохранения в общем стиле.</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-14</span><span class="tname">Конструктор: шапка, холст, лента вещей</span><span class="chip planned">В плане</span></div><p class="why">34 кнопки на первом экране превращаются в понятный набор.</p></li><li class="task"><div class="task-head"><span class="tid">R-15</span><span class="tname">Конструктор: листы фильтров, сохранения и выбора стиля</span><span class="chip planned">В плане</span></div><p class="why">Все всплывающие части конструктора — листы снизу в одном стиле.</p></li></ol>
+</section>
+<section class="stage next" id="stage-f">
+  <div class="stage-head"><span class="letter">F</span><div class="stage-title"><h2>Стилист, корзина, аккаунт</h2></div><span class="count">0/4</span></div>
+  <p class="see"><span>Что увидите</span>Стилист и корзина открываются аккуратными листами, корзина везде называется «Bag», лайки и профиль без капса и с понятными пустыми состояниями.</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-16</span><span class="tname">AI-стилист</span><span class="chip planned">В плане</span></div><p class="why">Чат-лист в стиле Б.</p></li><li class="task"><div class="task-head"><span class="tid">R-17</span><span class="tname">Корзина: панель, страница, слово «Bag»</span><span class="chip planned">В плане</span></div><p class="why">Корзина — лист снизу; одно слово на всём сайте (решение CEO 2а).</p></li><li class="task"><div class="task-head"><span class="tid">R-18</span><span class="tname">Лайки</span><span class="chip planned">В плане</span></div><p class="why">Три вкладки помещаются, пустое состояние понятное.</p></li><li class="task"><div class="task-head"><span class="tid">R-19</span><span class="tname">Профиль</span><span class="chip planned">В плане</span></div><p class="why">В профиле больше нет 26 надписей капсом, настройки собраны в списки.</p></li></ol>
+</section>
+<section class="stage next" id="stage-g">
+  <div class="stage-head"><span class="letter">G</span><div class="stage-title"><h2>Тарифы, главная, журнал, служебные страницы</h2></div><span class="count">0/5</span></div>
+  <p class="see"><span>Что увидите</span>Тарифы без огромных заголовков, таблица сравнения помещается в экран. На оформлении подписки внизу полоса оплаты. Главная, журнал, вход, 404 и тексты — в общем стиле.</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-20</span><span class="tname">Тарифы, оформление подписки, окно «нужен тариф»</span><span class="chip planned">В плане</span></div><p class="why">Тарифы читаются с телефона, оплата — в одно касание.</p></li><li class="task"><div class="task-head"><span class="tid">R-21</span><span class="tname">Главная</span><span class="chip planned">В плане</span></div><p class="why">Первый экран и секции главной в стиле Б.</p></li><li class="task"><div class="task-head"><span class="tid">R-22</span><span class="tname">Журнал и статья</span><span class="chip planned">В плане</span></div><p class="why">Заголовки без капса, категории в одну строку, статья читается спокойно.</p></li><li class="task"><div class="task-head"><span class="tid">R-23</span><span class="tname">Вход и регистрация</span><span class="chip planned">В плане</span></div><p class="why">Экран входа в общем стиле.</p></li><li class="task"><div class="task-head"><span class="tid">R-24</span><span class="tname">Текстовые страницы, 404, ошибка, cookies</span><span class="chip planned">В плане</span></div><p class="why">Служебные страницы в общем стиле.</p></li></ol>
+</section>
+<section class="stage next" id="stage-h">
+  <div class="stage-head"><span class="letter">H</span><div class="stage-title"><h2>Финальная проверка</h2></div><span class="count">0/1</span></div>
+  <p class="see"><span>Что увидите</span>Отчёт со снимками «до» и «после» всех экранов и пунктами «Готово, когда» из плана с фактическими числами.</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-25</span><span class="tname">Финальный проход по всем экранам</span><span class="chip planned">В плане</span></div><p class="why">Проверить весь сайт по критериям плана, а не по отдельным задачам.</p></li></ol>
+</section>
+  </div>
+  <footer>
+    <span>Макеты: <a href="https://claude.ai/artifact/TJiTGG5bV46G8R3CNeyTR8">холст с вариантом Б</a></span>
+    <span>Страница собирается из рабочего роадмапа <code>docs/MOBILE_ROADMAP.md</code>.</span>
+  </footer>
+</main>
