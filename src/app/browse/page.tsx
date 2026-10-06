@@ -12,6 +12,7 @@ import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useLikes } from "@/lib/context/likes-context";
 import { track } from "@/lib/analytics/track";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -77,6 +78,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 };
 
 
+/** A removable filter. Below md it is the soft 32px chip of DESIGN_SYSTEM.md §12.10. */
 function ActiveChip({
   label,
   onRemove,
@@ -87,10 +89,14 @@ function ActiveChip({
   return (
     <button
       onClick={onRemove}
-      className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200 capitalize rounded-full"
+      aria-label={`Remove ${label}`}
+      className="flex items-center gap-1.5 h-8 pl-3 pr-2.5 md:h-auto rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:hover:bg-[var(--fg-overlay-05)] text-[13px] md:text-[9px] md:tracking-[0.10em] md:uppercase md:border md:border-[var(--foreground)] text-[var(--foreground)] md:px-2.5 md:py-1 transition-colors duration-200 capitalize"
     >
       {label}
-      <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="md:hidden" aria-hidden="true">
+        <path d="M7 7l10 10M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+      <svg width="7" height="7" viewBox="0 0 7 7" fill="none" className="hidden md:block">
         <path
           d="M1 1L6 6M6 1L1 6"
           stroke="currentColor"
@@ -98,6 +104,74 @@ function ActiveChip({
           strokeLinecap="round"
         />
       </svg>
+    </button>
+  );
+}
+
+/* ── Phone filter sheet pieces (DESIGN_SYSTEM.md §12.7, §12.10) ── */
+
+const SORT_CHOICES: { value: SortOption; label: string }[] = [
+  { value: "featured", label: "Featured" },
+  { value: "newest", label: "New in" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+];
+
+const PRICE_CHOICES: { max: number | null; label: string }[] = [
+  { max: null, label: "Any price" },
+  { max: 200, label: "Under $200" },
+  { max: 500, label: "Under $500" },
+  { max: 1000, label: "Under $1k" },
+  { max: 2000, label: "Under $2k" },
+];
+
+function SheetSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h3 className="mb-2.5 text-[13px] text-[var(--foreground-muted)]">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+/** 36px to the eye, 44px to the finger: the hit area reaches 4px above and below. */
+function SheetChip({
+  on,
+  onClick,
+  children,
+  expanded,
+}: {
+  on: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  expanded?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={expanded === undefined ? on : undefined}
+      aria-expanded={expanded}
+      className={`relative h-9 px-3.5 rounded-full text-[13px] transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${
+        on ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SheetToggle({ label, on, onChange }: { label: string; on: boolean; onChange: () => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={on}
+      onClick={onChange}
+      className="w-full h-[52px] px-3.5 rounded-2xl bg-[var(--fg-overlay-08)] flex items-center justify-between text-[15px] text-[var(--foreground)]"
+    >
+      {label}
+      <span className={`relative w-11 h-[26px] rounded-full transition-colors duration-200 ${on ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"}`}>
+        <span className={`absolute top-[3px] left-[3px] w-5 h-5 rounded-full bg-[var(--background)] transition-transform duration-200 ${on ? "translate-x-[18px]" : ""}`} />
+      </span>
     </button>
   );
 }
@@ -137,6 +211,9 @@ export default function BrowsePage() {
   // page or the filters change, so it never silently carries over.
   const [extraPages, setExtraPages] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Phones get a bottom sheet instead of the side drawer; it plays its exit.
+  const sheetOv = useOverlayPresence(filtersOpen);
+  const sheetCloseRef = useRef<HTMLButtonElement>(null);
   const [likedOnly, setLikedOnly] = useState(false);
   const { likedProducts } = useLikes();
 
@@ -150,6 +227,10 @@ export default function BrowsePage() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [sortOpen]);
+
+  useEffect(() => {
+    if (filtersOpen) sheetCloseRef.current?.focus({ preventScroll: true });
+  }, [filtersOpen]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -966,6 +1047,236 @@ export default function BrowsePage() {
     </div>
   );
 
+  /* Phone: sort and every filter in one sheet from the bottom (DESIGN_SYSTEM.md §12.7,
+     mockup v1 «Б · Фильтры и сортировка»). Same state as the desktop drawer. */
+  const noun = view === "outfits" ? (count === 1 ? "outfit" : "outfits") : (count === 1 ? "piece" : "pieces");
+  const closeSheet = () => setFiltersOpen(false);
+  const renderSheet = () => (
+    <div className="md:hidden">
+      <div aria-hidden="true" className={sheetOv.cls("ov-scrim fixed inset-0 z-50 bg-black/60 backdrop-blur-sm")} onClick={closeSheet} />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="browse-sheet-title"
+        onTransitionEnd={sheetOv.onTransitionEnd}
+        className={sheetOv.cls("ov-rise fixed inset-x-0 bottom-0 z-50 max-h-[calc(100%-56px)] rounded-t-3xl bg-[var(--surface)] flex flex-col pb-[calc(env(safe-area-inset-bottom)+16px)]")}
+      >
+        <div aria-hidden="true" className="mx-auto mt-2 w-9 h-1 shrink-0 rounded-full bg-[var(--border-strong)]" />
+        <div className="flex items-center pl-5 pr-2 shrink-0">
+          <h2 id="browse-sheet-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">Sort &amp; filter</h2>
+          <button
+            ref={sheetCloseRef}
+            onClick={closeSheet}
+            aria-label="Close"
+            className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-2 pb-4 space-y-[22px]">
+          <SheetSection title="Sort by">
+            <div className="flex flex-wrap gap-2">
+              {SORT_CHOICES.map((o) => (
+                <SheetChip key={o.value} on={sort === o.value} onClick={() => setSort(o.value)}>{o.label}</SheetChip>
+              ))}
+            </div>
+          </SheetSection>
+
+          {view === "pieces" ? (
+            <>
+              <SheetSection title="Category">
+                <div className="flex flex-wrap gap-2">
+                  <SheetChip on={selectedSubcategories.length === 0} onClick={() => setSelectedSubcategories([])}>All</SheetChip>
+                  {browseCategoryGroups.map((group) => {
+                    const picked = group.items.filter((i) => selectedSubcategories.includes(i.label)).length;
+                    return (
+                      <SheetChip
+                        key={group.id}
+                        on={picked > 0}
+                        expanded={expandedCategoryGroups.has(group.id)}
+                        onClick={() => setExpandedCategoryGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(group.id)) next.delete(group.id); else next.add(group.id);
+                          return next;
+                        })}
+                      >
+                        {group.label}{picked > 0 && <span className="ml-1 opacity-60">{picked}</span>}
+                      </SheetChip>
+                    );
+                  })}
+                </div>
+                {browseCategoryGroups.filter((g) => expandedCategoryGroups.has(g.id)).map((group) => {
+                  const labels = group.items.map((i) => i.label);
+                  const all = labels.every((l) => selectedSubcategories.includes(l));
+                  return (
+                    <div key={group.id} className="mt-3.5">
+                      <p className="mb-2 text-[12px] text-[var(--foreground-muted)]">{group.label}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <SheetChip
+                          on={all}
+                          onClick={() => setSelectedSubcategories((prev) =>
+                            all ? prev.filter((l) => !labels.includes(l)) : [...new Set([...prev, ...labels])]
+                          )}
+                        >
+                          All {group.label.toLowerCase()}
+                        </SheetChip>
+                        {group.items.map((item) => (
+                          <SheetChip key={item.label} on={selectedSubcategories.includes(item.label)} onClick={() => toggleSubcategory(item.label)}>
+                            {item.label}
+                          </SheetChip>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </SheetSection>
+
+              <SheetSection title="Colour">
+                <div className="flex flex-wrap -mx-1.5">
+                  {colorGroups.map((cg) => {
+                    const on = selectedColorGroupIds.includes(cg.id);
+                    return (
+                      <button
+                        key={cg.id}
+                        onClick={() => toggleColorGroup(cg.id)}
+                        aria-label={cg.name}
+                        aria-pressed={on}
+                        className="w-11 h-11 flex items-center justify-center"
+                      >
+                        <span
+                          className="w-[30px] h-[30px] rounded-full"
+                          style={{
+                            background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode,
+                            boxShadow: on
+                              ? "0 0 0 2px var(--surface), 0 0 0 3.5px var(--foreground)"
+                              : "0 0 0 1px var(--border)",
+                          }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </SheetSection>
+
+              <SheetSection title="Gender">
+                <div className="flex flex-wrap gap-2">
+                  {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g) => (
+                    <SheetChip key={g ?? "all"} on={selectedGender === g} onClick={() => setSelectedGender(g)}>
+                      {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
+                    </SheetChip>
+                  ))}
+                </div>
+              </SheetSection>
+            </>
+          ) : (
+            <>
+              <SheetSection title="Occasion">
+                <div className="flex flex-wrap gap-2">
+                  <SheetChip on={selectedOccasions.length === 0} onClick={() => setSelectedOccasions([])}>All</SheetChip>
+                  {OCCASIONS.map((occ) => (
+                    <SheetChip key={occ} on={selectedOccasions.includes(occ)} onClick={() => toggleOccasion(occ)}>
+                      {occ.charAt(0).toUpperCase() + occ.slice(1)}
+                    </SheetChip>
+                  ))}
+                </div>
+              </SheetSection>
+              <SheetToggle label="AI outfits only" on={aiOnly} onChange={() => setAiOnly((v) => !v)} />
+            </>
+          )}
+
+          <SheetSection title="Style">
+            <div className="flex flex-wrap gap-2">
+              <SheetChip on={selectedStyles.length === 0} onClick={() => setSelectedStyles([])}>All</SheetChip>
+              {STYLE_KEYWORD_LIST.map((st) => (
+                <SheetChip key={st} on={selectedStyles.includes(st)} onClick={() => toggleStyle(st)}>{styleLabel(st)}</SheetChip>
+              ))}
+            </div>
+          </SheetSection>
+
+          <SheetSection title="Price">
+            <div className="flex flex-wrap gap-2">
+              {PRICE_CHOICES.map(({ max, label }) => (
+                <SheetChip key={label} on={maxPrice === max} onClick={() => setMaxPrice(maxPrice === max ? null : max)}>{label}</SheetChip>
+              ))}
+            </div>
+            <label className="mt-4 block">
+              <span className="flex items-center justify-between text-[13px] text-[var(--foreground-muted)]">
+                Up to
+                <span className="text-[15px] font-medium text-[var(--foreground)]">
+                  {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+                </span>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={2000}
+                step={50}
+                value={maxPrice ?? 2000}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+                }}
+                aria-label="Maximum price"
+                className="mt-2 w-full h-11 cursor-pointer"
+                style={{ accentColor: "var(--foreground)" }}
+              />
+            </label>
+          </SheetSection>
+
+          {view === "pieces" && (
+            <SheetSection title="Designer">
+              <input
+                type="search"
+                value={brandSearch}
+                onChange={(e) => setBrandSearch(e.target.value)}
+                placeholder="Search designers"
+                aria-label="Search designers"
+                className="w-full h-12 px-3.5 rounded-2xl bg-[var(--fg-overlay-08)] text-base text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none! focus-visible:shadow-[inset_0_0_0_1px_var(--foreground)] [&::-webkit-search-cancel-button]:hidden"
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {filteredBrandsForSearch.slice(0, showAllBrands ? undefined : 12).map((brand) => (
+                  <SheetChip key={brand} on={selectedBrands.includes(brand)} onClick={() => toggleBrand(brand)}>{brand}</SheetChip>
+                ))}
+              </div>
+              {filteredBrandsForSearch.length === 0 && (
+                <p className="mt-1 text-[13px] text-[var(--foreground-muted)]">No designers found</p>
+              )}
+              {filteredBrandsForSearch.length > 12 && (
+                <button
+                  onClick={() => setShowAllBrands((v) => !v)}
+                  className="mt-1 h-11 -ml-3 px-3 text-[15px] text-[var(--foreground-muted)]"
+                >
+                  {showAllBrands ? "Show fewer" : `Show ${filteredBrandsForSearch.length - 12} more`}
+                </button>
+              )}
+            </SheetSection>
+          )}
+
+          <SheetToggle label="Only my likes" on={likedOnly} onChange={() => setLikedOnly((v) => !v)} />
+        </div>
+
+        <div className="shrink-0 px-5 pt-3 flex items-center gap-2.5">
+          <button
+            onClick={() => { clearAll(); setSort("featured"); }}
+            disabled={activeFiltersCount === 0 && sort === "featured"}
+            className="h-12 px-5 rounded-full bg-[var(--fg-overlay-08)] text-[15px] font-medium text-[var(--foreground)] disabled:opacity-40"
+          >
+            Clear
+          </button>
+          <button
+            onClick={closeSheet}
+            className="flex-1 h-12 px-6 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold"
+          >
+            Show {count} {noun}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+
   return (
     <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto">
@@ -996,7 +1307,7 @@ export default function BrowsePage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-black/20"
+              className="hidden md:block fixed inset-0 z-40 bg-black/20"
               onClick={() => setFiltersOpen(false)}
             />
           )}
@@ -1010,7 +1321,7 @@ export default function BrowsePage() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -280, opacity: 0 }}
               transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
-              className="fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col"
+              className="fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] hidden md:flex flex-col"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
@@ -1033,6 +1344,8 @@ export default function BrowsePage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {sheetOv.rendered && renderSheet()}
 
         {/* Main content */}
         <div>
@@ -1071,7 +1384,7 @@ export default function BrowsePage() {
                   </button>
                   <button
                     onClick={() => { setStylistOpen(false); setFiltersOpen(true); }}
-                    aria-label={activeFiltersCount > 0 ? `Filters, ${activeFiltersCount} on` : "Filters"}
+                    aria-label={activeFiltersCount > 0 ? `Sort and filter, ${activeFiltersCount} on` : "Sort and filter"}
                     className="relative shrink-0 w-11 h-11 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] flex items-center justify-center"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
@@ -1300,7 +1613,7 @@ export default function BrowsePage() {
 
             {/* Active filter chips */}
             {activeFiltersCount > 0 && (
-              <div className="flex items-center gap-2 flex-wrap pt-4">
+              <div className="flex items-center gap-1.5 md:gap-2 flex-wrap pt-3 md:pt-4">
                 <AnimatePresence>
                 {selectedBrands.map((brand) => (
                   <motion.div
@@ -1391,10 +1704,11 @@ export default function BrowsePage() {
                     >
                       <button
                         onClick={() => toggleColorGroup(id)}
-                        className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200 rounded-full"
+                        aria-label={`Remove ${cg.name}`}
+                        className="flex items-center gap-1.5 h-8 pl-2.5 pr-2.5 md:h-auto rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:hover:bg-[var(--fg-overlay-05)] text-[13px] md:text-[9px] md:tracking-[0.10em] md:uppercase md:border md:border-[var(--foreground)] text-[var(--foreground)] md:px-2.5 md:py-1 transition-colors duration-200"
                       >
                         <span
-                          className="w-2.5 h-2.5 shrink-0 rounded-full"
+                          className="w-3.5 h-3.5 md:w-2.5 md:h-2.5 shrink-0 rounded-full shadow-[0_0_0_1px_var(--border)] md:shadow-none"
                           style={
                             cg.hexCode === "#multicolor"
                               ? { background: "conic-gradient(red, orange, yellow, green, blue, violet, red)" }
@@ -1402,7 +1716,10 @@ export default function BrowsePage() {
                           }
                         />
                         {cg.name}
-                        <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="md:hidden" aria-hidden="true">
+                          <path d="M7 7l10 10M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                        <svg width="7" height="7" viewBox="0 0 7 7" fill="none" className="hidden md:block">
                           <path d="M1 1L6 6M6 1L1 6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
                         </svg>
                       </button>
