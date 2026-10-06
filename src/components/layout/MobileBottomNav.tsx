@@ -17,6 +17,9 @@ const TABS = [
   { href: "/profile", label: "Profile", d: "M16 8a4 4 0 1 1-8 0a4 4 0 1 1 8 0 M4.5 20.5c0-4.1 3.4-7.5 7.5-7.5s7.5 3.4 7.5 7.5" },
 ];
 
+/** Pages whose own buy bar stands where the tab bar would (DESIGN_SYSTEM.md §12.8). */
+export const hasBuyBar = (pathname: string) => pathname.startsWith("/product/");
+
 /**
  * The phone tab bar: a thin floating capsule (DESIGN_SYSTEM.md §12.4). Every tab
  * is a 44px target; only the current one carries its label, sitting in a soft
@@ -26,6 +29,8 @@ const TABS = [
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const { unseenCount } = useLikes();
+
+  if (hasBuyBar(pathname)) return null;
 
   return (
     <div className="md:hidden fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)] z-40">

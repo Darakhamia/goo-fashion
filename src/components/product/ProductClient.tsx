@@ -8,6 +8,8 @@ import { primaryColorGroup } from "@/lib/color-groups";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
+import { useCart } from "@/lib/context/cart-context";
+import { toCartItem } from "@/lib/cart-item";
 import ProductCard from "./ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import dynamic from "next/dynamic";
@@ -49,6 +51,13 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
     if (!isLoggedIn) { login(); return; }
     toggleProductLike(product.id);
   };
+
+  // Phones put a piece in the bag from here, the way the card's cart button did
+  // before the card lost it: the same item, and a second press takes it out.
+  const { addToCart, isInCart, removeFromCart } = useCart();
+  const inBag = isInCart(product.id);
+  const toggleBag = () => (inBag ? removeFromCart(product.id) : addToCart(toCartItem(product)));
+  const storeCount = product.retailers.length;
   const defaultColor = useMemo(() => {
     if (!product.colorImages) return null;
     return product.colors.find((c) => (product.colorImages![c]?.length ?? 0) > 0) ?? null;
@@ -57,6 +66,9 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultColor);
   const [activeIdx, setActiveIdx] = useState(0);
   const [imgVisible, setImgVisible] = useState(true);
+  // Phones swipe through the photos; this is the one in view.
+  const [slide, setSlide] = useState(0);
+  const slidesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     track("product_view", { targetId: product.id });
@@ -85,7 +97,8 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setImgVisible(false);
-    const t = setTimeout(() => { setActiveIdx(0); setImgVisible(true); }, 260);
+    slidesRef.current?.scrollTo({ left: 0 });
+    const t = setTimeout(() => { setActiveIdx(0); setSlide(0); setImgVisible(true); }, 260);
     return () => clearTimeout(t);
   }, [selectedColor]);
 
@@ -140,15 +153,73 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
   return (
     <>
-      <Breadcrumbs items={productCrumbs} />
+      {/* Phones go back with the header's back button; the trail is desktop's. */}
+      <div className="hidden md:block">
+        <Breadcrumbs items={productCrumbs} />
+      </div>
 
       {/* Main grid */}
-      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-6 md:gap-10">
+      <div className="mt-3 md:mt-12 grid grid-cols-1 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-4 md:gap-10">
 
         {/* ── Left: Image gallery. Phones get the thumbnails as a row under the
             photo, so the photo keeps the full width; from md up they become the
             rail beside it, top-left. ── */}
         <div className="flex flex-col md:flex-row gap-3">
+
+          {/* Phones: the photos swipe inside one rounded card, with a counter in
+              place of the thumbnail rail; only light controls sit on the photo
+              (DESIGN_SYSTEM.md §12.6, mockup v1 «Б · Товар»). */}
+          <div className="md:hidden relative rounded-3xl overflow-hidden bg-white" style={photoBackdrop(product.bgColor)}>
+            <div
+              ref={slidesRef}
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                const i = Math.round(el.scrollLeft / Math.max(el.clientWidth, 1));
+                if (i !== slide) setSlide(i);
+              }}
+              className="flex overflow-x-auto snap-x snap-mandatory overscroll-x-contain no-scrollbar"
+            >
+              {(displayImages.length ? displayImages : [""]).map((img, i) => (
+                <div key={`${img}-${i}`} className="relative w-full shrink-0 snap-center aspect-[3/4]">
+                  {img && (
+                    <Image
+                      src={img}
+                      alt={i === 0 ? `${product.name} by ${product.brand}` : `${product.name} ${i + 1}`}
+                      fill
+                      priority={i === 0}
+                      sizes="(max-width: 768px) 100vw, 480px"
+                      className="object-contain"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            {product.isNew && (
+              <span className="absolute top-3.5 left-3.5 rounded-full bg-white/80 px-[9px] py-1 text-[11px] font-semibold text-black">New</span>
+            )}
+            <button
+              onClick={handleLike}
+              aria-label={!isLoggedIn ? "Sign in to save item" : liked ? "Unlike item" : "Like item"}
+              className="absolute top-1 right-1 w-12 h-12 flex items-center justify-center"
+            >
+              <span className="w-[34px] h-[34px] rounded-full bg-white/80 flex items-center justify-center text-black">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinejoin="round"
+                    fill={liked ? "currentColor" : "none"}
+                  />
+                </svg>
+              </span>
+            </button>
+            {displayImages.length > 1 && (
+              <span className="absolute bottom-3 right-3 rounded-full bg-white/80 px-[9px] py-1 text-[11px] font-medium text-black tabular-nums">
+                {slide + 1} / {displayImages.length}
+              </span>
+            )}
+          </div>
 
           {/* Thumbnails — only when there are multiple images.
               A piece can carry a dozen photos, and the rail used to grow to fit
@@ -168,7 +239,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               There is no "more than N photos" threshold either: `auto` overflow
               already means "scroll only when it doesn't fit". */}
           {displayImages.length > 1 && (
-            <div className="order-2 md:order-1 shrink-0 md:relative md:w-16 lg:w-20">
+            <div className="hidden md:block md:order-1 shrink-0 md:relative md:w-16 lg:w-20">
             <div
               ref={thumbsRef}
               className="flex gap-2 overflow-x-auto no-scrollbar md:absolute md:inset-0 md:flex-col md:overflow-x-hidden md:overflow-y-auto"
@@ -193,7 +264,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               full height — product shots are portrait and use object-contain, so
               a full-height box would be mostly empty white. */}
           <div
-            className="order-1 md:order-2 flex-1 min-w-0 md:self-start rounded-2xl overflow-hidden border border-[var(--border)] bg-white"
+            className="hidden md:block md:order-2 flex-1 min-w-0 md:self-start rounded-2xl overflow-hidden border border-[var(--border)] bg-white"
             style={photoBackdrop(product.bgColor)}
           >
             <div
@@ -241,22 +312,75 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
         </div>
 
         {/* ── Right: Product info ── */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-6 md:px-10 py-8 md:py-12 flex flex-col">
+        <div className="md:rounded-2xl md:border md:border-[var(--border)] md:bg-[var(--background)] px-1 md:px-10 pb-8 md:py-12 flex flex-col">
 
           {/* Brand + Name */}
           <div className="mb-6">
-            <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
+            <p className="text-[13px] md:text-[10px] md:tracking-[0.2em] md:uppercase font-semibold md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-0.5 md:mb-2">
               {product.brand}
             </p>
+            {/* Any `tracking-` class turns off the size-based tracking rule in
+                globals.css, so desktop's −0.015em is spelled out here. */}
             <ClampedHeading
               text={product.name}
               label="product name"
-              className="text-3xl md:text-4xl font-bold text-[var(--foreground)] leading-tight"
+              className="text-[22px] md:text-4xl font-semibold md:font-bold tracking-[-0.01em] md:tracking-[-0.015em] text-[var(--foreground)] leading-tight"
             />
+
+            {/* Phones: the colours right under the name (mockup v1 «Б · Товар»). */}
+            {product.variants && product.variants.length > 1 ? (
+              <div className="md:hidden mt-3 -ml-2 flex flex-wrap items-center">
+                {product.variants.map((swatch: ProductSwatch) => {
+                  const isCurrent = swatch.id === product.id;
+                  return (
+                    <Link
+                      key={swatch.id}
+                      href={`/product/${swatch.id}`}
+                      aria-label={`View in ${swatch.colorName}`}
+                      aria-current={isCurrent ? "page" : undefined}
+                      className="w-11 h-11 flex items-center justify-center"
+                    >
+                      <span
+                        className="w-7 h-7 rounded-full"
+                        style={{
+                          backgroundColor: swatch.colorHex,
+                          boxShadow: isCurrent
+                            ? "0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
+                            : "0 0 0 1px var(--border)",
+                        }}
+                      />
+                    </Link>
+                  );
+                })}
+                <span className="ml-1.5 text-[14px] text-[var(--foreground-muted)]">
+                  {product.variants.find((v: ProductSwatch) => v.id === product.id)?.colorName ?? product.colors?.[0]}
+                </span>
+              </div>
+            ) : product.colors.length > 0 && (
+              <div className="md:hidden mt-3.5 flex flex-wrap gap-2" role="group" aria-label="Colours">
+                {product.colors.map((color) => {
+                  const on = selectedColor === color;
+                  const hasImages = !!(product.colorImages?.[color]?.length);
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      aria-pressed={on}
+                      className={`relative h-9 px-3.5 rounded-full text-[13px] transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${
+                        on ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
+                      }`}
+                    >
+                      {color}
+                      {hasImages && !on && <span aria-hidden="true" className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-[var(--foreground)]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Price */}
-          <div className="mb-8 pb-8 border-b border-[var(--border)]">
+          {/* Price — phones read it in the buy bar */}
+          <div className="hidden md:block mb-8 pb-8 border-b border-[var(--border)]">
             <p className="text-2xl font-bold text-[var(--foreground)]">
               From {formatPrice(lowestPrice, lowestPriceCurrency ?? product.currency)}
             </p>
@@ -284,7 +408,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
           {/* Variant color swatches — navigate to sibling product pages */}
           {product.variants && product.variants.length > 1 && (
-            <div className="mb-6">
+            <div className="hidden md:block mb-6">
               <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-3">
                 Color
                 <span className="ml-2 normal-case text-[var(--foreground)]">
@@ -316,7 +440,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
           {/* Colors — only shown when there are no variant swatches */}
           {product.colors.length > 0 && !(product.variants && product.variants.length > 1) && (
-            <div className="mb-8">
+            <div className="hidden md:block mb-8">
               <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-3">
                 Available in
                 {selectedColor && (
@@ -368,9 +492,9 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             </div>
           )}
 
-          {/* Where to buy */}
+          {/* Where to buy — the phone buy bar scrolls here */}
           {product.retailers.length > 0 && (
-            <div>
+            <div id="where-to-buy" className="scroll-mt-20">
               <div className="flex items-center justify-between gap-3 mb-5">
                 <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--foreground)]">
                   Where to buy
@@ -581,6 +705,38 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
       {/* Recently viewed — last, and only if this browser has a history */}
       <RecentlyViewed kind="product" currentId={product.id} />
+
+      {/* Phones: the buy bar stands where the tab bar would (DESIGN_SYSTEM.md §12.8). */}
+      <div className="md:hidden fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)] z-40 h-16 rounded-3xl border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md flex items-center gap-2 pl-[18px] pr-2.5">
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-[15px] font-semibold text-[var(--foreground)]">
+            From {formatPrice(lowestPrice, lowestPriceCurrency ?? product.currency)}
+          </p>
+          {storeCount > 0 && (
+            <p className="text-[12px] text-[var(--foreground-muted)]">{storeCount} {storeCount === 1 ? "store" : "stores"}</p>
+          )}
+        </div>
+        <button
+          onClick={toggleBag}
+          aria-label={inBag ? "Remove from bag" : "Add to bag"}
+          className="shrink-0 w-11 h-11 rounded-full bg-[var(--fg-overlay-08)] text-[var(--foreground)] flex items-center justify-center"
+        >
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M6 8h12l-1 12H7L6 8Z" />
+            <path d="M9 8V6.5a3 3 0 0 1 6 0V8" />
+            {inBag ? <path d="M9.5 14l2 2 3.5-3.5" /> : <path d="M12 11v5M9.5 13.5h5" />}
+          </svg>
+        </button>
+        {storeCount > 0 && (
+          <a
+            href="#where-to-buy"
+            onClick={(e) => { e.preventDefault(); document.getElementById("where-to-buy")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+            className="shrink-0 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold flex items-center"
+          >
+            Where to buy
+          </a>
+        )}
+      </div>
     </>
   );
 }
