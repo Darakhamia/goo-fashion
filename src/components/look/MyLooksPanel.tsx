@@ -789,7 +789,7 @@ function LookCard({
       <AnimatePresence>
       {editing && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4 bg-black/60 md:bg-black/50 backdrop-blur-sm"
           {...editorBackdrop}
         >
           <motion.div
@@ -797,21 +797,23 @@ function LookCard({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.92 }}
             transition={{ duration: 0.15 }}
-            className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-6 max-w-md w-full max-h-[85vh] overflow-y-auto"
+            className="bg-[var(--surface)] md:bg-[var(--background)] md:border md:border-[var(--border)] rounded-t-3xl md:rounded-2xl px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+20px)] md:p-6 md:max-w-md w-full max-h-[calc(100%-56px)] md:max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="Edit look details"
           >
-            <p className="text-sm font-medium text-[var(--foreground)] mb-5">Edit look</p>
+            {/* Phones: a sheet from the bottom (DESIGN_SYSTEM.md §12.7). */}
+            <div aria-hidden="true" className="md:hidden mx-auto -mt-2 mb-3 w-9 h-1 rounded-full bg-[var(--border-strong)]" />
+            <p className="text-[18px] md:text-sm font-semibold md:font-medium text-[var(--foreground)] mb-4 md:mb-5">Edit look</p>
 
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
+              <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)]">
                 Name
               </label>
               <button
                 onClick={suggestCopy}
-                className="text-[10px] uppercase tracking-[0.12em] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="max-md:-mr-3 max-md:h-11 max-md:px-3 text-[14px] md:text-[10px] md:uppercase md:tracking-[0.12em] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 title="Fill the name and description from this look's brands, style and price"
               >
                 Suggest
@@ -826,7 +828,7 @@ function LookCard({
               className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors mb-5"
             />
 
-            <label className="block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5">
+            <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5">
               Description
             </label>
             <textarea
@@ -838,10 +840,10 @@ function LookCard({
               className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors mb-5 resize-none"
             />
 
-            <label className="block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5">
+            <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)] mb-2.5 md:mb-1.5">
               Styles
             </label>
-            <div className="flex flex-wrap gap-1.5 mb-6">
+            <div className="flex flex-wrap gap-2 md:gap-1.5 mb-6">
               {STYLE_KEYWORDS.map((kw) => {
                 const on = draft.styleKeywords.includes(kw);
                 return (
@@ -849,10 +851,10 @@ function LookCard({
                     key={kw}
                     onClick={() => toggleDraftStyle(kw)}
                     aria-pressed={on}
-                    className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
+                    className={`h-9 md:h-auto px-3.5 md:px-4 md:py-2 rounded-full md:border text-[13px] md:text-[11px] md:tracking-[0.12em] capitalize md:uppercase md:font-medium transition-colors duration-200 ${
                       on
-                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                        ? "md:border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)] max-md:font-semibold"
+                        : "bg-[var(--fg-overlay-08)] md:bg-transparent md:border-[var(--border-strong)] text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:border-[var(--foreground)] md:hover:text-[var(--foreground)]"
                     }`}
                   >
                     {kw}
@@ -870,13 +872,13 @@ function LookCard({
             <div className="flex gap-2">
               <button
                 onClick={commitDetails}
-                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+                className="flex-1 h-12 md:h-9 text-[15px] md:text-[11px] md:tracking-[0.1em] md:uppercase font-semibold md:font-medium rounded-full md:rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
               >
                 Save
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium rounded-xl border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="flex-1 h-12 md:h-9 text-[15px] md:text-[11px] md:tracking-[0.1em] md:uppercase font-medium rounded-full md:rounded-xl bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[var(--foreground)] md:text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 Cancel
               </button>
@@ -890,7 +892,7 @@ function LookCard({
       <AnimatePresence>
       {confirmDelete && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4 bg-black/60 md:bg-black/50 backdrop-blur-sm"
           {...deleteBackdrop}
         >
           <motion.div
@@ -898,23 +900,29 @@ function LookCard({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.92 }}
             transition={{ duration: 0.15 }}
-            className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-6 max-w-xs w-full"
+            className="bg-[var(--surface)] md:bg-[var(--background)] md:border md:border-[var(--border)] rounded-t-3xl md:rounded-2xl px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+20px)] md:p-6 md:max-w-xs w-full"
             onClick={(e) => e.stopPropagation()}
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="Delete this look?"
           >
-            <p className="text-sm font-medium text-[var(--foreground)] mb-1">Delete this look?</p>
-            <p className="text-[11px] text-[var(--foreground-subtle)] mb-5">This action cannot be undone.</p>
+            <div aria-hidden="true" className="md:hidden mx-auto -mt-2 mb-3 w-9 h-1 rounded-full bg-[var(--border-strong)]" />
+            <p className="text-[18px] md:text-sm font-semibold md:font-medium text-[var(--foreground)] mb-1">Delete this look?</p>
+            <p className="text-[14px] md:text-[11px] text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-5">This action cannot be undone.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => { onDelete(); setConfirmDelete(false); }}
-                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+                className="flex-1 h-12 md:h-9 text-[15px] md:text-[11px] md:tracking-[0.1em] md:uppercase font-semibold md:font-medium rounded-full md:rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
               >
-                Yes
+                <span className="md:hidden">Delete</span>
+                <span className="hidden md:inline">Yes</span>
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium rounded-xl border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="flex-1 h-12 md:h-9 text-[15px] md:text-[11px] md:tracking-[0.1em] md:uppercase font-medium rounded-full md:rounded-xl bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[var(--foreground)] md:text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
-                No
+                <span className="md:hidden">Cancel</span>
+                <span className="hidden md:inline">No</span>
               </button>
             </div>
           </motion.div>
@@ -926,7 +934,7 @@ function LookCard({
       <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/60 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -938,12 +946,17 @@ function LookCard({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 12 }}
             transition={{ duration: 0.2 }}
-            className={`bg-[var(--background)] w-full overflow-hidden flex flex-col rounded-2xl max-w-3xl`}
-            style={{ height: "min(90vh, 680px)" }}
+            className="bg-[var(--surface)] md:bg-[var(--background)] w-full overflow-hidden flex flex-col rounded-t-3xl md:rounded-2xl md:max-w-3xl max-h-[calc(100%-56px)] md:max-h-none md:h-[min(90vh,680px)]"
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={displayName}
           >
+            {/* Phones: a sheet from the bottom — photo, pieces, then the actions
+                pinned to its foot (DESIGN_SYSTEM.md §12.7). Desktop keeps two columns. */}
+            <div aria-hidden="true" className="md:hidden mx-auto mt-2 w-9 h-1 shrink-0 rounded-full bg-[var(--border-strong)]" />
             {/* Modal header — name + metadata only, actions live in the right column */}
-            <div className="flex items-start justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+            <div className="flex items-start justify-between px-5 pt-2 pb-3 md:py-4 md:border-b md:border-[var(--border)] shrink-0">
               <div className="flex-1 min-w-0 mr-4">
                 {modalEditingName ? (
                   <input
@@ -955,7 +968,7 @@ function LookCard({
                       if (e.key === "Enter") { e.preventDefault(); commitName(); }
                       if (e.key === "Escape") { setNameValue(look.name || autoName); setModalEditingName(false); }
                     }}
-                    className="w-full text-[17px] font-bold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
+                    className="w-full text-base md:text-[17px] font-semibold md:font-bold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
                     placeholder="Name this look…"
                     autoFocus
                   />
@@ -965,7 +978,7 @@ function LookCard({
                     className="flex items-center gap-2 group/rename max-w-full"
                     title="Rename"
                   >
-                    <span className="text-[17px] font-bold text-[var(--foreground)] leading-snug truncate">
+                    <span className="text-[18px] md:text-[17px] font-semibold md:font-bold text-[var(--foreground)] leading-snug truncate">
                       {displayName}
                     </span>
                     <svg
@@ -1002,7 +1015,7 @@ function LookCard({
                     {look.styleKeywords.map((kw) => (
                       <span
                         key={kw}
-                        className="px-2.5 py-1 rounded-full border border-[var(--border)] text-[9px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]"
+                        className="inline-flex md:inline items-center h-7 md:h-auto px-3 md:px-2.5 md:py-1 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[12px] md:text-[9px] md:tracking-[0.12em] capitalize md:uppercase md:font-medium text-[var(--foreground)] md:text-[var(--foreground-muted)]"
                       >
                         {kw}
                       </span>
@@ -1013,18 +1026,18 @@ function LookCard({
               <button
                 onClick={() => { setOpen(false); setModalEditingName(false); setModalShare(false); }}
                 aria-label="Close"
-                className="mt-1 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                className="max-md:-mr-3 max-md:-mt-1.5 max-md:w-11 max-md:h-11 max-md:flex max-md:items-center max-md:justify-center md:mt-1 text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
               >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="max-md:w-4 max-md:h-4">
                   <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
 
             {/* Body */}
-            <div className="flex min-h-0 flex-1">
+            <div className="flex flex-col md:flex-row min-h-0 flex-1 max-md:overflow-y-auto max-md:overscroll-contain">
               {/* Left: single look image (or collage when no image) — no carousel */}
-              <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden bg-[var(--surface)]">
+              <div className="relative w-full aspect-square md:aspect-auto md:w-[56%] shrink-0 md:border-r md:border-[var(--border)] overflow-hidden bg-[var(--surface)]">
                 {look.generatedImage ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1034,7 +1047,7 @@ function LookCard({
                       className="w-full h-full object-cover object-top"
                     />
                     {look.generatedStyle && (
-                      <span className="absolute top-3 left-3 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-1 rounded-md backdrop-blur-sm">
+                      <span className="absolute top-3 left-3 md:font-mono text-[11px] md:text-[8px] font-semibold md:font-normal md:tracking-[0.18em] md:uppercase bg-white/80 md:bg-black/55 text-black md:text-white px-[9px] md:px-2 py-1 rounded-full md:rounded-md md:backdrop-blur-sm">
                         {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
                       </span>
                     )}
@@ -1046,7 +1059,7 @@ function LookCard({
                         onClick={() => setPhotoMenu((v) => !v)}
                         aria-label="Photo actions"
                         aria-expanded={photoMenu}
-                        className="w-9 h-9 rounded-full bg-[var(--background)]/85 backdrop-blur-sm flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+                        className="w-11 h-11 md:w-9 md:h-9 rounded-full bg-[var(--background)]/85 backdrop-blur-sm flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                           <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
@@ -1104,7 +1117,7 @@ function LookCard({
                     </div>
                   </>
                 ) : (
-                  <div className="absolute inset-0 bg-gray-200 flex flex-col gap-px">
+                  <div className="absolute inset-0 bg-white md:bg-gray-200 flex flex-col gap-px">
                     {(() => {
                       const n = pieces.length;
                       const cell = (piece: typeof pieces[0], pad = "p-3") => (
@@ -1154,7 +1167,7 @@ function LookCard({
 
               {/* Right: pieces list + actions */}
               <div className="flex-1 flex flex-col min-w-0">
-                <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
+                <div className="md:flex-1 md:overflow-y-auto divide-y divide-[var(--border)]">
                   {pieces.length > 0 ? pieces.map(({ slot, imageUrl, name, productId, price, color }) => (
                     <Link
                       key={slot}
@@ -1177,10 +1190,10 @@ function LookCard({
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-mono text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5">{SLOT_LABEL[slot] ?? slot}</p>
-                        <p className="text-xs text-[var(--foreground)] leading-snug line-clamp-2">{name}</p>
+                        <p className="md:font-mono text-[12px] md:text-[8px] md:tracking-[0.12em] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-0.5">{SLOT_LABEL[slot] ?? slot}</p>
+                        <p className="text-[14px] md:text-xs text-[var(--foreground)] leading-snug line-clamp-2">{name}</p>
                         {(price !== null || color) && (
-                          <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5 truncate">
+                          <p className="text-[12px] md:text-[11px] text-[var(--foreground-muted)] mt-0.5 truncate">
                             {[price !== null ? formatPrice(price) : null, color].filter(Boolean).join(" • ")}
                           </p>
                         )}
@@ -1191,13 +1204,14 @@ function LookCard({
                     </Link>
                   )) : (
                     <div className="flex items-center justify-center h-full py-12">
-                      <p className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">No pieces</p>
+                      <p className="md:font-mono text-[13px] md:text-[9px] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)]">No pieces</p>
                     </div>
                   )}
                 </div>
 
-                {/* Footer: total, primary action, secondary actions, publication */}
-                <div className="shrink-0 border-t border-[var(--border)] px-4 pt-3.5 pb-4">
+                {/* Footer: total, primary action, secondary actions, publication.
+                    Phones pin it to the foot of the sheet while the rest scrolls. */}
+                <div className="shrink-0 max-md:sticky max-md:bottom-0 max-md:bg-[var(--surface)] border-t border-[var(--border)] px-4 pt-3.5 pb-[calc(env(safe-area-inset-bottom)+16px)] md:pb-4">
                   <div className="flex items-baseline justify-between">
                     <span className="text-[13px] font-medium text-[var(--foreground)]">Total</span>
                     <span className="text-[15px] font-semibold text-[var(--foreground)]">{formatPrice(look.totalPrice)}</span>
@@ -1206,7 +1220,7 @@ function LookCard({
                   <button
                     onClick={handleAddToBag}
                     disabled={availableCount === 0}
-                    className={`mt-3 w-full h-11 md:h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
+                    className={`mt-3 w-full h-12 md:h-10 rounded-full md:rounded-xl flex items-center justify-center gap-2 text-[15px] md:text-[11px] md:tracking-[0.1em] md:uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
                       bagAdded
                         ? "bg-green-600 text-white"
                         : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
@@ -1232,7 +1246,7 @@ function LookCard({
                   <Link
                     href={builderUrl}
                     onClick={() => setOpen(false)}
-                    className="mt-2.5 w-full h-10 md:h-9 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+                    className="mt-2 md:mt-2.5 w-full h-11 md:h-9 rounded-full md:rounded-lg bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] flex items-center justify-center gap-1.5 text-[14px] md:text-[11px] font-medium text-[var(--foreground)] md:text-[var(--foreground-muted)] hover:text-[var(--foreground)] md:hover:border-[var(--border-strong)] transition-colors"
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
                       <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
@@ -1240,10 +1254,10 @@ function LookCard({
                     Edit pieces
                   </Link>
 
-                  <div className="relative flex items-center gap-2 md:gap-1.5 mt-2.5">
+                  <div className="relative flex items-center gap-2 md:gap-1.5 mt-2 md:mt-2.5">
                     <button
                       onClick={openEditor}
-                      className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+                      className="flex-1 h-11 md:h-8 rounded-full md:rounded-lg bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] flex items-center justify-center gap-1.5 text-[14px] md:text-[11px] font-medium text-[var(--foreground)] md:text-[var(--foreground-muted)] hover:text-[var(--foreground)] md:hover:border-[var(--border-strong)] transition-colors"
                     >
                       <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
                         <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
@@ -1252,7 +1266,7 @@ function LookCard({
                     </button>
                     <button
                       onClick={() => setModalShare((v) => { const next = !v; if (next) void ensureShared(); return next; })}
-                      className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+                      className="flex-1 h-11 md:h-8 rounded-full md:rounded-lg bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] flex items-center justify-center gap-1.5 text-[14px] md:text-[11px] font-medium text-[var(--foreground)] md:text-[var(--foreground-muted)] hover:text-[var(--foreground)] md:hover:border-[var(--border-strong)] transition-colors"
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="hidden md:block">
                         <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -1299,7 +1313,7 @@ function LookCard({
                     </ActionMenu>
                     <button
                       onClick={() => setConfirmDelete(true)}
-                      className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-red-500 hover:border-red-500 transition-colors"
+                      className="flex-1 h-11 md:h-8 rounded-full md:rounded-lg bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] flex items-center justify-center gap-1.5 text-[14px] md:text-[11px] font-medium text-red-500 md:hover:border-red-500 transition-colors"
                     >
                       {/* Icon hidden below md for the same reason as its two
                           siblings: the label alone barely fits a phone. */}

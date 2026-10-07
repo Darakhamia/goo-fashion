@@ -230,10 +230,8 @@ export default function BuilderPage() {
   const [saved, setSaved] = useState(false);
   const [savingLook, setSavingLook] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
-  const [showSavedPopup, setShowSavedPopup] = useState(false);
   const [copied, setCopied] = useState(false);
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
-  const [showSaveModal, setShowSaveModal] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [pendingLookName, setPendingLookName] = useState("");
   const [colorPickerSlot, setColorPickerSlot] = useState<SlotId | null>(null);
@@ -2340,12 +2338,11 @@ export default function BuilderPage() {
 
       </div>
 
-      {/* ── MOBILE SAVE MODAL ─────────────────────────────────────────────── */}
-      {/* ── NAME & SAVE MODAL (desktop + mobile) ─────────────────────────── */}
+      {/* ── NAME & SAVE MODAL — desktop; phones get the sheet below ─────── */}
       <AnimatePresence>
       {showNameModal && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[80] hidden md:flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
           {...nameBackdrop}
         >
           <motion.div
@@ -2455,196 +2452,169 @@ export default function BuilderPage() {
       )}
       </AnimatePresence>
 
-      {showSaveModal && (
-        <div className="md:hidden fixed inset-0 z-[60] flex items-end justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowSaveModal(false)}
-          />
-          {/* Sheet */}
-          <div className="relative w-full bg-[var(--background)] rounded-t-2xl px-5 pb-8 pt-5 animate-slide-up">
-            {/* Handle */}
-            <div className="flex justify-center mb-4">
-              <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
-            </div>
-
-            {/* Outfit preview — small thumbnails of selected pieces */}
-            <div className="flex gap-2 justify-center mb-5">
-              {SLOTS.map(slot => {
-                const picked = selection[slot.id];
-                const variantId = variantOverrides[slot.id];
-                const activeVariant = picked?.variants?.find(v => v.id === variantId);
-                const colorKey = colorImageOverrides[slot.id];
-                if (!picked) return null;
-                const shown = displayedProduct(picked, {
-                  variant: activeVariant,
-                  colorImages: colorKey ? picked.colorImages?.[colorKey] : null,
-                });
-                return (
-                  <div
-                    key={slot.id}
-                    className="w-16 h-20 bg-white overflow-hidden shrink-0"
-                    style={photoBackdrop(shown.bgColor)}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={shown.imageUrl!} alt={shown.name} className="w-full h-full object-contain" />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Message */}
-            <div className="text-center mb-6">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="#c9a84c" stroke="none">
-                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                </svg>
-                <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground)]">Look saved</p>
+      {/* Phones: "Save look" is a sheet from the bottom (DESIGN_SYSTEM.md §12.7,
+          mockup v2 «Б · Конструктор — сохранить образ»). */}
+      {showNameModal && (() => {
+        const firstPiece = SLOTS.map(s => selection[s.id]).find(Boolean);
+        const thumb = generatedImage ?? firstPiece?.imageUrl ?? null;
+        return (
+          <div className="md:hidden fixed inset-0 z-[80] flex flex-col justify-end">
+            <div aria-hidden="true" className="ov-scrim absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowNameModal(false)} />
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="save-look-title"
+              className="ov-rise relative rounded-t-3xl bg-[var(--surface)] px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+16px)]"
+            >
+              <div aria-hidden="true" className="mx-auto w-9 h-1 rounded-full bg-[var(--border-strong)]" />
+              <div className="mt-1 flex items-center">
+                <h2 id="save-look-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">Save look</h2>
+                <button
+                  onClick={() => setShowNameModal(false)}
+                  aria-label="Close"
+                  className="-mr-2.5 w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
               </div>
-              <p className="text-[12px] text-[var(--foreground-subtle)]">Added to My Looks in your profile</p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col gap-3">
-              <Link
-                href="/saved?tab=looks"
-                onClick={() => setShowSaveModal(false)}
-                className="w-full h-11 bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-mono text-[10px] tracking-[0.18em] uppercase rounded-full"
-              >
-                View my looks →
-              </Link>
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className="w-full h-11 border border-[var(--border-strong)] text-[var(--foreground-muted)] flex items-center justify-center font-mono text-[10px] tracking-[0.14em] uppercase rounded-full"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── MOBILE FILTERS BOTTOM SHEET ───────────────────────────────────── */}
-      {mobileFiltersOpen && (
-        <div className="md:hidden fixed inset-0 z-[70] flex flex-col justify-end">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMobileFiltersOpen(false)}
-          />
-          {/* Sheet */}
-          <div className="relative bg-[var(--background)] rounded-t-2xl flex flex-col" style={{ maxHeight: "90dvh" }}>
-            {/* Handle */}
-            <div className="flex justify-center pt-3 shrink-0">
-              <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
-            </div>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 shrink-0">
-              <p className="text-[11px] tracking-[0.18em] uppercase font-black text-[var(--foreground)]" style={{ textShadow: "0 0 14px rgba(255,255,255,0.3)" }}>Filters</p>
-              <button
-                onClick={() => setMobileFiltersOpen(false)}
-                className="p-1.5 -mr-1.5 flex items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-              >
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                  <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Scrollable sections */}
-            <div className="overflow-y-auto flex-1 px-5" style={{ WebkitOverflowScrolling: "touch" }}>
-
-              {/* Sort by */}
-              <div className="mb-7">
-                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Sort by</p>
-                <div className="flex flex-wrap gap-2">
-                  {([
-                    { value: "featured", label: "Featured" },
-                    { value: "new-in", label: "New In" },
-                    { value: "price-asc", label: "Price: Low to High" },
-                    { value: "price-desc", label: "Price: High to Low" },
-                  ] as const).map(({ value, label }) => (
-                    <button
-                      key={value}
-                      onClick={() => setSortBy(value)}
-                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 ${
-                        sortBy === value
-                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              <div className="mt-1.5 flex items-center gap-3">
+                <span className="w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-white">
+                  {thumb && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt="" className={`w-full h-full ${generatedImage ? "object-cover" : "object-contain p-1.5"}`} />
+                  )}
+                </span>
+                <div>
+                  <p className="text-[15px] font-medium text-[var(--foreground)]">{selectedCount} {selectedCount === 1 ? "piece" : "pieces"}</p>
+                  <p className="mt-0.5 text-[13px] text-[var(--foreground-muted)]">{formatPrice(totalPrice)} in total</p>
                 </div>
               </div>
+              <label className="mt-[18px] block text-[13px] text-[var(--foreground-muted)]">
+                Name
+                <input
+                  type="text"
+                  value={pendingLookName}
+                  onChange={e => setPendingLookName(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && pendingLookName.trim()) confirmSave(); }}
+                  placeholder="Name your look…"
+                  className="mt-2 block w-full h-[50px] px-3.5 rounded-2xl border border-[var(--border-strong)] focus:border-[var(--foreground)] bg-transparent text-base text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none! transition-colors"
+                />
+              </label>
+              {saveFailed && (
+                <p role="alert" className="mt-2 text-[13px] text-[var(--foreground-muted)]">Couldn’t save the look. Try again.</p>
+              )}
+              <button
+                onClick={confirmSave}
+                disabled={!pendingLookName.trim() || savingLook}
+                className="mt-[18px] w-full h-[50px] rounded-full bg-[var(--foreground)] text-[var(--background)] text-[16px] font-semibold disabled:opacity-40"
+              >
+                {savingLook ? "Saving…" : saveFailed ? "Retry save" : "Save look"}
+              </button>
+            </section>
+          </div>
+        );
+      })()}
 
-              {/* Category */}
-              <div className="mb-7">
-                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Category</p>
-                <div className="border border-[var(--border)] rounded-xl overflow-hidden">
-                  {/* All row */}
-                  <button
-                    onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
-                    className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
-                  >
-                    <span className={`text-[14px] font-medium ${selectedSubcategories.length === 0 && !catalogCategory ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
-                    {selectedSubcategories.length === 0 && !catalogCategory && (
-                      <svg width="11" height="9" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </button>
-                  {/* Group rows */}
-                  {categoryGroups.map(group => {
-                    const isOpen = expandedCategoryGroups.has(group.id);
-                    const groupLabels = group.items.map(i => i.label);
-                    const groupActive = groupLabels.some(l => selectedSubcategories.includes(l));
-                    const viewAllChecked = groupLabels.every(l => selectedSubcategories.includes(l));
-                    return (
-                      <div key={group.id} className="border-t border-[var(--border)]">
+      {/* ── MOBILE FILTERS BOTTOM SHEET ─────────────────────────────────────
+          The sheet of DESIGN_SYSTEM.md §12.7 with the chips of §12.10 — the same
+          shape as the catalogue's "Sort & filter" sheet. ───────────────────── */}
+      {mobileFiltersOpen && (() => {
+        const chip = (on: boolean) =>
+          `relative h-9 px-3.5 rounded-full text-[13px] transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${
+            on ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
+          }`;
+        const label = "mb-2.5 text-[13px] text-[var(--foreground-muted)]";
+        const brands = availableBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase()));
+        return (
+          <div className="md:hidden fixed inset-0 z-[70] flex flex-col justify-end">
+            <div aria-hidden="true" className="ov-scrim absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileFiltersOpen(false)} />
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="builder-filters-title"
+              className="ov-rise relative max-h-[calc(100%-56px)] rounded-t-3xl bg-[var(--surface)] flex flex-col pb-[calc(env(safe-area-inset-bottom)+16px)]"
+            >
+              <div aria-hidden="true" className="mx-auto mt-2 w-9 h-1 shrink-0 rounded-full bg-[var(--border-strong)]" />
+              <div className="flex items-center pl-5 pr-2 shrink-0">
+                <h2 id="builder-filters-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">Filters</h2>
+                <button
+                  onClick={() => setMobileFiltersOpen(false)}
+                  aria-label="Close"
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-2 pb-4 space-y-[22px]">
+                <section>
+                  <h3 className={label}>Sort by</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { value: "featured", label: "Featured" },
+                      { value: "new-in", label: "New in" },
+                      { value: "price-asc", label: "Price: low to high" },
+                      { value: "price-desc", label: "Price: high to low" },
+                    ] as const).map(({ value, label: text }) => (
+                      <button key={value} onClick={() => setSortBy(value)} aria-pressed={sortBy === value} className={chip(sortBy === value)}>
+                        {text}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Category: a group chip opens its pieces, as in the catalogue's sheet */}
+                <section>
+                  <h3 className={label}>Category</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
+                      aria-pressed={selectedSubcategories.length === 0 && !catalogCategory}
+                      className={chip(selectedSubcategories.length === 0 && !catalogCategory)}
+                    >
+                      All
+                    </button>
+                    {categoryGroups.map(group => {
+                      const picked = group.items.filter(i => selectedSubcategories.includes(i.label)).length;
+                      return (
                         <button
+                          key={group.id}
+                          aria-expanded={expandedCategoryGroups.has(group.id)}
                           onClick={() => setExpandedCategoryGroups(prev => {
                             const next = new Set(prev);
-                            next.has(group.id) ? next.delete(group.id) : next.add(group.id);
+                            if (next.has(group.id)) next.delete(group.id); else next.add(group.id);
                             return next;
                           })}
-                          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
+                          className={chip(picked > 0)}
                         >
-                          <span className={`shrink-0 ${groupActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.icon}</span>
-                          <span className={`flex-1 text-left text-[14px] font-semibold ${groupActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.label}</span>
-                          <svg width="10" height="10" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
-                            <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          {group.label}{picked > 0 && <span className="ml-1 opacity-60">{picked}</span>}
                         </button>
-                        {isOpen && (<>
-                          {/* View all — card style with left checkbox */}
+                      );
+                    })}
+                  </div>
+                  {categoryGroups.filter(g => expandedCategoryGroups.has(g.id)).map(group => {
+                    const groupLabels = group.items.map(i => i.label);
+                    const viewAllChecked = groupLabels.every(l => selectedSubcategories.includes(l));
+                    return (
+                      <div key={group.id} className="mt-3.5">
+                        <p className="mb-2 text-[12px] text-[var(--foreground-muted)]">{group.label}</p>
+                        <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => {
                               setCatalogCategory(null);
                               setSelectedSubcategories(prev =>
-                                viewAllChecked
-                                  ? prev.filter(l => !groupLabels.includes(l))
-                                  : [...new Set([...prev, ...groupLabels])]
+                                viewAllChecked ? prev.filter(l => !groupLabels.includes(l)) : [...new Set([...prev, ...groupLabels])]
                               );
                             }}
-                            className="mx-4 mb-1 mt-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-[var(--border)] hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
-                            style={{ width: "calc(100% - 32px)" }}
+                            aria-pressed={viewAllChecked}
+                            className={chip(viewAllChecked)}
                           >
-                            <div
-                              className="shrink-0 flex items-center justify-center border transition-colors"
-                              style={{ width: 16, height: 16, background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
-                            >
-                              {viewAllChecked && (
-                                <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
-                                  <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className={`text-[14px] font-semibold italic ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                            All {group.label.toLowerCase()}
                           </button>
-                          {/* Subcategory items */}
                           {group.items.map(item => {
                             const isChecked = selectedSubcategories.includes(item.label);
                             return (
@@ -2656,213 +2626,143 @@ export default function BuilderPage() {
                                     isChecked ? prev.filter(l => l !== item.label) : [...prev, item.label]
                                   );
                                 }}
-                                className="w-full flex items-center justify-between border-t border-[var(--border)] pl-10 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
+                                aria-pressed={isChecked}
+                                className={chip(isChecked)}
                               >
-                                <span className={`text-[14px] font-medium ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
-                                <div
-                                  className="shrink-0 flex items-center justify-center border transition-colors"
-                                  style={{ width: 20, height: 20, borderRadius: "50%", background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
-                                >
-                                  {isChecked && (
-                                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                                      <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                  )}
-                                </div>
+                                {item.label}
                               </button>
                             );
                           })}
-                        </>)}
+                        </div>
                       </div>
                     );
                   })}
-                </div>
-              </div>
+                </section>
 
-              {/* Price range */}
-              <div className="mb-7">
-                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Price range</p>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[12px] text-[var(--foreground-subtle)]">$0</span>
-                  <span className="text-[12px] font-medium text-[var(--foreground)]">
-                    {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={2000}
-                  step={50}
-                  value={maxPrice ?? 2000}
-                  onChange={e => {
-                    const val = Number(e.target.value);
-                    setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
-                  }}
-                  className="w-full h-1 accent-[var(--foreground)] cursor-pointer"
-                  style={{ accentColor: "var(--foreground)" }}
-                />
-              </div>
+                <section>
+                  <label className="block">
+                    <span className="flex items-center justify-between text-[13px] text-[var(--foreground-muted)]">
+                      Price, up to
+                      <span className="text-[15px] font-medium text-[var(--foreground)]">
+                        {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+                      </span>
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={2000}
+                      step={50}
+                      value={maxPrice ?? 2000}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+                      }}
+                      aria-label="Maximum price"
+                      className="mt-2 w-full h-11 cursor-pointer"
+                      style={{ accentColor: "var(--foreground)" }}
+                    />
+                  </label>
+                </section>
 
-              {/* Gender */}
-              <div className="mb-7">
-                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Gender</p>
-                <div className="flex flex-wrap gap-2">
-                  {([null, "men", "women", "unisex"] as (Gender | null)[]).map(g => (
-                    <button
-                      key={g ?? "all"}
-                      onClick={() => setSelectedGender(g)}
-                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 capitalize ${
-                        selectedGender === g
-                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                <section>
+                  <h3 className={label}>Gender</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {([null, "men", "women", "unisex"] as (Gender | null)[]).map(g => (
+                      <button key={g ?? "all"} onClick={() => setSelectedGender(g)} aria-pressed={selectedGender === g} className={chip(selectedGender === g)}>
+                        {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </section>
 
-              {/* Style */}
-              <div className="mb-7">
-                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Style</p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setFilterStyles([])}
-                    className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 ${
-                      filterStyles.length === 0
-                        ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    All
-                  </button>
-                  {STYLE_KEYWORD_LIST.map(st => {
-                    const isChk = filterStyles.includes(st);
-                    return (
-                      <button
-                        key={st}
-                        onClick={() => toggleFilterStyle(st)}
-                        aria-pressed={isChk}
-                        className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 ${
-                          isChk
-                            ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                            : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                        }`}
-                      >
+                <section>
+                  <h3 className={label}>Style</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setFilterStyles([])} aria-pressed={filterStyles.length === 0} className={chip(filterStyles.length === 0)}>All</button>
+                    {STYLE_KEYWORD_LIST.map(st => (
+                      <button key={st} onClick={() => toggleFilterStyle(st)} aria-pressed={filterStyles.includes(st)} className={chip(filterStyles.includes(st))}>
                         {styleLabel(st)}
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
+                    ))}
+                  </div>
+                </section>
 
-              {/* Color */}
-              <div className="mb-7">
-                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Color</p>
-                <div className="flex flex-wrap gap-3">
-                  {availableColors.map(({ name, hex }) => {
-                    const isActive = selectedColors.includes(name);
-                    return (
-                      <button
-                        key={name}
-                        title={name}
-                        onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== name) : [...prev, name])}
-                        className={`w-9 h-9 rounded-full shrink-0 transition-[transform,opacity] active:scale-95 ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
-                        style={{
-                          background: hex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : hex,
-                          boxShadow: isActive
-                            ? "0 0 0 2.5px var(--background), 0 0 0 4px var(--foreground)"
-                            : "inset 0 0 0 1px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.06)",
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
+                <section>
+                  <h3 className={label}>Colour</h3>
+                  <div className="flex flex-wrap -mx-1.5">
+                    {availableColors.map(({ name, hex }) => {
+                      const isActive = selectedColors.includes(name);
+                      return (
+                        <button
+                          key={name}
+                          onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== name) : [...prev, name])}
+                          aria-label={name}
+                          aria-pressed={isActive}
+                          className="w-11 h-11 flex items-center justify-center"
+                        >
+                          <span
+                            className="w-[30px] h-[30px] rounded-full"
+                            style={{
+                              background: hex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : hex,
+                              boxShadow: isActive ? "0 0 0 2px var(--surface), 0 0 0 3.5px var(--foreground)" : "0 0 0 1px var(--border)",
+                            }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
 
-              {/* Brand */}
-              <div className="mb-4">
-                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Brand</p>
-                {/* Brand search */}
-                <div className="relative mb-3">
-                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
-                    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
-                    <path d="M10 10L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                  </svg>
+                <section>
+                  <h3 className={label}>Brand</h3>
                   <input
-                    type="text"
+                    type="search"
                     value={brandSearch}
                     onChange={e => setBrandSearch(e.target.value)}
-                    placeholder="Search brand"
-                    className="w-full h-10 bg-[var(--surface)] border border-[var(--border)] rounded-xl pl-9 pr-4 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                    placeholder="Search brands"
+                    aria-label="Search brands"
+                    className="w-full h-12 px-3.5 rounded-2xl bg-[var(--fg-overlay-08)] text-base text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none! focus-visible:shadow-[inset_0_0_0_1px_var(--foreground)] [&::-webkit-search-cancel-button]:hidden"
                   />
-                </div>
-                {/* Brand list */}
-                <div>
-                  {availableBrands
-                    .filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase()))
-                    .map(brand => {
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {brands.map(brand => {
                       const isActive = selectedBrands.includes(brand);
                       return (
                         <button
                           key={brand}
                           onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
-                          className="w-full flex items-center justify-between py-3.5 border-b border-[var(--border)] text-left active:bg-[var(--surface)] transition-colors"
+                          aria-pressed={isActive}
+                          className={chip(isActive)}
                         >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`flex items-center justify-center shrink-0 border transition-colors ${
-                                isActive ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)] bg-transparent"
-                              }`}
-                              style={{ width: 18, height: 18 }}
-                            >
-                              {isActive && (
-                                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                                  <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className={`text-[14px] ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>
-                              {brand}
-                            </span>
-                          </div>
-                          <svg width="6" height="10" viewBox="0 0 6 10" fill="none" className="text-[var(--foreground-subtle)] shrink-0">
-                            <path d="M1 1L5 5L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          {brand}
                         </button>
                       );
-                    })
-                  }
-                  {availableBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())).length === 0 && (
-                    <p className="py-3 text-[13px] text-[var(--foreground-subtle)]">No brands found</p>
-                  )}
-                </div>
+                    })}
+                  </div>
+                  {brands.length === 0 && <p className="mt-1 text-[13px] text-[var(--foreground-muted)]">No brands found</p>}
+                </section>
               </div>
 
-            </div>
-
-            {/* Footer: Clear all + Show results */}
-            <div className="px-5 pt-4 pb-8 shrink-0 border-t border-[var(--border)] flex gap-3">
-              <button
-                onClick={() => { clearFilters(); }}
-                className="flex-1 h-12 border border-[var(--border-strong)] text-[var(--foreground)] text-[14px] font-medium rounded-xl hover:bg-[var(--surface)] transition-colors active:scale-[0.98]"
-              >
-                Clear all
-              </button>
-              <button
-                onClick={() => setMobileFiltersOpen(false)}
-                className="flex-1 h-12 bg-[var(--foreground)] text-[var(--background)] text-[14px] font-medium rounded-xl hover:opacity-90 transition-opacity active:scale-[0.98]"
-              >
-                Show results
-              </button>
-            </div>
+              <div className="shrink-0 px-5 pt-3 flex items-center gap-2.5">
+                <button
+                  onClick={() => { clearFilters(); }}
+                  className="h-12 px-5 rounded-full bg-[var(--fg-overlay-08)] text-[15px] font-medium text-[var(--foreground)]"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => setMobileFiltersOpen(false)}
+                  className="flex-1 h-12 px-6 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold"
+                >
+                  Show {expandedCatalogItems.length} {expandedCatalogItems.length === 1 ? "piece" : "pieces"}
+                </button>
+              </div>
+            </section>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-
-      {/* ── MOBILE COLOR PICKER SHEET ─────────────────────────────────────── */}
+      {/* ── MOBILE COLOR PICKER SHEET ───────────────────────────────────────
+          Same sheet; the chosen colour carries a --foreground tick, not gold. */}
       {colorPickerSlot && colorPickerProduct && (() => {
         const slotProduct = colorPickerProduct;
 
@@ -2881,122 +2781,83 @@ export default function BuilderPage() {
           ? (variantSwatches.find(s => s.id === activeVariantId)?.colorName ?? slotProduct.name)
           : activeColorKey;
 
+        const close = () => { setColorPickerSlot(null); setColorPickerProduct(null); };
+        const tile = (isActive: boolean, key: string, img: string | undefined | null, name: string, hex: string | null, onPick: () => void) => (
+          <button key={key} onClick={onPick} aria-pressed={isActive} className="shrink-0 w-[72px] flex flex-col items-center gap-1.5">
+            <span
+              className="relative w-[72px] h-[72px] overflow-hidden rounded-2xl bg-white"
+              style={{ boxShadow: isActive ? "0 0 0 2px var(--surface), 0 0 0 3.5px var(--foreground)" : "inset 0 0 0 1px var(--border)" }}
+            >
+              {img ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img} alt={name} className="w-full h-full object-contain p-1" />
+              ) : hex ? (
+                <span className="block w-full h-full" style={{ background: hex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : hex }} />
+              ) : null}
+              {isActive && (
+                <span aria-hidden="true" className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12l5 5 9-10" />
+                  </svg>
+                </span>
+              )}
+            </span>
+            <span className={`w-full truncate text-center text-[12px] leading-tight ${isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>{name}</span>
+          </button>
+        );
+
         return (
           <div className="md:hidden fixed inset-0 z-[65] flex flex-col justify-end">
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => { setColorPickerSlot(null); setColorPickerProduct(null); }}
-            />
-            <div className="relative bg-[var(--background)] rounded-t-2xl px-5 pb-10 pt-4 animate-slide-up">
-              {/* Handle */}
-              <div className="flex justify-center mb-3">
-                <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
-              </div>
-              {/* Header */}
-              <div className="flex items-start justify-between mb-5">
-                <div>
-                  <p className="text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] font-mono">{slotProduct.brand}</p>
-                  <p className="text-[16px] font-semibold text-[var(--foreground)] mt-0.5">{slotProduct.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-[14px] font-bold text-[var(--foreground)]">{formatPrice(slotProduct.priceMin, slotProduct.currency)}</p>
+            <div aria-hidden="true" className="ov-scrim absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="builder-colour-title"
+              className="ov-rise relative rounded-t-3xl bg-[var(--surface)] px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+16px)]"
+            >
+              <div aria-hidden="true" className="mx-auto w-9 h-1 rounded-full bg-[var(--border-strong)]" />
+              <div className="mt-1 flex items-start">
+                <div className="flex-1 min-w-0 pt-2">
+                  <p className="text-[13px] text-[var(--foreground-muted)]">{slotProduct.brand}</p>
+                  <h2 id="builder-colour-title" className="mt-0.5 text-[16px] font-semibold text-[var(--foreground)]">{slotProduct.name}</h2>
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-[14px] font-semibold text-[var(--foreground)]">{formatPrice(slotProduct.priceMin, slotProduct.currency)}</p>
                     {activeLabel && (
-                      <span className="text-[11px] text-[var(--foreground-muted)] bg-[var(--surface)] px-2 py-0.5 rounded-full">{activeLabel}</span>
+                      <span className="h-7 px-3 inline-flex items-center rounded-full bg-[var(--fg-overlay-08)] text-[12px] text-[var(--foreground)]">{activeLabel}</span>
                     )}
                   </div>
                 </div>
                 <button
-                  onClick={() => { setColorPickerSlot(null); setColorPickerProduct(null); }}
-                  className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors active:scale-95 shrink-0 ml-3"
+                  onClick={close}
                   aria-label="Close color picker"
+                  className="-mr-2.5 w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
                 >
-                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                    <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
                   </svg>
                 </button>
               </div>
 
               {/* Variant swatches (separate product entries per color) */}
               {useVariants && (
-                <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-                  {variantSwatches.map(swatch => {
-                    const isActive = activeVariantId === swatch.id;
-                    return (
-                      <button
-                        key={swatch.id}
-                        onClick={() => {
-                          selectVariant(colorPickerSlot, swatch);
-                        }}
-                        className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
-                      >
-                        <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-colors ${
-                          isActive ? "border-[var(--foreground)]" : "border-[var(--border)]"
-                        }`}>
-                          {swatch.imageUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={swatch.imageUrl} alt={swatch.colorName} className="w-full h-full object-contain p-1" />
-                          )}
-                          {!swatch.imageUrl && (
-                            <div
-                              className="w-full h-full"
-                              style={{ background: swatch.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : swatch.colorHex }}
-                            />
-                          )}
-                          {isActive && (
-                            <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
-                              <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                                <path d="M2 5.5L4 7.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        <span className={`text-[10px] leading-tight text-center w-[72px] truncate transition-colors ${
-                          isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"
-                        }`}>{swatch.colorName}</span>
-                      </button>
-                    );
-                  })}
+                <div className="mt-4 -mx-5 px-5 py-1 flex gap-3 overflow-x-auto no-scrollbar">
+                  {variantSwatches.map(swatch => tile(
+                    activeVariantId === swatch.id, swatch.id, swatch.imageUrl, swatch.colorName, swatch.colorHex,
+                    () => selectVariant(colorPickerSlot, swatch),
+                  ))}
                 </div>
               )}
 
               {/* colorImages swatches (multiple colorways within same product) */}
               {useColorImages && (
-                <div className={`flex gap-3 overflow-x-auto pb-1 no-scrollbar ${useVariants ? "mt-3 pt-3 border-t border-[var(--border)]" : ""}`}>
-                  {colorImageKeys.map(color => {
-                    const img = slotProduct.colorImages![color]?.[0];
-                    const isActive = activeColorKey === color;
-                    return (
-                      <button
-                        key={color}
-                        onClick={() => {
-                          setColorImageOverrides(prev => ({ ...prev, [colorPickerSlot]: color }));
-                          setSaved(false);
-                        }}
-                        className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
-                      >
-                        <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-colors ${
-                          isActive ? "border-[var(--foreground)]" : "border-[var(--border)]"
-                        }`}>
-                          {img && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={img} alt={color} className="w-full h-full object-contain p-1" />
-                          )}
-                          {isActive && (
-                            <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
-                              <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                                <path d="M2 5.5L4 7.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        <span className={`text-[10px] leading-tight text-center w-[72px] truncate transition-colors ${
-                          isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"
-                        }`}>{color}</span>
-                      </button>
-                    );
-                  })}
+                <div className={`-mx-5 px-5 py-1 flex gap-3 overflow-x-auto no-scrollbar ${useVariants ? "mt-3 pt-3 shadow-[inset_0_1px_0_var(--border)]" : "mt-4"}`}>
+                  {colorImageKeys.map(color => tile(
+                    activeColorKey === color, color, slotProduct.colorImages![color]?.[0], color, null,
+                    () => { setColorImageOverrides(prev => ({ ...prev, [colorPickerSlot]: color })); setSaved(false); },
+                  ))}
                 </div>
               )}
-            </div>
+            </section>
           </div>
         );
       })()}
@@ -3019,67 +2880,6 @@ export default function BuilderPage() {
         <p className="fixed bottom-20 right-4 z-50 text-[11px] text-red-600 bg-[var(--background)] border border-red-300 px-3 py-2 shadow-md max-w-[260px]">
           {generateError}
         </p>
-      )}
-
-      {/* ── Saved popup (mobile) ─────────────────────────────────────────────── */}
-      {showSavedPopup && (
-        <div
-          className="fixed inset-0 z-50 flex items-end md:hidden"
-          onClick={() => setShowSavedPopup(false)}
-        >
-          <div
-            className="w-full bg-[var(--background)] border-t border-[var(--border)] px-5 pt-5 pb-8 animate-slide-up"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Outfit saved</p>
-              <button
-                onClick={() => setShowSavedPopup(false)}
-                className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Outfit thumbnails */}
-            {Object.values(selection).filter(Boolean).length > 0 && (
-              <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar">
-                {(Object.entries(selection) as [SlotId, Product][])
-                  .filter(([, p]) => p != null)
-                  .map(([slotId, product]) => {
-                    const colorKey = colorImageOverrides[slotId];
-                    const colorImageUrl = colorKey && product.colorImages?.[colorKey]?.[0];
-                    const variantId = variantOverrides[slotId];
-                    const activeVariant = product.variants?.find(v => v.id === variantId);
-                    const img = colorImageUrl || activeVariant?.imageUrl || product.imageUrl;
-                    return (
-                      <div key={slotId} className="shrink-0 w-16 h-20 border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-                        {img && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={img} alt={product.name} className="w-full h-full object-contain p-1" />
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-
-            {/* Navigation */}
-            <Link
-              href="/saved?tab=looks"
-              onClick={() => setShowSavedPopup(false)}
-              className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
-            >
-              <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)]">My Looks</span>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-          </div>
-        </div>
       )}
 
       {/* AI Stylist — always mounted so chat history persists on open/close.
