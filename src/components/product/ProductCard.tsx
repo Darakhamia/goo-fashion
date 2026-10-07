@@ -150,7 +150,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
           its own page (DESIGN_SYSTEM.md §12.5). */}
       <button
         onClick={handleAddToCart}
-        aria-label={inCart ? "Remove from cart" : "Add to cart"}
+        aria-label={inCart ? "Remove from bag" : "Add to bag"}
         className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 hidden md:flex md:w-7 md:h-7 items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100`}
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="text-white">

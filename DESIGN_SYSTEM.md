@@ -1144,7 +1144,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | Файл:строка | Что не так | Чем заменить | Статус |
 |---|---|---|---|
 | `src/components/layout/Navigation.tsx:451` | Sign up — единственная интерактивная поверхность в хроме без радиуса | Добавить `rounded-full` | ✓ исправлено (до 2026-09): `Navigation.tsx:497,546` |
-| `src/components/layout/Navigation.tsx:558` (и `:623`) | Три рецепта скрима: `bg-black/20`, инлайновый `rgba(0,0,0,0.45)`+blur, `bg-black/40` в `StylistDrawer.tsx:667` | Один токенизированный скрим | актуально; на телефоне скрим стилиста — `bg-black/60 backdrop-blur-sm` по §12.7 (мобильный трек R-16) |
+| `src/components/layout/Navigation.tsx:558` (и `:623`) | Три рецепта скрима: `bg-black/20`, инлайновый `rgba(0,0,0,0.45)`+blur, `bg-black/40` в `StylistDrawer.tsx:667` | Один токенизированный скрим | актуально; на телефоне скримы стилиста (R-16) и корзины (R-17) — `bg-black/60 backdrop-blur-sm` по §12.7 |
 | `src/components/layout/Navigation.tsx:631` (и `:648,661`) | Кнопки модалки выхода собраны из инлайновых свойств, `borderRadius: 10`; оболочка `borderRadius: 20` против `rounded-2xl` у соседних панелей | `rounded-xl` кнопки, `rounded-2xl` оболочка | актуально |
 | `src/components/layout/Navigation.tsx:435` | `z-[60]` совпадает со слоем `StylistDrawer.tsx:653-654` при отсутствии шкалы z-index | Именованная лестница в `globals.css` | актуально |
 | `src/components/layout/Footer.tsx:60` | Ссылки мобильного дерева реагируют только на `active:`, десктопного — на `hover:` | Добавить `hover:` | актуально |
@@ -1431,6 +1431,14 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
   - «Daily messages» и история бесед — обычным регистром, беседы — строки в одной плашке (§12.11).
 
   Код: `src/components/stylist/StylistDrawer.tsx`.
+- **Корзина на телефоне** (R-17, макеты v2 «Б · Корзина», «Б · Корзина — пусто»). Лист во всю высоту, как у стилиста. У десктопа своё окно, `hidden md:flex`; у телефона — `md:hidden`-лист на `useOverlayPresence`, как у `StylePicker`.
+  - Шапка «Bag · N pieces» 18 px.
+  - Строки `BagRow` разделены линией: фото 72×92, бренд 12 px над названием 15 px, «×» в цели 44 px, цена 15 px. Магазин — мягкая пилюля 34 px с целью 44: один магазин — ссылка с его именем, несколько — «N stores» с меню выбора.
+  - Низ `BagCheckout`: «Total», primary «Open all N stores» (если у части вещей нет магазина — «pages»), строка «N of M links verified».
+  - Пусто — `BagEmpty`. Escape сначала закрывает меню магазинов, потом лист.
+  - Страница `/cart` на телефоне собрана из тех же частей на плашках.
+
+  Код: `src/components/cart/CartPanel.tsx`, лист — `src/components/layout/Navigation.tsx`.
 - **Ловушка трекинга.** Правило `.text-3xl:not([class*="tracking-"])` в `globals.css` даёт крупным кеглям отрицательный трекинг. Любой класс `tracking-…` на элементе его отключает, в том числе `max-md:` и `md:`. Поэтому, если меняешь трекинг для телефона у элемента с `text-3xl`…`text-9xl`, задай десктопное значение явно: `tracking-[-0.01em] md:tracking-[-0.015em]`. Найдено в R-11.
 
 ### 12.14 Остальные элементы

@@ -10,7 +10,8 @@ import { SignedIn, SignedOut, useClerk, useUser } from "@clerk/nextjs";
 import { useStylist } from "@/lib/context/stylist-context";
 import { useTheme } from "@/lib/context/theme-context";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
-import { CartRow, CloseIcon, OpenAllPanel, useCartStores } from "@/components/cart/CartPanel";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
+import { BagCheckout, BagEmpty, BagRow, CartRow, CloseIcon, OpenAllPanel, useCartStores } from "@/components/cart/CartPanel";
 
 /** The outline figure the profile button has always shown. */
 function PersonIcon({ size = 15 }: { size?: number }) {
@@ -88,6 +89,10 @@ export default function Navigation() {
   const { isOpen: stylistOpen, toggle: toggleStylist } = useStylist();
   const { signOut } = useClerk();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
+  // Phones get the bag as a sheet from the bottom; it plays its exit.
+  const bagSheetRef = useRef<HTMLElement>(null);
+  const bagCloseRef = useRef<HTMLButtonElement>(null);
+  const bagOv = useOverlayPresence(cartOpen);
   const profileRef = useRef<HTMLDivElement>(null);
   const { unseenCount } = useLikes();
   const { theme, toggleTheme } = useTheme();
@@ -140,16 +145,29 @@ export default function Navigation() {
   // Lock background scroll while the cart drawer or logout modal is open
   useScrollLock(cartOpen || logoutConfirmOpen);
 
-  // Close cart drawer on click/tap outside (pointerdown fires reliably on touch)
+  // Close the bag on click/tap outside (pointerdown fires reliably on touch).
+  // Only one of the two roots is on screen; a tap inside either one stays.
   useEffect(() => {
     if (!cartOpen) return;
     const handler = (e: PointerEvent) => {
-      if (cartDrawerRef.current && !cartDrawerRef.current.contains(e.target as Node)) {
-        setCartOpen(false);
-      }
+      const target = e.target as Node;
+      if (cartDrawerRef.current?.contains(target) || bagSheetRef.current?.contains(target)) return;
+      setCartOpen(false);
     };
     document.addEventListener("pointerdown", handler);
     return () => document.removeEventListener("pointerdown", handler);
+  }, [cartOpen]);
+
+  // The phone sheet takes focus and closes on Escape, like the other sheets
+  // (DESIGN_SYSTEM.md §12.7). An open store menu inside uses the key first.
+  useEffect(() => {
+    if (!cartOpen || !window.matchMedia("(max-width: 767px)").matches) return;
+    bagCloseRef.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) setCartOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [cartOpen]);
 
   // Close profile dropdown on click/tap outside
@@ -295,13 +313,13 @@ export default function Navigation() {
           {/* divider */}
           <div style={{ width: 1, height: 20, background: navDivider, margin: "0 8px" }} />
 
-          {/* Cart */}
+          {/* Bag */}
           <div className="relative">
             <button
               onClick={() => setCartOpen(true)}
               onMouseEnter={() => setCartHover(true)}
               onMouseLeave={() => setCartHover(false)}
-              aria-label="Open cart"
+              aria-label="Open bag"
               className="flex items-center justify-center transition-colors duration-200"
               style={{
                 width: 38, height: 38, borderRadius: "50%",
@@ -540,8 +558,8 @@ export default function Navigation() {
             }`}>
             AI
           </button>
-          {/* Cart — mobile (desktop cart lives in the md:flex block above) */}
-          <button onClick={() => setCartOpen(true)} aria-label="Open cart"
+          {/* Bag — mobile (the desktop button lives in the md:flex block above) */}
+          <button onClick={() => setCartOpen(true)} aria-label="Open bag"
             className="relative w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200">
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M6 8h12l-1 12H7L6 8Z" />
@@ -570,21 +588,21 @@ export default function Navigation() {
       </div>
     </header>
 
-      {/* Cart drawer */}
+      {/* Bag drawer — desktop. Phones get the sheet below. */}
       {cartOpen && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setCartOpen(false)} aria-hidden="true" />
-          <div ref={cartDrawerRef} role="dialog" aria-modal="true" aria-label="Cart"
-            className="fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[400px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
+          <div className="hidden md:block fixed inset-0 z-40 bg-black/20" onClick={() => setCartOpen(false)} aria-hidden="true" />
+          <div ref={cartDrawerRef} role="dialog" aria-modal="true" aria-label="Bag"
+            className="fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[400px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] hidden md:flex flex-col animate-slide-in-right overflow-hidden"
             style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
             <div className="px-5 pt-5 pb-4 flex items-start justify-between shrink-0">
               <div>
-                <p className="text-[20px] font-bold text-[var(--foreground)] leading-none">Cart</p>
+                <p className="text-[20px] font-bold text-[var(--foreground)] leading-none">Bag</p>
                 <p className="text-[12px] text-[var(--foreground-muted)] mt-1.5">
                   {cartCount === 0 ? "Empty" : `${cartCount} ${cartCount === 1 ? "item" : "items"}`}
                 </p>
               </div>
-              <button onClick={() => setCartOpen(false)} aria-label="Close cart"
+              <button onClick={() => setCartOpen(false)} aria-label="Close bag"
                 className="-mr-1 w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors">
                 <CloseIcon size={13} />
               </button>
@@ -597,7 +615,7 @@ export default function Navigation() {
                     <circle cx="13" cy="27" r="2" />
                     <circle cx="23" cy="27" r="2" />
                   </svg>
-                  <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Your cart is empty</p>
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Your bag is empty</p>
                   <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">Build an outfit in the builder and click&nbsp;&ldquo;Shop the Look&rdquo; to add items here.</p>
                 </div>
               ) : (
@@ -623,7 +641,7 @@ export default function Navigation() {
                 </div>
                 <Link href="/cart" onClick={() => setCartOpen(false)}
                   className="relative mt-3.5 pt-3.5 border-t border-[var(--border)] flex items-center justify-center text-[12px] font-medium text-[var(--foreground)] hover:opacity-70 transition-opacity">
-                  View full cart
+                  View full bag
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="absolute right-0" aria-hidden="true">
                     <path d="M2.5 8h11M9.5 4l4 4-4 4" />
                   </svg>
@@ -632,6 +650,53 @@ export default function Navigation() {
             )}
           </div>
         </>
+      )}
+
+      {/* Bag — phones: a sheet from the bottom (DESIGN_SYSTEM.md §12.7, mockup v2 «Б · Корзина») */}
+      {bagOv.rendered && (
+        <div className="md:hidden">
+          <div aria-hidden="true" className={bagOv.cls("ov-scrim fixed inset-0 z-50 bg-black/60 backdrop-blur-sm")} onClick={() => setCartOpen(false)} />
+          <section
+            ref={bagSheetRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bag-sheet-title"
+            onTransitionEnd={bagOv.onTransitionEnd}
+            className={bagOv.cls("ov-rise fixed inset-x-0 top-14 bottom-0 z-50 rounded-t-3xl bg-[var(--surface)] flex flex-col")}
+          >
+            <div aria-hidden="true" className="mx-auto mt-2 w-9 h-1 shrink-0 rounded-full bg-[var(--border-strong)]" />
+            <div className="flex items-center pl-4 pr-1.5 py-1.5 shrink-0">
+              <h2 id="bag-sheet-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">
+                Bag
+                {cartCount > 0 && (
+                  <span className="font-normal text-[var(--foreground-muted)]"> · {cartCount} {cartCount === 1 ? "piece" : "pieces"}</span>
+                )}
+              </h2>
+              <button ref={bagCloseRef} onClick={() => setCartOpen(false)} aria-label="Close bag"
+                className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            {cartCount === 0 ? (
+              <div className="flex-1 flex flex-col justify-center px-9 pb-[120px]">
+                <BagEmpty onNavigate={() => setCartOpen(false)} />
+              </div>
+            ) : (
+              <>
+                <ul className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4">
+                  {cartRows.map(item => (
+                    <BagRow key={item.id} item={item} onRemove={removeFromCart} onNavigate={() => setCartOpen(false)} />
+                  ))}
+                </ul>
+                <div className="shrink-0 px-4 pt-3.5 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-[inset_0_1px_0_var(--border)]">
+                  <BagCheckout items={cartRows} total={formatPrice(cartTotalUsd)} />
+                </div>
+              </>
+            )}
+          </section>
+        </div>
       )}
 
       {/* Logout confirmation modal */}

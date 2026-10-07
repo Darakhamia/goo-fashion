@@ -99,23 +99,21 @@ export function useCartStores(items: CartItem[], enabled = true): CartItem[] {
   );
 }
 
-interface CartRowProps {
+/** The phone row's store control: a soft pill, 34 px tall with a 44 px target. */
+const PILL = "relative h-[34px] max-w-[160px] px-3 rounded-full bg-[var(--fg-overlay-08)] text-[var(--foreground)] text-[13px] flex items-center gap-1.5 after:absolute after:inset-x-0 after:-inset-y-[5px]";
+
+interface StoreLinksProps {
   item: CartItem;
-  onRemove: (id: string) => void;
-  /** Lets the drawer close itself when the row navigates to the product page. */
-  onNavigate?: () => void;
+  /** `icon` — the desktop row's 32 px circle; `pill` — the phone row's soft pill. */
+  variant: "icon" | "pill";
 }
 
 /**
- * One line of the cart: photo, name, brand, price, and the two things a user
- * actually does with a piece — go to a store that carries it, or take it out.
- *
- * A piece sold in several stores is not opened by our guess: the button lists
- * them and the buyer picks. One store means one link and no menu in the way.
- * Removal stays out of the way until hover on desktop, and is always reachable
- * on touch, where there is no hover to reveal it.
+ * Where a piece can be bought. A piece sold in several stores is not opened by
+ * our guess: the button lists them and the buyer picks. One store means one
+ * link and no menu in the way.
  */
-export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
+function StoreLinks({ item, variant }: StoreLinksProps) {
   const { formatPrice } = useCurrency();
   const [storesOpen, setStoresOpen] = useState(false);
   const storesOv = useOverlayPresence(storesOpen);
@@ -124,20 +122,25 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
   const storeButtonRef = useRef<HTMLButtonElement>(null);
 
   const stores = storesOf(item);
+  const pill = variant === "pill";
 
   useEffect(() => {
     if (!storesOpen) return;
     const onPointerDown = (e: PointerEvent) => {
       if (storesRef.current && !storesRef.current.contains(e.target as Node)) setStoresOpen(false);
     };
+    // Capture, and mark the key as used: the bag sheet around the menu closes
+    // on Escape too, and one press should close only the menu.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setStoresOpen(false);
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setStoresOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey, true);
     };
   }, [storesOpen]);
 
@@ -148,6 +151,138 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
     if (box) setOpenUpwards(box.bottom > window.innerHeight * 0.6);
     setStoresOpen((open) => !open);
   };
+
+  if (stores.length === 1) {
+    return pill ? (
+      <a
+        href={stores[0].url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Open ${item.name} on ${storeLabel(stores[0])}`}
+        className={PILL}
+      >
+        <span className="truncate">{storeLabel(stores[0])}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+          <path d="M8 16L16 8M9 8h7v7" />
+        </svg>
+      </a>
+    ) : (
+      <a
+        href={stores[0].url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Open ${item.name} on ${storeLabel(stores[0])}`}
+        className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
+      >
+        <ExternalLinkIcon />
+      </a>
+    );
+  }
+
+  if (stores.length === 0) return null;
+
+  return (
+    <div ref={storesRef} className="relative">
+      {pill ? (
+        <button
+          ref={storeButtonRef}
+          onClick={toggleStores}
+          aria-label={`Choose a store for ${item.name}`}
+          aria-expanded={storesOpen}
+          className={PILL}
+        >
+          {stores.length} stores
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+            className={`shrink-0 transition-transform ${storesOpen ? "rotate-180" : ""}`}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+      ) : (
+        <button
+          ref={storeButtonRef}
+          onClick={toggleStores}
+          aria-label={`Choose a store for ${item.name}`}
+          aria-expanded={storesOpen}
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+            storesOpen
+              ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+          }`}
+        >
+          <ExternalLinkIcon />
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+            {stores.length}
+          </span>
+        </button>
+      )}
+
+      {storesOv.rendered && (
+        <div
+          role="menu"
+          onTransitionEnd={storesOv.onTransitionEnd}
+          className={storesOv.cls(
+            `ov-pop absolute right-0 z-30 ${pill ? "w-[240px] rounded-2xl" : "w-[210px] rounded-xl border border-[var(--border)]"} bg-[var(--background)] overflow-hidden ${
+              openUpwards ? "ov-pop-up bottom-full mb-2" : "top-full mt-2"
+            }`
+          )}
+          style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}
+        >
+          <p className={pill
+            ? "px-4 pt-3 pb-1 text-[13px] text-[var(--foreground-muted)]"
+            : "px-3 pt-3 pb-2 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]"}>
+            {stores.length} stores
+          </p>
+          <ul>
+            {stores.map((store) => (
+              <li key={store.url}>
+                <a
+                  href={store.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  role="menuitem"
+                  onClick={() => setStoresOpen(false)}
+                  className={`flex items-center justify-between gap-3 ${pill ? "min-h-12 px-4 py-2" : "px-3 py-2.5"} hover:bg-[var(--fg-overlay-05)] transition-colors`}
+                >
+                  <span className="min-w-0">
+                    <span className={`block ${pill ? "text-[15px]" : "text-[12px]"} font-medium text-[var(--foreground)] truncate`}>{storeLabel(store)}</span>
+                    {store.isOfficial && (
+                      <span className={pill
+                        ? "block text-[12px] text-[var(--foreground-muted)]"
+                        : "block text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mt-0.5"}>
+                        Official
+                      </span>
+                    )}
+                  </span>
+                  {typeof store.price === "number" && (
+                    <span className={`shrink-0 ${pill ? "text-[14px]" : "text-[12px]"} text-[var(--foreground-muted)]`}>
+                      {formatPrice(store.price, store.currency)}
+                    </span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface CartRowProps {
+  item: CartItem;
+  onRemove: (id: string) => void;
+  /** Lets the drawer close itself when the row navigates to the product page. */
+  onNavigate?: () => void;
+}
+
+/**
+ * One line of the bag on desktop: photo, name, brand, price, and the two things
+ * a user actually does with a piece — go to a store that carries it, or take it
+ * out. Removal stays out of the way until hover on desktop, and is always
+ * reachable on touch, where there is no hover to reveal it.
+ */
+export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
+  const { formatPrice } = useCurrency();
 
   return (
     <li className="group relative flex items-center gap-3 p-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] transition-colors duration-200">
@@ -167,89 +302,78 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
       <div className="flex items-center gap-0.5 shrink-0">
         <button
           onClick={() => onRemove(item.id)}
-          aria-label={`Remove ${item.name} from cart`}
+          aria-label={`Remove ${item.name} from bag`}
           className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-[color,background-color,border-color,opacity] opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
         >
           <CloseIcon size={11} />
         </button>
 
-        {stores.length === 1 && (
-          <a
-            href={stores[0].url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Open ${item.name} on ${storeLabel(stores[0])}`}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
-          >
-            <ExternalLinkIcon />
-          </a>
-        )}
-
-        {stores.length > 1 && (
-          <div ref={storesRef} className="relative">
-            <button
-              ref={storeButtonRef}
-              onClick={toggleStores}
-              aria-label={`Choose a store for ${item.name}`}
-              aria-expanded={storesOpen}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                storesOpen
-                  ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
-                  : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-              }`}
-            >
-              <ExternalLinkIcon />
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
-                {stores.length}
-              </span>
-            </button>
-
-            {storesOv.rendered && (
-              <div
-                role="menu"
-                onTransitionEnd={storesOv.onTransitionEnd}
-                className={storesOv.cls(
-                  `ov-pop absolute right-0 z-30 w-[210px] rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden ${
-                    openUpwards ? "ov-pop-up bottom-full mb-2" : "top-full mt-2"
-                  }`
-                )}
-                style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}
-              >
-                <p className="px-3 pt-3 pb-2 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-                  {stores.length} stores
-                </p>
-                <ul>
-                  {stores.map((store) => (
-                    <li key={store.url}>
-                      <a
-                        href={store.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        role="menuitem"
-                        onClick={() => setStoresOpen(false)}
-                        className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-[var(--fg-overlay-05)] transition-colors"
-                      >
-                        <span className="min-w-0">
-                          <span className="block text-[12px] font-medium text-[var(--foreground)] truncate">{storeLabel(store)}</span>
-                          {store.isOfficial && (
-                            <span className="block text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mt-0.5">Official</span>
-                          )}
-                        </span>
-                        {typeof store.price === "number" && (
-                          <span className="shrink-0 text-[12px] text-[var(--foreground-muted)]">
-                            {formatPrice(store.price, store.currency)}
-                          </span>
-                        )}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
+        <StoreLinks item={item} variant="icon" />
       </div>
     </li>
+  );
+}
+
+/**
+ * One line of the bag on a phone (mockup v2 «Б · Корзина»): a tall photo, brand
+ * over name, the price, and the store as a pill under them. Rows are divided by
+ * a hairline, not framed — the sheet or plaque around them is the frame.
+ */
+export function BagRow({ item, onRemove, onNavigate }: CartRowProps) {
+  const { formatPrice } = useCurrency();
+
+  return (
+    <li className="flex gap-3 py-3 not-first:shadow-[inset_0_1px_0_var(--border)]">
+      {/* The name below is the same link; this one is for the thumb, not the reader. */}
+      <Link href={`/product/${item.id}`} onClick={onNavigate} tabIndex={-1} aria-hidden="true"
+        className="w-[72px] h-[92px] shrink-0 rounded-xl bg-white overflow-hidden">
+        <Image src={item.imageUrl} alt="" width={72} height={92}
+          className="w-full h-full object-contain p-1" />
+      </Link>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start gap-1.5">
+          <Link href={`/product/${item.id}`} onClick={onNavigate} className="flex-1 min-w-0">
+            <span className="block text-[12px] text-[var(--foreground-muted)] truncate">{item.brand}</span>
+            <span className="block mt-px text-[15px] font-medium text-[var(--foreground)] truncate">{item.name}</span>
+          </Link>
+          <button
+            onClick={() => onRemove(item.id)}
+            aria-label={`Remove ${item.name} from bag`}
+            className="-mt-2.5 -mr-2.5 w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+              <path d="M7 7l10 10M17 7L7 17" />
+            </svg>
+          </button>
+        </div>
+        <div className="mt-2.5 flex items-center justify-between gap-2">
+          <span className="text-[15px] font-semibold text-[var(--foreground)]">{formatPrice(item.price, item.currency)}</span>
+          <StoreLinks item={item} variant="pill" />
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/** The empty bag on a phone (mockup v2 «Б · Корзина — пусто»); the page puts it on a plaque. */
+export function BagEmpty({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <span className="w-16 h-16 rounded-full bg-[var(--fg-overlay-08)] flex items-center justify-center text-[var(--foreground-muted)]">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6 8h12l-1 12H7L6 8Z" />
+          <path d="M9 8V6.5a3 3 0 0 1 6 0V8" />
+        </svg>
+      </span>
+      <h3 className="mt-[18px] text-[19px] font-semibold text-[var(--foreground)]">Your bag is empty</h3>
+      <p className="mt-1.5 text-[14px] leading-normal text-[var(--foreground-muted)]">
+        Build an outfit in the builder and add the look here, or pick pieces one by one.
+      </p>
+      <Link href="/browse" onClick={onNavigate}
+        className="mt-[22px] h-[46px] px-[22px] rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center text-[15px] font-semibold">
+        Browse the catalogue
+      </Link>
+    </div>
   );
 }
 
@@ -283,7 +407,7 @@ function allowPopupsHint() {
  * tap is its own gesture, which no blocker touches, and the list shrinks as
  * they are opened.
  */
-export function OpenAllPanel({ items }: { items: CartItem[] }) {
+function useOpenAll(items: CartItem[]) {
   const [blockedItems, setBlockedItems] = useState<CartItem[]>([]);
   const [hint, setHint] = useState("");
   const linked = items.filter((item) => storesOf(item).length > 0);
@@ -314,6 +438,15 @@ export function OpenAllPanel({ items }: { items: CartItem[] }) {
     : linked.length === count
       ? `This will open ${count} official product ${count === 1 ? "page" : "pages"} in new tabs.`
       : `This will open ${count} tabs: ${linked.length} official product ${linked.length === 1 ? "page" : "pages"}, and ${count - linked.length} ${count - linked.length === 1 ? "piece" : "pieces"} on GOO.`;
+
+  /** A refused piece, opened by hand, leaves the list. */
+  const openedBlocked = (id: string) => setBlockedItems((rest) => rest.filter((x) => x.id !== id));
+
+  return { count, linked, status, caption, hint, blockedItems, openAll, openedBlocked };
+}
+
+export function OpenAllPanel({ items }: { items: CartItem[] }) {
+  const { count, linked, status, caption, hint, blockedItems, openAll, openedBlocked } = useOpenAll(items);
 
   return (
     <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
@@ -346,11 +479,67 @@ export function OpenAllPanel({ items }: { items: CartItem[] }) {
                 href={openAllTarget(item)}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setBlockedItems((rest) => rest.filter((x) => x.id !== item.id))}
+                onClick={() => openedBlocked(item.id)}
                 className="w-full h-10 px-3 rounded-xl border border-[var(--border)] flex items-center justify-between gap-2 text-[12px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
               >
                 <span className="truncate">{item.name}</span>
                 <ExternalLinkIcon size={12} />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The buy step on a phone (mockup v2 «Б · Корзина»): the total, one primary
+ * pill that opens every store, and how many links are verified. Same "open all"
+ * as the desktop panel, including the list of pieces the browser refused.
+ */
+export function BagCheckout({ items, total }: { items: CartItem[]; total: string }) {
+  const { count, linked, status, caption, hint, blockedItems, openAll, openedBlocked } = useOpenAll(items);
+  // Pieces without a store open on GOO, so the button only says "stores" when all have one.
+  const noun = linked.length === count ? (count === 1 ? "store" : "stores") : (count === 1 ? "page" : "pages");
+  const label = count === 1 ? `Open the ${noun}` : `Open all ${count} ${noun}`;
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <span className="text-[14px] text-[var(--foreground-muted)]">Total</span>
+        <span className="text-[18px] font-semibold text-[var(--foreground)]">{total}</span>
+      </div>
+      <button
+        onClick={openAll}
+        disabled={count === 0}
+        className="mt-3 w-full h-12 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        {label}
+      </button>
+      <p className="mt-2 text-center text-[12px] leading-relaxed text-[var(--foreground-muted)]">
+        {blockedItems.length > 0 ? caption : status}
+      </p>
+
+      {hint && (
+        <p className="mt-2 text-center text-[13px] leading-relaxed text-[var(--foreground)]">
+          To open all {count} at once, {hint} — then press the button again.
+        </p>
+      )}
+
+      {blockedItems.length > 0 && (
+        <ul className="flex flex-col gap-2 mt-3">
+          {blockedItems.map((item) => (
+            <li key={item.id}>
+              <a
+                href={openAllTarget(item)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => openedBlocked(item.id)}
+                className="w-full h-11 px-4 rounded-full bg-[var(--fg-overlay-08)] flex items-center justify-between gap-2 text-[14px] font-medium text-[var(--foreground)]"
+              >
+                <span className="truncate">{item.name}</span>
+                <ExternalLinkIcon size={13} />
               </a>
             </li>
           ))}

@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency } from "@/lib/context/currency-context";
-import { CartRow, OpenAllPanel, cartTotalUsd, useCartStores } from "@/components/cart/CartPanel";
+import { BagCheckout, BagEmpty, BagRow, CartRow, OpenAllPanel, cartTotalUsd, useCartStores } from "@/components/cart/CartPanel";
 
 /**
  * The drawer's contents at full width: same rows, same "open all" step, room
- * for the whole list without scrolling a 400px panel.
+ * for the whole list without scrolling a 400px panel. Below md the page uses
+ * the phone bag's rows and buy step on plaques (DESIGN_SYSTEM.md §12).
  */
 export default function CartPage() {
   const { cartItems, hydrated, removeFromCart, clearCart } = useCart();
@@ -19,13 +20,14 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
-        <div className="pt-12 md:pt-16 mb-10">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
-            Cart
+      <div className="max-w-[1440px] mx-auto px-3 md:px-12">
+        <div className="px-1 pt-5 mb-4 md:px-0 md:pt-16 md:mb-10">
+          <p className="hidden md:block text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+            Bag
           </p>
-          <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)]">
-            Your Bag
+          {/* Desktop keeps the -0.015em the size rule gave text-4xl (§12.13, tracking trap). */}
+          <h1 className="text-2xl font-semibold tracking-[-0.015em] md:text-5xl md:font-black md:uppercase text-[var(--foreground)]">
+            Your bag
           </h1>
         </div>
 
@@ -35,12 +37,17 @@ export default function CartPage() {
         {!hydrated ? (
           <ul className="flex flex-col gap-2 max-w-[720px] pb-24">
             {[0, 1, 2].map(i => (
-              <li key={i} className="h-[85px] rounded-xl border border-[var(--border)] bg-[var(--surface)] animate-pulse" />
+              <li key={i} className="h-[116px] md:h-[85px] rounded-2xl md:rounded-xl md:border md:border-[var(--border)] bg-[var(--surface)] animate-pulse" />
             ))}
           </ul>
         ) : count === 0 ? (
-          <div className="py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)] mb-24">
-            <p className="text-2xl font-bold text-[var(--foreground)] mb-2">Your cart is empty</p>
+          <>
+          {/* Phone: the empty state on a plaque (§12.12) */}
+          <div className="md:hidden mb-8 rounded-2xl bg-[var(--surface)] px-6 py-12">
+            <BagEmpty />
+          </div>
+          <div className="hidden md:block py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)] mb-24">
+            <p className="text-2xl font-bold text-[var(--foreground)] mb-2">Your bag is empty</p>
             <p className="text-sm text-[var(--foreground-muted)] mb-8">
               Build an outfit in the builder and add the look here, or pick pieces one by one.
             </p>
@@ -49,8 +56,34 @@ export default function CartPage() {
               Browse the catalog
             </Link>
           </div>
+          </>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 pb-24 max-w-[1120px]">
+          <>
+          {/* Phone: rows on one plaque, then the buy step on its own (§12.11) */}
+          <div className="md:hidden flex flex-col gap-2.5 pb-8">
+            <ul className="rounded-2xl bg-[var(--surface)] px-4">
+              {rows.map(item => (
+                <BagRow key={item.id} item={item} onRemove={removeFromCart} />
+              ))}
+            </ul>
+            <div className="rounded-2xl bg-[var(--surface)] px-4 py-4">
+              <BagCheckout items={rows} total={formatPrice(total)} />
+              <p className="mt-3 text-[13px] leading-relaxed text-[var(--foreground-muted)]">
+                Each piece is bought on the brand&rsquo;s own store — prices and shipping are theirs.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/browse"
+                className="flex-1 h-12 rounded-full bg-[var(--fg-overlay-08)] flex items-center justify-center text-[15px] font-medium text-[var(--foreground)]">
+                Keep shopping
+              </Link>
+              <button onClick={clearCart}
+                className="flex-1 h-12 rounded-full bg-[var(--fg-overlay-08)] flex items-center justify-center text-[15px] font-medium text-[var(--foreground)]">
+                Clear bag
+              </button>
+            </div>
+          </div>
+          <div className="hidden md:grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 pb-24 max-w-[1120px]">
             <ul className="flex flex-col gap-2">
               {rows.map(item => (
                 <CartRow key={item.id} item={item} onRemove={removeFromCart} />
@@ -77,12 +110,13 @@ export default function CartPage() {
                   </Link>
                   <button onClick={clearCart}
                     className="flex-1 h-10 rounded-xl border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors">
-                    Clear cart
+                    Clear bag
                   </button>
                 </div>
               </div>
             </aside>
           </div>
+          </>
         )}
       </div>
     </div>
