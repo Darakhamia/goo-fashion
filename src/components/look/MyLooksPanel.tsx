@@ -12,7 +12,7 @@ import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/
 import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
 import { generationPieces } from "@/lib/look-generation";
 import { StylePicker, type GenerationStyle } from "@/components/look/StylePicker";
-import { StatusDot, BagIcon } from "@/components/look/CardBits";
+import { StatusDot, BagIcon, NewLookIcon, PhoneEmpty } from "@/components/look/CardBits";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { fetchProductsByIds } from "@/lib/products-by-ids";
 import { isProductAvailable } from "@/lib/availability";
@@ -601,7 +601,7 @@ function LookCard({
 
   return (
     <>
-      <div className="group relative flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+      <div className="group relative flex flex-col max-md:h-full rounded-2xl md:border md:border-[var(--border)] bg-[var(--surface)]">
         {/* Main image — click opens detail modal */}
         <button onClick={() => setOpen(true)} className="img-zoom block w-full text-left relative overflow-hidden rounded-t-2xl aspect-[3/4]">
           {look.generatedImage ? (
@@ -615,7 +615,7 @@ function LookCard({
             </div>
           ) : pieces.length > 0 ? (
             /* Collage grid — same layout as OutfitCollage and builder preview */
-            <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+            <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
               {(() => {
                 const frames = pieces.slice(0, 6);
                 const n = frames.length;
@@ -641,14 +641,14 @@ function LookCard({
                 );
 
                 if (n === 2) return (
-                  <div className="absolute inset-0 flex gap-px bg-gray-200">
+                  <div className="absolute inset-0 flex gap-px bg-white md:bg-gray-200">
                     {frames.map((f, i) => cell(f, `f${i}`))}
                   </div>
                 );
 
                 if (n === 3) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
+                    <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 60%" }}>
                       {frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}
                     </div>
                     <div className="relative overflow-hidden flex-1 bg-white">
@@ -661,22 +661,22 @@ function LookCard({
                 );
 
                 if (n === 4) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                    <div className="flex gap-px flex-1 bg-gray-200">
+                  <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
+                    <div className="flex gap-px flex-1 bg-white md:bg-gray-200">
                       {frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}
                     </div>
-                    <div className="flex gap-px flex-1 bg-gray-200">
+                    <div className="flex gap-px flex-1 bg-white md:bg-gray-200">
                       {frames.slice(2, 4).map((f, i) => cell(f, `f${i + 2}`))}
                     </div>
                   </div>
                 );
 
                 if (n === 5) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
+                    <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 57%" }}>
                       {frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>
+                    <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 43%" }}>
                       {frames.slice(2, 5).map((f, i) => cell(f, `f${i + 2}`, "p-1.5"))}
                     </div>
                   </div>
@@ -684,11 +684,11 @@ function LookCard({
 
                 // 6 pieces
                 return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-white md:bg-gray-200">
+                    <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 40%" }}>
                       {frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
+                    <div className="flex gap-px bg-white md:bg-gray-200" style={{ flex: "0 0 33%" }}>
                       {frames.slice(2, 5).map((f, i) => cell(f, `f${i + 2}`, "p-1.5"))}
                     </div>
                     <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
@@ -708,12 +708,13 @@ function LookCard({
                 <rect x="3" y="3" width="18" height="18" rx="1" stroke="currentColor" strokeWidth="1.2" />
                 <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
-              <span className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)] opacity-50">Empty look</span>
+              <span className="text-[12px] md:font-mono md:text-[9px] md:uppercase text-[var(--foreground-subtle)] opacity-50">Empty look</span>
             </div>
           )}
           {/* Type badge */}
           {look.generatedImage && (
-            <span className="absolute top-2.5 left-2.5 z-10 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 rounded-md backdrop-blur-sm">
+            // Phones: a light pill, like every control on the photo (DESIGN_SYSTEM.md §12.6)
+            <span className="absolute top-2.5 left-2.5 z-10 text-[11px] font-semibold bg-white/80 text-black px-[9px] py-1 rounded-full md:font-mono md:text-[8px] md:font-normal md:tracking-[0.18em] md:uppercase md:bg-black/55 md:text-white md:px-2 md:py-0.5 md:rounded-md backdrop-blur-sm">
               {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
             </span>
           )}
@@ -721,7 +722,7 @@ function LookCard({
         </button>
 
         {/* Info */}
-        <div className="px-4 pt-3.5 pb-4 flex flex-col">
+        <div className="px-3 pt-2.5 pb-3 md:px-4 md:pt-3.5 md:pb-4 flex flex-col max-md:flex-1">
           {editingName ? (
             <input
               type="text"
@@ -729,13 +730,13 @@ function LookCard({
               onChange={e => setNameValue(e.target.value)}
               onBlur={commitName}
               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); commitName(); } if (e.key === "Escape") { setNameValue(look.name || autoName); setEditingName(false); } }}
-              className="w-full text-[15px] font-semibold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
+              className="w-full text-base md:text-[15px] font-semibold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
               autoFocus
             />
           ) : (
             <button
               onClick={() => { setNameValue(look.name || autoName); setEditingName(true); }}
-              className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug w-full text-left hover:opacity-70 transition-opacity"
+              className="text-[14px] md:text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug w-full text-left hover:opacity-70 transition-opacity"
               title="Click to rename"
             >
               {displayName}
@@ -743,26 +744,27 @@ function LookCard({
           )}
 
           {/* Metadata */}
-          <p className="text-[13px] text-[var(--foreground-muted)] mt-1 truncate">
+          <p className="text-[13px] text-[var(--foreground-muted)] mt-0.5 md:mt-1 truncate">
             {formatPrice(look.totalPrice)} total
           </p>
-          <p className="flex items-center gap-1.5 text-[11px] text-[var(--foreground-subtle)] mt-0.5 truncate">
+          <p className="flex items-center gap-1.5 text-[12px] md:text-[11px] text-[var(--foreground-subtle)] mt-0.5 truncate">
             <span className="shrink-0">{totalPieces} {totalPieces === 1 ? "piece" : "pieces"}</span>
             <span className="opacity-50">•</span>
             {statusSegment.dot && <StatusDot className={statusSegment.dot} />}
             <span className="truncate">{statusSegment.label}</span>
           </p>
 
-          {/* Primary action. Cards sit two-up on phones (~130px of row width),
-              so the mobile label is shorter and the bag icon is desktop-only —
-              otherwise the uppercase tracking overflows the pill. */}
+          {/* The card's one action. Cards sit two-up on phones (~160px of row
+              width), so the mobile label is shorter and the bag icon is
+              desktop-only. On a phone it is a soft pill: a grid of primaries
+              would be a screen of accents (DESIGN_SYSTEM.md §12.1). */}
           <button
             onClick={handleAddToBag}
             disabled={availableCount === 0}
-            className={`mt-3 w-full h-11 md:h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
+            className={`mt-2.5 md:mt-3 w-full h-11 md:h-10 rounded-full md:rounded-xl flex items-center justify-center gap-2 text-[13px] font-medium md:text-[11px] md:tracking-[0.1em] md:uppercase md:font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
               bagAdded
-                ? "bg-green-600 text-white"
-                : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
+                ? "bg-[var(--foreground)] text-[var(--background)] md:bg-green-600 md:text-white"
+                : "bg-[var(--fg-overlay-08)] text-[var(--foreground)] md:bg-[var(--foreground)] md:text-[var(--background)] md:hover:opacity-90"
             }`}
           >
             {bagAdded ? (
@@ -1557,7 +1559,7 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
            this line the rename looks saved, stays on this device, and every
            other device keeps showing the automatic title with nothing
            anywhere explaining why. */
-        <p className="mb-4 px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] text-[var(--foreground-muted)] leading-relaxed">
+        <p className="mb-3 md:mb-4 px-3.5 py-2.5 rounded-2xl md:rounded-xl md:border md:border-[var(--border)] bg-[var(--surface)] text-[13px] text-[var(--foreground-muted)] leading-relaxed">
           Names are being saved on this device only — your account can&apos;t store them yet, so
           they won&apos;t appear on your other devices.
         </p>
@@ -1565,7 +1567,7 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
 
       {myLooks.length > 0 ? (
         <motion.div
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-4"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
           initial="hidden"
           animate="show"
@@ -1588,7 +1590,9 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
           ))}
         </motion.div>
       ) : (
-        <div className="py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
+        <>
+        <PhoneEmpty icon={<NewLookIcon />} title="No looks built yet" text="Use the builder to put an outfit together — tap Save and it appears here." href="/builder" action="Open the builder" />
+        <div className="hidden md:block py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
           <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
             No looks built yet
           </p>
@@ -1602,6 +1606,7 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
             Open Builder
           </Link>
         </div>
+        </>
       )}
 
       {/* Raised when regenerating a photo hits a plan limit (402). One modal for
