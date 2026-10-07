@@ -102,9 +102,11 @@ const FAQ_ITEMS = [
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+/* On a phone the highlighted card is a ringed plaque, not a dark fill, so its
+   marks stay in the page's foreground colour below md. */
 function Check({ highlighted }: { highlighted: boolean }) {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={highlighted ? "text-[var(--background)]" : "text-[var(--foreground)]"}>
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`max-md:w-[15px] max-md:h-[15px] ${highlighted ? "text-[var(--foreground)] md:text-[var(--background)]" : "text-[var(--foreground)]"}`}>
       <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -123,13 +125,14 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   return (
     <div>
       <button
-        className="w-full flex items-center justify-between py-5 text-left gap-6 group"
+        className="w-full min-h-14 md:min-h-0 flex items-center justify-between py-3 md:py-5 text-left gap-3 md:gap-6 group"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
       >
-        <span className="text-sm text-[var(--foreground)]">{q}</span>
+        <span className="text-[15px] md:text-sm text-[var(--foreground)]">{q}</span>
         <svg
           width="11" height="11" viewBox="0 0 12 12" fill="none"
-          className={`shrink-0 text-[var(--foreground-muted)] transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+          className={`shrink-0 max-md:w-4 max-md:h-4 text-[var(--foreground-muted)] transition-transform duration-300 ${open ? "rotate-180" : ""}`}
         >
           <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -138,7 +141,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{ maxHeight: open ? "200px" : "0px" }}
       >
-        <p className="pb-5 text-sm text-[var(--foreground-muted)] leading-relaxed max-w-xl">
+        <p className="pb-4 md:pb-5 text-[14px] md:text-sm text-[var(--foreground-muted)] leading-relaxed max-w-xl">
           {a}
         </p>
       </div>
@@ -162,24 +165,25 @@ function PlansContent({ highlightId }: { highlightId: string }) {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1100px] mx-auto px-6 md:px-12">
+      <div className="max-w-[1100px] mx-auto px-3 md:px-12">
 
-        {/* ── Header ── */}
-        <div className="pt-16 md:pt-24 mb-16 text-center animate-fade-up">
-          <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-4">
+        {/* ── Header ── Phones: a calm left-aligned title (DESIGN_SYSTEM.md §12.1). */}
+        <div className="px-1 pt-5 mb-5 md:px-0 md:pt-24 md:mb-16 md:text-center animate-fade-up">
+          <p className="hidden md:block font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-4">
             Pricing
           </p>
-          <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] leading-[1.05] mb-5">
+          {/* Desktop keeps the -0.022em the size rule gave text-5xl (§12.13, tracking trap). */}
+          <h1 className="text-[28px] leading-[1.15] font-semibold tracking-[-0.02em] md:text-6xl md:leading-[1.05] md:font-black md:uppercase md:tracking-[-0.022em] text-[var(--foreground)] mb-2 md:mb-5">
             Choose your plan
           </h1>
-          <p className="text-sm text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed">
+          <p className="text-[15px] leading-[1.45] md:text-sm md:leading-relaxed text-[var(--foreground-muted)] max-w-sm md:mx-auto">
             All plans include the full GOO catalog, the outfit builder, and the AI stylist.
           </p>
         </div>
 
         {/* ── Plan Cards ── */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-24"
+          className="grid grid-cols-1 md:grid-cols-3 gap-2.5 md:gap-5 mb-9 md:mb-24"
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: "-60px" }}
@@ -190,17 +194,19 @@ function PlansContent({ highlightId }: { highlightId: string }) {
               key={plan.id}
               variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
               transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className={`flex flex-col p-8 md:p-10 relative rounded-2xl border transition-colors duration-200 ${
+              // Phones: every card is a plaque; the highlighted one gets a ring
+              // rather than the desktop's dark fill (mockup v2 «Б · Тарифы»).
+              className={`flex flex-col p-[18px] md:p-10 relative rounded-[20px] md:rounded-2xl bg-[var(--surface)] md:border transition-colors duration-200 ${
                 plan.highlighted
-                  ? "bg-[var(--foreground)] border-[var(--foreground)] shadow-lg"
-                  : "bg-[var(--background)] border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-md"
+                  ? "shadow-[inset_0_0_0_1.5px_var(--foreground)] md:bg-[var(--foreground)] md:border-[var(--foreground)] md:shadow-lg"
+                  : "md:bg-[var(--background)] md:border-[var(--border)] md:hover:border-[var(--foreground-muted)] md:hover:shadow-md"
               }`}
             >
               {/* Badge */}
               {plan.badge && (
-                <div className="absolute top-6 right-6">
-                  <span className={`font-mono text-[8px] tracking-[0.18em] uppercase font-semibold text-[var(--foreground)] bg-[var(--background)] px-2.5 py-1 rounded-full ${
-                    plan.highlighted ? "" : "border border-[var(--border)]"
+                <div className="absolute top-[18px] right-[18px] md:top-6 md:right-6">
+                  <span className={`h-[26px] flex items-center text-[12px] font-semibold bg-[var(--foreground)] text-[var(--background)] md:h-auto md:inline md:font-mono md:text-[8px] md:tracking-[0.18em] md:uppercase md:text-[var(--foreground)] md:bg-[var(--background)] px-2.5 md:py-1 rounded-full ${
+                    plan.highlighted ? "" : "md:border md:border-[var(--border)]"
                   }`}>
                     {plan.badge}
                   </span>
@@ -208,42 +214,43 @@ function PlansContent({ highlightId }: { highlightId: string }) {
               )}
 
               {/* Name */}
-              <p className={`font-mono text-[10px] tracking-[0.2em] uppercase font-medium mb-3 ${
-                plan.highlighted ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-subtle)]"
+              <p className={`text-[16px] max-md:leading-[26px] font-semibold mb-2.5 text-[var(--foreground)] md:font-mono md:text-[10px] md:tracking-[0.2em] md:uppercase md:font-medium md:mb-3 ${
+                plan.highlighted ? "md:text-[var(--fg-on-dark-60)]" : "md:text-[var(--foreground-subtle)]"
               }`}>
                 {plan.name}
               </p>
 
               {/* Price */}
-              <div className="mb-8 pb-8 border-b border-current/10">
-                <div className="flex items-end gap-1.5">
-                  <span className={`text-6xl font-black leading-none ${
-                    plan.highlighted ? "text-[var(--background)]" : "text-[var(--foreground)]"
+              <div className="mb-3.5 md:mb-8 md:pb-8 md:border-b md:border-current/10">
+                <div className="flex items-baseline gap-1 md:items-end md:gap-1.5">
+                  {/* Desktop keeps the -0.022em the size rule gave text-6xl (§12.13). */}
+                  <span className={`text-[38px] font-bold tracking-[-0.03em] md:text-6xl md:font-black md:tracking-[-0.022em] leading-none ${
+                    plan.highlighted ? "text-[var(--foreground)] md:text-[var(--background)]" : "text-[var(--foreground)]"
                   }`}>
                     ${plan.price}
                   </span>
-                  <span className={`text-sm mb-1 ${
-                    plan.highlighted ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"
+                  <span className={`text-[15px] md:text-sm md:mb-1 ${
+                    plan.highlighted ? "text-[var(--foreground-muted)] md:text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"
                   }`}>
                     / mo
                   </span>
                 </div>
-                <p className={`text-xs mt-2 ${
-                  plan.highlighted ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"
+                <p className={`text-[13px] mt-1 md:text-xs md:mt-2 ${
+                  plan.highlighted ? "text-[var(--foreground-muted)] md:text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"
                 }`}>
                   charged as {planPriceLabel(plan.id as PlanId)} / mo
                 </p>
               </div>
 
               {/* Features */}
-              <ul className="space-y-3.5 flex-1 mb-10">
+              <ul className="space-y-2 md:space-y-3.5 flex-1 mb-4 md:mb-10">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-3">
-                    <span className="mt-0.5 shrink-0">
+                  <li key={f} className="flex items-center gap-2.5 md:items-start md:gap-3">
+                    <span className="md:mt-0.5 shrink-0 max-md:flex">
                       <Check highlighted={plan.highlighted} />
                     </span>
-                    <span className={`text-xs leading-relaxed ${
-                      plan.highlighted ? "text-[var(--fg-on-dark-80)]" : "text-[var(--foreground-muted)]"
+                    <span className={`text-[14px] leading-snug md:text-xs md:leading-relaxed ${
+                      plan.highlighted ? "text-[var(--foreground)] md:text-[var(--fg-on-dark-80)]" : "text-[var(--foreground)] md:text-[var(--foreground-muted)]"
                     }`}>
                       {f}
                     </span>
@@ -254,10 +261,11 @@ function PlansContent({ highlightId }: { highlightId: string }) {
               {/* CTA */}
               <button
                 onClick={() => handleSelectPlan(plan.id)}
-                className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-4 rounded-xl text-center transition-[color,background-color,border-color,opacity] duration-200 hover:opacity-80 cursor-pointer ${
+                // Phones: the highlighted plan's pill is the one primary on the card list.
+                className={`h-12 rounded-full text-[15px] font-semibold md:h-auto md:py-4 md:rounded-xl md:font-mono md:text-[10px] md:tracking-[0.14em] md:uppercase md:font-medium px-6 text-center transition-[color,background-color,border-color,opacity] duration-200 hover:opacity-80 cursor-pointer ${
                   plan.highlighted
-                    ? "bg-[var(--background)] text-[var(--foreground)]"
-                    : "border border-[var(--border-strong)] text-[var(--foreground)] hover:bg-[var(--surface)]"
+                    ? "bg-[var(--foreground)] text-[var(--background)] md:bg-[var(--background)] md:text-[var(--foreground)]"
+                    : "bg-[var(--fg-overlay-08)] text-[var(--foreground)] md:bg-transparent md:border md:border-[var(--border-strong)] md:hover:bg-[var(--surface)]"
                 }`}
               >
                 {plan.cta}
@@ -267,18 +275,48 @@ function PlansContent({ highlightId }: { highlightId: string }) {
         </motion.div>
 
         {/* ── Comparison Table ── */}
-        <div className="mb-24">
-          <div className="text-center mb-10">
-            <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-3">
+        <div className="mb-9 md:mb-24">
+          <div className="px-1 mb-3 md:px-0 md:text-center md:mb-10">
+            <p className="hidden md:block font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-3">
               Compare
             </p>
-            <h2 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)]">
+            {/* Desktop keeps the -0.015em the size rule gave text-3xl (§12.13). */}
+            <h2 className="text-[20px] font-semibold tracking-[-0.01em] md:text-4xl md:font-bold md:uppercase md:tracking-[-0.015em] text-[var(--foreground)]">
               What&apos;s included
             </h2>
           </div>
 
+          {/* Phones: four narrow columns on one plaque, no sideways scroll
+              (mockup v2 «Б · Тарифы»). Prices move to the line under it. */}
+          <div className="md:hidden rounded-2xl bg-[var(--surface)] overflow-hidden">
+            <div className="h-10 grid grid-cols-[1.6fr_1fr_1fr_1fr] items-center px-3 text-[12px] text-[var(--foreground-muted)]">
+              <span />
+              {plans.map((plan) => (
+                <span key={plan.id} className={`text-center ${plan.highlighted ? "text-[var(--foreground)] font-semibold" : ""}`}>{plan.name}</span>
+              ))}
+            </div>
+            {COMPARISON.filter((row) => row.label !== "Price").map((row) => (
+              <div key={row.label} className="min-h-11 py-1.5 grid grid-cols-[1.6fr_1fr_1fr_1fr] items-center gap-x-1 px-3 shadow-[inset_0_1px_0_var(--border)] text-[13px]">
+                <span className="text-[var(--foreground-muted)] leading-tight">{row.label}</span>
+                {(["basic", "pro", "premium"] as const).map((planId) => {
+                  const val = row[planId];
+                  return (
+                    <span key={planId} className={`text-center leading-tight text-[var(--foreground)] ${planId === highlightId ? "font-semibold" : ""}`}>
+                      {typeof val === "boolean" ? (
+                        val ? <span aria-label="Included">✓</span> : <span aria-label="Not included" className="text-[var(--foreground-muted)]">—</span>
+                      ) : val}
+                    </span>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <p className="md:hidden mt-2 px-1 text-[12px] leading-relaxed text-[var(--foreground-muted)]">
+            Prices: {plans.map((plan) => `${plan.name} $${plan.price} (${planPriceLabel(plan.id as PlanId)})`).join(", ")} a month.
+          </p>
+
           {/* Scrollable on mobile */}
-          <div className="overflow-x-auto rounded-2xl border border-[var(--border)]">
+          <div className="hidden md:block overflow-x-auto rounded-2xl border border-[var(--border)]">
             <div style={{ minWidth: 560 }}>
 
               {/* Column headers */}
@@ -341,19 +379,20 @@ function PlansContent({ highlightId }: { highlightId: string }) {
         </div>
 
         {/* ── FAQ ── */}
-        <div className="mb-24 max-w-2xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-3">
+        <div className="mb-7 md:mb-24 max-w-2xl mx-auto">
+          <div className="px-1 mb-3 md:px-0 md:text-center md:mb-10">
+            <p className="hidden md:block font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-3">
               Questions
             </p>
-            <h2 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)]">
+            <h2 className="text-[20px] font-semibold tracking-[-0.01em] md:text-4xl md:font-bold md:uppercase md:tracking-[-0.015em] text-[var(--foreground)]">
               Good to know
             </h2>
           </div>
 
-          <div className="rounded-2xl border border-[var(--border)] overflow-hidden divide-y divide-[var(--border)]">
+          {/* Phones: an accordion of rows on one plaque (§12.11). */}
+          <div className="rounded-2xl bg-[var(--surface)] md:bg-transparent md:border md:border-[var(--border)] overflow-hidden divide-y divide-[var(--border)]">
             {FAQ_ITEMS.map((item) => (
-              <div key={item.q} className="px-6">
+              <div key={item.q} className="px-4 md:px-6">
                 <FaqItem q={item.q} a={item.a} />
               </div>
             ))}
@@ -361,16 +400,17 @@ function PlansContent({ highlightId }: { highlightId: string }) {
         </div>
 
         {/* ── Bottom CTA ── */}
-        <div className="mb-20 text-center">
-          <p className="text-2xl md:text-3xl font-bold text-[var(--foreground)] mb-3">
+        {/* Phones: a closing plaque (mockup v2 «Б · Тарифы»). */}
+        <div className="mb-8 md:mb-20 text-center rounded-[20px] bg-[var(--surface)] px-[18px] py-[22px] md:rounded-none md:bg-transparent md:p-0">
+          <p className="text-[18px] font-semibold mb-1.5 md:text-3xl md:font-bold md:mb-3 text-[var(--foreground)]">
             Not sure which plan?
           </p>
-          <p className="text-sm text-[var(--foreground-muted)] mb-8">
+          <p className="text-[14px] md:text-sm text-[var(--foreground-muted)] mb-4 md:mb-8">
             Start with Basic and upgrade anytime — no friction.
           </p>
           <button
             onClick={() => handleSelectPlan("basic")}
-            className="font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+            className="h-[46px] px-[22px] rounded-full text-[15px] font-semibold md:h-auto md:px-8 md:py-4 md:rounded-xl md:font-mono md:text-[10px] md:tracking-[0.14em] md:uppercase md:font-medium text-[var(--background)] bg-[var(--foreground)] hover:opacity-80 transition-opacity duration-200 cursor-pointer"
           >
             Start Basic →
           </button>
