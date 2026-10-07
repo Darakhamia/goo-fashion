@@ -8,20 +8,20 @@ export default function AboutPage() {
     <div className="min-h-screen">
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
-      <section className="max-w-[1440px] mx-auto px-6 md:px-12 pt-20 md:pt-32 pb-24 md:pb-32">
+      <section className="max-w-[1440px] mx-auto px-5 md:px-12 pt-6 md:pt-32 pb-12 md:pb-32">
         <motion.div
           className="max-w-3xl"
           initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-6">
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-6 max-md:hidden">
             About
           </p>
-          <h1 className="text-5xl md:text-7xl font-black uppercase text-[var(--foreground)] leading-[1.05] mb-8">
+          <h1 className="text-5xl md:text-7xl font-black uppercase text-[var(--foreground)] leading-[1.05] mb-8 max-md:text-[28px] max-md:font-semibold max-md:normal-case max-md:leading-[1.15] max-md:mb-3">
             Style, simplified<br />by intelligence.
           </h1>
-          <p className="text-lg md:text-xl text-[var(--foreground-muted)] leading-relaxed max-w-xl">
+          <p className="text-lg md:text-xl text-[var(--foreground-muted)] leading-relaxed max-w-xl max-md:text-[17px] max-md:leading-[1.5]">
             GOO is an AI-powered fashion platform built to simplify the way people create outfits and discover clothing.
           </p>
         </motion.div>
@@ -29,10 +29,10 @@ export default function AboutPage() {
 
       {/* ── Origin ─────────────────────────────────────────────────────────── */}
       <section className="border-t border-[var(--border)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-12 md:gap-20 items-start">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-10 md:py-28">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3 md:gap-20 items-start">
             <div className="md:pt-1">
-              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">
                 The idea
               </p>
             </div>
@@ -43,7 +43,7 @@ export default function AboutPage() {
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed">
+              <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed max-md:text-[22px] max-md:leading-[1.35]">
                 Finding what to wear shouldn&apos;t take hours of browsing through different websites, comparing items, and trying to imagine how everything fits together.
               </p>
               <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
@@ -56,15 +56,15 @@ export default function AboutPage() {
 
       {/* ── What We Do ─────────────────────────────────────────────────────── */}
       <section className="border-t border-[var(--border)] bg-[var(--surface)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-12 md:gap-20 items-start">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-10 md:py-28">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3 md:gap-20 items-start">
             <div className="md:pt-1">
-              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">
                 What we do
               </p>
             </div>
             <div>
-              <p className="text-base text-[var(--foreground-muted)] leading-relaxed mb-10">
+              <p className="text-base text-[var(--foreground-muted)] leading-relaxed mb-10 max-md:mb-6">
                 GOO combines artificial intelligence, outfit generation, and fashion discovery into one platform. Instead of jumping between multiple websites, you do everything in one place.
               </p>
               <motion.div
@@ -100,13 +100,13 @@ export default function AboutPage() {
                     key={item.number}
                     variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
                     transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-7 hover:border-[var(--foreground-muted)] hover:shadow-sm transition-colors duration-200"
+                    className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-7 hover:border-[var(--foreground-muted)] hover:shadow-sm transition-colors duration-200 max-md:rounded-2xl max-md:border-0 max-md:p-5"
                   >
-                    <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-4">
+                    <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-4 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-2">
                       {item.number}
                     </p>
-                    <p className="text-sm font-medium text-[var(--foreground)] mb-2">{item.title}</p>
-                    <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">{item.body}</p>
+                    <p className="text-sm font-medium text-[var(--foreground)] mb-2 max-md:text-base max-md:mb-1">{item.title}</p>
+                    <p className="text-xs text-[var(--foreground-muted)] leading-relaxed max-md:text-[15px] max-md:leading-[1.5]">{item.body}</p>
                   </motion.div>
                 ))}
               </motion.div>
@@ -117,15 +117,15 @@ export default function AboutPage() {
 
       {/* ── Why GOO ────────────────────────────────────────────────────────── */}
       <section className="border-t border-[var(--border)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-12 md:gap-20 items-start">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-10 md:py-28">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3 md:gap-20 items-start">
             <div className="md:pt-1">
-              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">
                 Why GOO
               </p>
             </div>
             <div className="space-y-6">
-              <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed">
+              <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed max-md:text-[22px] max-md:leading-[1.35]">
                 Most fashion tools are limited.
               </p>
               <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
@@ -146,15 +146,15 @@ export default function AboutPage() {
 
       {/* ── Who it's for ───────────────────────────────────────────────────── */}
       <section className="border-t border-[var(--border)] bg-[var(--surface)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-12 md:gap-20 items-start">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-10 md:py-28">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3 md:gap-20 items-start">
             <div className="md:pt-1">
-              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">
                 Who it&apos;s for
               </p>
             </div>
             <div className="space-y-5">
-              <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed">
+              <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed max-md:text-[22px] max-md:leading-[1.35]">
                 Anyone who wants to look better without overcomplicating the process.
               </p>
               <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
@@ -167,7 +167,7 @@ export default function AboutPage() {
 
       {/* ── Mission ────────────────────────────────────────────────────────── */}
       <section className="border-t border-[var(--border)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-10 md:py-28">
           <motion.div
             className="max-w-2xl mx-auto text-center"
             initial={{ opacity: 0, y: 24 }}
@@ -175,10 +175,10 @@ export default function AboutPage() {
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-8">
+            <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-8 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-3">
               Our mission
             </p>
-            <p className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-[1.1] mb-8">
+            <p className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-[1.1] mb-8 max-md:text-[24px] max-md:font-semibold max-md:normal-case max-md:leading-[1.2] max-md:mb-3">
               Style should be simple.
             </p>
             <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-w-lg mx-auto">
@@ -190,15 +190,15 @@ export default function AboutPage() {
 
       {/* ── Team ───────────────────────────────────────────────────────────── */}
       <section className="border-t border-[var(--border)] bg-[var(--surface)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-12 md:gap-20 items-start">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-10 md:py-28">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3 md:gap-20 items-start">
             <div className="md:pt-1">
-              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">
                 Built by founders
               </p>
             </div>
             <div className="space-y-5">
-              <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed">
+              <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed max-md:text-[22px] max-md:leading-[1.35]">
                 A small team. A big idea.
               </p>
               <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
@@ -207,10 +207,10 @@ export default function AboutPage() {
               <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
                 We move fast, care about design, and ship things that matter.
               </p>
-              <div className="pt-6">
+              <div className="pt-2 md:pt-6">
                 <a
                   href="mailto:anything@goo-fashion.com"
-                  className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-xl hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors duration-200 inline-block"
+                  className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-xl hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors duration-200 inline-block max-md:inline-flex max-md:h-11 max-md:items-center max-md:px-5 max-md:py-0 max-md:rounded-full max-md:border-0 max-md:bg-[var(--fg-overlay-08)] max-md:text-[15px] max-md:normal-case max-md:tracking-normal"
                 >
                   Get in touch →
                 </a>
@@ -222,26 +222,26 @@ export default function AboutPage() {
 
       {/* ── CTA ────────────────────────────────────────────────────────────── */}
       <section className="border-t border-[var(--border)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-10 md:py-28">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 md:gap-8">
             <div>
-              <p className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] mb-2">
+              <p className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] mb-2 max-md:text-[24px] max-md:font-semibold max-md:normal-case max-md:leading-[1.2] max-md:mb-1">
                 Ready to start?
               </p>
-              <p className="text-sm text-[var(--foreground-muted)]">
+              <p className="text-sm text-[var(--foreground-muted)] max-md:text-[15px]">
                 Build your first outfit in minutes.
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <Link
                 href="/browse"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200 max-md:inline-flex max-md:h-11 max-md:items-center max-md:px-5 max-md:py-0 max-md:rounded-full max-md:text-[15px] max-md:font-semibold max-md:normal-case max-md:tracking-normal"
               >
                 Start exploring
               </Link>
               <Link
                 href="/plans"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-xl hover:border-[var(--foreground)] transition-colors duration-200"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-xl hover:border-[var(--foreground)] transition-colors duration-200 max-md:inline-flex max-md:h-11 max-md:items-center max-md:px-5 max-md:py-0 max-md:rounded-full max-md:border-0 max-md:bg-[var(--fg-overlay-08)] max-md:text-[15px] max-md:normal-case max-md:tracking-normal"
               >
                 See plans
               </Link>

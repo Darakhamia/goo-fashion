@@ -46,33 +46,33 @@ export default async function SitemapPage() {
     <div className="min-h-screen">
 
       {/* Hero */}
-      <section className="max-w-[1440px] mx-auto px-6 md:px-12 pt-16 md:pt-24 pb-16">
-        <p className="text-[10px] tracking-[0.22em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
+      <section className="max-w-[1440px] mx-auto px-5 md:px-12 pt-6 md:pt-24 pb-8 md:pb-16">
+        <p className="text-[10px] tracking-[0.22em] uppercase font-medium text-[var(--foreground-subtle)] mb-4 max-md:hidden">
           Navigation
         </p>
-        <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] leading-[1.05]">
+        <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] leading-[1.05] max-md:text-[28px] max-md:font-semibold max-md:normal-case max-md:leading-[1.15]">
           Sitemap
         </h1>
-        <p className="mt-4 text-sm text-[var(--foreground-muted)] max-w-sm">
+        <p className="mt-4 text-sm text-[var(--foreground-muted)] max-w-sm max-md:mt-1.5 max-md:text-[15px]">
           Every page on GOO — organised by section.
         </p>
       </section>
 
       {/* Static sections */}
       <section className="border-t border-[var(--border)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-16 md:py-20">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--border)]">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-8 md:py-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--border)] max-md:gap-2.5 max-md:bg-transparent">
             {SITE_SECTIONS.map((section) => (
-              <div key={section.label} className="bg-[var(--background)] p-8">
-                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6">
+              <div key={section.label} className="bg-[var(--background)] p-8 max-md:rounded-2xl max-md:bg-[var(--surface)] max-md:px-4 max-md:pt-3.5 max-md:pb-1">
+                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-1">
                   {section.label}
                 </p>
-                <ul className="space-y-3">
+                <ul className="space-y-3 max-md:space-y-0">
                   {section.links.map((link) => (
-                    <li key={link.href}>
+                    <li key={link.href} className="max-md:not-first:shadow-[inset_0_1px_0_var(--border)]">
                       <Link
                         href={link.href}
-                        className="text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-150"
+                        className="text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-150 max-md:flex max-md:h-11 max-md:items-center max-md:text-base max-md:text-[var(--foreground)]"
                       >
                         {link.label}
                       </Link>
@@ -83,32 +83,32 @@ export default async function SitemapPage() {
             ))}
 
             {/* Outfits count tile */}
-            <div className="bg-[var(--background)] p-8 flex flex-col justify-between">
-              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6">
+            <div className="bg-[var(--background)] p-8 flex flex-col justify-between max-md:rounded-2xl max-md:bg-[var(--surface)] max-md:p-4">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-1">
                 Outfits
               </p>
-              <p className="text-5xl font-black text-[var(--foreground)]">
+              <p className="text-5xl font-black text-[var(--foreground)] max-md:text-[32px] max-md:font-semibold">
                 {outfits.length}
               </p>
               <Link
                 href="/browse"
-                className="mt-6 self-start text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)] border border-[var(--border)] px-4 py-2 hover:border-[var(--foreground)] transition-colors duration-200"
+                className="mt-6 self-start text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)] border border-[var(--border)] px-4 py-2 hover:border-[var(--foreground)] transition-colors duration-200 max-md:mt-3 max-md:inline-flex max-md:h-11 max-md:items-center max-md:px-4 max-md:py-0 max-md:rounded-full max-md:border-0 max-md:bg-[var(--fg-overlay-08)] max-md:text-[15px] max-md:normal-case max-md:tracking-normal"
               >
                 Browse all →
               </Link>
             </div>
 
             {/* Products count tile */}
-            <div className="bg-[var(--surface)] p-8 flex flex-col justify-between">
-              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6">
+            <div className="bg-[var(--surface)] p-8 flex flex-col justify-between max-md:rounded-2xl max-md:p-4">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-1">
                 Products
               </p>
-              <p className="text-5xl font-black text-[var(--foreground)]">
+              <p className="text-5xl font-black text-[var(--foreground)] max-md:text-[32px] max-md:font-semibold">
                 {products.length}
               </p>
               <Link
                 href="/browse"
-                className="mt-6 self-start text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)] border border-[var(--border)] px-4 py-2 hover:border-[var(--foreground)] transition-colors duration-200"
+                className="mt-6 self-start text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)] border border-[var(--border)] px-4 py-2 hover:border-[var(--foreground)] transition-colors duration-200 max-md:mt-3 max-md:inline-flex max-md:h-11 max-md:items-center max-md:px-4 max-md:py-0 max-md:rounded-full max-md:border-0 max-md:bg-[var(--fg-overlay-08)] max-md:text-[15px] max-md:normal-case max-md:tracking-normal"
               >
                 Explore →
               </Link>
@@ -120,13 +120,13 @@ export default async function SitemapPage() {
       {/* Outfits list */}
       {outfits.length > 0 && (
         <section className="border-t border-[var(--border)] bg-[var(--surface)]">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-16 md:py-20">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-12 md:gap-20 items-start">
+          <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-8 md:py-20">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-4 md:gap-20 items-start">
               <div>
-                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2">
+                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-1">
                   Outfits
                 </p>
-                <p className="text-3xl font-bold text-[var(--foreground)]">
+                <p className="text-3xl font-bold text-[var(--foreground)] max-md:text-2xl max-md:font-semibold">
                   {outfits.length} looks
                 </p>
               </div>
@@ -141,10 +141,10 @@ export default async function SitemapPage() {
                       className="group flex items-start justify-between gap-4"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm text-[var(--foreground)] group-hover:opacity-60 transition-opacity duration-150 truncate">
+                        <p className="text-sm text-[var(--foreground)] group-hover:opacity-60 transition-opacity duration-150 truncate max-md:text-base">
                           {outfit.name}
                         </p>
-                        <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 capitalize">
+                        <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 capitalize max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
                           {outfit.occasion}
                         </p>
                       </div>
@@ -163,13 +163,13 @@ export default async function SitemapPage() {
       {/* Products list */}
       {products.length > 0 && (
         <section className="border-t border-[var(--border)]">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-16 md:py-20">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-12 md:gap-20 items-start">
+          <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-8 md:py-20">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-4 md:gap-20 items-start">
               <div>
-                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2">
+                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-1">
                   Products
                 </p>
-                <p className="text-3xl font-bold text-[var(--foreground)]">
+                <p className="text-3xl font-bold text-[var(--foreground)] max-md:text-2xl max-md:font-semibold">
                   {products.length} items
                 </p>
               </div>
@@ -184,10 +184,10 @@ export default async function SitemapPage() {
                       className="group flex items-start justify-between gap-4"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm text-[var(--foreground)] group-hover:opacity-60 transition-opacity duration-150 truncate">
+                        <p className="text-sm text-[var(--foreground)] group-hover:opacity-60 transition-opacity duration-150 truncate max-md:text-base">
                           {product.name}
                         </p>
-                        <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">
+                        <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
                           {product.brand}
                         </p>
                       </div>
@@ -206,13 +206,13 @@ export default async function SitemapPage() {
       {/* Blog list */}
       {blogPosts.length > 0 && (
         <section className="border-t border-[var(--border)] bg-[var(--surface)]">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-16 md:py-20">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-12 md:gap-20 items-start">
+          <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-8 md:py-20">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-4 md:gap-20 items-start">
               <div>
-                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2">
+                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-1">
                   Journal
                 </p>
-                <p className="text-3xl font-bold text-[var(--foreground)]">
+                <p className="text-3xl font-bold text-[var(--foreground)] max-md:text-2xl max-md:font-semibold">
                   {blogPosts.length} articles
                 </p>
               </div>
@@ -227,11 +227,11 @@ export default async function SitemapPage() {
                       className="group flex items-start justify-between gap-6"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm text-[var(--foreground)] group-hover:opacity-60 transition-opacity duration-150">
+                        <p className="text-sm text-[var(--foreground)] group-hover:opacity-60 transition-opacity duration-150 max-md:text-base">
                           {post.title}
                         </p>
                         {post.publishedAt && (
-                          <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">
+                          <p className="text-[10px] text-[var(--foreground-subtle)] mt-1 max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
                             {new Date(post.publishedAt).toLocaleDateString("en-US", {
                               year: "numeric",
                               month: "long",
@@ -254,15 +254,15 @@ export default async function SitemapPage() {
 
       {/* Footer note */}
       <section className="border-t border-[var(--border)]">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-10 flex items-center justify-between gap-4 flex-wrap">
-          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-6 md:py-10 flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">
             goo-fashion.com · Updated hourly
           </p>
           <a
             href="/sitemap.xml"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+            className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors max-md:py-2.5 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]"
           >
             XML Sitemap ↗
           </a>

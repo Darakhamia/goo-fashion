@@ -10,8 +10,8 @@ function Bullet({ items }: { items: string[] }) {
   return (
     <ul className="list-none space-y-2">
       {items.map((item) => (
-        <li key={item} className="flex items-start gap-3 text-sm text-[var(--foreground-muted)] leading-relaxed">
-          <span className="mt-2 w-1 h-1 rounded-full bg-[var(--foreground-subtle)] shrink-0" />
+        <li key={item} className="flex items-start gap-3 text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
+          <span className="mt-2 w-1 h-1 rounded-full bg-[var(--foreground-subtle)] shrink-0 max-md:mt-[11px]" />
           {item}
         </li>
       ))}
@@ -25,13 +25,13 @@ const SECTIONS = [
     title: "About Goo Fashion",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Goo Fashion is a fashion-tech platform that helps users discover fashion items, build outfits, generate style ideas, and access links to third-party fashion retailers.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Goo Fashion does not sell the displayed fashion products directly unless expressly stated otherwise. Products shown on the website are provided by third-party retailers, brands, marketplaces, or affiliate partners.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           When you click a product link and leave Goo Fashion, any purchase is made directly with the third-party retailer, not with Goo Fashion.
         </p>
       </div>
@@ -42,13 +42,13 @@ const SECTIONS = [
     title: "Eligibility",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           You must be at least 16 years old to use Goo Fashion.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           If you are under the age of legal majority in your country, you may use the service only with permission from a parent or legal guardian.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           The service is not intended for children under 13 years old.
         </p>
       </div>
@@ -59,10 +59,10 @@ const SECTIONS = [
     title: "Account Registration",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Some features may require an account. You agree to provide accurate and up-to-date information when creating an account. You are responsible for keeping your login credentials secure and for all activity under your account.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           If you believe your account has been accessed without permission, contact us immediately at{" "}
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline">
             anything@goo-fashion.com
@@ -77,7 +77,7 @@ const SECTIONS = [
     title: "Third-Party Products and Retailers",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Goo Fashion may display product images, names, prices, descriptions, brand names, availability, and links to third-party websites. We do not guarantee that:
         </p>
         <Bullet
@@ -90,7 +90,7 @@ const SECTIONS = [
             "delivery, returns, refunds, or support from third-party retailers will meet your expectations",
           ]}
         />
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           All purchases made through third-party websites are governed by the third party&rsquo;s own terms and policies. Goo Fashion is not responsible for third-party websites, products, services, payments, delivery, returns, refunds, or disputes.
         </p>
       </div>
@@ -101,10 +101,10 @@ const SECTIONS = [
     title: "Affiliate Links and Commercial Relationships",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Some links on Goo Fashion may be affiliate links. This means Goo Fashion may receive a commission or other compensation if you click a link or make a purchase through it.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Affiliate relationships may influence how products, brands, or retailers are displayed, ranked, or recommended.
         </p>
       </div>
@@ -115,10 +115,10 @@ const SECTIONS = [
     title: "Intellectual Property",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           All original content, design, branding, layout, interface, software, text, graphics, logos, and materials created by Goo Fashion are owned by Goo Fashion or its licensors.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           You may not copy, reproduce, distribute, modify, reverse engineer, scrape, or exploit any part of the platform without prior written permission.
         </p>
       </div>
@@ -129,10 +129,10 @@ const SECTIONS = [
     title: "Third-Party Images, Brands, and Content",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Goo Fashion may display third-party product images, logos, trademarks, names, descriptions, and related materials. All such materials remain the property of their respective owners.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Their display on Goo Fashion does not imply endorsement, partnership, ownership, or affiliation unless explicitly stated.
         </p>
       </div>
@@ -143,10 +143,10 @@ const SECTIONS = [
     title: "User Content",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Users may upload, save, submit, or publish content including outfit combinations, wardrobe items, images, prompts, and comments. You retain ownership of your User Content.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           By uploading User Content, you grant Goo Fashion a limited worldwide license to use, process, store, display, and modify such content solely for operating and improving the service.
         </p>
       </div>
@@ -157,7 +157,7 @@ const SECTIONS = [
     title: "User Content Rules",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           You may not upload content that:
         </p>
         <Bullet
@@ -168,7 +168,7 @@ const SECTIONS = [
             "falsely suggests affiliation with a brand or retailer",
           ]}
         />
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Goo Fashion may remove content at its discretion.
         </p>
       </div>
@@ -179,10 +179,10 @@ const SECTIONS = [
     title: "AI Features and Generated Content",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Goo Fashion may provide AI-powered outfit generation, styling recommendations, and visual outputs. AI-generated content is provided for informational and inspirational purposes only.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           We do not guarantee:
         </p>
         <Bullet
@@ -193,7 +193,7 @@ const SECTIONS = [
             "originality of generated content",
           ]}
         />
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Users rely on AI-generated outputs at their own risk.
         </p>
       </div>
@@ -203,7 +203,7 @@ const SECTIONS = [
     number: "11",
     title: "Image Uploads and AI Processing",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         If you upload images, you confirm you have rights and permissions to do so. Uploaded images may be processed by Goo Fashion or third-party AI/technology providers solely for service functionality.
       </p>
     ),
@@ -213,7 +213,7 @@ const SECTIONS = [
     title: "Prohibited Use",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           You agree not to:
         </p>
         <Bullet
@@ -235,7 +235,7 @@ const SECTIONS = [
     title: "Copyright and IP Complaints",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           If you believe content on Goo Fashion infringes your rights, contact{" "}
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline">
             anything@goo-fashion.com
@@ -250,7 +250,7 @@ const SECTIONS = [
             "explanation of unauthorised use",
           ]}
         />
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           We may remove disputed content while reviewing.
         </p>
       </div>
@@ -261,12 +261,12 @@ const SECTIONS = [
     title: "Subscriptions and Paid Features",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Goo Fashion offers paid subscription plans with monthly billing. Prices are shown on the Plans page
           and at checkout; billing is in Ukrainian hryvnia (UAH). Payments are processed by monobank (Plata by
           mono) on its secure hosted payment page — Goo Fashion never receives your full card number.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Subscriptions renew automatically each month until cancelled. You can cancel auto-renewal at any
           time in your Profile; you keep access to paid features until the end of the paid period. Full
           billing, cancellation and renewal details are in our{" "}
@@ -282,7 +282,7 @@ const SECTIONS = [
     number: "15",
     title: "Refunds",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         Paid features are digital services that begin immediately after payment, so fees for a started billing
         period are generally non-refundable — except for erroneous or duplicate charges, significant service
         unavailability caused by us, or where a refund is required by applicable consumer law. The full rules,
@@ -298,7 +298,7 @@ const SECTIONS = [
     number: "16",
     title: "Privacy",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         Use of Goo Fashion is subject to our{" "}
         <Link href="/privacy" className="text-[var(--foreground)] link-underline">
           Privacy Policy
@@ -311,7 +311,7 @@ const SECTIONS = [
     number: "17",
     title: "Cookies and Tracking",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         Goo Fashion uses essential cookies, analytics, and affiliate tracking technologies as described in our{" "}
         <Link href="/cookie" className="text-[var(--foreground)] link-underline">
           Cookie Policy
@@ -324,7 +324,7 @@ const SECTIONS = [
     number: "18",
     title: "Availability of Service",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         We do not guarantee uninterrupted, secure, or error-free service. We may modify, suspend, or discontinue the service at any time.
       </p>
     ),
@@ -333,7 +333,7 @@ const SECTIONS = [
     number: "19",
     title: "Disclaimer",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         Goo Fashion is provided &ldquo;as is&rdquo; and &ldquo;as available.&rdquo; We disclaim all warranties to the maximum extent permitted by law. Use of the platform is at your own risk.
       </p>
     ),
@@ -343,10 +343,10 @@ const SECTIONS = [
     title: "Limitation of Liability",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           To the maximum extent permitted by law, Goo Fashion shall not be liable for indirect, incidental, consequential, or punitive damages.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Our total liability shall not exceed the greater of: the amount paid by you to Goo Fashion in the previous 12 months, or <span className="text-[var(--foreground)] font-medium">100 USD</span>.
         </p>
       </div>
@@ -357,7 +357,7 @@ const SECTIONS = [
     title: "Indemnity",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           You agree to indemnify Goo Fashion against claims arising from:
         </p>
         <Bullet
@@ -375,7 +375,7 @@ const SECTIONS = [
     number: "22",
     title: "Termination",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         We may suspend or terminate access if you violate these Terms or create legal or operational risk.
       </p>
     ),
@@ -384,7 +384,7 @@ const SECTIONS = [
     number: "23",
     title: "Changes to Terms",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         We may update these Terms at any time. Continued use of Goo Fashion after updates constitutes acceptance.
       </p>
     ),
@@ -393,7 +393,7 @@ const SECTIONS = [
     number: "24",
     title: "Governing Law",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
         These Terms are governed by the laws of <span className="text-[var(--foreground)]">Ukraine</span>. Mandatory consumer rights under applicable law remain unaffected.
       </p>
     ),
@@ -403,16 +403,16 @@ const SECTIONS = [
     title: "Contact Information",
     content: (
       <div className="space-y-1">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed font-medium text-[var(--foreground)]">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed font-medium text-[var(--foreground)] max-md:text-base max-md:leading-[1.6]">
           David Arakhamia, Sole Trader
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Mykolaiv, Ukraine
         </p>
-        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
           Registered address available on request.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1 max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline">
             anything@goo-fashion.com
           </a>
@@ -425,37 +425,37 @@ const SECTIONS = [
 export default function TermsPage() {
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
-        <div className="pt-16 md:pt-24 pb-32 max-w-2xl">
+      <div className="max-w-[1440px] mx-auto px-5 md:px-12">
+        <div className="pt-6 md:pt-24 pb-14 md:pb-32 max-w-2xl">
 
           {/* Header */}
-          <div className="mb-16 animate-fade-up">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+          <div className="mb-8 md:mb-16 animate-fade-up">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 max-md:hidden">
               Legal
             </p>
-            <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4">
+            <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
               Terms &amp; Conditions
             </h1>
-            <p className="text-sm text-[var(--foreground-subtle)]">Last updated: August 10, 2026</p>
+            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">Last updated: August 10, 2026</p>
           </div>
 
           {/* Intro */}
-          <div className="mb-16 pb-16 border-b border-[var(--border)]">
-            <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
+          <div className="mb-8 pb-8 md:mb-16 md:pb-16 border-b border-[var(--border)]">
+            <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-md:leading-[1.6] max-md:text-[var(--foreground)]">
               These Terms &amp; Conditions govern your access to and use of Goo Fashion, including our website, digital tools, AI styling features, outfit builder, saved looks, product discovery features, affiliate links, and related services. By using Goo Fashion, you agree to these Terms. If you do not agree, please do not use the website or services.
             </p>
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-[var(--border)]">
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Operator</p>
-                <p className="text-sm text-[var(--foreground-muted)]">David Arakhamia, Sole Trader</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Operator</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">David Arakhamia, Sole Trader</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Website</p>
-                <p className="text-sm text-[var(--foreground-muted)]">goo-fashion.com</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Website</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">goo-fashion.com</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Contact</p>
-                <a href="mailto:anything@goo-fashion.com" className="text-sm text-[var(--foreground-muted)] link-underline hover:text-[var(--foreground)] transition-colors">
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Contact</p>
+                <a href="mailto:anything@goo-fashion.com" className="text-sm text-[var(--foreground-muted)] link-underline hover:text-[var(--foreground)] transition-colors max-md:text-base">
                   anything@goo-fashion.com
                 </a>
               </div>
@@ -463,16 +463,17 @@ export default function TermsPage() {
           </div>
 
           {/* Sections */}
-          <div className="space-y-12">
+          <div className="space-y-8 md:space-y-12">
             {SECTIONS.map((section) => (
-              <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6">
-                <div className="pt-0.5">
+              <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6 max-md:block">
+                <div className="pt-0.5 max-md:hidden">
                   <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
                     {section.number.padStart(2, "0")}
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-base font-medium text-[var(--foreground)] mb-4">
+                  <h2 className="text-base font-medium text-[var(--foreground)] mb-4 max-md:text-[18px] max-md:font-semibold max-md:leading-snug max-md:mb-2.5">
+                    <span className="md:hidden text-[var(--foreground-muted)]">{section.number} · </span>
                     {section.title}
                   </h2>
                   {section.content}
@@ -482,17 +483,17 @@ export default function TermsPage() {
           </div>
 
           {/* Footer nav */}
-          <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6">
-            <Link href="/privacy" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+          <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6 max-md:mt-12 max-md:pt-6 max-md:gap-x-5 max-md:gap-y-3">
+            <Link href="/privacy" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal">
               Privacy Policy
             </Link>
-            <Link href="/cookie" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/cookie" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal">
               Cookie Policy
             </Link>
-            <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal">
               Refund Policy
             </Link>
-            <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal">
               Back to GOO
             </Link>
           </div>

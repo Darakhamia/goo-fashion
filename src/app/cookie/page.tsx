@@ -8,12 +8,12 @@ export const metadata: Metadata = {
 };
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">{children}</p>;
+  return <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">{children}</p>;
 }
 
 function SubLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
+    <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2 max-md:text-[15px] max-md:font-semibold max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground)] max-md:mb-1.5">
       {children}
     </p>
   );
@@ -21,10 +21,10 @@ function SubLabel({ children }: { children: React.ReactNode }) {
 
 function StorageKey({ name, purpose }: { name: string; purpose: string }) {
   return (
-    <li className="flex items-start gap-3 text-sm leading-relaxed">
-      <span className="mt-2 w-1 h-1 rounded-full bg-[var(--foreground-subtle)] shrink-0" />
+    <li className="flex items-start gap-3 text-sm leading-relaxed max-md:text-base max-md:leading-[1.6]">
+      <span className="mt-2 w-1 h-1 rounded-full bg-[var(--foreground-subtle)] shrink-0 max-md:mt-[11px]" />
       <span className="text-[var(--foreground-muted)]">
-        <span className="font-mono text-xs text-[var(--foreground)]">{name}</span>
+        <span className="font-mono text-xs text-[var(--foreground)] max-md:text-[13px]">{name}</span>
         {" — "}
         {purpose}
       </span>
@@ -59,9 +59,9 @@ const SECTIONS = [
           <SubLabel>Essential — sign-in (Clerk)</SubLabel>
           <P>
             Our authentication provider Clerk sets cookies (names beginning with{" "}
-            <span className="font-mono text-xs text-[var(--foreground)]">__session</span>,{" "}
-            <span className="font-mono text-xs text-[var(--foreground)]">__client_uat</span> and other{" "}
-            <span className="font-mono text-xs text-[var(--foreground)]">__clerk</span>-prefixed names) to keep
+            <span className="font-mono text-xs text-[var(--foreground)] max-md:text-[13px]">__session</span>,{" "}
+            <span className="font-mono text-xs text-[var(--foreground)] max-md:text-[13px]">__client_uat</span> and other{" "}
+            <span className="font-mono text-xs text-[var(--foreground)] max-md:text-[13px]">__clerk</span>-prefixed names) to keep
             you signed in and protect your account against forged requests. These are strictly necessary and
             cannot be switched off while using an account.
           </P>
@@ -72,7 +72,7 @@ const SECTIONS = [
             When product analytics is enabled, a banner asks for your consent before anything loads. Only
             after you press &ldquo;Accept&rdquo; does PostHog store an anonymous visitor identifier in a cookie
             and local storage (names beginning with{" "}
-            <span className="font-mono text-xs text-[var(--foreground)]">ph_</span>) to understand how features
+            <span className="font-mono text-xs text-[var(--foreground)] max-md:text-[13px]">ph_</span>) to understand how features
             are used. Data is processed on PostHog&rsquo;s EU servers and we do not attach your name or email to
             it. If you decline — or simply ignore the banner — PostHog is never loaded and sets nothing. You can
             change your choice at any time in section 6 below.
@@ -187,16 +187,16 @@ const SECTIONS = [
     title: "Contact Information",
     content: (
       <div className="space-y-1">
-        <p className="text-sm font-medium text-[var(--foreground)]">
+        <p className="text-sm font-medium text-[var(--foreground)] max-md:text-base">
           David Arakhamia, Sole Trader
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           Mykolaiv, Ukraine
         </p>
-        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed">
+        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
           Registered address available on request.
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1">
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1 max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline">
             anything@goo-fashion.com
           </a>
@@ -209,39 +209,39 @@ const SECTIONS = [
 export default function CookiePage() {
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
-        <div className="pt-16 md:pt-24 pb-32 max-w-2xl">
+      <div className="max-w-[1440px] mx-auto px-5 md:px-12">
+        <div className="pt-6 md:pt-24 pb-14 md:pb-32 max-w-2xl">
 
           {/* Header */}
-          <div className="mb-16 animate-fade-up">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+          <div className="mb-8 md:mb-16 animate-fade-up">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 max-md:hidden">
               Legal
             </p>
-            <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4">
+            <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
               Cookie Policy
             </h1>
-            <p className="text-sm text-[var(--foreground-subtle)]">Last updated: September 26, 2026</p>
+            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">Last updated: September 26, 2026</p>
           </div>
 
           {/* Intro */}
-          <div className="mb-16 pb-16 border-b border-[var(--border)]">
-            <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
+          <div className="mb-8 pb-8 md:mb-16 md:pb-16 border-b border-[var(--border)]">
+            <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-md:leading-[1.6] max-md:text-[var(--foreground)]">
               This Cookie Policy lists every cookie and browser-storage key Goo Fashion actually uses, what
               each one is for, and how you can control them. It supplements our{" "}
               <Link href="/privacy" className="text-[var(--foreground)] link-underline">Privacy Policy</Link>.
             </p>
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-[var(--border)]">
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Operator</p>
-                <p className="text-sm text-[var(--foreground-muted)]">David Arakhamia, Sole Trader</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Operator</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">David Arakhamia, Sole Trader</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Website</p>
-                <p className="text-sm text-[var(--foreground-muted)]">goo-fashion.com</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Website</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">goo-fashion.com</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Contact</p>
-                <a href="mailto:anything@goo-fashion.com" className="text-sm text-[var(--foreground-muted)] link-underline hover:text-[var(--foreground)] transition-colors">
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Contact</p>
+                <a href="mailto:anything@goo-fashion.com" className="text-sm text-[var(--foreground-muted)] link-underline hover:text-[var(--foreground)] transition-colors max-md:text-base">
                   anything@goo-fashion.com
                 </a>
               </div>
@@ -249,16 +249,17 @@ export default function CookiePage() {
           </div>
 
           {/* Sections */}
-          <div className="space-y-12">
+          <div className="space-y-8 md:space-y-12">
             {SECTIONS.map((section) => (
-              <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6">
-                <div className="pt-0.5">
+              <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6 max-md:block">
+                <div className="pt-0.5 max-md:hidden">
                   <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
                     {section.number.padStart(2, "0")}
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-base font-medium text-[var(--foreground)] mb-4">
+                  <h2 className="text-base font-medium text-[var(--foreground)] mb-4 max-md:text-[18px] max-md:font-semibold max-md:leading-snug max-md:mb-2.5">
+                    <span className="md:hidden text-[var(--foreground-muted)]">{section.number} · </span>
                     {section.title}
                   </h2>
                   {section.content}
@@ -268,17 +269,17 @@ export default function CookiePage() {
           </div>
 
           {/* Footer nav */}
-          <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6">
-            <Link href="/privacy" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+          <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6 max-md:mt-12 max-md:pt-6 max-md:gap-x-5 max-md:gap-y-3">
+            <Link href="/privacy" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal">
               Privacy Policy
             </Link>
-            <Link href="/terms" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/terms" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal">
               Terms &amp; Conditions
             </Link>
-            <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal">
               Refund Policy
             </Link>
-            <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal">
               Back to GOO
             </Link>
           </div>

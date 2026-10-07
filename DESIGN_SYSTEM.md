@@ -1178,7 +1178,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/subscribe/page.tsx:11` | `PLAN_COPY` дословно дублирует массивы `features` из `plans/page.tsx:20,37,55`; обе страницы дублируют то, чем владеет `lib/plans.ts` | Один экспорт в `src/lib/plans.ts` | актуально |
 | `src/components/auth/AuthForm.tsx:125` | Primary Clerk-кнопки `text-xs`, тогда как CTA воронки на `/subscribe` — `text-[10px]` | `text-[10px]` | актуально → на телефоне (мобильный трек R-23, 2026-10-07): ниже `md` primary — пилюля 50 px, 16 px обычным регистром, по §12. От `md` без изменений |
 | `src/app/coming-soon/page.tsx:56` | Инлайновый `<style>` переобъявляет `fadeUp`/`fadeIn`, `dotPulse` определён дважды с разной начальной непрозрачностью | Один `dotPulse` | ✓ файл удалён (ревью 2026-09) (страница и `FeatureCarousel.tsx`; гейт «coming soon» снят при ревью 2026-09) |
-| `src/app/sitemap-page/page.tsx:95` (и `:111`) | Outline-CTA без `rounded-xl`, в отличие от `about/page.tsx` (локально согласуется с hairline-сеткой страницы) | `rounded-xl` | актуально |
+| `src/app/sitemap-page/page.tsx:95` (и `:111`) | Outline-CTA без `rounded-xl`, в отличие от `about/page.tsx` (локально согласуется с hairline-сеткой страницы) | `rounded-xl` | актуально → на телефоне (мобильный трек R-24, 2026-10-07): ниже `md` обе кнопки — мягкие пилюли 44 px. От `md` без изменений |
 | `src/components/stylist/StylistDrawer.tsx:899` (и `:908`) | Ширина карточки задана инлайновым `style={{ width: 72 }}`, а изображение в соседней ветке — классом `w-[72px]` (`:870`) | Класс в обеих ветках | ✓ исправлено попутно (мобильный трек R-16, 2026-10-07): ширина — класс в обеих ветках, `w-[84px] md:w-[72px]`; изображение — `w-full` |
 | `src/components/stylist/StylistPersonalizationModal.tsx:288` (и `:296`) | Две кнопки одного футера имеют `disabled:opacity-30` и `-40` | `disabled:opacity-40 disabled:cursor-not-allowed` | актуально |
 | `src/components/ui/parallax-floating.tsx:29` | Мёртвый код и единственный потребитель `src/hooks/use-mouse-position-ref` | Удалить оба | ✓ файл удалён (ревью 2026-09) (оба) |
@@ -1501,6 +1501,13 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
   - У поля Clerk `max-height: 36px`, для высоты 50 px нужен `max-h-none!`.
 
   Код: `src/components/auth/AuthForm.tsx`.
+- **Служебные страницы на телефоне** (R-24, макеты v2 «Б · Правовая страница», «Б · 404», «Б · Ошибка», «Б · Баннер cookies»).
+  - Тексты правил: заголовок 28 px, разделы «N · Название» 18 px без колонки номеров, подзаголовки 15 px полужирным, текст 16 px / 1.6 в `--foreground`. Отдельного тона для основного текста в токенах нет, поэтому взят тот же, что у статьи.
+  - `/about` и `/sitemap-page`: подписи разделов 13 px вместо 9 px моно капсом, карточки и группы — плашки, кнопки — пилюли 44 px с одной залитой.
+  - 404 и ошибка: одна залитая пилюля 48 px и под ней текстовая кнопка 44 px.
+  - Баннер cookies поднимается над полосой покупки, если она есть на странице (`hasBuyBar`). Inline-тень десктопа на телефоне снята классом `max-md:shadow-none!`: `!important` из таблицы стилей сильнее inline-стиля без `!important`.
+
+  Код: `src/app/{privacy,terms,cookie,refund,about,sitemap-page}/page.tsx`, `src/app/not-found.tsx`, `src/app/error.tsx`, `src/components/consent/`.
 - **Ловушка трекинга.** Правило `.text-3xl:not([class*="tracking-"])` в `globals.css` даёт крупным кеглям отрицательный трекинг. Любой класс `tracking-…` на элементе его отключает, в том числе `max-md:` и `md:`. Поэтому, если меняешь трекинг для телефона у элемента с `text-3xl`…`text-9xl`, задай десктопное значение явно: `tracking-[-0.01em] md:tracking-[-0.015em]`. Найдено в R-11.
 
 ### 12.14 Остальные элементы
