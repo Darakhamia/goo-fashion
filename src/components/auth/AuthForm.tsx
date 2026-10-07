@@ -330,7 +330,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               // mark is the same one on every other page; the colour is a token
               // here because the header computes it in JS against the hero.
               style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 800 }}
-              className="text-[17px] tracking-[0.16em] md:text-[22px] md:tracking-[0.18em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200"
+              className="max-md:relative max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-[9px] text-[17px] tracking-[0.16em] md:text-[22px] md:tracking-[0.18em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200"
             >
               GOO
             </Link>
@@ -384,10 +384,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             <Link href="/" className="hover:text-[var(--foreground)] transition-colors max-md:hidden">
               Back to GOO
             </Link>
-            <Link href="/terms" className="hover:text-[var(--foreground)] transition-colors max-md:py-1.5">
+            <Link href="/terms" className="hover:text-[var(--foreground)] transition-colors max-md:-mx-2.5 max-md:px-2.5 max-md:py-[13px]">
               Terms
             </Link>
-            <Link href="/privacy" className="hover:text-[var(--foreground)] transition-colors max-md:py-1.5">
+            <Link href="/privacy" className="hover:text-[var(--foreground)] transition-colors max-md:-mx-2.5 max-md:px-2.5 max-md:py-[13px]">
               Privacy
             </Link>
           </div>

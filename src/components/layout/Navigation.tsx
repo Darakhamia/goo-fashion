@@ -219,7 +219,7 @@ export default function Navigation() {
         <Link
           href="/"
           style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 800 }}
-          className={`text-[17px] tracking-[0.16em] md:text-[22px] md:tracking-[0.18em] hover:opacity-70 transition-opacity duration-200 shrink-0 ${backHref ? "flex-1 text-center md:flex-none md:text-left" : ""} ${logoClass}`}
+          className={`max-md:relative max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-[9px] text-[17px] tracking-[0.16em] md:text-[22px] md:tracking-[0.18em] hover:opacity-70 transition-opacity duration-200 shrink-0 ${backHref ? "flex-1 text-center md:flex-none md:text-left" : ""} ${logoClass}`}
         >
           GOO
         </Link>

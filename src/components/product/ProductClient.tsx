@@ -664,7 +664,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                 <Link
                   key={cat}
                   href={`/browse?category=${cat}`}
-                  className="inline-flex md:inline items-center h-9 md:h-auto px-3.5 md:px-3 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[13px] md:text-[11px] capitalize text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] md:hover:border-[var(--foreground-muted)] transition-colors duration-200"
+                  className="max-md:relative max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-1 inline-flex md:inline items-center h-9 md:h-auto px-3.5 md:px-3 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[13px] md:text-[11px] capitalize text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] md:hover:border-[var(--foreground-muted)] transition-colors duration-200"
                 >
                   {cat}
                 </Link>

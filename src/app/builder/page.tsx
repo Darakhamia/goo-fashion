@@ -2183,12 +2183,13 @@ export default function BuilderPage() {
           <div className="shrink-0 flex flex-col bg-[var(--background)] pb-3">
 
             {/* Filters + category chips in one scrollable row */}
-            {/* 40px pills (§12.10); `py-0.5` on the row lets each hit area reach 44px. */}
+            {/* 40px pills (§12.10); each one's `after:` reaches 2px into the row's
+                `py-0.5`, so the hit area is 44px without the scroll row clipping it. */}
             <div className="shrink-0 flex items-center gap-1.5 px-3 pt-3 pb-0.5 overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setMobileFiltersOpen(true)}
                 aria-label={activeFilterCount > 0 ? `Filters, ${activeFilterCount} on` : "Filters"}
-                className={`relative shrink-0 w-10 h-10 rounded-full border flex items-center justify-center transition-colors ${
+                className={`relative shrink-0 w-10 h-10 rounded-full border flex items-center justify-center transition-colors max-md:after:absolute max-md:after:-inset-[3px] ${
                   hasActiveFilters
                     ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                     : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)]"
@@ -2205,7 +2206,7 @@ export default function BuilderPage() {
                     key={label}
                     onClick={() => { setCatalogCategory(catalogCategory === value ? null : value); setLikedOnly(false); }}
                     aria-pressed={isActive}
-                    className={`shrink-0 h-10 px-[15px] rounded-full text-[13px] whitespace-nowrap transition-colors ${
+                    className={`max-md:relative shrink-0 h-10 px-[15px] rounded-full text-[13px] whitespace-nowrap transition-colors max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-0.5 ${
                       isActive
                         ? "bg-[var(--foreground)] text-[var(--background)] font-semibold"
                         : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
@@ -2218,7 +2219,7 @@ export default function BuilderPage() {
               <button
                 onClick={() => { setLikedOnly(v => !v); setCatalogCategory(null); }}
                 aria-pressed={likedOnly}
-                className={`shrink-0 flex items-center gap-1.5 h-10 px-[15px] rounded-full text-[13px] whitespace-nowrap transition-colors ${
+                className={`max-md:relative shrink-0 flex items-center gap-1.5 h-10 px-[15px] rounded-full text-[13px] whitespace-nowrap transition-colors max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-0.5 ${
                   likedOnly
                     ? "bg-[var(--foreground)] text-[var(--background)] font-semibold"
                     : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
@@ -2522,7 +2523,7 @@ export default function BuilderPage() {
           shape as the catalogue's "Sort & filter" sheet. ───────────────────── */}
       {mobileFiltersOpen && (() => {
         const chip = (on: boolean) =>
-          `relative h-9 px-3.5 rounded-full text-[13px] transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${
+          `relative h-9 min-w-11 px-3.5 rounded-full text-[13px] transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${
             on ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
           }`;
         const label = "mb-2.5 text-[13px] text-[var(--foreground-muted)]";

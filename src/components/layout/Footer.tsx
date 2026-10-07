@@ -46,7 +46,7 @@ export default function Footer() {
           <Link
             href="/"
             style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 800 }}
-            className="text-[17px] tracking-[0.16em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200"
+            className="relative text-[17px] tracking-[0.16em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200 after:absolute after:inset-x-0 after:-inset-y-[10px]"
           >
             GOO
           </Link>
@@ -60,7 +60,7 @@ export default function Footer() {
               <ul className="flex flex-wrap gap-x-[18px]">
                 {links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="min-h-11 flex items-center text-[14px] text-[var(--foreground)]">
+                    <Link href={link.href} className="relative min-h-11 flex items-center text-[14px] text-[var(--foreground)] after:absolute after:-inset-x-[9px] after:inset-y-0">
                       {link.label}
                     </Link>
                   </li>

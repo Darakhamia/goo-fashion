@@ -262,7 +262,7 @@ export default async function SitemapPage() {
             href="/sitemap.xml"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors max-md:py-2.5 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]"
+            className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors max-md:py-3 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]"
           >
             XML Sitemap ↗
           </a>

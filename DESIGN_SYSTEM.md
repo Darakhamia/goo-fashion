@@ -12,7 +12,7 @@
 
 ## 1. Токены — единственный источник цвета
 
-Определены в `src/app/globals.css:43-82`: светлый набор — в блоке `:root, .admin-theme-light`, тёмный — в блоке `.dark, .admin-theme-dark`. Вторые селекторы нужны админке, у которой своя тема (раздел 9). Светлый блок обязан стоять раньше тёмного: `:root` и `.dark` равны по специфичности, и на `<html>` побеждает правило, записанное позже (комментарий `globals.css:37-42`).
+Определены в `src/app/globals.css:43-85`: светлый набор — в блоке `:root, .admin-theme-light`, тёмный — в блоке `.dark, .admin-theme-dark`. Вторые селекторы нужны админке, у которой своя тема (раздел 9). Светлый блок обязан стоять раньше тёмного: `:root` и `.dark` равны по специфичности, и на `<html>` побеждает правило, записанное позже (комментарий `globals.css:37-42`).
 
 | Переменная | Light (`:root`, `.admin-theme-light`) | Dark (`.dark`, `.admin-theme-dark`) | Назначение |
 |---|---|---|---|
@@ -28,7 +28,7 @@
 | `--fg-overlay-05` | `rgba(10,10,10,.05)` | `rgba(240,238,232,.05)` | Лёгкая hover-заливка |
 | `--fg-overlay-08` | `rgba(10,10,10,.08)` | `rgba(240,238,232,.08)` | Активная заливка, hover-скрим на изображении |
 | `--fg-on-dark-60` / `-70` / `-80` | `rgba(244,242,238,.6/.7/.8)` | `rgba(10,10,10,.6/.7/.8)` | Текст на инвертированной поверхности (карточка тарифа, залитая `--foreground`) |
-| `--home-nav-h` | `66px` | — | Высота плавающего хедера; синхронизируется из `HomeFullPageScroll` (`globals.css:141-146`) |
+| `--home-nav-h` | `66px` | — | Высота плавающего хедера; синхронизируется из `HomeFullPageScroll` (`globals.css:194-201`) |
 | `--home-bottom-nav-h` | `calc(4.5rem + env(safe-area-inset-bottom))` | — | Полоса под мобильную нижнюю навигацию |
 
 Токены движения (`--ease-*`, `--dur-*`) лежат в отдельном блоке `:root` выше, вместе со шрифтами (`globals.css:13-35`, движение — `:19-34`), и описаны в разделе 7. В админке они не переобъявляются.
@@ -64,22 +64,22 @@ style={{ background: "#0a0a0a", color: "rgba(255,255,255,0.6)" }}
    - Класс `bg-white` **остаётся** и работает как fallback: у товара без замера (`bg_color` пуст или `'none'`) поведение прежнее.
    - Красится **только бокс изображения**. Тело карточки остаётся на `bg-[var(--surface)]` — иначе карточка перестанет быть частью темы.
    - Если на экране фото цветового варианта, брать `bgColor` варианта: это отдельная строка товара, снятая, возможно, на другом фоне.
-2. **`bg-black/NN` для контрола, лежащего поверх фото.** `ProductCard.tsx:147,161` — кнопки корзины и лайка. Здесь фон не тема, а фотография.
+2. **`bg-black/NN` для контрола, лежащего поверх фото.** `ProductCard.tsx:154,169` — кнопки корзины и лайка на десктопе. Здесь фон не тема, а фотография. На телефоне контрол на фото светлый — `bg-white/80 text-black` (§12.6, `ProductCard.tsx:171`).
 3. **Семантические статусы** (`emerald` / `amber` / `red`) — токенов для них в системе **нет**. В админке для них есть устоявшийся рецепт (раздел 9), на публичном сайте — нет (раздел 11).
 
 ### Зачем `--*-overlay-*` и когда их брать
 
 Комментарий в `globals.css:54` объясняет причину: «pre-computed semi-transparent variants (avoids Tailwind v4 opacity modifier issues with CSS vars)». Проектная договорённость — **не писать `bg-[var(--foreground)]/70`**, а брать готовую переменную.
 
-Практическое замечание, где данные расходятся: на Tailwind v4 (в проекте `tailwindcss ^4`) модификатор непрозрачности на `var()` компилируется в `color-mix()` и технически работает — так что `src/app/builder/page.tsx:1911` ничего не ломает. Но конвенция остаётся: берём предвычисленный токен, потому что он даёт одинаковый результат в обеих темах и не зависит от версии Tailwind.
+Практическое замечание, где данные расходятся: на Tailwind v4 (в проекте `tailwindcss ^4`) модификатор непрозрачности на `var()` компилируется в `color-mix()` и технически работает — так что `src/app/builder/page.tsx:1728` ничего не ломает. Но конвенция остаётся: берём предвычисленный токен, потому что он даёт одинаковый результат в обеих темах и не зависит от версии Tailwind.
 
 Когда что:
 
-- фон бейджа/оверлея поверх изображения → `bg-[var(--bg-overlay-90)]` (`OutfitCard.tsx:68`);
-- плотная плавающая панель (нижняя навигация) → `bg-[var(--bg-overlay-95)]` (`MobileBottomNav.tsx:91`);
-- hover-заливка кнопки/строки → `hover:bg-[var(--fg-overlay-05)]` (`browse/page.tsx:92`, `StylistDrawer.tsx:734`);
-- активное состояние, hover-скрим на картинке → `bg-[var(--fg-overlay-08)]` (`OutfitCard.tsx:81`, `MobileBottomNav.tsx:111`);
-- текст на поверхности, залитой `--foreground` → `text-[var(--fg-on-dark-60)]` / `-70` / `-80` (`plans/page.tsx:212,246`, `profile/page.tsx:924`).
+- фон бейджа/оверлея поверх изображения → `bg-[var(--bg-overlay-90)]` (`OutfitCard.tsx:70`, от `md`; на телефоне — светлый контрол §12.6);
+- плотная панель поверх фото → `bg-[var(--bg-overlay-95)]` (`ProductCard.tsx:139`). Плавающие панели телефона — нижнее меню и полосы покупки — на `--surface-overlay-92` (§12.2, `MobileBottomNav.tsx:40`);
+- hover-заливка кнопки/строки → `hover:bg-[var(--fg-overlay-05)]` (`browse/page.tsx:93`, `StylistDrawer.tsx:739`);
+- активное состояние, hover-скрим на картинке → `bg-[var(--fg-overlay-08)]` (`OutfitCard.tsx:83`, `MobileBottomNav.tsx:60`);
+- текст на поверхности, залитой `--foreground` → `text-[var(--fg-on-dark-60)]` / `-70` / `-80` (`plans/page.tsx:218,253`, `profile/page.tsx:1019`; на телефоне выбранная карточка тарифа не заливается, §12.13).
 
 ---
 
@@ -159,39 +159,46 @@ body {
 
 ```tsx
 <div className="min-h-screen">
-  <div className="max-w-[1440px] mx-auto px-6 md:px-12">
+  <div className="max-w-[1440px] mx-auto px-3 md:px-12">
     {/* ... */}
   </div>
 </div>
 ```
 
-Источники: `Navigation.tsx:133`, `Footer.tsx:27`, `product/[id]/page.tsx:74`, `saved/page.tsx:208`, `profile/page.tsx:185`, `about/page.tsx:11`, `blog/page.tsx:57` — около 20 файлов.
+Источники: `Navigation.tsx:189`, `Footer.tsx:42`, `product/[id]/page.tsx:104`, `saved/page.tsx:211`, `profile/page.tsx:198`, `blog/page.tsx:24` — около 20 файлов.
 
-`max-w-7xl` в коде **не встречается ни разу** (единственное вхождение было в мёртвом `hero-section-1.tsx:79`, удалён 2026-09-27). `max-w-2xl/3xl/4xl/5xl/6xl` — только внутренние меры текста (например, `privacy/page.tsx:168`: `pt-16 md:pt-24 pb-32 max-w-2xl`), никогда не внешний контейнер.
+От `md` поле везде `md:px-12`. Ниже `md` оно зависит от экрана (мобильный трек, §12):
+- `px-3` (12 px, край совпадает с капсулой шапки) — шапка, подвал, страницы с карточками и плашками: товар, образ, лайки, профиль, корзина, журнал;
+- `px-4` — главная (`max-w-[1280px]`) и статья журнала;
+- `px-5` (20 px) — текстовые страницы: правила, «О нас», карта сайта (`about/page.tsx:11`), по макету «Б · Правовая страница».
 
-Главная страница использует более узкую внутреннюю меру: `max-w-[1280px] mx-auto px-6 md:px-12` (`page.tsx:119`, `HowItWorksSection.tsx:222`, `AIStylistShowcase.tsx:545`).
+До мобильного трека везде было `px-6`.
+
+`max-w-7xl` в коде **не встречается ни разу** (единственное вхождение было в мёртвом `hero-section-1.tsx:79`, удалён 2026-09-27). `max-w-2xl/3xl/4xl/5xl/6xl` — только внутренние меры текста (например, `privacy/page.tsx:372`: `pt-6 md:pt-24 pb-14 md:pb-32 max-w-2xl`), никогда не внешний контейнер.
+
+Главная страница использует более узкую внутреннюю меру: `max-w-[1280px] mx-auto px-4 md:px-12` (`page.tsx:125`, `HowItWorksSection.tsx:223`, `AIStylistShowcase.tsx:524`).
 
 ### Брейкпоинты
 
-Стандартные Tailwind. Реально используются `sm` (640), `md` (768) — главный переключатель мобильный/десктоп, `lg` (1024), `xl` (1280) редко. `md` — точка, где меняется всё: паддинги (`px-6 md:px-12`), сетки, размер overlay-контролов, показ/скрытие нижней навигации.
+Стандартные Tailwind. Реально используются `sm` (640), `md` (768) — главный переключатель мобильный/десктоп, `lg` (1024), `xl` (1280) редко. `md` — точка, где меняется всё: паддинги (`px-3 md:px-12`), сетки, размер overlay-контролов, показ/скрытие нижней навигации.
 
 ### Вертикальный ритм
 
-- Начало контента списковой страницы: `pt-12 md:pt-16` (`saved/page.tsx:209`).
-- Начало контента детальной страницы после хлебных крошек: `mt-8 md:mt-12` (`ProductClient.tsx:125`).
-- Секция под фолдом: `mt-20 md:mt-28` (`ProductClient.tsx:497`).
+- Начало контента списковой страницы: `md:pt-16` (`saved/page.tsx:212`); на телефоне спокойный заголовок начинается под шапкой — `pt-4` (§12.1 п. 7).
+- Начало контента детальной страницы после хлебных крошек: `md:mt-12` (`ProductClient.tsx:162`); на телефоне — `mt-3`.
+- Секция под фолдом: `md:mt-28` (`ProductClient.tsx:679`); на телефоне — `mt-10`.
 - Секция с данными, отбитая линейкой: `mt-16 border-t border-[var(--border)] pt-10`. Оба источника рецепта, `PriceHistoryChart.tsx:52` и `ProductReviews.tsx:123`, после ревью 2026-09 сняты со страницы товара и удалены 2026-09-27; живого примера рецепта сейчас нет.
-- Полноширинная секция контентной страницы: `border-t border-[var(--border)]` + `py-20 md:py-28` (`about/page.tsx:58-60`).
-- Футер: `mt-16 md:mt-32`, `py-10 md:py-24` (`Footer.tsx:26-27`).
-- Сетка карточек: `gap-4` — везде.
+- Полноширинная секция контентной страницы: `border-t border-[var(--border)]` + `md:py-28` (`about/page.tsx:58-59`); на телефоне — `py-10`.
+- Футер: `md:mt-32`, `md:py-24` (`Footer.tsx:41-42`); на телефоне — плашка с `mt-8` (§12.13).
+- Сетка карточек: `md:gap-4` — везде; на телефоне `gap-2.5`.
 
 ### Сетки карточек
 
 ```tsx
-// каталог: browse/page.tsx:1310
-"grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4"
-// saved: saved/page.tsx:266, MyLooksPanel.tsx:1554 (связанные товары PDP — grid-cols-2 md:grid-cols-4, ProductClient.tsx:551)
-"grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+// каталог: browse/page.tsx:1807
+"grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 md:gap-4"
+// saved: saved/page.tsx:272, MyLooksPanel.tsx:1570 (связанные товары PDP — grid-cols-2 md:grid-cols-4, ProductClient.tsx:688)
+"grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-4"
 ```
 
 Две формулы, различие исторические. Для нового каталожного грида бери второй вариант — `xl:grid-cols-4` в первом дублирует `lg` и ничего не даёт.
@@ -216,22 +223,22 @@ body {
 ```tsx
 <HomeSection className="bg-[var(--background)]">
   <section className="py-4 md:py-12">
-    <div className="max-w-[1280px] mx-auto px-6 md:px-12">{/* ... */}</div>
+    <div className="max-w-[1280px] mx-auto px-4 md:px-12">{/* ... */}</div>
   </section>
 </HomeSection>
 ```
 
-Источник: `src/app/page.tsx:92,117-119`.
+Источник: `src/app/page.tsx:123-125`.
 
 ### Safe area
 
 ```tsx
 // src/app/layout.tsx:55-59
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
-// src/components/layout/MobileBottomNav.tsx:88
-style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
-// зазор под нижнюю навигацию: ConditionalSiteLayout.tsx:58
-"pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
+// src/components/layout/MobileBottomNav.tsx:37 — капсула меню на 6 px выше safe area
+"fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)]"
+// зазор под нижнюю навигацию (или полосу покупки), задан один раз: ConditionalSiteLayout.tsx:79
+"pb-[calc(env(safe-area-inset-bottom)+68px)]"   // с полосой покупки — +82px
 ```
 
 ### Z-index
@@ -240,13 +247,13 @@ style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
 
 | Слой | Значение | Пример |
 |---|---|---|
-| Нижняя навигация, скрим корзины | 40 | `MobileBottomNav.tsx:87`, `Navigation.tsx:558` |
-| Sticky-хедер, дропдауны, drawer | 50 | `Navigation.tsx:151,375,560`, `browse/page.tsx:944` |
-| Скрим стилиста | 55 | `StylistDrawer.tsx:667` |
-| Подменю валют, drawer стилиста, баннер cookies | 60 | `Navigation.tsx:435`, `StylistDrawer.tsx:653`, `CookieConsentBanner.tsx:38` |
-| Модалка выбора стиля | 70 | `StylePicker.tsx:66` |
-| UpgradeModal, модалка сохранения образа | 80 | `UpgradeModal.tsx:80`, `builder/page.tsx:2296` |
-| Модалка выхода | 200 | `Navigation.tsx:622` |
+| Нижняя навигация, полосы покупки на телефоне, скрим корзины | 40 | `MobileBottomNav.tsx:37`, `ProductClient.tsx:723`, `Navigation.tsx:594` |
+| Sticky-хедер, дропдауны, drawer, листы корзины и фильтров на телефоне | 50 | `Navigation.tsx:188,277,596,665`, `browse/page.tsx:1068,1588` |
+| Скрим стилиста на телефоне | 55 | `StylistDrawer.tsx:672` |
+| Подменю валют, панель стилиста, баннер cookies | 60 | `Navigation.tsx:485`, `StylistDrawer.tsx:657-659`, `CookieConsentBanner.tsx:47` |
+| Модалка выбора стиля (на телефоне — лист) | 70 | `StylePicker.tsx:71,285` |
+| UpgradeModal, модалка сохранения образа (на телефоне — лист) | 80 | `UpgradeModal.tsx:81`, `builder/page.tsx:2345,2461` |
+| Модалка выхода | 200 | `Navigation.tsx:705` |
 
 Новый оверлей — вписывай в эту лестницу, не выдумывай промежуточных значений.
 
@@ -655,23 +662,23 @@ className="absolute -top-1 -right-1 w-4 h-4 rounded-full
 
 Сырых `cubic-bezier(...)` в правилах `globals.css` больше нет — только в объявлениях токенов. Утилита Tailwind `ease-out` тоже теперь даёт `--ease-out` проекта, а не стандартную кривую Tailwind.
 
-В JS (framer-motion) живёт прежняя кривая `[0.25, 0.46, 0.45, 0.94]`: локальный `const EASE` в `AIStylistShowcase.tsx:20`, `OutfitExamplesCarousel.tsx:8` плюс инлайном в `FadeInView.tsx`, `OutfitCard.tsx`, `HeroSection.tsx`, `AuthForm.tsx`, `about`, `plans`, `browse` (ещё три копии жили в мёртвых `FeaturesBento.tsx`, `AIStylistChat.tsx`, `HowItWorksGrid.tsx`, удалённых 2026-09-27). Общего JS-модуля motion-токенов нет, и JS-кривая не совпадает с CSS-токеном `--ease-out`. Для нового framer-кода бери ту же `[0.25, 0.46, 0.45, 0.94]`, что у соседей, — выбор единой кривой для CSS и JS не сделан.
+В JS (framer-motion) живёт прежняя кривая `[0.25, 0.46, 0.45, 0.94]`: локальный `const EASE` в `OutfitExamplesCarousel.tsx:8` (в `AIStylistShowcase.tsx` ушёл вместе с `FadeCard`, мобильный трек R-21) плюс инлайном в `FadeInView.tsx`, `OutfitCard.tsx`, `HeroSection.tsx`, `AuthForm.tsx`, `about`, `plans`, `browse` (ещё три копии жили в мёртвых `FeaturesBento.tsx`, `AIStylistChat.tsx`, `HowItWorksGrid.tsx`, удалённых 2026-09-27). Общего JS-модуля motion-токенов нет, и JS-кривая не совпадает с CSS-токеном `--ease-out`. Для нового framer-кода бери ту же `[0.25, 0.46, 0.45, 0.94]`, что у соседей, — выбор единой кривой для CSS и JS не сделан.
 
 ### Длительности
 
 Шкала-токены (`globals.css:31-34`): `--dur-press` 160ms (отклик на нажатие), `--dur-fast` 150ms, `--dur-base` 200ms, `--dur-slow` 260ms. Комментарий там же: интерфейс живёт под 300 мс, drawer и модалки — до 500.
 
-В классах: `150ms` — opacity-переключения; `200ms` — стандартный hover (`transition-colors duration-200`); `300ms` — раскрытия, slide-переходы и зум фото `.img-zoom`; `500ms` — hover-скрим на изображении карточки образа. `duration-[260ms]` (`ProductClient.tsx:210`) — единственная произвольная длительность в классах; то же значение в CSS теперь названо `--dur-slow`.
+В классах: `150ms` — opacity-переключения; `200ms` — стандартный hover (`transition-colors duration-200`); `300ms` — раскрытия, slide-переходы и зум фото `.img-zoom`; `500ms` — hover-скрим на изображении карточки образа. `duration-[260ms]` (`ProductClient.tsx:281`) — единственная произвольная длительность в классах; то же значение в CSS теперь названо `--dur-slow`.
 
 Свойство перехода в классах названо явно: `transition-all` убран правкой 2026-09-12 (`ca206c4`, 123 → 0; сейчас одно вхождение, полоса прогресса `EmbeddingsCard.tsx:178`). В коде стоят `transition-colors`, `transition-opacity`, `transition-transform` или список свойств `transition-[…]`, если меняется раскладка (`transition-[width]`, `transition-[left]` у бегунка переключателя).
 
 ### Отклик на нажатие
 
-Глобальное правило `globals.css:224-244`: любой `button`, `[role="button"]` и `summary` при `:active` получает `scale: 0.97` за `--dur-press`. Используется независимое свойство `scale`, а не `transform`, поэтому центрирование через `-translate-x-1/2` не ломается. Отказ — класс `.no-press` или собственный `active:scale-*` на элементе. Новой кнопке писать отклик руками не нужно.
+Глобальное правило `globals.css:294-307`: любой `button`, `[role="button"]` и `summary` при `:active` получает `scale: 0.97` за `--dur-press`. Используется независимое свойство `scale`, а не `transform`, поэтому центрирование через `-translate-x-1/2` не ломается. Отказ — класс `.no-press` или собственный `active:scale-*` на элементе. Новой кнопке писать отклик руками не нужно.
 
 ### Оверлеи: `.ov-*` и `useOverlayPresence`
 
-Общий рецепт входа и выхода хромы (`globals.css:657-746`) — переходы с `@starting-style`, узел снимается по `transitionend` хуком `src/lib/hooks/useOverlayPresence.ts`:
+Общий рецепт входа и выхода хромы (`globals.css:722-829`) — переходы с `@starting-style`, узел снимается по `transitionend` хуком `src/lib/hooks/useOverlayPresence.ts`:
 
 | Класс | Что | Вход / выход |
 |---|---|---|
@@ -680,25 +687,25 @@ className="absolute -top-1 -right-1 w-4 h-4 rounded-full
 | `.ov-pop` / `.ov-pop-up` | выпадашка от триггера (вниз / вверх) | opacity + `scale(0.98)`, `--dur-fast` / 120ms |
 | `.ov-rise` | полоса снизу (баннер, нижний лист) | translateY, `--dur-slow` / `--dur-base`, кривая `--ease-drawer` |
 
-Закрывающееся состояние — класс `.is-closing`. Сейчас рецепт применён в `UpgradeModal`, `CartPanel`, `CookieConsentBanner`, `StylistPersonalizationModal` (без выхода — у неё нет своего `open`). Остальные модалки сайта и админки анимируются по-старому (framer-motion или `.animate-*`).
+Закрывающееся состояние — класс `.is-closing`. Сейчас рецепт применён в `UpgradeModal`, `CartPanel`, `CookieConsentBanner`, `StylistPersonalizationModal` (без выхода — у неё нет своего `open`), в листах телефона — корзина (`Navigation`), «Sort & filter» (`browse/page.tsx`), выбор стиля (`StylePicker`), листы конструктора (`builder/page.tsx`) — и в общих компонентах админки (`src/components/admin/`: `Modal`, `SidePanel`, `ConfirmDialog`, `SaveBar`, `Menu`, `FilterBar`, `Toast`). Остальные модалки сайта анимируются по-старому (framer-motion или `.animate-*`).
 
 ### Классы `.animate-*` из `globals.css`
 
 | Класс | Определение | Назначение |
 |---|---|---|
-| `.animate-fade-up` | `fadeUp 0.5s var(--ease-out) forwards` (`:300`) | Появление статичного блока снизу на 12px |
-| `.animate-fade-in` | `fadeIn 0.4s ease forwards` (`:324`) | Простое появление оверлея/панели |
-| `.animate-scale-in` | `scaleIn 0.4s var(--ease-out)`, `scale(0.97) → 1` (`:400`) | Появление карточки/модалки |
-| `.animate-slide-up` | `slide-up 0.28s var(--ease-drawer) both` (`:577`) — дубль снят 2026-09-12 | Нижний лист на мобильном (билдер) |
-| `.animate-slide-in-right` | `slideInRight 0.38s var(--ease-out)` (`:384`) | Drawer справа |
-| `.stylist-drawer-animate` | `slideUp 0.32s` на мобильном, `slideInRight 0.38s` с `md` (`:582-589`) | Drawer стилиста |
-| `.animate-shimmer` | `shimmer-sweep 1.8s infinite` (`:429`) | Бегущий блик (в скелетонах не используется) |
-| `.animate-progress-bar` | `progress-indeterminate 1.6s infinite` (`:438`) | Неопределённый прогресс |
-| `.animate-scroll-hint` | `scroll-hint 2s infinite` (`:605`) | Стрелка «листай вниз» на hero |
-| `.ai-pulse` | `aiPulseRing 1.6s infinite` (`:320`) | Пульсирующее кольцо AI-кнопки |
-| `.stagger-children` | задержки 0…420ms по `nth-child` (`:329-336`) | Каскад для CSS-анимаций |
-| `.img-zoom` / `.card-zoom-layer` | `transform 300ms var(--ease-out)`, `scale(1.05)` по hover — **только при настоящем курсоре** `(hover: hover) and (pointer: fine)` (`:271-286`) | Зум фото в карточке; на тач-экране не залипает |
-| `.link-underline` | `::after` `scaleX(0 → 1)` за `--dur-base`, тоже только при настоящем курсоре (`:348-372`) | Подчёркивание ссылки по hover |
+| `.animate-fade-up` | `fadeUp 0.5s var(--ease-out) forwards` (`:365`) | Появление статичного блока снизу на 12px |
+| `.animate-fade-in` | `fadeIn 0.4s ease forwards` (`:389`) | Простое появление оверлея/панели |
+| `.animate-scale-in` | `scaleIn 0.4s var(--ease-out)`, `scale(0.97) → 1` (`:465`) | Появление карточки/модалки |
+| `.animate-slide-up` | `slide-up 0.28s var(--ease-drawer) both` (`:642`) — дубль снят 2026-09-12 | Нижний лист на мобильном (билдер) |
+| `.animate-slide-in-right` | `slideInRight 0.38s var(--ease-out)` (`:449`) | Drawer справа |
+| `.stylist-drawer-animate` | `slideUp 0.32s` на мобильном, `slideInRight 0.38s` с `md` (`:647-654`) | Drawer стилиста |
+| `.animate-shimmer` | `shimmer-sweep 1.8s infinite` (`:494`) | Бегущий блик (в скелетонах не используется) |
+| `.animate-progress-bar` | `progress-indeterminate 1.6s infinite` (`:503`) | Неопределённый прогресс |
+| `.animate-scroll-hint` | `scroll-hint 2s infinite` (`:670`) | Стрелка «листай вниз» на hero |
+| `.ai-pulse` | `aiPulseRing 1.6s infinite` (`:385`) | Пульсирующее кольцо AI-кнопки |
+| `.stagger-children` | задержки 0…420ms по `nth-child` (`:394-401`) | Каскад для CSS-анимаций |
+| `.img-zoom` / `.card-zoom-layer` | `transform 300ms var(--ease-out)`, `scale(1.05)` по hover — **только при настоящем курсоре** `(hover: hover) and (pointer: fine)` (`:336-351`) | Зум фото в карточке; на тач-экране не залипает |
+| `.link-underline` | `::after` `scaleX(0 → 1)` за `--dur-base`, тоже только при настоящем курсоре (`:413-437`) | Подчёркивание ссылки по hover |
 
 Удалены 2026-09-12 как мёртвые: `.animate-slide-in-left`, `.animate-overlay-in` (кейфреймы `overlayIn` оставлены — на них инлайновый стиль в `StylistDrawer`), `.animate-hero-fade-in` / `.animate-hero-fade-up`, `.hero-stagger`, `.noise-overlay`. Не ссылайся на них.
 
@@ -735,16 +742,16 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 // src/components/ui/FadeInView.tsx:17-20
 ```
 
-**Правило:** для карточек товаров/образов — spring из `ProductCard`; для контентных секций — `FadeInView`. Локальная копия `FadeCard` (`AIStylistShowcase.tsx:22`; вторая была в мёртвом `FeaturesBento.tsx`, удалён 2026-09-27) — дубликат `FadeInView` с разошедшимися значениями, не копируй её.
+**Правило:** для карточек товаров/образов — spring из `ProductCard`; для контентных секций — `FadeInView`. Локальная копия `FadeCard` была дубликатом `FadeInView` с разошедшимися значениями: в `AIStylistShowcase.tsx` её заменил `FadeInView` (мобильный трек R-21, 2026-10-07), вторая жила в мёртвом `FeaturesBento.tsx`, удалённом 2026-09-27. Не возвращай её.
 
-Другие spring, реально применяемые: `{ stiffness: 400, damping: 35 }` — пилюля таба (`saved/page.tsx:229-231`); `{ stiffness: 380-500, damping: 38-42, mass: 0.8 }` — drawer и сегментированный переключатель.
+Другие spring, реально применяемые: `{ stiffness: 400, damping: 35 }` — пилюля таба (`saved/page.tsx:234-236`); `{ stiffness: 380-500, damping: 38-42, mass: 0.8 }` — drawer и сегментированный переключатель.
 
 ### prefers-reduced-motion и другие системные настройки
 
 Глобальный guard есть и покрывает все CSS-анимации, включая инлайновые `<style>`. С 2026-09-12 он убирает **движение, но не отзывчивость**: цвет, прозрачность и подсветка фокуса продолжают плавно меняться.
 
 ```css
-/* src/app/globals.css:611-628 */
+/* src/app/globals.css:676-693 */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
@@ -757,9 +764,9 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 }
 ```
 
-Отклик на нажатие (`scale`) при этом выключается сам: `scale`/`transform` нет в списке переходимых свойств. Оверлеи `.ov-*` под reduced-motion только проявляются, без сдвига и масштаба (`globals.css:736-746`).
+Отклик на нажатие (`scale`) при этом выключается сам: `scale`/`transform` нет в списке переходимых свойств. Оверлеи `.ov-*` под reduced-motion только проявляются, без сдвига и масштаба (`globals.css:816-829`).
 
-Ещё два системных сигнала (`globals.css:636-655`): `prefers-reduced-transparency: reduce` снимает `backdrop-filter` со всего, что несёт `backdrop-blur`, и подкладывает `--background`; `prefers-contrast: more` делает то же, добавляет границу `--foreground` и утолщает кольцо фокуса до 3px.
+Ещё два системных сигнала (`globals.css:701-720`): `prefers-reduced-transparency: reduce` снимает `backdrop-filter` со всего, что несёт `backdrop-blur`, и подкладывает `--background`; `prefers-contrast: more` делает то же, добавляет границу `--foreground` и утолщает кольцо фокуса до 3px.
 
 Дополнительно декоративные компоненты гасят себя сами: `FloatLoop.tsx:26`, `gooey-text-morphing.tsx:42-52`, `etheral-shadow.tsx:70`. **Любая новая непрерывная (loop) анимация обязана иметь такой же собственный guard** — глобальное правило обрежет длительность CSS-анимации, но логику rAF-цикла или framer-motion не остановит.
 
@@ -781,7 +788,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 Обрати внимание на логику: тёмная тема выбирается при **любом** значении, кроме `'light'` и `'system'`, и при ошибке. Пустой localStorage у нового посетителя → тёмная.
 
 - Дальше состояние примиряет `ThemeProvider` (`src/lib/context/theme-context.tsx:61-71`), ключ хранения — `goo-theme`.
-- Тема переключается **каскадом CSS**, а не JS. Компоненты, которые ветвятся на `useTheme()` и подставляют инлайновые стили (`Navigation.tsx:99-110`, `MobileBottomNav.tsx:13,92`), — исключение, а не образец. Единственный оправданный императивный случай — подмена растрового ассета, который нельзя переключить переменной.
+- Тема переключается **каскадом CSS**, а не JS. Компоненты, которые ветвятся на `useTheme()` и подставляют инлайновые стили (`Navigation.tsx:123-134`; нижнее меню ветвилось так же, пока мобильный трек R-04 не перевёл его на токены), — исключение, а не образец. Единственный оправданный императивный случай — подмена растрового ассета, который нельзя переключить переменной.
 - **Tailwind-вариант `dark:` к теме сайта не подключён.** В `globals.css` нет `@custom-variant dark`, поэтому на Tailwind v4 `dark:` срабатывает по системной настройке ОС (`@media (prefers-color-scheme: dark)`), а не по классу `.dark` на `<html>` и не по теме админки. Пользователь со светлой ОС и тёмной темой сайта (а это умолчание) `dark:`-стилей не увидит. Не используй `dark:` — тематизируй через токены. В коде `dark:`-классов сейчас нет (последние жили в мёртвых `PriceHistoryChart.tsx` и `blocks/hero-section-1.tsx`, удалённых 2026-09-27).
 
 ### Правило
@@ -1508,6 +1515,12 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
   - Баннер cookies поднимается над полосой покупки, если она есть на странице (`hasBuyBar`). Inline-тень десктопа на телефоне снята классом `max-md:shadow-none!`: `!important` из таблицы стилей сильнее inline-стиля без `!important`.
 
   Код: `src/app/{privacy,terms,cookie,refund,about,sitemap-page}/page.tsx`, `src/app/not-found.tsx`, `src/app/error.tsx`, `src/components/consent/`.
+- **Цель касания 44 px — как считать** (R-25). Область нажатия — коробка элемента вместе с `::before`/`::after` (`after:absolute after:-inset-y-…`). Проверка стенда считает именно так. Три ловушки:
+  - `after:` внутри ленты с `overflow-x-auto` обрезается краем ленты. Тянуть область можно только в пределах её паддинга (у ленты конструктора `py-0.5` даёт 2 px);
+  - у кнопки с рамкой `after:` отсчитывается от паддинга, а не от рамки: рамка 1 px съедает по пикселю с каждой стороны (`-inset-[3px]` вместо `-inset-0.5` у «Filters» в конструкторе);
+  - ссылка с базовым `text-xs` сохраняет его межстрочный 1.33 и при `max-md:text-[15px]`. `py-2.5` даёт 40 px, нужно `py-3`.
+
+  Ссылки внутри строки текста считаются по правилу «вне текста» (план, п. 8) и не растягиваются.
 - **Ловушка трекинга.** Правило `.text-3xl:not([class*="tracking-"])` в `globals.css` даёт крупным кеглям отрицательный трекинг. Любой класс `tracking-…` на элементе его отключает, в том числе `max-md:` и `md:`. Поэтому, если меняешь трекинг для телефона у элемента с `text-3xl`…`text-9xl`, задай десктопное значение явно: `tracking-[-0.01em] md:tracking-[-0.015em]`. Найдено в R-11.
 
 ### 12.14 Остальные элементы

@@ -151,7 +151,7 @@ function SheetChip({
       onClick={onClick}
       aria-pressed={expanded === undefined ? on : undefined}
       aria-expanded={expanded}
-      className={`relative h-9 px-3.5 rounded-full text-[13px] transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${
+      className={`relative h-9 min-w-11 px-3.5 rounded-full text-[13px] transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${
         on ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
       }`}
     >
