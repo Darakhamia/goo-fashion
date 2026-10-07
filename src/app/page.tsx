@@ -39,7 +39,8 @@ async function getData() {
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] tracking-[0.22em] uppercase font-medium mb-2.5 md:mb-4 text-[var(--foreground-subtle)]">
+    // Phones: a 13px muted eyebrow in sentence case (DESIGN_SYSTEM.md §12.13).
+    <p className="text-[11px] tracking-[0.22em] uppercase font-medium mb-2.5 md:mb-4 text-[var(--foreground-subtle)] max-md:text-[13px] max-md:tracking-normal max-md:normal-case max-md:font-normal max-md:text-[var(--foreground-muted)] max-md:mb-1.5">
       {children}
     </p>
   );
@@ -54,7 +55,7 @@ function SectionH2({
 }) {
   return (
     <h2
-      className={`text-[30px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-[var(--foreground)] ${
+      className={`text-[30px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-[var(--foreground)] max-md:text-[26px] max-md:font-semibold max-md:tracking-[-0.02em] max-md:leading-[1.15] ${
         centered ? "text-center" : ""
       }`}
     >
@@ -87,7 +88,9 @@ export default async function HomePage() {
       <HeroSection />
 
       {/* ── HOW IT WORKS ── */}
-      <HomeSection className="bg-[#050505]">
+      {/* Phones follow the theme (mockup v2 «Б · Главная, продолжение»); from md
+          the section keeps its fixed dark stage. */}
+      <HomeSection className="bg-[var(--background)] md:bg-[#050505]">
         <HowItWorksSection showcase={showcase} />
       </HomeSection>
 
@@ -119,17 +122,18 @@ export default async function HomePage() {
       {/* ── OUTFIT EXAMPLES ── */}
       <HomeSection className="bg-[var(--background)]">
         <section className="py-4 md:py-12">
-          <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-            <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-3 md:gap-4">
-              <div>
+          <div className="max-w-[1280px] mx-auto px-4 md:px-12">
+            <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-3 md:gap-4 max-md:flex-row max-md:items-end max-md:mb-3.5">
+              <div className="max-md:max-w-[250px]">
                 <Kicker>Outfit examples</Kicker>
                 <SectionH2>Explore ready-made outfit ideas.</SectionH2>
               </div>
               <Link
                 href="/browse"
-                className="self-end md:self-auto text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0"
+                className="self-end md:self-auto text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0 max-md:h-11 max-md:flex max-md:items-center max-md:text-[14px] max-md:text-[var(--foreground)] max-md:no-underline"
               >
-                Browse all outfits
+                <span className="md:hidden">All outfits</span>
+                <span className="hidden md:inline">Browse all outfits</span>
               </Link>
             </FadeInView>
             {carouselOutfits.length > 0 ? (

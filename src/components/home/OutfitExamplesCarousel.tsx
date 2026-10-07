@@ -50,7 +50,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
         <motion.div
           key={page}
           onPointerDown={() => setTaken(true)}
-          className="flex gap-3 overflow-x-auto overscroll-x-contain -mr-6 pr-6 pb-1 no-scrollbar md:mr-0 md:pr-0 md:pb-0 md:overflow-visible md:grid md:grid-cols-3 md:gap-5"
+          className="flex gap-2.5 overflow-x-auto overscroll-x-contain -mr-4 pr-4 pb-1 no-scrollbar md:mr-0 md:pr-0 md:pb-0 md:overflow-visible md:grid md:grid-cols-3 md:gap-5"
           initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -16 }}
@@ -75,7 +75,8 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
                 key={i}
                 onClick={() => goTo(i)}
                 aria-label={`Go to page ${i + 1} of ${total}`}
-                className="rounded-full bg-[var(--foreground)] transition-[width,opacity]"
+                // Phones: `after:` gives the 8px dot a 44px-tall target.
+                className="relative rounded-full bg-[var(--foreground)] transition-[width,opacity] max-md:after:absolute max-md:after:-inset-x-1 max-md:after:-inset-y-[18px]"
                 style={{
                   width: i === page ? 24 : 8,
                   height: 8,
@@ -87,7 +88,8 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
 
           {/* `md:contents` drops this wrapper at desktop, so the two arrows land
               either side of the dots instead of on a row of their own. */}
-          <div className="order-2 flex items-center gap-4 md:contents">
+          {/* Phones keep only the dots: the rail swipes (mockup v2 has no arrows). */}
+          <div className="order-2 hidden md:contents">
             <button
               onClick={() => goTo((page - 1 + total) % total)}
               aria-label="Previous outfits"
