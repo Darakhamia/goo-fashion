@@ -91,16 +91,19 @@ const CATEGORY_TO_SLOT: Record<string, string> = {
   accessories: "accessories",
 };
 
-function buildLookUrl(products: Product[]): string {
-  const params: string[] = [];
+/** The first piece for each builder slot, in reply order — what "Build this look" opens. */
+function lookPieces(products: Product[]): Product[] {
   const used = new Set<string>();
-  for (const p of products) {
+  return products.filter(p => {
     const slot = CATEGORY_TO_SLOT[p.category];
-    if (slot && !used.has(slot)) {
-      params.push(`${slot}=${p.id}`);
-      used.add(slot);
-    }
-  }
+    if (!slot || used.has(slot)) return false;
+    used.add(slot);
+    return true;
+  });
+}
+
+function buildLookUrl(products: Product[]): string {
+  const params = lookPieces(products).map(p => `${CATEGORY_TO_SLOT[p.category]}=${p.id}`);
   return params.length > 0 ? `/builder?${params.join("&")}` : "/builder";
 }
 
@@ -652,7 +655,8 @@ export function StylistDrawer({
     : isWindow
     // Geometry comes from `winRect` — no edge offsets to fight with it.
     ? "fixed z-[60] rounded-2xl overflow-hidden"
-    : "fixed bottom-14 left-0 right-0 z-[60] w-full h-[58dvh] rounded-t-2xl md:top-[72px] md:bottom-[88px] md:left-auto md:right-4 md:w-[380px] md:h-auto md:rounded-2xl md:overflow-hidden";
+    // Phone: a full-height sheet under the top bar, over the tab bar.
+    : "fixed top-14 bottom-0 left-0 right-0 z-[60] w-full rounded-t-3xl md:top-[72px] md:bottom-[88px] md:left-auto md:right-4 md:w-[380px] md:h-auto md:rounded-2xl md:overflow-hidden";
 
   const quickReplies = QUICK_REPLIES[surface];
 
@@ -665,7 +669,7 @@ export function StylistDrawer({
       {/* Mobile backdrop */}
       {position === "fixed" && (
         <div
-          className="md:hidden fixed inset-0 z-[55] bg-black/40"
+          className="md:hidden fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm"
           style={{ animation: "overlayIn 0.2s ease forwards" }}
           onClick={onClose}
           aria-hidden="true"
@@ -677,49 +681,49 @@ export function StylistDrawer({
       // A floating window leaves the rest of the page usable, so it isn't modal.
       aria-modal={position === "fixed" && !isWindow}
       aria-label="AI Stylist chat"
-      className={`${positionClasses} bg-[var(--background)] border-t border-[var(--border-strong)] md:border md:border-[var(--border-strong)] flex flex-col stylist-drawer-animate`}
+      className={`${positionClasses} bg-[var(--surface)] md:bg-[var(--background)] md:border md:border-[var(--border-strong)] flex flex-col stylist-drawer-animate`}
       style={{
-        boxShadow: position === "fixed" ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 12px rgba(0,0,0,0.12)" : undefined,
+        boxShadow: isWindow ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 12px rgba(0,0,0,0.12)" : undefined,
         ...(winRect && { left: winRect.x, top: winRect.y, width: winRect.width, height: winRect.height }),
       }}
     >
       {/* Mobile drag handle */}
       {position === "fixed" && (
-        <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0">
+        <div className="md:hidden flex justify-center pt-2 shrink-0">
           <div className="w-9 h-1 rounded-full bg-[var(--border-strong)]" />
         </div>
       )}
       {/* ── Header (doubles as the window title bar) ───────────────────────── */}
       <div
-        className={`px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0 ${isWindow ? "cursor-move select-none" : ""}`}
+        className={`pl-4 pr-1.5 py-1.5 md:px-5 md:py-4 md:border-b md:border-[var(--border)] flex items-center justify-between shrink-0 ${isWindow ? "cursor-move select-none" : ""}`}
         style={isWindow ? { touchAction: "none" } : undefined}
         onPointerDown={isWindow ? onHeaderPointerDown : undefined}
         onPointerMove={isWindow ? onGestureMove : undefined}
         onPointerUp={isWindow ? endGesture : undefined}
         onPointerCancel={isWindow ? endGesture : undefined}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 md:gap-3">
           <div className="w-9 h-9 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[14px] font-bold">
             G
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-[var(--foreground)]">Stylist</p>
-            <p className="text-[10px] text-[var(--foreground-subtle)] flex items-center gap-1">
+            <p className="text-[16px] md:text-[13px] font-semibold text-[var(--foreground)]">Stylist</p>
+            <p className="text-[12px] md:text-[10px] text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
               Online
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center md:gap-2">
           {/* New chat button */}
           <button
             onClick={startNewChat}
             title="New chat"
             aria-label="New chat"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
+            className="w-11 h-11 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
           >
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="max-md:w-[18px] max-md:h-[18px]">
               <path d="M7 1H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
               <path d="M11 1l2 2-5 5H6V6l5-5Z" />
             </svg>
@@ -729,18 +733,18 @@ export function StylistDrawer({
             onClick={view === "history" ? () => setView("chat") : switchToHistory}
             title={view === "history" ? "Back to chat" : "Chat history"}
             aria-label={view === "history" ? "Back to chat" : "Chat history"}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+            className={`w-11 h-11 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-colors ${
               view === "history"
                 ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
             }`}
           >
             {view === "history" ? (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="max-md:w-[18px] max-md:h-[18px]">
                 <path d="M9 2L4 7L9 12" />
               </svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="max-md:w-[18px] max-md:h-[18px]">
                 <circle cx="7" cy="7" r="5.5" />
                 <path d="M7 4.5V7l1.5 1.5" />
               </svg>
@@ -749,21 +753,24 @@ export function StylistDrawer({
           <button
             onClick={onClose}
             aria-label="Close stylist"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors text-lg leading-none"
+            className="w-11 h-11 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors text-lg leading-none"
           >
-            ×
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="md:hidden">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+            <span aria-hidden="true" className="hidden md:inline">×</span>
           </button>
         </div>
       </div>
 
       {/* ── Usage bar ─────────────────────────────────────────────────────── */}
       {showUsage && (
-        <div className="px-5 py-2.5 border-b border-[var(--border)] shrink-0">
+        <div className="px-4 py-2 md:px-5 md:py-2.5 md:border-b md:border-[var(--border)] shrink-0">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
+            <span className="max-md:text-[12px] md:font-mono md:text-[8px] md:tracking-[0.1em] md:uppercase text-[var(--foreground-muted)]">
               Daily messages
             </span>
-            <span className={`font-mono text-[8px] tracking-[0.08em] ${usageWarning ? "text-amber-500" : "text-[var(--foreground-subtle)]"}`}>
+            <span className={`max-md:text-[12px] md:font-mono md:text-[8px] md:tracking-[0.08em] ${usageWarning ? "text-amber-500" : "text-[var(--foreground-subtle)]"}`}>
               {remaining} of {dailyLimit} left today
               {usageWarning && (
                 <Link href="/plans" className="ml-2 underline hover:no-underline">
@@ -790,38 +797,39 @@ export function StylistDrawer({
       {/* ── History panel ─────────────────────────────────────────────────── */}
       {view === "history" && (
         <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
-          <div className="px-5 pt-4 pb-2">
-            <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] mb-4">
+          <div className="px-4 pt-3 md:px-5 md:pt-4 pb-2">
+            <p className="max-md:text-[13px] md:font-mono md:text-[9px] md:tracking-[0.16em] md:uppercase text-[var(--foreground-muted)] mb-3 md:mb-4">
               Past conversations
             </p>
             {sessionsLoading ? (
-              <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">Loading…</p>
+              <p className="text-[14px] md:text-xs text-[var(--foreground-subtle)] text-center py-8">Loading…</p>
             ) : sessions.length === 0 ? (
-              <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">
+              <p className="text-[14px] md:text-xs text-[var(--foreground-subtle)] text-center py-8">
                 No saved conversations yet.
               </p>
             ) : (
-              <div className="flex flex-col gap-px">
+              // Phone: one plaque of rows (§12.11); desktop: separate bordered cards.
+              <div className="flex flex-col md:gap-px max-md:rounded-2xl max-md:bg-[var(--fg-overlay-05)] max-md:overflow-hidden">
                 {sessions.map((s, i) => (
                   <button
                     key={i}
                     onClick={() => loadSession(s)}
-                    className="w-full text-left px-3 py-3 rounded-xl border border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-colors group"
+                    className="w-full text-left px-4 py-3.5 md:px-3 md:py-3 md:rounded-xl md:border md:border-[var(--border)] md:hover:border-[var(--border-strong)] md:hover:bg-[var(--surface)] max-md:not-first:shadow-[inset_0_1px_0_var(--border)] transition-colors group"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] group-hover:text-[var(--foreground)] transition-colors">
+                      <span className="max-md:text-[14px] max-md:font-medium max-md:text-[var(--foreground)] md:font-mono md:text-[9px] md:tracking-[0.12em] md:uppercase md:text-[var(--foreground-muted)] md:group-hover:text-[var(--foreground)] transition-colors">
                         {sessionLabel(s)}
                       </span>
-                      <span className="font-mono text-[8px] text-[var(--foreground-subtle)]">
+                      <span className="max-md:text-[12px] md:font-mono md:text-[8px] text-[var(--foreground-subtle)]">
                         {relativeDate(s.updatedAt)}
                       </span>
                     </div>
                     {s.lastText && (
-                      <p className="text-[11px] text-[var(--foreground)] line-clamp-2 leading-snug">
+                      <p className="text-[14px] md:text-[11px] max-md:text-[var(--foreground-muted)] md:text-[var(--foreground)] line-clamp-2 leading-snug">
                         {s.lastRole === "user" ? "You: " : ""}{s.lastText}
                       </p>
                     )}
-                    <p className="text-[9px] text-[var(--foreground-subtle)] mt-1">
+                    <p className="text-[12px] md:text-[9px] text-[var(--foreground-subtle)] mt-1">
                       {s.messageCount} {s.messageCount === 1 ? "message" : "messages"}
                     </p>
                   </button>
@@ -838,21 +846,21 @@ export function StylistDrawer({
           {/* Thread */}
           <div
             ref={chatThreadRef}
-            className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 flex flex-col gap-3 min-h-0"
+            className="flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-4 md:py-4 flex flex-col gap-2.5 md:gap-3 min-h-0"
           >
             {chatMessages.map(msg => (
               <div
                 key={msg.id}
                 className={`flex flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"}`}
               >
-                {/* Bubble */}
+                {/* Bubble — phone: 15 px text, soft fill instead of a border */}
                 <div
-                  className={`max-w-[88%] px-4 py-2.5 text-[12px] leading-relaxed ${
+                  className={`max-w-[88%] px-3.5 py-[11px] text-[15px] leading-[1.4] md:px-4 md:py-2.5 md:text-[12px] md:leading-relaxed max-md:border-0 ${
                     msg.role === "user"
-                      ? "bg-[var(--foreground)] text-[var(--background)] rounded-2xl rounded-br-sm"
+                      ? "bg-[var(--foreground)] text-[var(--background)] rounded-[18px] rounded-br-md md:rounded-2xl md:rounded-br-sm"
                       : msg.isError
-                      ? "bg-red-500/8 border border-red-400/30 text-[var(--foreground)] rounded-2xl rounded-bl-sm"
-                      : "bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl rounded-bl-sm"
+                      ? "bg-red-500/8 border border-red-400/30 text-[var(--foreground)] rounded-[18px] rounded-bl-md md:rounded-2xl md:rounded-bl-sm"
+                      : "bg-[var(--fg-overlay-08)] md:bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-[18px] rounded-bl-md md:rounded-2xl md:rounded-bl-sm"
                   }`}
                 >
                   {msg.role === "assistant" && !msg.isError
@@ -868,7 +876,7 @@ export function StylistDrawer({
                         const isSelected = Object.values(selection ?? {}).some(p => p?.id === product.id);
                         const cardInner = (
                           <>
-                            <div className="w-[72px] aspect-[3/4] overflow-hidden bg-[var(--surface)] border border-[var(--border)] group-hover:border-[var(--foreground)] transition-colors relative rounded-xl">
+                            <div className="w-full aspect-[3/4] overflow-hidden bg-[var(--surface)] md:border md:border-[var(--border)] md:group-hover:border-[var(--foreground)] transition-colors relative rounded-2xl md:rounded-xl">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={product.imageUrl}
@@ -883,10 +891,10 @@ export function StylistDrawer({
                                 </div>
                               )}
                             </div>
-                            <p className="font-mono text-[8px] tracking-[0.06em] text-[var(--foreground-muted)] mt-1 truncate w-full text-left leading-none">
+                            <p className="text-[12px] md:font-mono md:text-[8px] md:tracking-[0.06em] text-[var(--foreground-muted)] mt-1.5 md:mt-1 truncate w-full text-left leading-none">
                               {product.brand}
                             </p>
-                            <p className="font-mono text-[9px] text-[var(--foreground)] truncate w-full text-left leading-tight mt-0.5">
+                            <p className="text-[13px] md:font-mono md:text-[9px] text-[var(--foreground)] truncate w-full text-left leading-tight mt-0.5">
                               {formatPrice(product.priceMin, product.currency)}
                             </p>
                           </>
@@ -896,8 +904,7 @@ export function StylistDrawer({
                           <button
                             key={product.id}
                             onClick={() => onSelectProduct(product)}
-                            className="shrink-0 flex flex-col group"
-                            style={{ width: 72 }}
+                            className="shrink-0 flex flex-col group w-[84px] md:w-[72px]"
                           >
                             {cardInner}
                           </button>
@@ -905,8 +912,7 @@ export function StylistDrawer({
                           <Link
                             key={product.id}
                             href={`/product/${product.id}`}
-                            className="shrink-0 flex flex-col group"
-                            style={{ width: 72 }}
+                            className="shrink-0 flex flex-col group w-[84px] md:w-[72px]"
                           >
                             {cardInner}
                           </Link>
@@ -916,19 +922,41 @@ export function StylistDrawer({
 
                     {/* Build this look button — shown whenever suggestions map to a builder slot */}
                     {(() => {
+                      const pieces = lookPieces(msg.suggestions);
+                      if (pieces.length === 0) return null;
                       const url = buildLookUrl(msg.suggestions);
-                      const slots = new Set(msg.suggestions.map(p => CATEGORY_TO_SLOT[p.category]).filter(Boolean));
-                      return slots.size >= 1 ? (
-                        <Link
-                          href={url}
-                          className="inline-flex items-center gap-1.5 self-start border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors"
-                        >
-                          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 2H10V10M2 10L10 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                          </svg>
-                          Build this look
-                        </Link>
-                      ) : null;
+                      return (
+                        <>
+                          {/* Phone: the look as a row card (mockup v2 «Б · AI-стилист») */}
+                          <Link
+                            href={url}
+                            className="md:hidden w-full max-w-[300px] h-[72px] rounded-2xl bg-[var(--fg-overlay-08)] flex items-center gap-3 pl-2 pr-3 text-[var(--foreground)]"
+                          >
+                            <span className="w-14 h-14 shrink-0 rounded-xl overflow-hidden bg-[var(--surface)]">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={pieces[0].imageUrl} alt="" className="w-full h-full object-cover" />
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-[14px] font-semibold">Build this look</span>
+                              <span className="block mt-0.5 text-[12px] text-[var(--foreground-muted)] truncate">
+                                {pieces.length} {pieces.length === 1 ? "piece" : "pieces"} · Opens in the builder
+                              </span>
+                            </span>
+                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                              <path d="M9 6l6 6-6 6" />
+                            </svg>
+                          </Link>
+                          <Link
+                            href={url}
+                            className="hidden md:inline-flex items-center gap-1.5 self-start border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors"
+                          >
+                            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 2H10V10M2 10L10 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                            </svg>
+                            Build this look
+                          </Link>
+                        </>
+                      );
                     })()}
                   </div>
                 )}
@@ -938,7 +966,7 @@ export function StylistDrawer({
             {/* Typing indicator */}
             {chatLoading && (
               <div className="flex items-start">
-                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
+                <div className="bg-[var(--fg-overlay-08)] md:bg-[var(--surface)] md:border md:border-[var(--border)] rounded-[18px] rounded-bl-md md:rounded-2xl md:rounded-bl-sm px-4 py-3.5 md:py-3 flex items-center gap-1.5">
                   {[0, 150, 300].map(delay => (
                     <span
                       key={delay}
@@ -954,7 +982,7 @@ export function StylistDrawer({
           {/* Quick-reply chips */}
           <div
             ref={chipsRef}
-            className="px-4 py-3 shrink-0 flex gap-2 overflow-x-auto select-none no-scrollbar"
+            className="px-4 pt-1 pb-2.5 md:py-3 shrink-0 flex gap-2 overflow-x-auto select-none no-scrollbar"
             style={{ cursor: "grab" }}
             onMouseDown={onChipsMouseDown}
             onMouseMove={onChipsMouseMove}
@@ -966,7 +994,8 @@ export function StylistDrawer({
                 key={reply}
                 onClick={() => !chipsDrag.current.active && sendMessage(reply)}
                 disabled={chatLoading}
-                className="shrink-0 px-3.5 py-1.5 rounded-full border border-[var(--border-strong)] text-[10px] tracking-wide text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                // Phone: soft chip (§12.10); `after:` stretches the 36 px chip to a 44 px target.
+                className="max-md:relative shrink-0 h-9 md:h-auto px-3.5 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border-strong)] text-[13px] md:text-[10px] md:tracking-wide text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:border-[var(--foreground)] md:hover:text-[var(--foreground)] max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-1 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {reply}
               </button>
@@ -974,9 +1003,10 @@ export function StylistDrawer({
           </div>
 
           {/* Composer */}
-          <div className="px-4 pb-4 pt-2 shrink-0 border-t border-[var(--border)]">
-            <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 transition-colors duration-150 ${
-              chatLoading ? "border-[var(--border)] opacity-60" : "border-[var(--border-strong)] focus-within:border-[var(--foreground)]"
+          <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+16px)] md:pb-4 md:pt-2 shrink-0 md:border-t md:border-[var(--border)]">
+            {/* Phone: a 50 px soft capsule; the border only shows on focus. */}
+            <div className={`flex items-center gap-2 h-[50px] md:h-auto rounded-full md:rounded-2xl border pl-[18px] pr-1.5 md:px-3 md:py-2 max-md:bg-[var(--fg-overlay-08)] transition-colors duration-150 ${
+              chatLoading ? "border-transparent md:border-[var(--border)] opacity-60" : "border-transparent md:border-[var(--border-strong)] focus-within:border-[var(--foreground)]"
             }`}>
               <input
                 type="text"
@@ -984,17 +1014,21 @@ export function StylistDrawer({
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(chatInput); } }}
                 placeholder="Ask your stylist…"
+                aria-label="Ask your stylist"
                 maxLength={500}
                 disabled={chatLoading}
-                className="flex-1 h-8 bg-transparent outline-none text-base md:text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
+                className="flex-1 max-md:min-w-0 h-8 bg-transparent outline-none max-md:outline-none! text-base md:text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
               />
               <button
                 onClick={() => sendMessage(chatInput)}
                 disabled={!chatInput.trim() || chatLoading}
                 aria-label="Send"
-                className="w-8 h-8 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] shrink-0 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80"
+                className="max-md:relative w-[38px] h-[38px] md:w-8 md:h-8 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] shrink-0 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80 max-md:after:absolute max-md:after:-inset-[3px]"
               >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="md:hidden">
+                  <path d="M12 19V5M6 11l6-6 6 6" />
+                </svg>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="hidden md:block">
                   <path d="M14 8L2 2L5 8L2 14L14 8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                 </svg>
               </button>

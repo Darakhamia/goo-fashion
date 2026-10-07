@@ -1144,7 +1144,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | Файл:строка | Что не так | Чем заменить | Статус |
 |---|---|---|---|
 | `src/components/layout/Navigation.tsx:451` | Sign up — единственная интерактивная поверхность в хроме без радиуса | Добавить `rounded-full` | ✓ исправлено (до 2026-09): `Navigation.tsx:497,546` |
-| `src/components/layout/Navigation.tsx:558` (и `:623`) | Три рецепта скрима: `bg-black/20`, инлайновый `rgba(0,0,0,0.45)`+blur, `bg-black/40` в `StylistDrawer.tsx:667` | Один токенизированный скрим | актуально |
+| `src/components/layout/Navigation.tsx:558` (и `:623`) | Три рецепта скрима: `bg-black/20`, инлайновый `rgba(0,0,0,0.45)`+blur, `bg-black/40` в `StylistDrawer.tsx:667` | Один токенизированный скрим | актуально; на телефоне скрим стилиста — `bg-black/60 backdrop-blur-sm` по §12.7 (мобильный трек R-16) |
 | `src/components/layout/Navigation.tsx:631` (и `:648,661`) | Кнопки модалки выхода собраны из инлайновых свойств, `borderRadius: 10`; оболочка `borderRadius: 20` против `rounded-2xl` у соседних панелей | `rounded-xl` кнопки, `rounded-2xl` оболочка | актуально |
 | `src/components/layout/Navigation.tsx:435` | `z-[60]` совпадает со слоем `StylistDrawer.tsx:653-654` при отсутствии шкалы z-index | Именованная лестница в `globals.css` | актуально |
 | `src/components/layout/Footer.tsx:60` | Ссылки мобильного дерева реагируют только на `active:`, десктопного — на `hover:` | Добавить `hover:` | актуально |
@@ -1179,7 +1179,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/components/auth/AuthForm.tsx:125` | Primary Clerk-кнопки `text-xs`, тогда как CTA воронки на `/subscribe` — `text-[10px]` | `text-[10px]` | актуально |
 | `src/app/coming-soon/page.tsx:56` | Инлайновый `<style>` переобъявляет `fadeUp`/`fadeIn`, `dotPulse` определён дважды с разной начальной непрозрачностью | Один `dotPulse` | ✓ файл удалён (ревью 2026-09) (страница и `FeatureCarousel.tsx`; гейт «coming soon» снят при ревью 2026-09) |
 | `src/app/sitemap-page/page.tsx:95` (и `:111`) | Outline-CTA без `rounded-xl`, в отличие от `about/page.tsx` (локально согласуется с hairline-сеткой страницы) | `rounded-xl` | актуально |
-| `src/components/stylist/StylistDrawer.tsx:899` (и `:908`) | Ширина карточки задана инлайновым `style={{ width: 72 }}`, а изображение в соседней ветке — классом `w-[72px]` (`:870`) | Класс в обеих ветках | актуально |
+| `src/components/stylist/StylistDrawer.tsx:899` (и `:908`) | Ширина карточки задана инлайновым `style={{ width: 72 }}`, а изображение в соседней ветке — классом `w-[72px]` (`:870`) | Класс в обеих ветках | ✓ исправлено попутно (мобильный трек R-16, 2026-10-07): ширина — класс в обеих ветках, `w-[84px] md:w-[72px]`; изображение — `w-full` |
 | `src/components/stylist/StylistPersonalizationModal.tsx:288` (и `:296`) | Две кнопки одного футера имеют `disabled:opacity-30` и `-40` | `disabled:opacity-40 disabled:cursor-not-allowed` | актуально |
 | `src/components/ui/parallax-floating.tsx:29` | Мёртвый код и единственный потребитель `src/hooks/use-mouse-position-ref` | Удалить оба | ✓ файл удалён (ревью 2026-09) (оба) |
 | `src/components/ui/HeroBackground.tsx:10` | Мёртвый код; читает тему императивно через `useTheme()` | Удалить | ✓ файл удалён (ревью 2026-09) |
@@ -1423,6 +1423,14 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 - **Всплывающие части конструктора** (R-15): фильтры, выбор цвета, «Save look» и выбор стиля — листы §12.7.
   - У `StylePicker` два корня. Десктопное окно, как было, и `md:hidden`-лист на `useOverlayPresence`. Десктоп закрывается по `open`, лист доигрывает уход.
   - Окна «Мои образы» (`MyLooksPanel`: просмотр, редактор, удаление) ниже `md` — листы тем же деревом через `items-end md:items-center` и `rounded-t-3xl md:rounded-2xl`. В просмотре фото сверху, вещи строками, действия прижаты к низу листа (`max-md:sticky`).
+- **AI-стилист на телефоне** (R-16, макет v2 «Б · AI-стилист»). Тот же `StylistDrawer`, что и плавающее окно десктопа. Ниже `md` это лист во всю высоту под шапкой (`top-14 bottom-0`, `rounded-t-3xl`, `--surface`), поверх нижнего меню, со скримом §12.7.
+  - Шапка: аватар, «Stylist» 16 px, статус 12 px, три иконки-кнопки 44 px без рамок и разделителей.
+  - Пузыри 15 px: ассистент — `--fg-overlay-08` без рамки, пользователь — `--foreground`; радиус 18 px, у хвостика 6 px.
+  - Ответ с вещами — лента миниатюр 84 px (бренд 12 px, цена 13 px) и карточка-строка «Build this look» 72 px: фото 56 px, «N pieces · Opens in the builder», шеврон. Названия образа и общей цены, как в макете, у ответа стилиста нет, поэтому в карточке их нет.
+  - Подсказки — мягкие чипы §12.10 с целью 44 px через `after:`, поле — капсула 50 px на `--fg-overlay-08` с текстом 16 px и рамкой только в фокусе, «Send» — круг 38 px со стрелкой вверх.
+  - «Daily messages» и история бесед — обычным регистром, беседы — строки в одной плашке (§12.11).
+
+  Код: `src/components/stylist/StylistDrawer.tsx`.
 - **Ловушка трекинга.** Правило `.text-3xl:not([class*="tracking-"])` в `globals.css` даёт крупным кеглям отрицательный трекинг. Любой класс `tracking-…` на элементе его отключает, в том числе `max-md:` и `md:`. Поэтому, если меняешь трекинг для телефона у элемента с `text-3xl`…`text-9xl`, задай десктопное значение явно: `tracking-[-0.01em] md:tracking-[-0.015em]`. Найдено в R-11.
 
 ### 12.14 Остальные элементы
