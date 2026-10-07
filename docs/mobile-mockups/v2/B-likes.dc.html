@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Лайки</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{two}}" hint-size="366px,52px"></dc-import></div>
+
+<h1 style="margin: 0; padding: 78px 16px 0; font-size: 24px; font-weight: 600; letter-spacing: -0.015em">Your likes</h1>
+<div role="tablist" style="margin: 12px 12px 0; height: 44px; box-sizing: border-box; padding: 3px; border-radius: 22px; background: {{t.surface}}; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))">
+<sc-for list="{{tabs}}" as="b" hint-placeholder-count="3">
+<button role="tab" aria-selected="{{b.on}}" style="border: 0; border-radius: 19px; background: {{b.bg}}; color: {{b.color}}; font-family: inherit; font-size: 14px; font-weight: {{b.fw}}; cursor: pointer">{{b.label}} <span style="opacity: 0.6">{{b.n}}</span></button>
+</sc-for>
+</div>
+
+<div style="padding: 12px 12px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{cards}}" as="item" hint-placeholder-count="4">
+<a href="#" style="display: block; text-decoration: none; color: {{t.fg}}; background: {{t.surface}}; border-radius: 14px; overflow: hidden">
+<div style="position: relative; aspect-ratio: 3 / 4; background: {{t.photo}}; display: flex; align-items: center; justify-content: center">
+<svg viewBox="0 0 120 160" style="width: 64%; height: auto"><path d="{{item.d}}" fill="{{item.c}}"></path></svg>
+<span aria-label="Unlike" style="position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.78); display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0A0A0A" stroke="#0A0A0A" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z"></path></svg></span></span>
+</div>
+<div style="padding: 10px 12px 12px">
+<div style="font-size: 13px; font-weight: 600">{{item.brand}}</div>
+<div style="font-size: 12.5px; color: {{t.muted}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{item.name}}</div>
+<div style="margin-top: 6px; font-size: 13px; font-weight: 500">{{item.price}}</div>
+</div>
+</a>
+</sc-for>
+</div>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="My likes" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', photo: '#EFEDE8' };
+const tabs = [['Pieces', 4], ['Outfits', 2], ['My looks', 1]].map(([label, n], i) => ({
+label, n, on: i === 0, bg: i === 0 ? t.fg : 'transparent', color: i === 0 ? t.bg : t.muted, fw: i === 0 ? 600 : 500
+}));
+const cards = [
+{ brand: 'Toteme', name: 'Oversized Wool Coat', price: '$890–$980', c: '#B39373', d: 'M44 16 L60 28 L76 16 L95 27 L106 98 L94 101 L86 60 L88 150 L32 150 L34 60 L26 101 L14 98 L25 27 Z' },
+{ brand: 'The Row', name: 'Cashmere Crew Neck', price: '$790–$850', c: '#D3CABA', d: 'M46 22 Q60 34 74 22 L96 32 L108 96 L96 100 L88 62 L88 132 L32 132 L32 62 L24 100 L12 96 L24 32 Z' },
+{ brand: 'Maison Margiela', name: 'Silk Slip Dress', price: '$1,480–$1,650', c: '#C9B8A6', d: 'M48 14 L52 14 L55 42 L65 42 L68 14 L72 14 L74 46 L88 150 L32 150 L46 46 Z' },
+{ brand: 'A.P.C.', name: 'Straight-Leg Denim', price: '$220–$260', c: '#3D5675', d: 'M36 14 L84 14 L91 150 L67 150 L60 56 L53 150 L29 150 Z' }
+];
+return { t, dark, no: false, two: 2, tabs, cards };
+}
+}
+</script>
+</body>
+</html>

@@ -11,6 +11,9 @@ const user = {
   publicMetadata: { plan: "pro", isAdmin: true },
   createdAt: new Date("2026-01-10").getTime(),
   imageUrl: "",
+  // The public /profile reads and saves the style profile here (scripts/site-screens).
+  unsafeMetadata: {},
+  update: async () => {},
 };
 
 export function ClerkProvider({ children }: { children: ReactNode; publishableKey?: string }) {

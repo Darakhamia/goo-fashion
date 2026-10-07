@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Лайки — пусто</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{zero}}" hint-size="366px,52px"></dc-import></div>
+
+<h1 style="margin: 0; padding: 78px 16px 0; font-size: 24px; font-weight: 600; letter-spacing: -0.015em">Your likes</h1>
+<div role="tablist" style="margin: 12px 12px 0; height: 44px; box-sizing: border-box; padding: 3px; border-radius: 22px; background: {{t.surface}}; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))">
+<sc-for list="{{tabs}}" as="b" hint-placeholder-count="3">
+<button role="tab" aria-selected="{{b.on}}" style="border: 0; border-radius: 19px; background: {{b.bg}}; color: {{b.color}}; font-family: inherit; font-size: 14px; font-weight: {{b.fw}}; cursor: pointer">{{b.label}}</button>
+</sc-for>
+</div>
+
+<div style="margin: 16px 12px 0; padding: 52px 28px; border-radius: 18px; background: {{t.surface}}; text-align: center">
+<span style="margin: 0 auto; width: 64px; height: 64px; border-radius: 50%; background: {{t.soft}}; display: flex; align-items: center; justify-content: center; color: {{t.muted}}"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z"></path></svg></span>
+<h2 style="margin: 18px 0 0; font-size: 19px; font-weight: 600">No saved pieces yet</h2>
+<p style="margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: {{t.muted}}">Tap the heart on any item to save it here.</p>
+<a href="#" style="margin: 22px auto 0; width: fit-content; height: 46px; padding: 0 22px; border-radius: 23px; background: {{t.fg}}; color: {{t.bg}}; display: flex; align-items: center; font-size: 15px; font-weight: 600; text-decoration: none">Browse pieces</a>
+</div>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="My likes" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', soft: 'rgba(240,238,232,0.08)' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', soft: 'rgba(10,10,10,0.05)' };
+const tabs = ['Pieces', 'Outfits', 'My looks'].map((label, i) => ({
+label, on: i === 0, bg: i === 0 ? t.fg : 'transparent', color: i === 0 ? t.bg : t.muted, fw: i === 0 ? 600 : 500
+}));
+return { t, dark, no: false, zero: 0, tabs };
+}
+}
+</script>
+</body>
+</html>

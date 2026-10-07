@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Подвал</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px; z-index: 2"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{two}}" hint-size="366px,52px"></dc-import></div>
+
+<div style="padding: 0 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<div style="height: 250px; border-radius: 0 0 14px 14px; background: {{t.surface}}"></div>
+<div style="height: 250px; border-radius: 0 0 14px 14px; background: {{t.surface}}"></div>
+</div>
+
+<div style="padding: 20px 12px 0; text-align: center">
+<button style="width: 100%; height: 48px; border: 0; border-radius: 24px; background: {{t.soft}}; color: {{t.fg}}; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer">Show more</button>
+<nav aria-label="Pages" style="margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 4px">
+<button aria-label="Previous page" disabled style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: {{t.faint}}; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></button>
+<button aria-current="page" style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: {{t.fg}}; color: {{t.bg}}; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">1</button>
+<button style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: {{t.fg}}; font-family: inherit; font-size: 14px; cursor: pointer">2</button>
+<button aria-label="Next page" style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: {{t.fg}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
+</nav>
+<div style="margin-top: 4px; font-size: 13px; color: {{t.muted}}">Showing 1–20 of 24 pieces</div>
+</div>
+
+<footer style="margin: 24px 12px 0; border-radius: 20px; background: {{t.surface}}; padding: 20px 18px">
+<div style="font-family: Poppins, sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.16em">GOO</div>
+<p style="margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: {{t.muted}}">Your personal AI stylist. Curated outfits, premium fashion.</p>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<div style="margin-top: 16px">
+<div style="font-size: 12px; color: {{t.muted}}">{{g.title}}</div>
+<div style="margin-top: 4px; display: flex; flex-wrap: wrap; column-gap: 18px">
+<sc-for list="{{g.links}}" as="l" hint-placeholder-count="4"><a href="#" style="height: 36px; display: flex; align-items: center; font-size: 14px; color: {{t.fg}}; text-decoration: none">{{l}}</a></sc-for>
+</div>
+</div>
+</sc-for>
+<div style="margin-top: 16px; padding-top: 12px; box-shadow: inset 0 1px 0 {{t.border}}; display: flex; justify-content: space-between; font-size: 12px; color: {{t.muted}}"><span>© 2026 GOO. All rights reserved.</span><span>v2026-10-06</span></div>
+</footer>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="Browse" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', faint: '#3A3A38', border: '#232321', soft: 'rgba(240,238,232,0.08)' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', faint: '#C0BEB8', border: '#E8E6E0', soft: 'rgba(10,10,10,0.05)' };
+const groups = [
+{ title: 'Platform', links: ['Browse', 'Builder', 'Saved', 'Plans', 'Profile'] },
+{ title: 'Company', links: ['Journal', 'About'] },
+{ title: 'Legal', links: ['Privacy', 'Terms', 'Cookies', 'Refunds', 'Sitemap'] }
+];
+return { t, dark, no: false, two: 2, groups };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Баннер cookies</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{zero}}" hint-size="366px,52px"></dc-import></div>
+
+<div style="position: absolute; left: 24px; right: 24px; top: 250px; text-align: center">
+<div style="font-size: 76px; line-height: 1; font-weight: 700; letter-spacing: -0.045em">Looks</div>
+<p style="margin: 18px 0 0; font-size: 17px; color: {{t.muted}}">Build your look</p>
+</div>
+
+<section role="region" aria-label="Cookie consent" style="position: absolute; left: 12px; right: 12px; bottom: 88px; border-radius: 20px; background: {{t.surface}}; box-shadow: inset 0 0 0 1px {{t.border}}; padding: 16px">
+<div style="font-size: 15px; font-weight: 600">Cookies</div>
+<p style="margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: {{t.muted}}">We'd like to set one optional analytics cookie (PostHog, EU-hosted) to understand how GOO is used. Essential sign-in cookies are always on. Details in our <a href="#" style="color: {{t.fg}}; text-underline-offset: 3px">Cookie Policy</a>.</p>
+<div style="margin-top: 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<button style="height: 44px; border: 0; border-radius: 22px; background: {{t.soft}}; color: {{t.fg}}; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer">Decline</button>
+<button style="height: 44px; border: 0; border-radius: 22px; background: {{t.fg}}; color: {{t.surface}}; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Accept</button>
+</div>
+</section>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="none" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', border: '#2A2A28', soft: 'rgba(240,238,232,0.08)' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', border: '#E8E6E0', soft: 'rgba(10,10,10,0.05)' };
+return { t, dark, no: false, zero: 0 };
+}
+}
+</script>
+</body>
+</html>

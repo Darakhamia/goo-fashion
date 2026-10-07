@@ -21,16 +21,18 @@ export default async function BlogPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
-        {/* Header */}
-        <div className="pt-16 md:pt-24 mb-10 md:mb-14">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
+      <div className="max-w-[1440px] mx-auto px-3 md:px-12">
+        {/* Header. Phones: a calm "Journal" title (mockup v2 «Б · Журнал»);
+            desktop keeps the eyebrow and the big slogan. */}
+        <div className="px-1 pt-4 mb-3.5 md:px-0 md:pt-24 md:mb-14">
+          <p className="hidden md:block text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
             Journal
           </p>
-          <h1 className="text-5xl md:text-7xl font-black uppercase text-[var(--foreground)] leading-[0.95] tracking-tight">
-            Style, explained.
+          <h1 className="text-5xl md:text-7xl font-black uppercase text-[var(--foreground)] leading-[0.95] tracking-tight max-md:text-2xl max-md:font-semibold max-md:normal-case max-md:leading-tight max-md:tracking-[-0.015em]">
+            <span className="md:hidden">Journal</span>
+            <span className="hidden md:inline">Style, explained.</span>
           </h1>
-          <p className="mt-6 max-w-xl text-sm text-[var(--foreground-muted)] leading-relaxed">
+          <p className="mt-6 max-w-xl text-sm text-[var(--foreground-muted)] leading-relaxed max-md:mt-1 max-md:text-[14px] max-md:leading-[1.45]">
             What we are reading in fashion, and what we are shipping at GOO.
           </p>
         </div>

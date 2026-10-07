@@ -2,6 +2,19 @@
 
 import Link from "next/link";
 
+// Phones get shorter labels so each group fits on a line or two (DESIGN_SYSTEM.md §12.13).
+const mobileLinks: { group: string; links: { label: string; href: string }[] }[] = [
+  { group: "Platform", links: [
+    { label: "Browse", href: "/browse" }, { label: "Builder", href: "/builder" }, { label: "Saved", href: "/saved" },
+    { label: "Plans", href: "/plans" }, { label: "Profile", href: "/profile" },
+  ] },
+  { group: "Company", links: [{ label: "Journal", href: "/blog" }, { label: "About", href: "/about" }] },
+  { group: "Legal", links: [
+    { label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Cookies", href: "/cookie" },
+    { label: "Refunds", href: "/refund" }, { label: "Sitemap", href: "/sitemap-page" },
+  ] },
+];
+
 const footerLinks = {
   Platform: [
     { label: "Browse",     href: "/browse" },
@@ -25,57 +38,40 @@ const footerLinks = {
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[var(--border)] mt-16 md:mt-32 bg-[var(--surface)]">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-10 md:py-24">
+    <footer className="mt-8 md:mt-32 md:border-t md:border-[var(--border)] md:bg-[var(--surface)]">
+      <div className="max-w-[1440px] mx-auto px-3 md:px-12 md:py-24">
 
-        {/* Mobile layout */}
-        <div className="md:hidden">
-          {/* Brand row */}
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <Link
-                href="/"
-                className="text-2xl font-black tracking-[0.2em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200"
-              >
-                GOO
-              </Link>
-              <p className="mt-2 text-xs text-[var(--foreground-muted)] leading-relaxed max-w-[180px]">
-                Your personal AI stylist. Curated outfits, premium fashion.
-              </p>
-            </div>
-          </div>
+        {/* Mobile layout: one plaque on the page, no full-width band (DESIGN_SYSTEM.md §12.13) */}
+        <div className="md:hidden rounded-2xl bg-[var(--surface)] px-[18px] pt-5 pb-4">
+          <Link
+            href="/"
+            style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 800 }}
+            className="relative text-[17px] tracking-[0.16em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200 after:absolute after:inset-x-0 after:-inset-y-[10px]"
+          >
+            GOO
+          </Link>
+          <p className="mt-1.5 text-[13px] leading-snug text-[var(--foreground-muted)]">
+            Your personal AI stylist. Curated outfits, premium fashion.
+          </p>
 
-          {/* Links grid — 3 columns on mobile */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {Object.entries(footerLinks).map(([group, links]) => (
-              <div key={group}>
-                <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
-                  {group}
-                </p>
-                <ul className="flex flex-col gap-2.5">
-                  {links.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        className="text-xs text-[var(--foreground-muted)] active:text-[var(--foreground)] transition-colors duration-200"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {mobileLinks.map(({ group, links }) => (
+            <nav key={group} aria-label={group} className="mt-4">
+              <p className="text-[12px] text-[var(--foreground-muted)]">{group}</p>
+              <ul className="flex flex-wrap gap-x-[18px]">
+                {links.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="relative min-h-11 flex items-center text-[14px] text-[var(--foreground)] after:absolute after:-inset-x-[9px] after:inset-y-0">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
 
-          {/* Bottom line */}
-          <div className="pt-6 border-t border-[var(--border)] flex items-center justify-between">
-            <p className="text-[10px] text-[var(--foreground-subtle)] tracking-[0.04em]">
-              © {new Date().getFullYear()} GOO. All rights reserved.
-            </p>
-            <span className="text-[10px] text-[var(--foreground-subtle)] opacity-40">
-              v{new Date().toISOString().slice(0, 10)}
-            </span>
+          <div className="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between text-[12px] text-[var(--foreground-muted)]">
+            <p>© {new Date().getFullYear()} GOO. All rights reserved.</p>
+            <span className="opacity-60">v{new Date().toISOString().slice(0, 10)}</span>
           </div>
         </div>
 

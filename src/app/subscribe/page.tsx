@@ -144,7 +144,7 @@ function SubscribeInner() {
       <div className="min-h-screen">
         <div className="max-w-[520px] mx-auto px-6 md:px-8 py-24 text-center">
           <div className="w-10 h-10 mx-auto mb-8 border-2 border-[var(--foreground)] border-t-transparent rounded-full animate-spin" />
-          <h1 className="text-2xl font-black uppercase text-[var(--foreground)] mb-3">
+          <h1 className="text-[22px] font-semibold md:text-2xl md:font-black md:uppercase text-[var(--foreground)] mb-3">
             Confirming your payment
           </h1>
           <p className="text-sm text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed">
@@ -161,7 +161,7 @@ function SubscribeInner() {
     return (
       <div className="min-h-screen">
         <div className="max-w-[520px] mx-auto px-6 md:px-8 py-24 text-center">
-          <h1 className="text-2xl font-black uppercase text-[var(--foreground)] mb-3">
+          <h1 className="text-[22px] font-semibold md:text-2xl md:font-black md:uppercase text-[var(--foreground)] mb-3">
             Still processing
           </h1>
           <p className="text-sm text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed mb-8">
@@ -170,7 +170,7 @@ function SubscribeInner() {
           </p>
           <button
             onClick={() => router.push("/profile")}
-            className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 rounded-xl hover:bg-[var(--surface)] transition-colors"
+            className="h-12 rounded-full bg-[var(--fg-overlay-08)] text-[15px] font-medium md:h-auto md:rounded-xl md:bg-transparent md:border md:border-[var(--border-strong)] md:font-mono md:text-[10px] md:tracking-[0.12em] md:uppercase md:font-normal md:py-4 md:hover:bg-[var(--surface)] text-[var(--foreground)] px-6 transition-colors"
           >
             Go to profile
           </button>
@@ -199,10 +199,11 @@ function SubscribeInner() {
               <path d="M5 12.5L10 17.5L19 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
+          <p className="text-[13px] text-[var(--foreground-muted)] md:font-mono md:text-[10px] md:tracking-[0.22em] md:uppercase md:text-[var(--foreground-subtle)] mb-1.5 md:mb-3">
             You are in
           </p>
-          <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-[1.05] mb-5">
+          {/* Desktop keeps the -0.015em the size rule gave text-4xl (§12.13). */}
+          <h1 className="text-[28px] font-semibold tracking-[-0.02em] leading-[1.15] md:text-5xl md:font-black md:uppercase md:tracking-[-0.015em] md:leading-[1.05] text-[var(--foreground)] mb-3 md:mb-5">
             Welcome to {plan.name}
           </h1>
           <p className="text-sm text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed mb-10">
@@ -212,13 +213,13 @@ function SubscribeInner() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => router.push("/builder")}
-              className="bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] tracking-[0.14em] uppercase px-6 py-4 rounded-xl hover:opacity-80 transition-opacity"
+              className="h-12 rounded-full text-[15px] font-semibold md:h-auto md:rounded-xl md:font-mono md:text-[10px] md:tracking-[0.14em] md:uppercase md:font-normal md:py-4 bg-[var(--foreground)] text-[var(--background)] px-6 hover:opacity-80 transition-opacity"
             >
               Open builder
             </button>
             <button
               onClick={() => router.push("/profile")}
-              className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 rounded-xl hover:bg-[var(--surface)] transition-colors"
+              className="h-12 rounded-full bg-[var(--fg-overlay-08)] text-[15px] font-medium md:h-auto md:rounded-xl md:bg-transparent md:border md:border-[var(--border-strong)] md:font-mono md:text-[10px] md:tracking-[0.12em] md:uppercase md:font-normal md:py-4 md:hover:bg-[var(--surface)] text-[var(--foreground)] px-6 transition-colors"
             >
               Go to profile
             </button>
@@ -237,15 +238,23 @@ function SubscribeInner() {
     );
   }
 
+  const ctaLabel = alreadyOnPlan
+    ? `You are on ${plan.name}`
+    : submitting
+    ? "Redirecting to payment..."
+    : !isSignedIn
+    ? "Sign in to continue"
+    : `Pay $${plan.price} (${priceLabel}) — continue`;
+
   // ── Main state ───────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen">
-      <div className="max-w-[520px] mx-auto px-6 md:px-8 py-16 md:py-24">
+      <div className="max-w-[520px] mx-auto px-3 pt-5 pb-8 md:px-8 md:py-24">
 
-        {/* Back link */}
+        {/* Back link — desktop only: on a phone the header carries "back" (R-03) */}
         <button
           onClick={() => router.push("/plans")}
-          className="flex items-center gap-2 text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors mb-12 group"
+          className="hidden md:flex items-center gap-2 text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors mb-12 group"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="group-hover:-translate-x-0.5 transition-transform">
             <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -254,17 +263,41 @@ function SubscribeInner() {
         </button>
 
         {/* Header */}
-        <div className="mb-10">
-          <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
+        <div className="px-1 mb-4 md:px-0 md:mb-10">
+          <p className="text-[13px] text-[var(--foreground-muted)] md:font-mono md:text-[10px] md:tracking-[0.22em] md:uppercase md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
             Subscribe
           </p>
-          <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-[1.05]">
+          {/* Desktop keeps the -0.015em the size rule gave text-4xl (§12.13). */}
+          <h1 className="text-[28px] font-semibold tracking-[-0.02em] leading-[1.15] md:text-5xl md:font-black md:uppercase md:tracking-[-0.015em] md:leading-[1.05] text-[var(--foreground)]">
             {plan.name} plan
           </h1>
         </div>
 
+        {/* Phones: the plan, its price and what it includes on one plaque
+            (mockup v2 «Б · Оформление подписки»). */}
+        <div className="md:hidden rounded-[20px] bg-[var(--surface)] p-[18px]">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[16px] font-semibold text-[var(--foreground)]">{plan.name}</span>
+            <span>
+              <span className="text-[24px] font-bold text-[var(--foreground)]">${plan.price}</span>
+              <span className="text-[14px] text-[var(--foreground-muted)]"> / month</span>
+            </span>
+          </div>
+          <p className="mt-1 text-[13px] text-[var(--foreground-muted)]">charged as {priceLabel} / month via monobank</p>
+          <ul className="mt-4 pt-3.5 shadow-[inset_0_1px_0_var(--border)] flex flex-col gap-[9px]">
+            {features.map((f) => (
+              <li key={f} className="flex items-center gap-2.5 text-[14px] text-[var(--foreground)]">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+                  <path d="M5 12l5 5 9-10" />
+                </svg>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+
         {/* Summary block */}
-        <div className="border border-[var(--border)] rounded-2xl p-6 mb-8">
+        <div className="hidden md:block border border-[var(--border)] rounded-2xl p-6 mb-8">
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-1">
             You are subscribing to
           </p>
@@ -277,7 +310,7 @@ function SubscribeInner() {
         </div>
 
         {/* Features */}
-        <div className="mb-10">
+        <div className="hidden md:block mb-10">
           <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-5">
             What&apos;s included
           </p>
@@ -293,7 +326,7 @@ function SubscribeInner() {
 
         {/* Error toast */}
         {error && (
-          <p className="mb-4 text-xs text-red-500 border border-red-300 rounded-xl px-3 py-2">
+          <p className="mt-3 md:mt-0 mb-0 md:mb-4 text-[13px] md:text-xs text-red-500 border border-red-300 rounded-xl px-3 py-2">
             {error}
           </p>
         )}
@@ -302,24 +335,40 @@ function SubscribeInner() {
         <button
           onClick={handleSubscribe}
           disabled={submitting || !isLoaded || alreadyOnPlan}
-          className="w-full font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-4 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="hidden md:inline-block w-full font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-4 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {alreadyOnPlan
-            ? `You are on ${plan.name}`
-            : submitting
-            ? "Redirecting to payment..."
-            : !isSignedIn
-            ? "Sign in to continue"
-            : `Pay $${plan.price} (${priceLabel}) — continue`}
+          {ctaLabel}
         </button>
 
         {/* Payment notice */}
-        <p className="mt-4 text-center text-xs text-[var(--foreground-subtle)] leading-relaxed">
+        <p className="px-1 md:px-0 mt-3.5 md:mt-4 text-left md:text-center text-[13px] md:text-xs text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] leading-normal md:leading-relaxed">
           Secure payment via monobank (Plata by mono). You&apos;ll be redirected to
           monobank&apos;s payment page. Your subscription renews automatically each
           month — cancel anytime from your profile.
         </p>
 
+      </div>
+
+      {/* Phones: the buy bar stands where the tab bar would (CEO decision 4a,
+          DESIGN_SYSTEM.md §12.8); `hasBuyBar("/subscribe")` hides the tab bar. */}
+      <div className="md:hidden fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)] z-40 h-16 rounded-3xl border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md flex items-center gap-2 pl-[18px] pr-2.5">
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-semibold text-[var(--foreground)] truncate">{priceLabel} / month</p>
+          <p className="text-[12px] text-[var(--foreground-muted)] truncate">≈ ${plan.price} · cancel anytime</p>
+        </div>
+        <button
+          onClick={handleSubscribe}
+          disabled={submitting || !isLoaded || alreadyOnPlan}
+          className="shrink-0 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {alreadyOnPlan
+            ? `You're on ${plan.name}`
+            : submitting
+            ? "Redirecting…"
+            : !isSignedIn
+            ? "Sign in to continue"
+            : "Continue to payment"}
+        </button>
       </div>
     </div>
   );

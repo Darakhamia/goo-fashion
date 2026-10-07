@@ -58,16 +58,17 @@ export default function RecentlyViewed({ kind, currentId }: Props) {
   if (items.length === 0) return null;
 
   return (
-    <section className="mt-20 md:mt-28 mb-4">
-      <div className="mb-8">
-        <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+    <section className="mt-10 md:mt-28 mb-4">
+      {/* Phones: the section heading of DESIGN_SYSTEM.md §12 — a 13px label, a 20px title. */}
+      <div className="mb-3 md:mb-8">
+        <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
           Picked up where you left off
         </p>
-        <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
+        <h2 className="text-[20px] md:text-3xl font-semibold md:font-bold md:uppercase max-md:tracking-[-0.01em] text-[var(--foreground)]">
           Recently viewed
         </h2>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-4">
         {items.slice(0, 4).map((item) => (
           <div
             key={item.id}

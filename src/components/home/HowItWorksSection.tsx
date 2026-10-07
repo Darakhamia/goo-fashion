@@ -73,7 +73,8 @@ function HandCursor({ className = "" }: { className?: string }) {
 // Connector between two stacked steps on phones, where the flow reads downwards.
 function StepArrowDown() {
   return (
-    <div className="flex justify-center py-0.5" aria-hidden>
+    // Phones below md drop the arrows: the plaques sit 8px apart (mockup v2).
+    <div className="flex justify-center py-0.5 max-md:hidden" aria-hidden>
       <svg width="12" height="14" viewBox="0 0 12 14" fill="none" className="text-white/25">
         <path d="M6 1v11M1.5 8.5 6 13l4.5-4.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -219,13 +220,15 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
   const STEPS = buildSteps(showcase);
   return (
     <section className="py-4 lg:py-14">
-      <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-        <FadeInView className="text-left md:text-center mb-4 lg:mb-10">
-          <h2 className="text-[26px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white">
+      <div className="max-w-[1280px] mx-auto px-4 md:px-12">
+        {/* Below md the section follows the theme (tokens), as in mockup v2;
+            from md it keeps its dark stage with white type. */}
+        <FadeInView className="text-left md:text-center mb-4 lg:mb-10 max-md:mb-5">
+          <h2 className="text-[26px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white max-md:text-[26px] max-md:font-semibold max-md:tracking-[-0.02em] max-md:leading-[1.15] max-md:text-[var(--foreground)]">
             Everything you need
             <br className="hidden sm:block" /> to create better outfits.
           </h2>
-          <p className="mt-2 lg:mt-5 text-[13px] sm:text-lg md:text-xl text-white/45">
+          <p className="mt-2 lg:mt-5 text-[13px] sm:text-lg md:text-xl text-white/45 max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
             Visualize. Get inspired. Shop the look.
           </p>
         </FadeInView>
@@ -234,12 +237,12 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
             beside its own label, an arrow pointing at what happens next. */}
         <div className="lg:hidden max-w-[560px] mx-auto">
           {STEPS.map((step, i) => (
-            <FadeInView key={step.n} delay={i * 0.06} y={12}>
-              <div className="flex items-center gap-3 rounded-2xl bg-[#161616] pl-4 pr-3 py-2.5">
+            <FadeInView key={step.n} delay={i * 0.06} y={12} className={i > 0 ? "max-md:mt-2" : undefined}>
+              <div className="flex items-center gap-3 rounded-2xl bg-[#161616] pl-4 pr-3 py-2.5 max-md:bg-[var(--surface)] max-md:min-h-[92px] max-md:gap-3.5">
                 <div className="flex-1 min-w-0">
-                  <span className="text-[11px] text-white/40 tabular-nums">{step.n}</span>
-                  <h3 className="mt-0.5 text-[15px] font-semibold text-white leading-snug">{step.title}</h3>
-                  <p className="mt-1 text-[11px] text-white/50 leading-[1.45]">{step.body}</p>
+                  <span className="text-[11px] text-white/40 tabular-nums max-md:text-[12px] max-md:text-[var(--foreground-muted)]">{step.n}</span>
+                  <h3 className="mt-0.5 text-[15px] font-semibold text-white leading-snug max-md:text-[var(--foreground)]">{step.title}</h3>
+                  <p className="mt-1 text-[11px] text-white/50 leading-[1.45] max-md:mt-0.5 max-md:text-[13px] max-md:leading-[1.4] max-md:text-[var(--foreground-muted)]">{step.body}</p>
                 </div>
 
                 {/* The scenes are drawn at one fixed size (210 × 280); scaling

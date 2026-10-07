@@ -76,8 +76,9 @@ export function UpgradeModal({ prompt, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="Upgrade required"
+      // Phones: a sheet from the bottom (DESIGN_SYSTEM.md §12.7, mockup v2 «Б · Окно „нужен тариф“»).
       className={ov.cls(
-        "ov-scrim fixed inset-0 z-[80] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"
+        "ov-scrim fixed inset-0 z-[80] flex items-end md:items-center justify-center md:px-4 bg-black/60 backdrop-blur-sm"
       )}
       onClick={onClose}
       onTransitionEnd={(e) => {
@@ -86,37 +87,45 @@ export function UpgradeModal({ prompt, onClose }: Props) {
       }}
     >
       <div
-        className="ov-panel relative border border-[var(--border)] rounded-2xl w-full max-w-md bg-[var(--background)] shadow-2xl"
+        className="ov-panel relative md:border md:border-[var(--border)] rounded-t-3xl md:rounded-2xl w-full md:max-w-md bg-[var(--surface)] md:bg-[var(--background)] shadow-2xl max-md:text-center max-md:px-5 max-md:pt-2 max-md:pb-[calc(env(safe-area-inset-bottom)+16px)]"
         onClick={(e) => e.stopPropagation()}
       >
+        <div aria-hidden="true" className="md:hidden mx-auto w-9 h-1 rounded-full bg-[var(--border-strong)]" />
         {/* Крестик: раньше закрыть можно было только кликом по фону, то есть
             наугад. */}
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
+          className="absolute top-2 right-2 w-11 h-11 md:top-3 md:right-3 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
         >
-          <svg width="12" height="12" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 13 13" fill="none" aria-hidden="true" className="max-md:w-4 max-md:h-4">
             <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </button>
-        <div className="px-6 pt-6 pb-4">
-          <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
+        <div className="pt-10 md:px-6 md:pt-6 md:pb-4">
+          {/* Phones: a lock in a soft circle instead of the caps eyebrow. */}
+          <span aria-hidden="true" className="md:hidden mx-auto w-[60px] h-[60px] rounded-full bg-[var(--fg-overlay-08)] flex items-center justify-center text-[var(--foreground)]">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+          </span>
+          <p className="hidden md:block font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
             Upgrade required
           </p>
-          <h2 className="text-2xl font-bold text-[var(--foreground)] leading-tight mb-3">
+          <h2 className="mt-4 text-[20px] font-semibold mb-2 md:mt-0 md:text-2xl md:font-bold md:mb-3 text-[var(--foreground)] leading-tight">
             {planName
               ? `This feature is on ${planName}`
               : "Upgrade to continue"}
           </h2>
-          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+          <p className="max-md:mx-auto max-md:max-w-[300px] text-[15px] leading-normal md:text-sm md:leading-relaxed text-[var(--foreground-muted)]">
             {shown.message}
           </p>
         </div>
 
         {planName && usdLabel !== null && (
-          <div className="px-6 pb-4">
+          <div className="hidden md:block px-6 pb-4">
             <div className="border border-[var(--border)] px-4 py-3 flex items-baseline justify-between">
               <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
                 {planName}
@@ -130,16 +139,16 @@ export function UpgradeModal({ prompt, onClose }: Props) {
           </div>
         )}
 
-        <div className="px-6 pb-6 flex gap-3">
+        <div className="mt-[22px] flex flex-col gap-1.5 md:mt-0 md:flex-row md:gap-3 md:px-6 md:pb-6">
           <button
             onClick={handleUpgrade}
-            className="flex-1 bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] tracking-[0.14em] uppercase py-3.5 hover:opacity-80 transition-opacity"
+            className="h-[50px] rounded-full text-[16px] font-semibold md:h-auto md:flex-1 md:rounded-none md:font-mono md:text-[10px] md:tracking-[0.14em] md:uppercase md:font-normal md:py-3.5 bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
           >
             {planName ? `Upgrade to ${planName}` : "See plans"}
           </button>
           <button
             onClick={onClose}
-            className="border border-[var(--border)] px-5 py-3.5 font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+            className="h-11 text-[15px] text-[var(--foreground-muted)] md:h-auto md:border md:border-[var(--border)] md:px-5 md:py-3.5 md:font-mono md:text-[10px] md:tracking-[0.12em] md:uppercase md:text-[var(--foreground)] md:hover:bg-[var(--surface)] transition-colors"
           >
             Not now
           </button>

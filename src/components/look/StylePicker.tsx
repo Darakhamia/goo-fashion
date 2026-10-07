@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 
 export type GenerationStyle = "mannequin" | "flatlay" | "tryon";
 
@@ -58,12 +59,16 @@ export function StylePicker({ open, onClose, title, collage, onCollage, onGenera
   };
 
   const backdrop = useBackdropDismiss(close);
+  // The phone sheet plays its exit; the desktop window simply goes.
+  const sheet = useOverlayPresence(open);
 
-  if (!open) return null;
+  if (!open && !sheet.rendered) return null;
 
   return (
+    <>
+    {open && (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[70] hidden md:flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -265,5 +270,193 @@ export function StylePicker({ open, onClose, title, collage, onCollage, onGenera
         )}
       </div>
     </div>
+    )}
+
+    {/* Phones: the same choices as a sheet from the bottom (DESIGN_SYSTEM.md
+        §12.7) — sentence case, 13–15px type, rounded tiles. */}
+    {sheet.rendered && (
+      <div className="md:hidden">
+        <div aria-hidden="true" className={sheet.cls("ov-scrim fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm")} onClick={close} />
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="style-picker-title"
+          onTransitionEnd={sheet.onTransitionEnd}
+          className={sheet.cls("ov-rise fixed inset-x-0 bottom-0 z-[70] max-h-[calc(100%-56px)] rounded-t-3xl bg-[var(--surface)] flex flex-col pb-[calc(env(safe-area-inset-bottom)+16px)]")}
+        >
+          <div aria-hidden="true" className="mx-auto mt-2 w-9 h-1 shrink-0 rounded-full bg-[var(--border-strong)]" />
+          <div className="flex items-center pl-2 pr-2 shrink-0">
+            {tryonStep ? (
+              <button
+                onClick={() => { setTryonStep(false); setUserPhotoDataUri(null); }}
+                aria-label="Back"
+                className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground)]"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+              </button>
+            ) : (
+              <span className="w-3" />
+            )}
+            <h2 id="style-picker-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">
+              {tryonStep ? "On you" : title}
+            </h2>
+            <button
+              onClick={close}
+              aria-label="Close"
+              className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-2">
+            {!tryonStep ? (
+              <>
+                {collage && (
+                  <button
+                    onClick={() => { close(); onCollage?.(); }}
+                    className="w-full min-h-16 flex items-center gap-3 px-4 py-3 rounded-2xl bg-[var(--foreground)] text-[var(--background)] text-left"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                      <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[15px] font-semibold">{collage.label}</span>
+                      <span className="block text-[13px] opacity-70">{collage.hint}</span>
+                    </span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-70">
+                      <path d="M9 6l6 6-6 6" />
+                    </svg>
+                  </button>
+                )}
+
+                <h3 className={`mb-2.5 text-[13px] text-[var(--foreground-muted)] ${collage ? "mt-5" : ""}`}>
+                  {collage ? "Or generate with AI" : "Generate with AI"}
+                </h3>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {([
+                    { style: "mannequin", name: "Mannequin", hint: "Black studio" },
+                    { style: "flatlay", name: "Flat lay", hint: "White studio" },
+                  ] as const).map(({ style, name, hint }) => (
+                    <button
+                      key={style}
+                      onClick={() => { close(); onGenerate(style); }}
+                      className="flex flex-col gap-2.5 p-3 rounded-2xl bg-[var(--fg-overlay-08)] text-left"
+                    >
+                      <span className="w-full aspect-square rounded-xl bg-[var(--surface)] flex items-center justify-center text-[var(--foreground)]">
+                        {style === "mannequin" ? (
+                          <svg width="32" height="48" viewBox="0 0 32 56" fill="none" aria-hidden="true">
+                            <ellipse cx="16" cy="6" rx="5" ry="5" fill="currentColor" opacity="0.6" />
+                            <rect x="10" y="13" width="12" height="22" rx="2" fill="currentColor" opacity="0.6" />
+                            <rect x="4" y="13" width="6" height="16" rx="2" fill="currentColor" opacity="0.45" />
+                            <rect x="22" y="13" width="6" height="16" rx="2" fill="currentColor" opacity="0.45" />
+                            <rect x="10" y="36" width="5" height="18" rx="2" fill="currentColor" opacity="0.6" />
+                            <rect x="17" y="36" width="5" height="18" rx="2" fill="currentColor" opacity="0.6" />
+                          </svg>
+                        ) : (
+                          <svg width="48" height="36" viewBox="0 0 56 40" fill="none" aria-hidden="true">
+                            <rect x="4" y="4" width="20" height="14" rx="2" fill="currentColor" opacity="0.5" />
+                            <rect x="32" y="4" width="20" height="14" rx="2" fill="currentColor" opacity="0.4" />
+                            <rect x="4" y="24" width="20" height="12" rx="2" fill="currentColor" opacity="0.6" />
+                            <rect x="32" y="24" width="20" height="12" rx="2" fill="currentColor" opacity="0.45" />
+                          </svg>
+                        )}
+                      </span>
+                      <span>
+                        <span className="block text-[14px] font-semibold text-[var(--foreground)]">{name}</span>
+                        <span className="block text-[12px] text-[var(--foreground-muted)]">{hint}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setTryonStep(true)}
+                  className="mt-2.5 w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--fg-overlay-08)] text-left"
+                >
+                  <span className="w-14 h-14 shrink-0 rounded-xl bg-[var(--surface)] flex items-center justify-center text-[var(--foreground)]">
+                    <svg width="28" height="40" viewBox="0 0 28 48" fill="none" aria-hidden="true">
+                      <ellipse cx="14" cy="5" rx="4" ry="4" stroke="currentColor" strokeWidth="1.3" />
+                      <path d="M7 12H21L22 28H16L14 44H14L12 28H6L7 12Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                      <path d="M7 14L2 20M21 14L26 20" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-center gap-2">
+                      <span className="text-[14px] font-semibold text-[var(--foreground)]">On you</span>
+                      <span className="h-5 px-2 inline-flex items-center rounded-full bg-[var(--foreground)] text-[var(--background)] text-[11px] font-semibold">New</span>
+                    </span>
+                    <span className="block text-[12px] text-[var(--foreground-muted)]">Upload your photo · AI dresses you</span>
+                  </span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-[var(--foreground-muted)]">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </button>
+
+                <p className="mt-4 mb-1 text-center text-[12px] text-[var(--foreground-muted)]">
+                  Product images sent as references · 1K resolution · Nano Banana 2
+                </p>
+              </>
+            ) : (
+              <div className="flex flex-col gap-4 pb-1">
+                <p className="text-[14px] leading-relaxed text-[var(--foreground-muted)]">
+                  Upload a full-body photo of yourself in a T-pose on a plain background. The AI will place you in a studio shot wearing the selected outfit.
+                </p>
+                <label className="relative block cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUserPhotoDataUri(await compressPhoto(file));
+                    }}
+                  />
+                  {userPhotoDataUri ? (
+                    <span className="relative block w-full aspect-[3/4] overflow-hidden rounded-2xl">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={userPhotoDataUri} alt="Your photo" className="w-full h-full object-cover" />
+                      <span className="absolute left-3 bottom-3 h-8 px-3 inline-flex items-center rounded-full bg-white/85 text-[13px] text-black">Change photo</span>
+                    </span>
+                  ) : (
+                    <span className="w-full aspect-[3/4] rounded-2xl border border-dashed border-[var(--border-strong)] flex flex-col items-center justify-center gap-2 text-center px-6">
+                      <span className="w-14 h-14 rounded-full bg-[var(--fg-overlay-08)] flex items-center justify-center text-[var(--foreground-muted)]">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M12 16V8M12 8L9 11M12 8L15 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </span>
+                      <span className="text-[15px] font-semibold text-[var(--foreground)]">Choose a photo</span>
+                      <span className="text-[13px] text-[var(--foreground-muted)]">Full body · T-pose · plain background</span>
+                    </span>
+                  )}
+                </label>
+                <button
+                  disabled={!userPhotoDataUri}
+                  onClick={() => {
+                    if (!userPhotoDataUri) return;
+                    const photo = userPhotoDataUri;
+                    close();
+                    onGenerate("tryon", photo);
+                  }}
+                  className="w-full h-12 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold disabled:bg-[var(--fg-overlay-08)] disabled:text-[var(--foreground-muted)]"
+                >
+                  Generate
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    )}
+    </>
   );
 }

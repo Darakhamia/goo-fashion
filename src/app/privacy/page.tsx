@@ -10,8 +10,8 @@ function Bullet({ items }: { items: string[] }) {
   return (
     <ul className="list-none space-y-2">
       {items.map((item) => (
-        <li key={item} className="flex items-start gap-3 text-sm text-[var(--foreground-muted)] leading-relaxed">
-          <span className="mt-2 w-1 h-1 rounded-full bg-[var(--foreground-subtle)] shrink-0" />
+        <li key={item} className="flex items-start gap-3 text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
+          <span className="mt-2 w-1 h-1 rounded-full bg-[var(--foreground-subtle)] shrink-0 max-md:mt-[11px]" />
           {item}
         </li>
       ))}
@@ -20,12 +20,12 @@ function Bullet({ items }: { items: string[] }) {
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">{children}</p>;
+  return <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">{children}</p>;
 }
 
 function SubLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
+    <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2 max-md:text-[15px] max-md:font-semibold max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground)] max-md:mb-1.5">
       {children}
     </p>
   );
@@ -34,9 +34,9 @@ function SubLabel({ children }: { children: React.ReactNode }) {
 function Processor({ name, purpose, data }: { name: string; purpose: string; data: string }) {
   return (
     <div className="border-b border-[var(--border)] pb-4 last:border-b-0 last:pb-0">
-      <p className="text-sm font-medium text-[var(--foreground)] mb-1">{name}</p>
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">{purpose}</p>
-      <p className="text-xs text-[var(--foreground-subtle)] leading-relaxed mt-1">Data involved: {data}</p>
+      <p className="text-sm font-medium text-[var(--foreground)] mb-1 max-md:text-base">{name}</p>
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">{purpose}</p>
+      <p className="text-xs text-[var(--foreground-subtle)] leading-relaxed mt-1 max-md:text-[13px] max-md:text-[var(--foreground-muted)]">Data involved: {data}</p>
     </div>
   );
 }
@@ -52,15 +52,15 @@ const SECTIONS = [
           platform available at goo-fashion.com. The service is operated by:
         </P>
         <div className="space-y-1">
-          <p className="text-sm font-medium text-[var(--foreground)]">David Arakhamia, Sole Trader</p>
-          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+          <p className="text-sm font-medium text-[var(--foreground)] max-md:text-base">David Arakhamia, Sole Trader</p>
+          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
             Mykolaiv, Ukraine
           </p>
-          <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed">
+          <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
             Registered address available on request.
           </p>
-          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1">
-            <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline">
+          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1 max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
+            <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline max-md:py-3">
               anything@goo-fashion.com
             </a>
           </p>
@@ -368,25 +368,25 @@ const SECTIONS = [
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
-        <div className="pt-16 md:pt-24 pb-32 max-w-2xl">
+      <div className="max-w-[1440px] mx-auto px-5 md:px-12">
+        <div className="pt-6 md:pt-24 pb-14 md:pb-32 max-w-2xl">
 
           {/* Header */}
-          <div className="mb-16 animate-fade-up">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+          <div className="mb-8 md:mb-16 animate-fade-up">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 max-md:hidden">
               Legal
             </p>
-            <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4">
+            <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
               Privacy Policy
             </h1>
-            <p className="text-sm text-[var(--foreground-subtle)]">
+            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
               Last updated: September 26, 2026
             </p>
           </div>
 
           {/* Intro */}
-          <div className="mb-16 pb-16 border-b border-[var(--border)]">
-            <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
+          <div className="mb-8 pb-8 md:mb-16 md:pb-16 border-b border-[var(--border)]">
+            <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-md:leading-[1.6] max-md:text-[var(--foreground)]">
               Goo Fashion respects your privacy. This policy explains, in plain language, exactly what
               personal data we collect, why we collect it, which service providers it is shared with, and the
               rights you have over it.
@@ -394,16 +394,17 @@ export default function PrivacyPage() {
           </div>
 
           {/* Sections */}
-          <div className="space-y-12">
+          <div className="space-y-8 md:space-y-12">
             {SECTIONS.map((section) => (
-              <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6">
-                <div className="pt-0.5">
+              <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6 max-md:block">
+                <div className="pt-0.5 max-md:hidden">
                   <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
                     {section.number.padStart(2, "0")}
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-base font-medium text-[var(--foreground)] mb-4">
+                  <h2 className="text-base font-medium text-[var(--foreground)] mb-4 max-md:text-[18px] max-md:font-semibold max-md:leading-snug max-md:mb-2.5">
+                    <span className="md:hidden text-[var(--foreground-muted)]">{section.number} · </span>
                     {section.title}
                   </h2>
                   {section.content}
@@ -413,17 +414,17 @@ export default function PrivacyPage() {
           </div>
 
           {/* Footer nav */}
-          <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6">
-            <Link href="/terms" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+          <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6 max-md:mt-12 max-md:pt-4 max-md:gap-x-5 max-md:gap-y-0">
+            <Link href="/terms" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
               Terms of Service
             </Link>
-            <Link href="/cookie" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/cookie" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
               Cookie Policy
             </Link>
-            <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
               Refund Policy
             </Link>
-            <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+            <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
               Back to GOO
             </Link>
           </div>

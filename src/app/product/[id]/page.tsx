@@ -101,7 +101,7 @@ export default async function ProductDetailPage({ params }: Props) {
   return (
     <div className="min-h-screen">
       <JsonLd data={[productJsonLd(product), breadcrumb]} />
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
+      <div className="max-w-[1440px] mx-auto px-3 md:px-12">
         <ProductClient
           product={product}
           relatedProducts={relatedProducts}

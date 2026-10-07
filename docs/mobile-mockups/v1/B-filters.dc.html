@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Фильтры и сортировка</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+
+<div style="margin: 8px 12px 0; height: 52px; border-radius: 26px; border: 1px solid {{t.border}}; background: {{t.surface}}; display: flex; align-items: center; padding: 0 18px; box-sizing: border-box; font-family: Poppins, sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.16em">GOO</div>
+<div style="position: absolute; inset: 0; background: {{t.scrim}}"></div>
+
+<section role="dialog" aria-modal="true" aria-label="Sort and filter" style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: {{t.sheet}}; border-radius: 20px 20px 0 0; display: flex; flex-direction: column">
+<div style="width: 36px; height: 4px; border-radius: 2px; background: {{t.strong}}; margin: 8px auto 0"></div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 0 20px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 600">Sort &amp; filter</h2>
+<button aria-label="Close" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{t.muted}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+</button>
+</div>
+
+<div style="flex: 1; padding: 8px 20px 0; display: flex; flex-direction: column; gap: 22px">
+<div>
+<div style="font-size: 13px; color: {{t.muted}}; margin-bottom: 10px">Sort by</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{sort}}" as="c" hint-placeholder-count="4">
+<button aria-pressed="{{c.on}}" style="height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: {{c.bg}}; color: {{c.color}}; font-family: inherit; font-size: 13px; font-weight: {{c.fw}}; cursor: pointer">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+<div>
+<div style="font-size: 13px; color: {{t.muted}}; margin-bottom: 10px">Category</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="8">
+<button aria-pressed="{{c.on}}" style="height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: {{c.bg}}; color: {{c.color}}; font-family: inherit; font-size: 13px; font-weight: {{c.fw}}; cursor: pointer">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+<div>
+<div style="font-size: 13px; color: {{t.muted}}; margin-bottom: 10px">Colour</div>
+<div style="display: flex; gap: 10px">
+<sc-for list="{{colours}}" as="c" hint-placeholder-count="7">
+<button aria-label="{{c.label}}" style="width: 44px; height: 44px; border: 0; padding: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<span style="width: 30px; height: 30px; border-radius: 50%; background: {{c.hex}}; box-shadow: 0 0 0 1px {{t.border}}"></span>
+</button>
+</sc-for>
+</div>
+</div>
+<div>
+<div style="font-size: 13px; color: {{t.muted}}; margin-bottom: 10px">Price</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<label style="height: 48px; border-radius: 12px; background: {{t.field}}; display: flex; align-items: center; padding: 0 14px; font-size: 15px; color: {{t.muted}}">Min<input value="$0" aria-label="Minimum price" style="margin-left: auto; width: 70px; border: 0; background: transparent; color: {{t.fg}}; font-family: inherit; font-size: 16px; text-align: right"></label>
+<label style="height: 48px; border-radius: 12px; background: {{t.field}}; display: flex; align-items: center; padding: 0 14px; font-size: 15px; color: {{t.muted}}">Max<input value="$2,000" aria-label="Maximum price" style="margin-left: auto; width: 80px; border: 0; background: transparent; color: {{t.fg}}; font-family: inherit; font-size: 16px; text-align: right"></label>
+</div>
+</div>
+<label style="height: 52px; border-radius: 12px; background: {{t.field}}; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; font-size: 15px">
+Only my likes
+<span style="width: 44px; height: 26px; border-radius: 13px; background: {{t.track}}; position: relative; display: block">
+<span style="position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: {{t.knob}}"></span>
+</span>
+</label>
+</div>
+
+<div style="padding: 12px 20px 32px; display: flex; align-items: center; gap: 10px">
+<button style="height: 48px; padding: 0 18px; border: 0; border-radius: 12px; background: {{t.field}}; color: {{t.fg}}; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer">Clear</button>
+<button style="flex: 1; height: 48px; border: 0; border-radius: 12px; background: {{t.fg}}; color: {{t.bg}}; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Show 18 pieces</button>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', sheet: '#151515', fg: '#F0EEE8', muted: '#8E8E89', border: '#2A2A28', strong: '#3A3A38', scrim: 'rgba(0,0,0,0.6)', soft: 'rgba(240,238,232,0.08)', field: 'rgba(240,238,232,0.06)', track: '#2E2E2C', knob: '#8E8E89' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', sheet: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', border: '#E8E6E0', strong: '#C0BEB8', scrim: 'rgba(0,0,0,0.35)', soft: 'rgba(10,10,10,0.05)', field: 'rgba(10,10,10,0.04)', track: '#DAD7D0', knob: '#FFFFFF' };
+const chip = (label, on) => ({ label, on, bg: on ? t.fg : t.soft, color: on ? t.bg : t.fg, fw: on ? 600 : 400 });
+const sort = [['Featured', true], ['New in', false], ['Price: low to high', false], ['Price: high to low', false]].map(([l, o]) => chip(l, o));
+const cats = [['All', false], ['Outerwear', true], ['Knitwear', true], ['Tops', false], ['Bottoms', false], ['Dresses', false], ['Footwear', false], ['Accessories', false]].map(([l, o]) => chip(l, o));
+const colours = [['Black', '#141414'], ['White', '#F6F4EF'], ['Beige', '#D9C8AE'], ['Brown', '#7A5A43'], ['Grey', '#8D8D8A'], ['Navy', '#2C3A52'], ['Green', '#5E6B4E']].map(([label, hex]) => ({ label, hex }));
+return { t, sort, cats, colours };
+}
+}
+</script>
+</body>
+</html>

@@ -27,11 +27,12 @@ export default function CookieSettings() {
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-      <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
+    // Phones: a plaque without the frame, a plain heading and 44px pills.
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 max-md:rounded-2xl max-md:border-0 max-md:p-4">
+      <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2 max-md:text-[15px] max-md:font-semibold max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground)] max-md:mb-1">
         Analytics cookies
       </p>
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-4">
+      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-4 max-md:text-[15px] max-md:leading-[1.5] max-md:mb-3.5">
         {choice === "accepted"
           ? "Currently allowed. Analytics stops the moment you decline."
           : choice === "declined"
@@ -44,10 +45,10 @@ export default function CookieSettings() {
             key={option.value}
             onClick={() => select(option.value)}
             aria-pressed={choice === option.value}
-            className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
+            className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 max-md:h-11 max-md:px-5 max-md:py-0 max-md:text-[15px] max-md:normal-case max-md:tracking-normal ${
               choice === option.value
                 ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] max-md:border-transparent max-md:bg-[var(--fg-overlay-08)] max-md:text-[var(--foreground)]"
             }`}
           >
             {option.label}

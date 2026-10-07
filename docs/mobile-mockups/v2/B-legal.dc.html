@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Политика конфиденциальности</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 1688px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px"><dc-import name="B-part-top" dark="{{dark}}" back="{{yes}}" count="{{zero}}" hint-size="366px,52px"></dc-import></div>
+
+<article style="padding: 80px 20px 0">
+<h1 style="margin: 0; font-size: 28px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em">Privacy policy</h1>
+<div style="margin-top: 6px; font-size: 13px; color: {{t.muted}}">Last updated: September 26, 2026</div>
+
+<h2 style="margin: 32px 0 0; font-size: 18px; font-weight: 600"><span style="color: {{t.muted}}">1 ·</span> Who we are</h2>
+<p style="margin: 10px 0 0; font-size: 16px; line-height: 1.6; color: {{t.body}}">Goo Fashion (“GOO”, “we”, “our”, “us”) is a fashion-discovery and AI-styling platform available at goo-fashion.com.</p>
+<p style="margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: {{t.body}}">For the purposes of the EU General Data Protection Regulation (GDPR) and the Law of Ukraine “On Personal Data Protection”, the operator above is the data controller for personal data processed through the website.</p>
+
+<h2 style="margin: 32px 0 0; font-size: 18px; font-weight: 600"><span style="color: {{t.muted}}">2 ·</span> Information we collect</h2>
+<h3 style="margin: 16px 0 0; font-size: 15px; font-weight: 600">Account data</h3>
+<p style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: {{t.body}}">When you create an account, our authentication provider Clerk collects your email address, name, optional profile photo and — if you sign in with a social account — your public profile identifiers from that provider. Your password is handled entirely by Clerk and never reaches our servers.</p>
+<h3 style="margin: 16px 0 0; font-size: 15px; font-weight: 600">Style profile (optional)</h3>
+<p style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: {{t.body}}">To personalise recommendations you can voluntarily provide: body type, clothing and shoe sizes, budget range, favourite colours and styles, a nickname, pronouns, style goals, lifestyle notes, and “hard limits” — things GOO should never suggest. You can edit or clear these in your profile at any time.</p>
+
+<h2 style="margin: 32px 0 0; font-size: 18px; font-weight: 600"><span style="color: {{t.muted}}">3 ·</span> How we use your information</h2>
+<div style="margin-top: 10px; height: 14px; width: 92%; border-radius: 7px; background: {{t.soft}}"></div>
+<div style="margin-top: 10px; height: 14px; width: 80%; border-radius: 7px; background: {{t.soft}}"></div>
+</article>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="none" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":1688}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', fg: '#F0EEE8', muted: '#8E8E89', body: '#CFCDC7', soft: 'rgba(240,238,232,0.06)' }
+: { bg: '#F4F2EE', fg: '#0A0A0A', muted: '#6B6B6B', body: '#3A3A38', soft: 'rgba(10,10,10,0.05)' };
+return { t, dark, yes: true, zero: 0 };
+}
+}
+</script>
+</body>
+</html>

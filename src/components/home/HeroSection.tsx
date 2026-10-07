@@ -70,12 +70,16 @@ export function HeroSection() {
         type="button"
         onClick={() => window.dispatchEvent(new Event("home-fullpage:next"))}
         aria-label="Go to the next section"
-        className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-10 cursor-pointer hover:opacity-70 transition-opacity"
+        className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-10 cursor-pointer hover:opacity-70 transition-opacity max-md:w-11 max-md:h-11 max-md:justify-center"
       >
-        <span className="text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
+        {/* Phones: just a quiet chevron (mockup v2 «Б · Главная»). */}
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="md:hidden text-[var(--foreground-muted)]">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+        <span className="max-md:hidden text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
           Scroll to explore
         </span>
-        <div className="animate-scroll-hint text-[var(--foreground-subtle)]">
+        <div className="max-md:hidden animate-scroll-hint text-[var(--foreground-subtle)]">
           <svg width="14" height="22" viewBox="0 0 14 22" fill="none">
             <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             <path d="M2 10L7 16L12 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />

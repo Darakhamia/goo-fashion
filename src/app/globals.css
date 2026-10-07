@@ -59,6 +59,8 @@
   --fg-on-dark-60: rgba(244, 242, 238, 0.60);
   --fg-on-dark-70: rgba(244, 242, 238, 0.70);
   --fg-on-dark-80: rgba(244, 242, 238, 0.80);
+  /* Floating bars on phones (bottom nav, buy bar), see DESIGN_SYSTEM.md §12 */
+  --surface-overlay-92: rgba(255, 255, 255, 0.92);
 }
 
 .dark,
@@ -79,6 +81,7 @@
   --fg-on-dark-60: rgba(10, 10, 10, 0.60);
   --fg-on-dark-70: rgba(10, 10, 10, 0.70);
   --fg-on-dark-80: rgba(10, 10, 10, 0.80);
+  --surface-overlay-92: rgba(20, 20, 20, 0.92);
 }
 
 /* Native controls inside goo-studio (select popups, date pickers, scrollbars)

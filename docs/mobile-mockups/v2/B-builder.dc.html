@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Конструктор</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+
+<header style="height: 60px; display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; box-sizing: border-box">
+<button aria-label="Back" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid {{t.border}}; background: {{t.surface}}; color: {{t.fg}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg>
+</button>
+<h1 style="flex: 1; margin: 0 0 0 4px; font-size: 17px; font-weight: 600">New look</h1>
+<button style="height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid {{t.border}}; background: {{t.surface}}; color: {{t.fg}}; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">AI</button>
+<button style="height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: {{t.fg}}; color: {{t.bg}}; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Save</button>
+</header>
+
+<div style="margin: 12px 12px 0; position: relative; height: 330px; border-radius: 20px; overflow: hidden; background: {{t.photo}}">
+<svg viewBox="0 0 120 160" aria-label="Jil Sander Structured Blazer" style="position: absolute; left: 22px; top: 22px; width: 165px; height: auto"><path d="M44 20 L60 30 L76 20 L94 30 L104 98 L93 100 L86 64 L88 132 L32 132 L34 64 L27 100 L16 98 L26 30 Z" fill="#3E4A57"></path><path d="M60 30 L60 132 M44 20 L53 60 L60 30 M76 20 L67 60 L60 30" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1" stroke-linecap="round"></path></svg>
+<svg viewBox="0 0 120 160" aria-label="Lemaire Wide-Leg Trousers" style="position: absolute; left: 204px; top: 16px; width: 112px; height: auto"><path d="M36 14 L84 14 L91 150 L67 150 L60 56 L53 150 L29 150 Z" fill="#8C877C"></path><path d="M36 24 L84 24 M60 24 L60 56" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="1" stroke-linecap="round"></path></svg>
+<svg viewBox="0 0 120 160" aria-label="Acne Studios Chelsea Boots" style="position: absolute; left: 214px; top: 170px; width: 104px; height: auto"><path d="M28 56 L52 56 L52 116 Q66 118 74 126 Q78 138 72 142 L24 142 L24 118 Z M64 46 L88 46 L88 106 Q102 108 110 116 Q114 128 108 132 L60 132 L60 108 Z" fill="#2B2926"></path></svg>
+<span style="position: absolute; left: 12px; bottom: 12px; height: 32px; padding: 0 12px; border-radius: 16px; background: rgba(255,255,255,0.85); color: #0A0A0A; display: flex; align-items: center; gap: 4px; font-size: 13px"><b style="font-weight: 600">$2,060</b> · 3 pieces</span>
+<button aria-label="Clear all" style="position: absolute; right: 4px; bottom: 4px; width: 48px; height: 48px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<span style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"></path></svg></span>
+</button>
+</div>
+
+<div style="margin-top: 14px; padding: 0 12px; display: flex; gap: 6px; overflow: hidden">
+<button aria-label="Filters" style="width: 40px; height: 40px; flex: none; border-radius: 50%; border: 1px solid {{t.border}}; background: {{t.surface}}; color: {{t.fg}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"></path></svg>
+</button>
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="5">
+<button aria-pressed="{{c.on}}" style="height: 40px; flex: none; padding: 0 15px; border: 0; border-radius: 20px; background: {{c.bg}}; color: {{c.color}}; font-family: inherit; font-size: 13px; font-weight: {{c.fw}}; cursor: pointer">{{c.label}}</button>
+</sc-for>
+</div>
+
+<div style="padding: 12px 0 0 12px; display: flex; gap: 8px; overflow: hidden">
+<sc-for list="{{items}}" as="p" hint-placeholder-count="4">
+<button aria-label="{{p.aria}}" style="width: 124px; flex: none; border: 0; padding: 0 0 10px; border-radius: 14px; overflow: hidden; background: {{t.surface}}; color: {{t.fg}}; text-align: left; font-family: inherit; cursor: pointer">
+<span style="position: relative; display: flex; align-items: center; justify-content: center; height: 140px; background: {{t.photo}}">
+<svg viewBox="0 0 120 160" style="width: 62px; height: auto"><path d="{{p.d}}" fill="{{p.c}}"></path></svg>
+<span style="position: absolute; right: 8px; bottom: 8px; width: 26px; height: 26px; border-radius: 50%; background: {{p.badgeBg}}; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{p.badgeFg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.badgeD}}"></path></svg></span>
+</span>
+<span style="display: block; padding: 8px 10px 0; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{p.brand}}</span>
+<span style="display: block; padding: 0 10px; font-size: 12px; color: {{t.muted}}">{{p.price}}</span>
+</button>
+</sc-for>
+</div>
+
+<nav aria-label="Main" style="position: absolute; left: 12px; right: 12px; bottom: 20px; height: 56px; padding: 0 6px; box-sizing: border-box; border-radius: 28px; background: {{t.overlay}}; border: 1px solid {{t.border}}; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(14px)">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+<a href="#" aria-label="{{n.label}}" style="height: 44px; min-width: 44px; padding: {{n.pad}}; box-sizing: border-box; border-radius: 22px; background: {{n.bg}}; display: flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; color: {{n.color}}">
+<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{n.sw}}" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.d}}"></path></svg>
+<sc-if value="{{n.active}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; font-weight: 600">{{n.label}}</span></sc-if>
+</a>
+</sc-for>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', border: '#232321', overlay: 'rgba(22,22,21,0.92)', soft: 'rgba(240,238,232,0.09)', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', border: '#E8E6E0', overlay: 'rgba(255,255,255,0.92)', soft: 'rgba(10,10,10,0.06)', photo: '#EFEDE8' };
+const cats = ['All', 'Tops', 'Bottoms', 'Shoes', 'Accessories'].map((label) => {
+const on = label === 'All';
+return { label, on, bg: on ? t.fg : t.soft, color: on ? t.bg : t.fg, fw: on ? 600 : 400 };
+});
+const items = [
+{ brand: 'Jil Sander', price: '$1,100', c: '#3E4A57', added: true, d: 'M44 20 L60 30 L76 20 L94 30 L104 98 L93 100 L86 64 L88 132 L32 132 L34 64 L27 100 L16 98 L26 30 Z' },
+{ brand: 'Cos', price: '$95', c: '#F4F1EA', added: false, d: 'M47 20 L60 30 L73 20 L95 30 L106 92 L95 96 L88 60 L88 134 L32 134 L32 60 L25 96 L14 92 L25 30 Z' },
+{ brand: 'Massimo Dutti', price: '$139', c: '#5A5550', added: false, d: 'M36 14 L84 14 L91 150 L67 150 L60 56 L53 150 L29 150 Z' },
+{ brand: 'Maison Margiela', price: '$1,480', c: '#C9B8A6', added: false, d: 'M48 14 L52 14 L55 42 L65 42 L68 14 L72 14 L74 46 L88 150 L32 150 L46 46 Z' }
+].map((p) => ({
+...p,
+aria: (p.added ? 'Remove ' : 'Add ') + p.brand,
+badgeBg: p.added ? '#0A0A0A' : 'rgba(255,255,255,0.9)',
+badgeFg: p.added ? '#F0EEE8' : '#0A0A0A',
+badgeD: p.added ? 'M5 12l5 5 9-10' : 'M12 6v12M6 12h12'
+}));
+const icons = [
+['Browse', 'M17.5 11a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0 M16 16l4 4'],
+['Builder', 'M7 4L3 8v2.5L5.5 9V20h13V9l2.5 1.5V8l-4-4S15.5 6 12 6 7 4 7 4Z'],
+['Journal', 'M5 5.5A2.5 2.5 0 0 1 7.5 3H19v14H7.5A2.5 2.5 0 0 0 5 19.5v-14Z M5 19.5A2.5 2.5 0 0 1 7.5 17H19v4H7.5A2.5 2.5 0 0 1 5 19.5Z M9 7.5h6M9 10.5h4'],
+['My likes', 'M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z'],
+['Profile', 'M16 8a4 4 0 1 1-8 0a4 4 0 1 1 8 0 M4.5 20.5c0-4.1 3.4-7.5 7.5-7.5s7.5 3.4 7.5 7.5']
+];
+const nav = icons.map(([label, d]) => {
+const on = label === 'Builder';
+return { label, d, active: on, color: on ? t.fg : t.muted, sw: on ? 1.7 : 1.3, bg: on ? t.soft : 'transparent', pad: on ? '0 14px 0 12px' : '0' };
+});
+return { t, cats, items, nav };
+}
+}
+</script>
+</body>
+</html>

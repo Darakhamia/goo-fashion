@@ -1,0 +1,60 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-06T15:05:00Z" },
+  "title": "GOO mobile — макеты v1",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Сейчас · Каталог" },
+    "A-catalog.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "А · Каталог" },
+    "B-catalog.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "Б · Каталог" },
+    "A-catalog-light.dc.html": { "x": 1410, "y": 0, "w": 390, "h": 844, "title": "А · Каталог · светлая" },
+    "B-catalog-light.dc.html": { "x": 1880, "y": 0, "w": 390, "h": 844, "title": "Б · Каталог · светлая" },
+
+    "Now-filters.dc.html": { "x": 0, "y": 1240, "w": 390, "h": 844, "title": "Сейчас · Фильтры" },
+    "A-filters.dc.html": { "x": 470, "y": 1240, "w": 390, "h": 844, "title": "А · Фильтры и сортировка" },
+    "B-filters.dc.html": { "x": 940, "y": 1240, "w": 390, "h": 844, "title": "Б · Фильтры и сортировка" },
+
+    "Now-pdp.dc.html": { "x": 0, "y": 2480, "w": 390, "h": 844, "title": "Сейчас · Товар" },
+    "A-pdp.dc.html": { "x": 470, "y": 2480, "w": 390, "h": 844, "title": "А · Товар" },
+    "B-pdp.dc.html": { "x": 940, "y": 2480, "w": 390, "h": 844, "title": "Б · Товар" },
+    "A-pdp-light.dc.html": { "x": 1410, "y": 2480, "w": 390, "h": 844, "title": "А · Товар · светлая" },
+    "B-pdp-light.dc.html": { "x": 1880, "y": 2480, "w": 390, "h": 844, "title": "Б · Товар · светлая" },
+
+    "Now-pdp-stores.dc.html": { "x": 0, "y": 3720, "w": 390, "h": 844, "title": "Сейчас · Где купить" },
+    "A-pdp-stores.dc.html": { "x": 470, "y": 3720, "w": 390, "h": 844, "title": "А · Где купить" },
+    "B-pdp-stores.dc.html": { "x": 940, "y": 3720, "w": 390, "h": 844, "title": "Б · Где купить" },
+
+    "Now-outfit.dc.html": { "x": 0, "y": 4960, "w": 390, "h": 844, "title": "Сейчас · Образ" },
+    "A-outfit.dc.html": { "x": 470, "y": 4960, "w": 390, "h": 844, "title": "А · Образ" },
+    "B-outfit.dc.html": { "x": 940, "y": 4960, "w": 390, "h": 844, "title": "Б · Образ" },
+
+    "Now-builder.dc.html": { "x": 0, "y": 6200, "w": 390, "h": 844, "title": "Сейчас · Конструктор" },
+    "A-builder.dc.html": { "x": 470, "y": 6200, "w": 390, "h": 844, "title": "А · Конструктор" },
+    "B-builder.dc.html": { "x": 940, "y": 6200, "w": 390, "h": 844, "title": "Б · Конструктор" },
+
+    "Now-profile.dc.html": { "x": 0, "y": 7440, "w": 390, "h": 844, "title": "Сейчас · Профиль" },
+    "A-profile.dc.html": { "x": 470, "y": 7440, "w": 390, "h": 844, "title": "А · Профиль" },
+    "B-profile.dc.html": { "x": 940, "y": 7440, "w": 390, "h": 844, "title": "Б · Профиль" }
+  },
+  "order": [
+    "Main.dc.html", "A-catalog.dc.html", "B-catalog.dc.html", "A-catalog-light.dc.html", "B-catalog-light.dc.html",
+    "Now-filters.dc.html", "A-filters.dc.html", "B-filters.dc.html",
+    "Now-pdp.dc.html", "A-pdp.dc.html", "B-pdp.dc.html", "A-pdp-light.dc.html", "B-pdp-light.dc.html",
+    "Now-pdp-stores.dc.html", "A-pdp-stores.dc.html", "B-pdp-stores.dc.html",
+    "Now-outfit.dc.html", "A-outfit.dc.html", "B-outfit.dc.html",
+    "Now-builder.dc.html", "A-builder.dc.html", "B-builder.dc.html",
+    "Now-profile.dc.html", "A-profile.dc.html", "B-profile.dc.html"
+  ],
+  "notes": {
+    "legend": { "x": -560, "y": 0, "w": 460, "text": "Колонки: «Сейчас» — снимок стенда (демо-каталог). «А» — журнальный: без рамок, воздух, тонкие линии. «Б» — как приложение: мягкие плашки, капсулы, всё под пальцем.\n\nТёмная тема включается по умолчанию, поэтому макеты в ней. Светлая — у каталога и товара; у остальных экранов переключатель dark во вкладке Tweaks.\n\nФото товаров — рисованные заглушки: на проде будут настоящие снимки.", "size": "m" },
+    "row1": { "x": 0, "y": -300, "text": "1 · Каталог — первый экран", "kind": "title1", "maxW": 2270 },
+    "row2": { "x": 0, "y": 940, "text": "2 · Фильтры и сортировка", "kind": "title1", "maxW": 1330 },
+    "row3": { "x": 0, "y": 2180, "text": "3 · Товар — первый экран", "kind": "title1", "maxW": 2270 },
+    "row4": { "x": 0, "y": 3420, "text": "4 · Товар — где купить", "kind": "title1", "maxW": 1330 },
+    "row5": { "x": 0, "y": 4660, "text": "5 · Образ", "kind": "title1", "maxW": 1330 },
+    "row6": { "x": 0, "y": 5900, "text": "6 · Конструктор", "kind": "title1", "maxW": 1330 },
+    "row7": { "x": 0, "y": 7140, "text": "7 · Профиль", "kind": "title1", "maxW": 1330 }
+  },
+  "designSystems": []
+}

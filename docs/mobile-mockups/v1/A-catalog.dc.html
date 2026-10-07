@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>А · Каталог</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+
+<header style="height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px 0 20px; box-sizing: border-box">
+<a href="#" style="font-family: Poppins, sans-serif; font-weight: 800; font-size: 19px; letter-spacing: 0.16em; color: {{t.fg}}; text-decoration: none">GOO</a>
+<div style="display: flex; align-items: center">
+<button aria-label="Open AI Stylist" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{t.fg}}; font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer">AI</button>
+<button aria-label="Open bag, 2 items" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{t.fg}}; position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8Z"></path><path d="M9 8V6.5a3 3 0 0 1 6 0V8"></path></svg>
+<span style="position: absolute; top: 8px; right: 7px; min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: {{t.fg}}; color: {{t.bg}}; font-size: 9px; font-weight: 700; line-height: 15px; text-align: center">2</span>
+</button>
+</div>
+</header>
+
+<div style="padding: 4px 20px 0">
+<h1 style="margin: 0; font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em">Browse</h1>
+<p style="margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: {{t.muted}}; max-width: 300px">Curated pieces from the world's most forward-thinking brands.</p>
+</div>
+
+<div style="margin-top: 12px; padding: 0 8px 0 20px; height: 44px; display: flex; align-items: stretch; justify-content: space-between; border-bottom: 1px solid {{t.border}}">
+<div style="display: flex; gap: 22px">
+<button aria-pressed="true" style="border: 0; background: transparent; padding: 0; font-family: inherit; font-size: 15px; font-weight: 500; color: {{t.fg}}; box-shadow: inset 0 -1.5px 0 {{t.fg}}; cursor: pointer">Pieces</button>
+<button aria-pressed="false" style="border: 0; background: transparent; padding: 0; font-family: inherit; font-size: 15px; font-weight: 500; color: {{t.muted}}; cursor: pointer">Outfits</button>
+</div>
+<div style="display: flex; align-items: center">
+<button aria-label="Search" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{t.fg}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
+</button>
+<button style="height: 44px; border: 0; background: transparent; color: {{t.fg}}; display: flex; align-items: center; gap: 7px; padding: 0 12px 0 6px; font-family: inherit; font-size: 14px; cursor: pointer">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"></path></svg>
+Sort &amp; filter
+</button>
+</div>
+</div>
+
+<div style="padding: 16px 20px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; row-gap: 22px">
+<sc-for list="{{cards}}" as="item" hint-placeholder-count="4">
+<a href="#" style="display: block; text-decoration: none; color: {{t.fg}}">
+<div style="position: relative; aspect-ratio: 3 / 4; border-radius: 8px; overflow: hidden; background: {{t.photo}}; display: flex; align-items: center; justify-content: center">
+<svg viewBox="0 0 120 160" style="width: 64%; height: auto"><path d="{{item.d}}" fill="{{item.c}}"></path><path d="{{item.d2}}" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="1.2" stroke-linecap="round"></path></svg>
+<sc-if value="{{item.isNew}}" hint-placeholder-val="{{false}}">
+<span style="position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 500; color: #0A0A0A; background: rgba(255,255,255,0.8); border-radius: 999px; padding: 3px 8px">New</span>
+</sc-if>
+<span aria-label="Like" style="position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center">
+<span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.78); display: flex; align-items: center; justify-content: center">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z"></path></svg>
+</span>
+</span>
+</div>
+<div style="margin-top: 10px; font-size: 13px; font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{item.brand}}</div>
+<div style="font-size: 13px; line-height: 1.35; color: {{t.muted}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{item.name}}</div>
+<div style="margin-top: 4px; font-size: 13px; line-height: 1.35"><span>{{item.price}}</span><span style="color: {{t.muted}}"> · {{item.stores}}</span></div>
+</a>
+</sc-for>
+</div>
+
+<nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; padding-bottom: 20px; box-sizing: border-box; background: {{t.overlay}}; border-top: 1px solid {{t.border}}; display: flex; backdrop-filter: blur(12px)">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+<a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: {{n.color}}">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{n.sw}}" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.d}}"></path></svg>
+<span style="font-size: 10px; line-height: 1; font-weight: {{n.fw}}">{{n.label}}</span>
+</a>
+</sc-for>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#141414', fg: '#F0EEE8', muted: '#8E8E89', border: '#222220', overlay: 'rgba(10,10,10,0.92)', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', border: '#E4E1DA', overlay: 'rgba(244,242,238,0.92)', photo: '#E9E6E0' };
+const G = {
+coat: ['M44 16 L60 28 L76 16 L95 27 L106 98 L94 101 L86 60 L88 150 L32 150 L34 60 L26 101 L14 98 L25 27 Z', 'M60 28 L60 150 M44 16 L52 54 L60 28 M76 16 L68 54 L60 28 M40 104 L50 104 M70 104 L80 104'],
+trousers: ['M36 14 L84 14 L91 150 L67 150 L60 56 L53 150 L29 150 Z', 'M36 24 L84 24 M60 24 L60 56 M44 24 L45 40'],
+knit: ['M46 22 Q60 34 74 22 L96 32 L108 96 L96 100 L88 62 L88 132 L32 132 L32 62 L24 100 L12 96 L24 32 Z', 'M32 124 L88 124 M46 22 Q60 38 74 22 M14 92 L25 96 M106 92 L95 96'],
+boots: ['M28 56 L52 56 L52 116 Q66 118 74 126 Q78 138 72 142 L24 142 L24 118 Z M64 46 L88 46 L88 106 Q102 108 110 116 Q114 128 108 132 L60 132 L60 108 Z', 'M33 56 L33 74 M69 46 L69 64 M24 134 L72 134 M60 124 L108 124']
+};
+const raw = [
+{ brand: 'Toteme', name: 'Oversized Wool Coat', price: '$890–$980', stores: '3 stores', g: 'coat', c: '#B39373', isNew: true },
+{ brand: 'Lemaire', name: 'Wide-Leg Trousers', price: '$420–$490', stores: '3 stores', g: 'trousers', c: '#8C877C', isNew: false },
+{ brand: 'The Row', name: 'Cashmere Crew Neck', price: '$790–$850', stores: '3 stores', g: 'knit', c: '#D3CABA', isNew: false },
+{ brand: 'Acne Studios', name: 'Chelsea Boots', price: '$540–$620', stores: '3 stores', g: 'boots', c: '#2B2926', isNew: true }
+];
+const cards = raw.map((x) => ({ ...x, d: G[x.g][0], d2: G[x.g][1] }));
+const icons = [
+['Browse', 'M17.5 11a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0 M16 16l4 4'],
+['Builder', 'M7 4L3 8v2.5L5.5 9V20h13V9l2.5 1.5V8l-4-4S15.5 6 12 6 7 4 7 4Z'],
+['Journal', 'M5 5.5A2.5 2.5 0 0 1 7.5 3H19v14H7.5A2.5 2.5 0 0 0 5 19.5v-14Z M5 19.5A2.5 2.5 0 0 1 7.5 17H19v4H7.5A2.5 2.5 0 0 1 5 19.5Z M9 7.5h6M9 10.5h4'],
+['My likes', 'M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z'],
+['Profile', 'M16 8a4 4 0 1 1-8 0a4 4 0 1 1 8 0 M4.5 20.5c0-4.1 3.4-7.5 7.5-7.5s7.5 3.4 7.5 7.5']
+];
+const active = 'Browse';
+const nav = icons.map(([label, d]) => ({ label, d, color: label === active ? t.fg : t.muted, sw: label === active ? 1.7 : 1.3, fw: label === active ? 600 : 400 }));
+return { t, cards, nav };
+}
+}
+</script>
+</body>
+</html>

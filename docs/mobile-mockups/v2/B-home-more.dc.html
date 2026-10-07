@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Б · Главная — дальше по странице</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Poppins:wght@800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 1688px; position: relative; overflow: hidden; background: {{t.bg}}; color: {{t.fg}}; font-family: 'Inter Tight', system-ui, sans-serif; -webkit-font-smoothing: antialiased">
+<div style="position: absolute; left: 12px; top: 8px; width: 366px; height: 52px; z-index: 2"><dc-import name="B-part-top" dark="{{dark}}" back="{{no}}" count="{{two}}" hint-size="366px,52px"></dc-import></div>
+
+<section style="padding: 92px 16px 0">
+<h2 style="margin: 0; font-size: 26px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em">Everything you need to create better outfits.</h2>
+<p style="margin: 8px 0 0; font-size: 15px; color: {{t.muted}}">Visualize. Get inspired. Shop the look.</p>
+<div style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+<div style="height: 92px; border-radius: 16px; background: {{t.surface}}; display: flex; align-items: center; gap: 14px; padding: 0 12px 0 16px">
+<div style="flex: 1">
+<div style="font-size: 12px; color: {{t.muted}}">{{s.n}}</div>
+<div style="margin-top: 2px; font-size: 15px; font-weight: 600">{{s.title}}</div>
+<div style="margin-top: 2px; font-size: 13px; line-height: 1.4; color: {{t.muted}}">{{s.body}}</div>
+</div>
+<span style="width: 68px; height: 68px; flex: none; border-radius: 12px; background: {{t.photo}}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 120 160" style="width: 40px; height: auto"><path d="{{s.d}}" fill="{{s.c}}"></path></svg></span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="padding: 48px 16px 0">
+<div style="font-size: 13px; color: {{t.muted}}">AI stylist</div>
+<h2 style="margin: 6px 0 0; font-size: 26px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em">Your style. Found by AI.</h2>
+<p style="margin: 8px 0 0; font-size: 15px; line-height: 1.45; color: {{t.muted}}">AI looks at what's trending and creates outfit ideas just for you.</p>
+<div style="margin-top: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{features}}" as="f" hint-placeholder-count="3">
+<div style="border-radius: 14px; background: {{t.surface}}; padding: 12px">
+<div style="font-size: 14px; font-weight: 600">{{f.title}}</div>
+<div style="margin-top: 2px; font-size: 12px; color: {{t.muted}}">{{f.sub}}</div>
+</div>
+</sc-for>
+</div>
+<div style="margin-top: 12px; border-radius: 18px; background: {{t.surface}}; padding: 14px">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 32px; height: 32px; border-radius: 50%; background: {{t.fg}}; color: {{t.bg}}; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">G</span>
+<span style="font-size: 14px; font-weight: 600">AI Stylist</span>
+<span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: {{t.muted}}"><span style="width: 6px; height: 6px; border-radius: 50%; background: #3E9A63"></span>Online</span>
+</div>
+<div style="margin: 14px 0 0 auto; width: fit-content; max-width: 250px; border-radius: 16px 16px 4px 16px; background: {{t.fg}}; color: {{t.bg}}; padding: 10px 12px; font-size: 14px; line-height: 1.4">What's trending right now? I need something for a summer evening.</div>
+<div style="margin-top: 8px; width: fit-content; max-width: 260px; border-radius: 16px 16px 16px 4px; background: {{t.soft}}; padding: 10px 12px; font-size: 14px; line-height: 1.4">Here are a couple of looks that are trending right now.</div>
+<a href="#" style="margin-top: 8px; height: 60px; border-radius: 14px; background: {{t.soft}}; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 8px; text-decoration: none; color: {{t.fg}}">
+<span style="width: 44px; height: 44px; border-radius: 10px; background: {{t.photo}}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 120 160" style="width: 26px; height: auto"><path d="M44 20 L60 30 L76 20 L94 30 L104 98 L93 100 L86 64 L88 132 L32 132 L34 64 L27 100 L16 98 L26 30 Z" fill="#3E4A57"></path></svg></span>
+<span style="flex: 1"><span style="display: block; font-size: 14px; font-weight: 500">The Considered Minimal</span><span style="display: block; font-size: 12px; color: {{t.muted}}">$2,060–$2,390</span></span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.muted}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+</a>
+<div style="margin-top: 10px; height: 44px; border-radius: 22px; background: {{t.soft}}; display: flex; align-items: center; padding: 0 6px 0 16px; font-size: 14px; color: {{t.muted}}">Ask your stylist…<span style="margin-left: auto; width: 32px; height: 32px; border-radius: 50%; background: {{t.fg}}; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{t.bg}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></span></div>
+</div>
+</section>
+
+<section style="padding: 48px 0 0 16px">
+<div style="font-size: 13px; color: {{t.muted}}">Outfit examples</div>
+<div style="display: flex; align-items: flex-end; justify-content: space-between; padding-right: 16px">
+<h2 style="margin: 6px 0 0; font-size: 26px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; max-width: 250px">Explore ready-made outfit ideas.</h2>
+<a href="#" style="height: 44px; display: flex; align-items: center; font-size: 14px; color: {{t.fg}}; text-decoration: none">All outfits</a>
+</div>
+<div style="margin-top: 14px; display: flex; gap: 10px; overflow: hidden">
+<sc-for list="{{outfits}}" as="o" hint-placeholder-count="3">
+<a href="#" style="width: 160px; flex: none; border-radius: 14px; overflow: hidden; background: {{t.surface}}; text-decoration: none; color: {{t.fg}}">
+<span style="position: relative; display: block; height: 200px; background: {{t.photo}}">
+<svg viewBox="0 0 120 160" style="position: absolute; left: 10px; top: 18px; width: 86px; height: auto"><path d="{{o.d1}}" fill="{{o.c1}}"></path></svg>
+<svg viewBox="0 0 120 160" style="position: absolute; right: 8px; top: 14px; width: 60px; height: auto"><path d="{{o.d2}}" fill="{{o.c2}}"></path></svg>
+<svg viewBox="0 0 120 160" style="position: absolute; right: 10px; top: 110px; width: 58px; height: auto"><path d="{{o.d3}}" fill="{{o.c3}}"></path></svg>
+</span>
+<span style="display: block; padding: 10px 12px 12px"><span style="display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{o.name}}</span><span style="display: block; margin-top: 2px; font-size: 12px; color: {{t.muted}}">{{o.price}}</span></span>
+</a>
+</sc-for>
+</div>
+</section>
+
+<div style="position: absolute; left: 12px; bottom: 20px; width: 366px; height: 56px"><dc-import name="B-part-nav" dark="{{dark}}" active="none" hint-size="366px,56px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":390,"height":1688}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? true;
+const t = dark
+? { bg: '#0A0A0A', surface: '#151515', fg: '#F0EEE8', muted: '#8E8E89', soft: 'rgba(240,238,232,0.08)', photo: '#EDEBE6' }
+: { bg: '#F4F2EE', surface: '#FFFFFF', fg: '#0A0A0A', muted: '#6B6B6B', soft: 'rgba(10,10,10,0.05)', photo: '#EFEDE8' };
+const D = {
+coat: 'M44 16 L60 28 L76 16 L95 27 L106 98 L94 101 L86 60 L88 150 L32 150 L34 60 L26 101 L14 98 L25 27 Z',
+blazer: 'M44 20 L60 30 L76 20 L94 30 L104 98 L93 100 L86 64 L88 132 L32 132 L34 64 L27 100 L16 98 L26 30 Z',
+trousers: 'M36 14 L84 14 L91 150 L67 150 L60 56 L53 150 L29 150 Z',
+boots: 'M28 56 L52 56 L52 116 Q66 118 74 126 Q78 138 72 142 L24 142 L24 118 Z M64 46 L88 46 L88 106 Q102 108 110 116 Q114 128 108 132 L60 132 L60 108 Z',
+knit: 'M46 22 Q60 34 74 22 L96 32 L108 96 L96 100 L88 62 L88 132 L32 132 L32 62 L24 100 L12 96 L24 32 Z',
+dress: 'M48 14 L52 14 L55 42 L65 42 L68 14 L72 14 L74 46 L88 150 L32 150 L46 46 Z',
+bag: 'M32 72 L88 72 L92 128 L28 128 Z M40 72 Q60 22 80 72 L76 72 Q60 32 44 72 Z'
+};
+const steps = [
+{ n: '01', title: 'Choose items', body: 'Pick your favorite pieces from top brands.', d: D.knit, c: '#D3CABA' },
+{ n: '02', title: 'Build your look', body: 'Drag and drop to create the perfect outfit.', d: D.blazer, c: '#3E4A57' },
+{ n: '03', title: 'Generate preview', body: 'See your look come to life with AI visualization.', d: D.dress, c: '#C9B8A6' },
+{ n: '04', title: 'Shop the look', body: 'Buy each item directly from the original store.', d: D.bag, c: '#6B4F3A' }
+];
+const features = [
+{ title: 'Smart chat', sub: 'Ask anything' }, { title: 'AI picks', sub: 'Personalized looks' }, { title: 'Top stores', sub: 'Find and buy' }
+];
+const outfits = [
+{ name: 'The Sunday Coat', price: '$1,745–$2,070', d1: D.coat, c1: '#B39373', d2: D.trousers, c2: '#4A4640', d3: D.boots, c3: '#2B2926' },
+{ name: 'Office Quiet', price: '$1,615–$1,880', d1: D.blazer, c1: '#3E4A57', d2: D.trousers, c2: '#8C877C', d3: D.boots, c3: '#5A4636' },
+{ name: 'Dusk Palette', price: '$1,920–$2,090', d1: D.knit, c1: '#D3CABA', d2: D.dress, c2: '#C9B8A6', d3: D.bag, c3: '#6B4F3A' }
+];
+return { t, dark, no: false, two: 2, steps, features, outfits };
+}
+}
+</script>
+</body>
+</html>
