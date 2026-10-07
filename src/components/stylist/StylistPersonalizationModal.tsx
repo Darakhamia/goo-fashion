@@ -34,6 +34,11 @@ export const PRONOUNS_OPTIONS = ["she/her", "he/him", "they/them", "Skip"];
 
 const TOTAL_STEPS = 5;
 
+/* A choice chip. Phones: the §12.10 chip, `after:` stretching it to a 44px
+   target; desktop: the square outlined caps chip it always was. */
+const CHIP = "relative h-9 px-3.5 rounded-full text-[13px] max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-1 md:h-auto md:rounded-none md:px-4 md:text-[10px] md:tracking-[0.10em] md:uppercase border transition-colors duration-200";
+const CHIP_OFF = "border-transparent bg-[var(--fg-overlay-08)] text-[var(--foreground)] md:bg-transparent md:border-[var(--border)] md:text-[var(--foreground-muted)] md:hover:border-[var(--foreground)] md:hover:text-[var(--foreground)]";
+
 const STEP_TITLES = [
   "What should we call you?",
   "What are your style goals?",
@@ -89,18 +94,22 @@ export function StylistPersonalizationModal({
          добавить его значило бы держать её смонтированной всегда — то есть
          менять поведение формы между открытиями. Вход через `@starting-style`
          работает и так, скрим больше не включается мгновенно. */
-      className="ov-scrim fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--background)]/80 backdrop-blur-sm"
+      /* Phones: a sheet from the bottom on the common scrim (DESIGN_SYSTEM.md §12.7);
+         desktop keeps the centred window. */
+      className="ov-scrim fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/60 md:bg-[var(--background)]/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="ov-panel relative bg-[var(--background)] border border-[var(--border)] rounded-2xl w-full max-w-lg p-8 shadow-2xl"
+        className="ov-panel relative bg-[var(--surface)] md:bg-[var(--background)] md:border md:border-[var(--border)] rounded-t-3xl md:rounded-2xl w-full max-w-lg max-h-[calc(100%-56px)] overflow-y-auto overscroll-contain md:max-h-none md:overflow-visible px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+16px)] md:p-8 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        <div aria-hidden="true" className="md:hidden mx-auto mb-4 w-9 h-1 rounded-full bg-[var(--border-strong)]" />
 
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors p-1"
+          aria-label="Close"
+          className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center md:block md:w-auto md:h-auto md:top-5 md:right-5 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors md:p-1"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -108,7 +117,7 @@ export function StylistPersonalizationModal({
         </button>
 
         {/* Progress */}
-        <div className="flex gap-1.5 mb-8">
+        <div className="flex gap-1.5 mt-8 mb-6 md:mt-0 md:mb-8">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
@@ -117,10 +126,10 @@ export function StylistPersonalizationModal({
           ))}
         </div>
 
-        <p className="text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-3">
+        <p className="text-[13px] text-[var(--foreground-muted)] md:text-[9px] md:tracking-[0.16em] md:uppercase md:text-[var(--foreground-subtle)] mb-1.5 md:mb-3">
           Step {step + 1} of {TOTAL_STEPS}
         </p>
-        <h2 className="text-2xl font-bold text-[var(--foreground)] mb-6">
+        <h2 className="text-[20px] font-semibold md:text-2xl md:font-bold text-[var(--foreground)] mb-5 md:mb-6">
           {STEP_TITLES[step]}
         </h2>
 
@@ -128,7 +137,7 @@ export function StylistPersonalizationModal({
           {step === 0 && (
             <div className="space-y-6">
               <div>
-                <label className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] block mb-2">
+                <label className="text-[13px] text-[var(--foreground-muted)] md:text-[10px] md:tracking-[0.14em] md:uppercase md:text-[var(--foreground-subtle)] block mb-2">
                   Name or nickname
                 </label>
                 <input
@@ -137,11 +146,11 @@ export function StylistPersonalizationModal({
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder="Your name or nickname"
                   autoFocus
-                  className="w-full bg-transparent border border-[var(--border)] text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200"
+                  className="w-full bg-[var(--background)] md:bg-transparent border border-[var(--border)] max-md:rounded-2xl! md:rounded-none text-base md:text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none max-md:outline-none! focus:border-[var(--foreground)] transition-colors duration-200"
                 />
               </div>
               <div>
-                <label className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] block mb-3">
+                <label className="text-[13px] text-[var(--foreground-muted)] md:text-[10px] md:tracking-[0.14em] md:uppercase md:text-[var(--foreground-subtle)] block mb-3">
                   Pronouns
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -149,10 +158,10 @@ export function StylistPersonalizationModal({
                     <button
                       key={p}
                       onClick={() => setPronouns(p === pronouns ? "" : p)}
-                      className={`text-[10px] tracking-[0.10em] uppercase px-4 py-2 border transition-colors duration-200 ${
+                      className={`${CHIP} md:py-2 ${
                         pronouns === p
                           ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                          : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                          : CHIP_OFF
                       }`}
                     >
                       {p}
@@ -165,7 +174,7 @@ export function StylistPersonalizationModal({
 
           {step === 1 && (
             <div>
-              <p className="text-xs text-[var(--foreground-muted)] mb-5">
+              <p className="text-[14px] md:text-xs text-[var(--foreground-muted)] mb-4 md:mb-5">
                 Select everything that matters to you.
               </p>
               <div className="flex flex-wrap gap-2">
@@ -173,10 +182,10 @@ export function StylistPersonalizationModal({
                   <button
                     key={g}
                     onClick={() => toggleGoal(g)}
-                    className={`text-[10px] tracking-[0.10em] uppercase px-4 py-2.5 border transition-colors duration-200 ${
+                    className={`${CHIP} md:py-2.5 ${
                       styleGoals.includes(g)
                         ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                        : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                        : CHIP_OFF
                     }`}
                   >
                     {g}
@@ -188,7 +197,7 @@ export function StylistPersonalizationModal({
 
           {step === 2 && (
             <div className="space-y-4">
-              <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
+              <p className="text-[14px] md:text-xs text-[var(--foreground-muted)] leading-relaxed">
                 Be as specific as you like. GOO will never suggest these.
               </p>
               <textarea
@@ -196,9 +205,9 @@ export function StylistPersonalizationModal({
                 onChange={(e) => setHardLimits(e.target.value)}
                 placeholder="e.g. no animal prints, nothing too revealing, avoid fast fashion brands..."
                 rows={5}
-                className="w-full bg-transparent border border-[var(--border)] text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200 resize-none"
+                className="w-full bg-[var(--background)] md:bg-transparent border border-[var(--border)] max-md:rounded-2xl! md:rounded-none text-base md:text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none max-md:outline-none! focus:border-[var(--foreground)] transition-colors duration-200 resize-none"
               />
-              <p className="text-[10px] text-[var(--foreground-subtle)]">Optional — skip if nothing applies.</p>
+              <p className="text-[12px] md:text-[10px] text-[var(--foreground-subtle)]">Optional — skip if nothing applies.</p>
             </div>
           )}
 
@@ -208,17 +217,17 @@ export function StylistPersonalizationModal({
                 <button
                   key={opt.id}
                   onClick={() => setLifestyle(opt.id)}
-                  className={`w-full p-4 text-left border transition-colors duration-200 flex items-center justify-between ${
+                  className={`w-full p-4 text-left border rounded-2xl md:rounded-none transition-colors duration-200 flex items-center justify-between ${
                     lifestyle === opt.id
                       ? "border-[var(--foreground)] bg-[var(--foreground)]"
-                      : "border-[var(--border)] hover:border-[var(--foreground-subtle)]"
+                      : "border-transparent bg-[var(--fg-overlay-05)] md:bg-transparent md:border-[var(--border)] md:hover:border-[var(--foreground-subtle)]"
                   }`}
                 >
                   <div>
                     <p className={`text-sm font-medium ${lifestyle === opt.id ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
                       {opt.label}
                     </p>
-                    <p className={`text-xs mt-0.5 ${lifestyle === opt.id ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
+                    <p className={`text-[13px] md:text-xs mt-0.5 ${lifestyle === opt.id ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
                       {opt.desc}
                     </p>
                   </div>
@@ -237,9 +246,9 @@ export function StylistPersonalizationModal({
               <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
                 GOO&apos;s AI stylist is personalized to you. These preferences are applied to every recommendation.
               </p>
-              <div className="p-4 border border-[var(--border)] space-y-3">
+              <div className="p-4 rounded-2xl bg-[var(--fg-overlay-05)] md:rounded-none md:bg-transparent md:border md:border-[var(--border)] space-y-3">
                 {nickname && (
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                  <p className="text-[14px] md:text-xs text-[var(--foreground-muted)]">
                     <span className="text-[var(--foreground-subtle)] mr-2">Name:</span>
                     <span className="text-[var(--foreground)]">{nickname}</span>
                     {pronouns && pronouns !== "Skip" && (
@@ -249,10 +258,10 @@ export function StylistPersonalizationModal({
                 )}
                 {styleGoals.length > 0 && (
                   <div>
-                    <p className="text-xs text-[var(--foreground-subtle)] mb-1.5">Goals:</p>
+                    <p className="text-[14px] md:text-xs text-[var(--foreground-subtle)] mb-1.5">Goals:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {styleGoals.map((g) => (
-                        <span key={g} className="text-[10px] tracking-[0.08em] border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)]">
+                        <span key={g} className="text-[12px] md:text-[10px] md:tracking-[0.08em] rounded-full md:rounded-none bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)]">
                           {g}
                         </span>
                       ))}
@@ -260,7 +269,7 @@ export function StylistPersonalizationModal({
                   </div>
                 )}
                 {lifestyle && (
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                  <p className="text-[14px] md:text-xs text-[var(--foreground-muted)]">
                     <span className="text-[var(--foreground-subtle)] mr-2">Lifestyle:</span>
                     <span className="text-[var(--foreground)]">
                       {LIFESTYLE_OPTIONS.find((o) => o.id === lifestyle)?.label}
@@ -273,10 +282,10 @@ export function StylistPersonalizationModal({
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-[var(--border)]">
+        <div className="flex items-center justify-between mt-6 pt-4 md:mt-8 md:pt-6 border-t border-[var(--border)]">
           <button
             onClick={() => (step === 0 ? onClose() : setStep((s) => s - 1))}
-            className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            className="h-11 -ml-3 px-3 text-[15px] md:h-auto md:ml-0 md:px-0 md:text-xs md:tracking-[0.12em] md:uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
           >
             {step === 0 ? "Cancel" : "← Back"}
           </button>
@@ -285,7 +294,7 @@ export function StylistPersonalizationModal({
             <button
               onClick={() => setStep((s) => s + 1)}
               disabled={!canProceed()}
-              className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-3 hover:opacity-80 transition-opacity disabled:opacity-30"
+              className="h-12 rounded-full text-[15px] font-semibold md:h-auto md:rounded-none md:text-xs md:tracking-[0.14em] md:uppercase md:font-medium text-[var(--background)] bg-[var(--foreground)] px-6 md:py-3 hover:opacity-80 transition-opacity disabled:opacity-30"
             >
               Next →
             </button>
@@ -293,7 +302,7 @@ export function StylistPersonalizationModal({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-3 hover:opacity-80 transition-opacity disabled:opacity-40"
+              className="h-12 rounded-full text-[15px] font-semibold md:h-auto md:rounded-none md:text-xs md:tracking-[0.14em] md:uppercase md:font-medium text-[var(--background)] bg-[var(--foreground)] px-6 md:py-3 hover:opacity-80 transition-opacity disabled:opacity-40"
             >
               {saving ? "Saving..." : "Save & finish"}
             </button>
