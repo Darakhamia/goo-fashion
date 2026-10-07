@@ -1176,7 +1176,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/plans/page.tsx:202` | Бейдж «Most popular» — `text-[8px]`, ниже пола шкалы | `text-[10px]` | актуально → на телефоне ✓ (R-20): пилюля 26 px, текст 12 px. Десктоп прежний |
 | `src/app/plans/page.tsx:218` | Разделитель `border-current/10` — единственная граница вне токенного набора | Ветвление на `--fg-on-dark-60`/`--border` | актуально → на телефоне разделителя нет (R-20): цена и список возможностей идут без линии, как в макете. Десктоп прежний |
 | `src/app/subscribe/page.tsx:11` | `PLAN_COPY` дословно дублирует массивы `features` из `plans/page.tsx:20,37,55`; обе страницы дублируют то, чем владеет `lib/plans.ts` | Один экспорт в `src/lib/plans.ts` | актуально |
-| `src/components/auth/AuthForm.tsx:125` | Primary Clerk-кнопки `text-xs`, тогда как CTA воронки на `/subscribe` — `text-[10px]` | `text-[10px]` | актуально |
+| `src/components/auth/AuthForm.tsx:125` | Primary Clerk-кнопки `text-xs`, тогда как CTA воронки на `/subscribe` — `text-[10px]` | `text-[10px]` | актуально → на телефоне (мобильный трек R-23, 2026-10-07): ниже `md` primary — пилюля 50 px, 16 px обычным регистром, по §12. От `md` без изменений |
 | `src/app/coming-soon/page.tsx:56` | Инлайновый `<style>` переобъявляет `fadeUp`/`fadeIn`, `dotPulse` определён дважды с разной начальной непрозрачностью | Один `dotPulse` | ✓ файл удалён (ревью 2026-09) (страница и `FeatureCarousel.tsx`; гейт «coming soon» снят при ревью 2026-09) |
 | `src/app/sitemap-page/page.tsx:95` (и `:111`) | Outline-CTA без `rounded-xl`, в отличие от `about/page.tsx` (локально согласуется с hairline-сеткой страницы) | `rounded-xl` | актуально |
 | `src/components/stylist/StylistDrawer.tsx:899` (и `:908`) | Ширина карточки задана инлайновым `style={{ width: 72 }}`, а изображение в соседней ветке — классом `w-[72px]` (`:870`) | Класс в обеих ветках | ✓ исправлено попутно (мобильный трек R-16, 2026-10-07): ширина — класс в обеих ветках, `w-[84px] md:w-[72px]`; изображение — `w-full` |
@@ -1209,6 +1209,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/goo-studio/products/page.tsx:2100` (также `:2507,3048,3091`) | Четыре модалки products без `role="dialog"` / `aria-modal` (у остальных модалок админки они есть); у bulk-модалки `shadow-xl` (`:2102`); бейдж «New» в таблице без радиуса (`:2434`) | Рецепт модалки §9 п.11; бейдж `rounded-full` | ✓ исправлено (GS4-9, 2026-10-05): все 11 модалок админки — на `Modal` (`role="dialog"`, название, Escape, фокус внутри); бейдж New — `rounded-full` с GS4-4. `shadow-xl` у bulk-модалки остался — тень у модалки допустима |
 | `src/app/goo-studio/users/page.tsx:1192-1208` (и `blog/page.tsx:801-813`) | Переключатель в users — вся строка-кнопка без `role="switch"` / `aria-checked`; в blog переключатель другого размера (`h-6 w-11` против `w-9 h-5` у `parser/page.tsx:522-533`) | Рецепт переключателя §9 п.7 | low |
 | `src/app/not-found.tsx:28` (также `error.tsx:41`, `MyLooksPanel.tsx:1049`, `HeroSection.tsx:59`, `builder/page.tsx:1676`, `StylistPersonalizationModal.tsx:92`) | Модификатор непрозрачности на переменной расползся: `border-[var(--foreground)]/20`, `hover:bg-[var(--foreground)]/5`, `bg-[var(--background)]/85`, `/80`, `bg-[var(--surface)]/50` — вопреки договорённости раздела 1 (на Tailwind v4 технически работает) | Предвычисленные `--bg-overlay-*` / `--fg-overlay-*` или `opacity-*` на элементе | low |
+| `src/components/auth/AuthForm.tsx:73` (карта `ELEMENTS`) | Стили Clerk (emotion) стоят вне слоёв и перебивают слоёные утилиты Tailwind, поэтому классы карты без `!` по большей части не действуют — вопреки комментарию «colour and type classes happen to win anyway». Замер на стенде с настоящим clerk-js (R-23, 2026-10-07), от `md`: заголовок 18 px вместо `text-3xl`, подписи полей 14 px капсом вместо 10 px, поле 14 px вместо 13 px, у кнопки Google нет ни заливки, ни рамки (`bg-[var(--surface)]`, `border`), у поля Clerk ограничивает высоту `max-height: 36px`. Ещё: на кнопках Clerk объявлена своя `--border`, так что `border-[var(--border)]` внутри кнопки читает цвет Clerk. Ниже `md` исправлено в R-23 (классы с `!`, синоним `--auth-border`) | Решить, каким должен быть вход на десктопе, и поставить `!` на типографику и рамки карты; цвета рамок кнопок — через `--auth-border` | medium |
 
 ---
 
@@ -1491,6 +1492,15 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
   - Статья: чип категории 28 px, заголовок 28 px, лид 17 px, подпись «Автор · дата». «← Journal» на телефоне скрыта, назад ведёт шапка. «Share» — мягкие пилюли, «Keep reading» — заголовок 20 px и лента карточек 250 px.
 
   Код: `src/app/blog/`, `src/components/blog/`.
+- **Вход и регистрация на телефоне** (R-23, макет v2 «Б · Вход»).
+  - Сверху круглая кнопка «назад» 44 px (ведёт на главную) и вордмарк по центру. Форма Clerk — во всю ширину колонки, без боковых отступов карточки.
+  - Заголовок 26 px. Кнопка Google и «Continue» — пилюли 50 px. Поле — рецепт §12.14 высотой 50 px. Подписи и «or» — 13 px обычным регистром.
+  - Внизу три пункта о сервисе из `PITCH`. «Secured by Clerk» остаётся частью карточки, под формой.
+  - Как стилизовать Clerk. Его emotion-стили стоят вне слоёв и перебивают утилиты Tailwind, включая размер шрифта, поэтому классы в `appearance.elements` для телефона пишутся с `!`.
+  - На кнопках Clerk объявлена своя `--border`. Цвет рамки берётся из `--auth-border` — синонима `--border` на корне страницы.
+  - У поля Clerk `max-height: 36px`, для высоты 50 px нужен `max-h-none!`.
+
+  Код: `src/components/auth/AuthForm.tsx`.
 - **Ловушка трекинга.** Правило `.text-3xl:not([class*="tracking-"])` в `globals.css` даёт крупным кеглям отрицательный трекинг. Любой класс `tracking-…` на элементе его отключает, в том числе `max-md:` и `md:`. Поэтому, если меняешь трекинг для телефона у элемента с `text-3xl`…`text-9xl`, задай десктопное значение явно: `tracking-[-0.01em] md:tracking-[-0.015em]`. Найдено в R-11.
 
 ### 12.14 Остальные элементы
