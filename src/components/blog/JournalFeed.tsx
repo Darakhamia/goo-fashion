@@ -60,12 +60,15 @@ const readUrlFilter = () => {
 };
 const noUrlFilter = () => JSON.stringify([ALL, ALL]);
 
+/* Phones: the §12.10 chip — soft fill, 13px sentence case, a 36px pill whose
+   `after:` stretches the target to 44px. Desktop keeps the outlined caps chip. */
 const chipCls = (active: boolean) =>
-  `shrink-0 px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
+  `relative shrink-0 px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 max-md:h-9 max-md:px-3.5 max-md:py-0 max-md:border-0 max-md:text-[13px] max-md:tracking-normal max-md:normal-case max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-1 ${
     active
-      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)] max-md:font-semibold"
+      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] max-md:font-normal max-md:bg-[var(--fg-overlay-08)] max-md:text-[var(--foreground)]"
   }`;
+const countCls = "ml-2 opacity-50 max-md:ml-1 max-md:opacity-60";
 
 export default function JournalFeed({ posts }: Props) {
   // The URL seeds the filter; once the reader touches a chip their pick takes
@@ -141,11 +144,12 @@ export default function JournalFeed({ posts }: Props) {
   return (
     <>
       {/* ── Filters ──────────────────────────────────────────────────────── */}
-      <div className="border-t border-[var(--border)] pt-6 mb-10 md:mb-14">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="border-t border-[var(--border)] pt-6 mb-10 md:mb-14 max-md:border-0 max-md:pt-0 max-md:mb-3.5">
+        {/* Phones: one scrolling row of chips (§12.1 п. 6), not two wrapped rows. */}
+        <div className="flex flex-wrap items-center gap-2 max-md:flex-nowrap max-md:overflow-x-auto max-md:no-scrollbar max-md:-mx-3 max-md:px-3 max-md:py-1 max-md:gap-1.5">
           <button onClick={() => pickCategory(ALL)} className={chipCls(category === ALL)}>
             All
-            <span className="ml-2 opacity-50">{posts.length}</span>
+            <span className={countCls}>{posts.length}</span>
           </button>
           {categories.map((c) => (
             <button
@@ -154,7 +158,7 @@ export default function JournalFeed({ posts }: Props) {
               className={chipCls(category === c.name)}
             >
               {c.name}
-              <span className="ml-2 opacity-50">{c.count}</span>
+              <span className={countCls}>{c.count}</span>
             </button>
           ))}
         </div>
@@ -162,8 +166,8 @@ export default function JournalFeed({ posts }: Props) {
         {/* A single year is not a filter, it is a fact — only offer the row
             once there is something to choose between. */}
         {years.length > 1 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mr-1">
+          <div className="mt-3 flex flex-wrap items-center gap-2 max-md:mt-1 max-md:flex-nowrap max-md:overflow-x-auto max-md:no-scrollbar max-md:-mx-3 max-md:px-3 max-md:py-1 max-md:gap-1.5">
+            <span className="shrink-0 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mr-1 max-md:text-[13px] max-md:tracking-normal max-md:normal-case max-md:font-normal max-md:text-[var(--foreground-muted)]">
               Year
             </span>
             <button onClick={() => pickYear(ALL)} className={chipCls(year === ALL)}>
@@ -172,14 +176,14 @@ export default function JournalFeed({ posts }: Props) {
             {years.map((y) => (
               <button key={y.name} onClick={() => pickYear(y.name)} className={chipCls(year === y.name)}>
                 {y.name}
-                <span className="ml-2 opacity-50">{y.count}</span>
+                <span className={countCls}>{y.count}</span>
               </button>
             ))}
           </div>
         )}
 
         {isFiltered && (
-          <p className="mt-4 text-[11px] text-[var(--foreground-muted)]">
+          <p className="mt-4 text-[11px] text-[var(--foreground-muted)] max-md:mt-2 max-md:px-1 max-md:text-[13px]">
             {filtered.length} {filtered.length === 1 ? "post" : "posts"}
             <button
               onClick={clearFilters}
@@ -193,9 +197,9 @@ export default function JournalFeed({ posts }: Props) {
 
       {/* ── Featured ─────────────────────────────────────────────────────── */}
       {featured && (
-        <Link href={`/blog/${featured.slug}`} className="group block mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] transition-colors duration-200">
-            <div className="img-zoom relative aspect-[4/3] overflow-hidden">
+        <Link href={`/blog/${featured.slug}`} className="group block mb-4 max-md:mb-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] transition-colors duration-200 max-md:rounded-[18px] max-md:border-0">
+            <div className="img-zoom relative aspect-[4/3] overflow-hidden max-md:aspect-[2/1]">
               <Image
                 src={featured.coverImageUrl}
                 alt={featured.title}
@@ -205,24 +209,26 @@ export default function JournalFeed({ posts }: Props) {
                 className="object-cover"
               />
             </div>
-            <div className="p-8 md:p-12 flex flex-col justify-between">
+            <div className="p-8 md:p-12 flex flex-col justify-between max-md:px-4 max-md:pt-3.5 max-md:pb-4">
               <div>
-                <div className="flex items-center gap-4 mb-6">
-                  <span className="text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] px-3 py-1.5 rounded-full">
+                {/* Phones: "Category · N min read" as one quiet line. */}
+                <div className="flex items-center gap-4 mb-6 max-md:gap-1 max-md:mb-1">
+                  <span className="text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] px-3 py-1.5 rounded-full max-md:border-0 max-md:p-0 max-md:text-[12px] max-md:tracking-normal max-md:normal-case">
                     {featured.category}
                   </span>
-                  <span className="text-[10px] text-[var(--foreground-subtle)]">
+                  <span aria-hidden="true" className="md:hidden text-[12px] text-[var(--foreground-muted)]">·</span>
+                  <span className="text-[10px] text-[var(--foreground-subtle)] max-md:text-[12px] max-md:text-[var(--foreground-muted)]">
                     {featured.readTime} read
                   </span>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-[var(--foreground)] leading-snug mb-4 group-hover:opacity-70 transition-opacity duration-200">
+                <h2 className="text-2xl md:text-3xl font-bold text-[var(--foreground)] leading-snug mb-4 group-hover:opacity-70 transition-opacity duration-200 max-md:text-[18px] max-md:leading-[1.25] max-md:font-semibold max-md:mb-1.5">
                   {featured.title}
                 </h2>
-                <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+                <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-[14px] max-md:leading-[1.45]">
                   {featured.excerpt}
                 </p>
               </div>
-              <div className="mt-8 flex items-center justify-between">
+              <div className="mt-8 flex items-center justify-between max-md:hidden">
                 <span className="text-xs text-[var(--foreground-subtle)]">
                   {formatDate(featured.publishedAt)}
                 </span>
@@ -237,39 +243,42 @@ export default function JournalFeed({ posts }: Props) {
 
       {/* ── Grid ─────────────────────────────────────────────────────────── */}
       {rest.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        // Phones: a list of rows — thumb, meta, title — divided by hairlines
+        // (mockup v2 «Б · Журнал»); desktop keeps the three-up card grid.
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-md:gap-0 max-md:px-0">
           {rest.map((post) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden hover:border-[var(--border-strong)] transition-colors duration-200"
+              className="group flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden hover:border-[var(--border-strong)] transition-colors duration-200 max-md:flex-row max-md:items-center max-md:gap-3 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:py-2.5 max-md:px-1 max-md:not-first:shadow-[inset_0_1px_0_var(--border)]"
             >
-              <div className="img-zoom relative aspect-[3/2] overflow-hidden">
+              <div className="img-zoom relative aspect-[3/2] overflow-hidden max-md:w-[76px] max-md:h-[76px] max-md:aspect-auto max-md:shrink-0 max-md:rounded-xl">
                 <Image
                   src={post.coverImageUrl}
                   alt={post.title}
                   fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
+                  sizes="(max-width: 768px) 76px, 33vw"
                   className="object-cover"
                 />
               </div>
-              <div className="p-6 flex flex-col flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)]">
+              <div className="p-6 flex flex-col flex-1 max-md:p-0 max-md:min-w-0">
+                <div className="flex items-center gap-3 mb-4 max-md:gap-1 max-md:mb-0.5">
+                  <span className="text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] max-md:text-[12px] max-md:tracking-normal max-md:normal-case max-md:text-[var(--foreground-muted)]">
                     {post.category}
                   </span>
-                  <span className="w-px h-3 bg-[var(--border-strong)]" />
-                  <span className="text-[10px] text-[var(--foreground-subtle)]">
+                  <span className="w-px h-3 bg-[var(--border-strong)] max-md:hidden" />
+                  <span aria-hidden="true" className="md:hidden text-[12px] text-[var(--foreground-muted)]">·</span>
+                  <span className="text-[10px] text-[var(--foreground-subtle)] max-md:text-[12px] max-md:text-[var(--foreground-muted)]">
                     {post.readTime} read
                   </span>
                 </div>
-                <h3 className="text-[15px] font-semibold text-[var(--foreground)] leading-snug mb-2 group-hover:opacity-70 transition-opacity duration-200">
+                <h3 className="text-[15px] font-semibold text-[var(--foreground)] leading-snug mb-2 group-hover:opacity-70 transition-opacity duration-200 max-md:mb-0 max-md:leading-[1.3]">
                   {post.title}
                 </h3>
-                <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed flex-1">
+                <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed flex-1 max-md:hidden">
                   {post.excerpt}
                 </p>
-                <p className="mt-4 text-[10px] text-[var(--foreground-subtle)]">
+                <p className="mt-4 text-[10px] text-[var(--foreground-subtle)] max-md:hidden">
                   {formatDate(post.publishedAt)}
                 </p>
               </div>
@@ -279,12 +288,12 @@ export default function JournalFeed({ posts }: Props) {
       )}
 
       {filtered.length === 0 && (
-        <div className="py-24 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
-          <p className="text-xl font-semibold text-[var(--foreground)] mb-2">Nothing here yet</p>
-          <p className="text-sm text-[var(--foreground-muted)] mb-4">
+        <div className="py-24 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)] max-md:py-12 max-md:px-6 max-md:border-0">
+          <p className="text-xl font-semibold text-[var(--foreground)] mb-2 max-md:text-[19px]">Nothing here yet</p>
+          <p className="text-sm text-[var(--foreground-muted)] mb-4 max-md:text-[14px]">
             No posts match this combination of filters.
           </p>
-          <button onClick={clearFilters} className="text-xs text-[var(--foreground)] link-underline">
+          <button onClick={clearFilters} className="text-xs text-[var(--foreground)] link-underline max-md:h-11 max-md:px-5 max-md:rounded-full max-md:bg-[var(--foreground)] max-md:text-[var(--background)] max-md:text-[15px] max-md:font-semibold max-md:no-underline">
             Clear all filters
           </button>
         </div>
