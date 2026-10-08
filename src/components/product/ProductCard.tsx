@@ -75,6 +75,17 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
     ? 1 + (swatches?.filter(s => s.id !== product.id).length ?? 0)
     : 0;
 
+  // Phones: what else there is to choose, on a line under the price (CEO,
+  // 2026-10-08). Colours count the way the product page offers them — linked
+  // variants when there are several, otherwise the item's own colour list.
+  const phoneColorCount = colorCount > 1
+    ? colorCount
+    : new Set((product.colors ?? []).map(c => c.trim().toLowerCase()).filter(Boolean)).size;
+  const phoneMeta = [
+    phoneColorCount > 1 && `${phoneColorCount} colors`,
+    product.retailers.length > 1 && `${product.retailers.length} stores`,
+  ].filter(Boolean).join(" · ");
+
   return (
     <motion.div
       className="group relative flex flex-col overflow-hidden rounded-2xl md:rounded-xl bg-[var(--surface)] md:border md:border-[var(--border)] max-md:h-full"
@@ -133,7 +144,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
             </div>
           )}
 
-          {/* Desktop hover strip. Phones show the store count beside the price. */}
+          {/* Desktop hover strip. Phones show the store count under the price. */}
           {product.retailers.length > 1 && (
             <div className="absolute bottom-0 left-0 right-0 hidden md:block md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-10">
               <div className="bg-[var(--bg-overlay-95)] backdrop-blur-sm px-3 py-2 rounded-b-xl">
@@ -199,19 +210,12 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         <p className="text-[12.5px] md:text-[13px] text-[var(--foreground-muted)] truncate md:mt-0.5 leading-snug">
           {displayName}
         </p>
-        <div className="flex max-md:flex-wrap items-baseline justify-between md:justify-start gap-1.5 max-md:gap-y-0.5 mt-1.5 md:mt-2">
+        <div className="flex items-baseline justify-between md:justify-start gap-1.5 mt-1.5 md:mt-2">
           <p className="text-[13px] md:text-[14px] font-medium text-[var(--foreground)] max-md:min-w-0 max-md:truncate">
             {displayPriceMin === displayPriceMax
               ? formatPrice(displayPriceMin, product.currency)
               : `${formatPrice(displayPriceMin, product.currency)}–${formatPrice(displayPriceMax, product.currency)}`}
           </p>
-          {/* Phones: the store count in place of the hover strip, dropping under a long
-              price rather than cutting it; colours wait for the product page. */}
-          {product.retailers.length > 1 && (
-            <span className="md:hidden shrink-0 text-[11px] text-[var(--foreground-muted)]">
-              {product.retailers.length} stores
-            </span>
-          )}
           {colorCount > 1 && (
             <>
               <span className="hidden md:inline text-[var(--foreground-subtle)] text-[12px] leading-none">·</span>
@@ -221,6 +225,9 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
             </>
           )}
         </div>
+        {phoneMeta && (
+          <p className="md:hidden mt-0.5 text-[12px] text-[var(--foreground-muted)] truncate">{phoneMeta}</p>
+        )}
       </Link>
     </motion.div>
   );

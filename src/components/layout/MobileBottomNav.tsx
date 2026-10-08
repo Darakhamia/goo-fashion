@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
 
 const TABS = [
@@ -30,6 +32,13 @@ export const hasBuyBar = (pathname: string) =>
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const { unseenCount } = useLikes();
+  // The Profile tab wears the account's photo (CEO, 2026-10-08). Only a real
+  // one — uploaded or brought from Google: Clerk's generated initials image
+  // has `hasImage` false and keeps the outline icon, as do guests, the moment
+  // before Clerk loads and a picture that fails to fetch.
+  const { user, isLoaded } = useUser();
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+  const avatar = isLoaded && user?.hasImage && user.imageUrl !== failedAvatar ? user.imageUrl : null;
 
   if (hasBuyBar(pathname)) return null;
 
@@ -61,10 +70,23 @@ export default function MobileBottomNav() {
                 />
               )}
               <span className="relative">
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 1.7 : 1.3}
-                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d={d} />
-                </svg>
+                {href === "/profile" && avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatar}
+                    alt=""
+                    aria-hidden="true"
+                    onError={() => setFailedAvatar(avatar)}
+                    // A picture that broke before hydration never fires onError.
+                    ref={(img) => { if (img?.complete && !img.naturalWidth) setFailedAvatar(avatar); }}
+                    className="block w-6 h-6 rounded-full object-cover shadow-[0_0_0_1px_var(--border)]"
+                  />
+                ) : (
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 1.7 : 1.3}
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d={d} />
+                  </svg>
+                )}
                 {href === "/saved" && unseenCount > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[9px] font-bold leading-4 text-center">
                     {unseenCount > 9 ? "9+" : unseenCount}
