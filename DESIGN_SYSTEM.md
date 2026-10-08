@@ -1288,17 +1288,15 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
   <div className="px-3 pt-2.5 pb-3">
     <p className="text-[13px] font-semibold truncate">{brand}</p>
     <p className="text-[12.5px] text-[var(--foreground-muted)] truncate">{name}</p>
-    <div className="mt-1.5 flex items-baseline justify-between gap-1.5">
-      <span className="text-[13px] font-medium">{price}</span>
-      <span className="text-[11px] text-[var(--foreground-muted)]">{n} stores</span>
-    </div>
+    <p className="mt-1.5 text-[13px] font-medium truncate">{price}</p>
+    <p className="mt-0.5 text-[12px] text-[var(--foreground-muted)] truncate">{n} colors · {n} stores</p>
   </div>
 </div>
 ```
 
-Корзины на карточке нет (решение CEO): в корзину кладут со страницы товара. Отдельной полосы «N STORES» нет — число магазинов стоит строкой у цены. Сетка — `grid-cols-2 gap-2.5 px-3`.
+Корзины на карточке нет (решение CEO): в корзину кладут со страницы товара. Отдельной полосы «N STORES» нет — число цветов и магазинов стоит строкой под ценой (R-27, решение CEO 2026-10-08: только текст, без точек и значков). Часть, где число 1, не пишется. Если в строке ничего не осталось, её нет. Цвета считаются как на странице товара: связанные варианты, если их больше одного, иначе список цветов вещи без повторов. Сетка — `grid-cols-2 gap-2.5 px-3`.
 
-Длинная цена не обрезается: строка цены — `max-md:flex-wrap`, и число магазинов уходит под цену. Карточки в ряду одной высоты (`max-md:h-full`). Число цветов на телефоне не показывается. Код: `src/components/product/ProductCard.tsx` (R-06).
+Карточки в ряду одной высоты (`max-md:h-full`). Код: `src/components/product/ProductCard.tsx` (R-06, R-27).
 
 Карточка образа — та же плашка: коллаж или фото, название, цена и «N pieces» вместо числа магазинов, светлое сердце. Швы коллажа ниже `md` белые, вещи лежат на одном светлом поле, как в макетах; бейдж Community — светлый кружок. Код: `src/components/outfit/OutfitCard.tsx`, `OutfitCollage.tsx` (R-07).
 
