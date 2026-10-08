@@ -738,9 +738,9 @@
     "semantic_hash": ""
   },
   "src/components/layout/MobileBottomNav.tsx": {
-    "mtime": 1791386777.6242452,
-    "seen": 1791396463.8407924,
-    "ast_hash": "e2c19cbc7cef463abad87679c8dee6bd",
+    "mtime": 1791473468.6174731,
+    "seen": 1791474323.8018208,
+    "ast_hash": "5525c21a2c90ba56cf46949eed7faffe",
     "semantic_hash": ""
   },
   "src/components/layout/Navigation.tsx": {
@@ -768,9 +768,9 @@
     "semantic_hash": ""
   },
   "src/components/product/ProductCard.tsx": {
-    "mtime": 1791383894.7616115,
-    "seen": 1791385916.20002,
-    "ast_hash": "b1bd7bc300cc2c8c77aa765a5ecd7af1",
+    "mtime": 1791473685.8511453,
+    "seen": 1791474323.8020449,
+    "ast_hash": "a32e43e81164398a0fbe900531fd1d9b",
     "semantic_hash": ""
   },
   "src/components/product/ProductClient.tsx": {
@@ -1982,9 +1982,9 @@
     "semantic_hash": ""
   },
   "DESIGN_SYSTEM.md": {
-    "mtime": 1791404495.455077,
-    "seen": 1791405331.9387722,
-    "ast_hash": "7840b1ff5321402a54438461ea75582e",
+    "mtime": 1791474150.4693363,
+    "seen": 1791474323.8058968,
+    "ast_hash": "f9d32e901660f76df1bd6ae956addb87",
     "semantic_hash": ""
   },
   "MIGRATION_RUNBOOK.md": {
@@ -2834,9 +2834,9 @@
     "semantic_hash": ""
   },
   "docs/MOBILE_ROADMAP.md": {
-    "mtime": 1791405319.236395,
-    "seen": 1791405331.9389966,
-    "ast_hash": "5f8a0ae728c3a604214eab833211d9bb",
+    "mtime": 1791474194.3652227,
+    "seen": 1791474323.8061483,
+    "ast_hash": "26d867c9944beb1b49aff99d97486d98",
     "semantic_hash": ""
   },
   "docs/mobile-mockups/README.md": {
@@ -3338,9 +3338,9 @@
     "semantic_hash": ""
   },
   "docs/mobile-roadmap.html": {
-    "mtime": 1791398414.708146,
-    "seen": 1791405331.9414585,
-    "ast_hash": "85586281f2d62705f3be9a2cf567e3b9",
+    "mtime": 1791405332.3182032,
+    "seen": 1791474323.8090606,
+    "ast_hash": "124b17ffc342b48b1ea5521b6b7c6210",
     "semantic_hash": ""
   },
   "scripts/site-screens/README.md": {

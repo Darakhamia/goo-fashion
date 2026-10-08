@@ -67,14 +67,14 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--fg); outline-of
 @media (max-width: 480px) { .why { margin-left: 0 } .pct { font-size: 40px } }
 </style>
 <main class="page">
-  <div class="top"><span class="mark">GOO</span><span class="updated">Обновлено 7 октября 2026</span></div>
+  <div class="top"><span class="mark">GOO</span><span class="updated">Обновлено 8 октября 2026</span></div>
   <header>
     <h1>Мобильная версия GOO</h1>
     <p class="lede">Сайт на телефоне «причёсываем» по выбранному варианту Б: те же экраны и функции, меньше кнопок, рамок и капса, больше воздуха. Десктоп не меняется.</p>
   </header>
   <section class="progress" aria-label="Прогресс">
-    <div class="progress-row"><span class="pct">100%</span><span class="of">25 из 25 задач готово · 8 этапов</span></div>
-    <div class="bar" role="img" aria-label="Прогресс по этапам"><span class="seg" style="flex:1" title="Этап A: 1 из 1"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:4" title="Этап B: 4 из 4"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:5" title="Этап C: 5 из 5"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:3" title="Этап D: 3 из 3"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:2" title="Этап E: 2 из 2"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:4" title="Этап F: 4 из 4"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:5" title="Этап G: 5 из 5"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:1" title="Этап H: 1 из 1"><span class="seg-fill" style="width:100%"></span></span></div>
+    <div class="progress-row"><span class="pct">100%</span><span class="of">27 из 27 задач готово · 9 этапов</span></div>
+    <div class="bar" role="img" aria-label="Прогресс по этапам"><span class="seg" style="flex:1" title="Этап A: 1 из 1"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:4" title="Этап B: 4 из 4"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:5" title="Этап C: 5 из 5"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:3" title="Этап D: 3 из 3"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:2" title="Этап E: 2 из 2"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:4" title="Этап F: 4 из 4"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:5" title="Этап G: 5 из 5"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:1" title="Этап H: 1 из 1"><span class="seg-fill" style="width:100%"></span></span><span class="seg" style="flex:2" title="Этап I: 2 из 2"><span class="seg-fill" style="width:100%"></span></span></div>
     
   </section>
   <section class="waiting" aria-labelledby="waiting-h"><h2 id="waiting-h">Ждёт вашего решения</h2><ul><li><strong>Корзина на телефоне между этапами C и D</strong> (найдено в R-06, 2026-10-06). Этап D (R-11…R-13) сделан и запушен в ту же ветку, что и A–C (#912). Если #912 сливается целиком, окна без корзины нет. Нужно подтверждение CEO, что A–D выходят одним PR. Другой вариант: вернуть корзину на карточку, пока D не слит.</li><li><strong>Главная на телефоне: экран на секцию или сплошная лента</strong> (найдено в R-21, 2026-10-07).</li><li><strong>Минимальная цена в фильтре</strong> (найдено в R-09, 2026-10-06). В макете поля Min/Max, на сайте только «до $X». Оставлено «до $X» — чипами и ползунком. Добавлять минимальную цену?</li><li><strong>Кнопка «назад» на текстовых страницах</strong> (найдено в R-24, 2026-10-07). В макете «Б · Правовая страница» она есть в шапке. В списке R-03 текстовых страниц не было, поэтому кнопку не добавлял. Если нужна — это одна строка в <code>backFallback</code> (<code>Navigation.tsx</code>).</li><li><strong>Точки-переключатели на главной меньше 44 px</strong> (найдено в R-25, 2026-10-07).</li></ul></section>
@@ -118,6 +118,11 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--fg); outline-of
   <div class="stage-head"><span class="letter">H</span><div class="stage-title"><h2>Финальная проверка</h2></div><span class="count">1/1</span></div>
   <p class="see"><span>Что увидите</span>Отчёт со снимками «до» и «после» всех экранов и пунктами «Готово, когда» из плана с фактическими числами.</p>
   <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-25</span><span class="tname">Финальный проход по всем экранам</span><span class="chip done">Готово</span></div><p class="why">Проверить весь сайт по критериям плана, а не по отдельным задачам.</p></li></ol>
+</section>
+<section class="stage done" id="stage-i">
+  <div class="stage-head"><span class="letter">I</span><div class="stage-title"><h2>Доработки после проверки на телефоне</h2></div><span class="count">2/2</span></div>
+  <p class="see"><span>Что увидите</span>В нижнем меню вместо человечка — ваша фотография; на карточках в каталоге видно, что у вещи несколько цветов.</p>
+  <ol class="tasks"><li class="task"><div class="task-head"><span class="tid">R-26</span><span class="tname">Аватар во вкладке «Profile» нижнего меню</span><span class="chip done">Готово</span></div><p class="why">В нижнем меню видно, что вы вошли, и это ваш профиль.</p></li><li class="task"><div class="task-head"><span class="tid">R-27</span><span class="tname">Число цветов на карточке товара</span><span class="chip done">Готово</span></div><p class="why">В каталоге видно, что вещь есть в нескольких цветах, не открывая её.</p></li></ol>
 </section>
   </div>
   <footer>
