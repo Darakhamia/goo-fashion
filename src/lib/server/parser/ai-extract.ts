@@ -16,6 +16,7 @@
  */
 import OpenAI from "openai";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
+import { harvestGalleryImages } from "./gallery";
 import type { RawExtract } from "./types";
 
 /** Cheap, fast, and good at reading messy markup. */
@@ -233,8 +234,9 @@ export async function aiExtract(
 /**
  * Merge AI output into a deterministic extract. Structured data always wins;
  * AI only fills holes. Returns a new RawExtract plus the fields it contributed.
+ * `pageUrl` resolves and judges the photos it offers (`harvestGalleryImages`).
  */
-export function mergeAiIntoRaw(raw: RawExtract, ai: AiFields): { raw: RawExtract; used: string[] } {
+export function mergeAiIntoRaw(raw: RawExtract, ai: AiFields, pageUrl: string): { raw: RawExtract; used: string[] } {
   const used: string[] = [];
   const next: RawExtract = { ...raw, images: [...(raw.images ?? [])], sizes: [...(raw.sizes ?? [])] };
 
@@ -260,14 +262,22 @@ export function mergeAiIntoRaw(raw: RawExtract, ai: AiFields): { raw: RawExtract
   // so below a real gallery the model's reading is appended behind whatever the
   // deterministic pass found, which keeps the primary photo where it was. Above
   // it, a working gallery is never diluted.
-  if (ai.images?.length && next.images.length < THIN_GALLERY) {
+  //
+  // Only beside a photo the page itself stated, and only what the gallery
+  // harvester accepts as that photo's own frames. Asked for "every photo of
+  // this product" on a GOAT page whose piece had none, the model returned the
+  // rail of recommended pieces, and the first of them became the card's main
+  // photo. A page with no photo of its own gets none from here, and the model
+  // never picks the main photo.
+  const own = [raw.image, ...(raw.images ?? [])].filter((u): u is string => !!u);
+  if (ai.images?.length && own.length && next.images.length < THIN_GALLERY) {
     const before = next.images.length;
-    for (const url of ai.images) {
+    for (const url of harvestGalleryImages("", pageUrl, own, next.name ?? "", ai.images)) {
       if (!next.images.includes(url)) next.images.push(url);
     }
     if (next.images.length > before) used.push("images");
   }
-  if (!next.image && next.images.length) next.image = next.images[0];
+  if (!next.image && own.length) next.image = own[0];
   if (!next.sizes.length && ai.sizes?.length) {
     next.sizes = ai.sizes;
     used.push("sizes");
