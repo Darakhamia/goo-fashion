@@ -22,7 +22,7 @@ import { buildStylingNotes } from "@/lib/seo";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { groupForCategory, groupForProduct, resolveSubcategory } from "@/lib/categories";
-import { brandPath, categoryPath, subcategoryPath } from "@/lib/landing-paths";
+import { brandPath, categoryPath, landingSlug, subcategoryPath } from "@/lib/landing-paths";
 import { photoBackdrop } from "@/lib/image";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { RETAILER_LINK_REL } from "@/lib/stores";
@@ -145,7 +145,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
     // No colour filter set, or only ids of groups since deleted: the crumb is
     // dropped rather than filled with something that leads nowhere.
     if (colour) items.push({ label: colour.name, href: q({ color: colour.name }) });
-    if (product.brand) items.push({ label: product.brand, href: brandPath(product.brand) });
+    if (landingSlug(product.brand ?? "")) items.push({ label: product.brand, href: brandPath(product.brand) });
     items.push({ label: product.name });
     return items;
   }, [product, categoryGroups, colorGroups]);
@@ -328,9 +328,13 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             {/* The brand leads to its page — on phones, where the breadcrumb
                 trail is hidden, the one way there from a product. */}
             <p className="text-[13px] md:text-[10px] md:tracking-[0.2em] md:uppercase font-semibold md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-0.5 md:mb-2">
-              <Link href={brandPath(product.brand)} className="hover:text-[var(--foreground)] transition-colors duration-200">
-                {product.brand}
-              </Link>
+              {landingSlug(product.brand ?? "") ? (
+                <Link href={brandPath(product.brand)} className="hover:text-[var(--foreground)] transition-colors duration-200">
+                  {product.brand}
+                </Link>
+              ) : (
+                product.brand
+              )}
             </p>
             {/* Any `tracking-` class turns off the size-based tracking rule in
                 globals.css, so desktop's −0.015em is spelled out here. */}
