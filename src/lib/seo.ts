@@ -157,6 +157,69 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
   return { heading, title, description };
 }
 
+// ── Product meta description ─────────────────────────────────────────────────
+
+/**
+ * Text some feeds put in the description field that says nothing about the
+ * piece: a reseller's condition or shipping line, the same on every product it
+ * lists. As a meta description it made dozens of pages share one snippet. It
+ * stays on the page itself, where the condition note is useful to a shopper.
+ */
+const BOILERPLATE_DESCRIPTIONS = [
+  /^pre-verified and ready to ship/i,
+  /^verified before shipping/i,
+  /^items are new and unworn, but have imperfections/i,
+  /^new with box/i,
+  /^used, /i,
+];
+
+/** Whether a product description is a reseller's stock line, not copy about the piece. */
+export function isBoilerplateDescription(text?: string): boolean {
+  const t = (text ?? "").trim();
+  return BOILERPLATE_DESCRIPTIONS.some((re) => re.test(t));
+}
+
+/**
+ * Text cut to fit a search snippet: line breaks, bullets and runs of spaces
+ * collapse to single spaces, and a cut lands on a word boundary with an
+ * ellipsis instead of halfway through a word.
+ */
+export function clipText(text: string, max = 155): string {
+  // A bulleted list reads as one run of clauses: "boots. Lace-up; padded collar".
+  const flat = text
+    .replace(/\s*\n+\s*[·•▪]\s*/g, (_m, at: number, all: string) =>
+      /[.!?:;,]$/.test(all.slice(0, at).trimEnd()) ? " " : "; ",
+    )
+    .replace(/[\s·•▪]+/g, " ")
+    .trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max - 1);
+  const atWord = cut.slice(0, cut.lastIndexOf(" ")).replace(/[\s,;:–—-]+$/, "");
+  return `${atWord || cut}…`;
+}
+
+/** Shortest description worth showing as a snippet; anything less is filler. */
+const MIN_OWN_DESCRIPTION = 60;
+
+/**
+ * The meta description of a product page: its own copy when there is enough of
+ * it, otherwise a line built from the product — what it is, who makes it, the
+ * lowest price and how many stores carry it.
+ */
+export function productMetaDescription(product: Product, lowestPrice: string): string {
+  const own = (product.description ?? "").trim();
+  if (own.replace(/\s+/g, " ").length >= MIN_OWN_DESCRIPTION && !isBoilerplateDescription(own)) {
+    return clipText(own);
+  }
+  // Only a plain colour word: retailers also write "25 Years/Black/Silver".
+  const color = /^[a-z][a-z -]{2,19}$/i.test(product.colors?.[0] ?? "") ? product.colors[0] : undefined;
+  const byBrand = product.name.toLowerCase().includes(product.brand.toLowerCase()) ? "" : ` by ${product.brand}`;
+  const inColor = color && !product.name.toLowerCase().includes(color.toLowerCase()) ? ` in ${color.toLowerCase()}` : "";
+  const stores = product.retailers?.length ?? 0;
+  const where = stores > 1 ? `Compare prices at ${stores} stores` : "Compare prices";
+  return clipText(`${product.name}${byBrand}${inColor}, from ${lowestPrice}. ${where} and buy from the original retailer on GOO.`);
+}
+
 // ── Product styling copy (thin-affiliate mitigation) ─────────────────────────
 
 const COMPLEMENTARY: Record<string, string[]> = {

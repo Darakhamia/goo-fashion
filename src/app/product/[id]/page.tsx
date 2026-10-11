@@ -4,7 +4,16 @@ import { notFound } from "next/navigation";
 import { getProductById, getRelatedProducts, getOutfitsByProductId, getBrandLogos, getAllColorGroups } from "@/lib/data/db";
 import ProductClient from "@/components/product/ProductClient";
 import JsonLd from "@/components/seo/JsonLd";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, formatMetaPrice, productJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import {
+  DEFAULT_OG_IMAGE,
+  SITE_NAME,
+  SITE_URL,
+  absoluteUrl,
+  breadcrumbJsonLd,
+  formatMetaPrice,
+  productJsonLd,
+  productMetaDescription,
+} from "@/lib/seo";
 import { cheapestOffer } from "@/lib/server/fx";
 
 // ISR: a product page is served from cache and regenerated at most every five
@@ -48,9 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = product.name.toLowerCase().includes(product.brand.toLowerCase())
     ? product.name
     : `${product.name} — ${product.brand}`;
-  const description = product.description
-    ? product.description.slice(0, 155)
-    : `Shop ${product.name} by ${product.brand}. From ${formatMetaPrice(lowest.amount, lowest.currency)}.`;
+  const description = productMetaDescription(product, formatMetaPrice(lowest.amount, lowest.currency));
 
   return {
     title,
