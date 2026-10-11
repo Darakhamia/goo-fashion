@@ -16,6 +16,19 @@ const nextConfig: NextConfig = {
     // "Apply now" runs the deploy's own script, which reads the same folder.
     "/api/admin/migrations": ["./scripts/migrate.mjs", "./supabase/migrations/**"],
   },
+  // HSTS: browsers that have seen the site once go straight to https instead of
+  // through the reverse proxy's http → https redirect. Apex only — no
+  // includeSubDomains or preload until every subdomain is known to serve https
+  // (docs/SEO_PLAN.md, SEO-10). Browsers ignore it on plain-http responses, so
+  // a local `next start` is unaffected.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [{ key: "Strict-Transport-Security", value: "max-age=31536000" }],
+      },
+    ];
+  },
   // The CSV import page used to live at /goo-studio/brightdata, although it
   // never talked to BrightData. Keep old bookmarks working.
   async redirects() {
