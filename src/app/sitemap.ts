@@ -96,7 +96,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}${l.path}`,
       lastModified: latest(l.products.map((p) => toDate(p.updatedAt ?? p.createdAt))),
       changeFrequency: "weekly",
-      priority: l.kind === "subcategory" ? 0.6 : 0.7,
+      priority: l.kind === "brand" || l.kind === "category" ? 0.7 : 0.6,
     }));
 
   const newestProduct = latest(productRoutes.map((r) => r.lastModified as Date | undefined));
