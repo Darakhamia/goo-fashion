@@ -352,6 +352,11 @@ export function websiteJsonLd(): Record<string, unknown> {
   };
 }
 
+/** The default byline of the journal — the brand itself, not a person. */
+function isHouseAuthor(name: string): boolean {
+  return /^goo( fashion)?( journal| team)?$/i.test(name.trim());
+}
+
 export function blogPostingJsonLd(post: {
   title: string;
   excerpt?: string;
@@ -370,10 +375,14 @@ export function blogPostingJsonLd(post: {
     ...(post.coverImageUrl ? { image: post.coverImageUrl } : {}),
     ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
     ...(post.updatedAt ? { dateModified: post.updatedAt } : {}),
-    author: { "@type": "Person", name: post.authorName },
+    // Posts written "by GOO" are the publication's, not a person's: marking the
+    // brand up as a Person is the kind of authorship signal Google discounts.
+    author: isHouseAuthor(post.authorName)
+      ? { "@type": "Organization", name: SITE_NAME, url: SITE_URL }
+      : { "@type": "Person", name: post.authorName },
     publisher: {
       "@type": "Organization",
-      name: "GOO",
+      name: SITE_NAME,
       logo: { "@type": "ImageObject", url: absoluteUrl("/icon.png") },
     },
     ...(post.category ? { articleSection: post.category } : {}),
