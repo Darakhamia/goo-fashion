@@ -42,10 +42,12 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: "GOO",
   },
+  // Only the card type: with no twitter:title/description of its own, Next fills
+  // them from each page's Open Graph tags. Setting them here made every page
+  // that doesn't repeat a twitter block (products, outfits, the journal) share
+  // the homepage's title on X.
   twitter: {
     card: "summary_large_image",
-    title: "GOO — AI Stylist",
-    description: "Your personal AI stylist. Curated outfits, premium fashion, one platform.",
   },
 };
 
