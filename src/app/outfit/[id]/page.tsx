@@ -25,6 +25,14 @@ import {
   outfitJsonLd,
 } from "@/lib/seo";
 
+// Cached and regenerated at most every five minutes, like a product page: it
+// was rendered from the database on every visit. An empty list prerenders none
+// at build time and caches each outfit on its first visit.
+export const revalidate = 300;
+export async function generateStaticParams(): Promise<{ id: string }[]> {
+  return [];
+}
+
 interface Props {
   params: Promise<{ id: string }>;
 }
