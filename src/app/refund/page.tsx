@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Subscription & Refund Policy — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Subscription & Refund Policy",
   description: "How Goo Fashion subscriptions are billed and renewed, how to cancel, and when refunds apply.",
-};
+  path: "/refund",
+});
 
 function Bullet({ items }: { items: string[] }) {
   return (
@@ -206,6 +208,7 @@ export default function RefundPage() {
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
               Subscription &amp; Refund Policy
             </h1>
+            {/* The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step. */}
             <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">Last updated: August 10, 2026</p>
           </div>
 

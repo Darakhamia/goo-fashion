@@ -94,6 +94,10 @@ export interface ProductSwatch {
    * the card's primary product — see `Product.bgColor`.
    */
   bgColor?: string;
+  /** Marked as the group's main product in the studio. */
+  isGroupPrimary?: boolean;
+  /** ISO date the variant was added; with no main product marked, the newest leads. */
+  createdAt?: string;
 }
 
 export interface CropData {
@@ -176,6 +180,8 @@ export interface Product {
   colorGroupIds?: number[];
   /** ISO date string from DB — used to auto-expire the NEW badge after 7 days */
   createdAt?: string;
+  /** ISO date of the last change to what the page shows — the sitemap's lastmod. */
+  updatedAt?: string;
   /**
    * `#rrggbb` measured from the four corners of the product photo, used behind
    * the image where `object-contain` leaves padding. Absent when the corners
@@ -210,6 +216,8 @@ export interface Outfit {
   isHomepageFeatured?: boolean;
   /** ISO date string from DB — used for per-entity sitemap lastmod. */
   createdAt?: string;
+  /** ISO date of the last change — the sitemap's lastmod when present. */
+  updatedAt?: string;
 }
 
 export interface BlogPost {

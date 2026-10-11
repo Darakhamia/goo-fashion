@@ -2,6 +2,7 @@
 // content (outfits, featured looks) doesn't change in real time.
 export const revalidate = 60;
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import FadeInView from "@/components/ui/FadeInView";
 import { HeroSection } from "@/components/home/HeroSection";
@@ -18,7 +19,20 @@ import {
   getHomepageStylist,
 } from "@/lib/data/db";
 import JsonLd from "@/components/seo/JsonLd";
-import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
+import { SITE_NAME, organizationJsonLd, pageMetadata, websiteJsonLd } from "@/lib/seo";
+
+const HOME_TITLE = `${SITE_NAME} — AI Stylist & Outfit Builder`;
+
+export const metadata: Metadata = {
+  ...pageMetadata({
+    title: HOME_TITLE,
+    description:
+      "One catalog of pieces from many stores, an outfit builder and an AI stylist. Compare prices and buy each piece from the original store.",
+    path: "/",
+  }),
+  // The brand already leads this one; the layout's " | GOO Fashion" would repeat it.
+  title: { absolute: HOME_TITLE },
+};
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
 
@@ -77,7 +91,7 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Structured data: Organization + WebSite (with sitelinks SearchAction) */}
+      {/* Structured data: Organization + WebSite (the site name in results) */}
       <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
 
       {/* On wide screens, one wheel notch / swipe / arrow key moves to the next

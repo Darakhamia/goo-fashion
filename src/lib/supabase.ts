@@ -78,6 +78,8 @@ export type DbOutfit = {
   is_saved: boolean;
   season: string;
   created_at: string;
+  /** Migration 027; absent on a database a migration behind. */
+  updated_at?: string | null;
   source?: string | null;
   is_homepage_featured?: boolean | null;
 };
@@ -123,6 +125,8 @@ export type DbProduct = {
   style_keywords: string[];
   gender?: string;
   created_at: string;
+  /** Migration 027; absent on a database a migration behind. */
+  updated_at?: string | null;
   // Color-variant linking
   variant_group_id?: string | null;
   color_hex?: string | null;

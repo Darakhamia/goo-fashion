@@ -47,7 +47,9 @@ export async function uploadToStorage(
   const path = `products/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
   const { error } = await supabase.storage
     .from(PRODUCT_IMAGES_BUCKET)
-    .upload(path, buffer, { contentType, upsert: false });
+    // A year: the path is unique and never overwritten (upsert: false), so a
+    // cached copy can't go stale. Supabase's default is an hour.
+    .upload(path, buffer, { contentType, upsert: false, cacheControl: "31536000" });
   if (error) throw new Error(`Upload failed: ${error.message}`);
   const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
   return data.publicUrl;

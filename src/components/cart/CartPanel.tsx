@@ -8,6 +8,7 @@ import type { Product } from "@/lib/types";
 import { toCartRetailers } from "@/lib/cart-item";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
+import { RETAILER_LINK_REL } from "@/lib/stores";
 
 /* Inline SVG only — the project ships no icon library (DESIGN_SYSTEM 5.3). */
 
@@ -157,7 +158,7 @@ function StoreLinks({ item, variant }: StoreLinksProps) {
       <a
         href={stores[0].url}
         target="_blank"
-        rel="noopener noreferrer"
+        rel={RETAILER_LINK_REL}
         aria-label={`Open ${item.name} on ${storeLabel(stores[0])}`}
         className={PILL}
       >
@@ -170,7 +171,7 @@ function StoreLinks({ item, variant }: StoreLinksProps) {
       <a
         href={stores[0].url}
         target="_blank"
-        rel="noopener noreferrer"
+        rel={RETAILER_LINK_REL}
         aria-label={`Open ${item.name} on ${storeLabel(stores[0])}`}
         className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
       >
@@ -238,7 +239,7 @@ function StoreLinks({ item, variant }: StoreLinksProps) {
                 <a
                   href={store.url}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel={RETAILER_LINK_REL}
                   role="menuitem"
                   onClick={() => setStoresOpen(false)}
                   className={`flex items-center justify-between gap-3 ${pill ? "min-h-12 px-4 py-2" : "px-3 py-2.5"} hover:bg-[var(--fg-overlay-05)] transition-colors`}
@@ -478,7 +479,7 @@ export function OpenAllPanel({ items }: { items: CartItem[] }) {
               <a
                 href={openAllTarget(item)}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel={RETAILER_LINK_REL}
                 onClick={() => openedBlocked(item.id)}
                 className="w-full h-10 px-3 rounded-xl border border-[var(--border)] flex items-center justify-between gap-2 text-[12px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
               >
@@ -534,7 +535,7 @@ export function BagCheckout({ items, total }: { items: CartItem[]; total: string
               <a
                 href={openAllTarget(item)}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel={RETAILER_LINK_REL}
                 onClick={() => openedBlocked(item.id)}
                 className="w-full h-11 px-4 rounded-full bg-[var(--fg-overlay-08)] flex items-center justify-between gap-2 text-[14px] font-medium text-[var(--foreground)]"
               >

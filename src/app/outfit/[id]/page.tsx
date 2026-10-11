@@ -14,7 +14,24 @@ import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
-import { SITE_URL, absoluteUrl, buildOutfitSeo, outfitJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import {
+  DEFAULT_OG_IMAGE,
+  SITE_NAME,
+  SITE_URL,
+  absoluteUrl,
+  breadcrumbJsonLd,
+  buildOutfitSeo,
+  outfitDisplayName,
+  outfitJsonLd,
+} from "@/lib/seo";
+
+// Cached and regenerated at most every five minutes, like a product page: it
+// was rendered from the database on every visit. An empty list prerenders none
+// at build time and caches each outfit on its first visit.
+export const revalidate = 300;
+export async function generateStaticParams(): Promise<{ id: string }[]> {
+  return [];
+}
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -39,9 +56,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
+      siteName: SITE_NAME,
       url: `${SITE_URL}/outfit/${id}`,
       type: "website",
-      images: outfit.imageUrl ? [{ url: outfit.imageUrl, alt: outfit.name }] : [],
+      images: outfit.imageUrl ? [{ url: outfit.imageUrl, alt: outfitDisplayName(outfit) }] : [DEFAULT_OG_IMAGE],
     },
   };
 }
@@ -77,7 +95,7 @@ export default async function OutfitDetailPage({ params }: Props) {
 
   const breadcrumb = breadcrumbJsonLd([
     { name: "Home", url: SITE_URL },
-    { name: "Outfits", url: absoluteUrl("/browse") },
+    { name: "Outfits", url: absoluteUrl("/browse?view=outfits") },
     { name: heading },
   ]);
 
@@ -101,7 +119,7 @@ export default async function OutfitDetailPage({ params }: Props) {
               {outfit.imageUrl ? (
                 <Image
                   src={outfit.imageUrl}
-                  alt={outfit.name}
+                  alt={outfitDisplayName(outfit)}
                   fill
                   className="object-cover"
                   priority

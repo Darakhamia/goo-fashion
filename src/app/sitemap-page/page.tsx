@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
 import { withTimeout } from "@/lib/server/with-timeout";
+import { outfitDisplayName, pageMetadata } from "@/lib/seo";
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: "Sitemap — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Sitemap",
   description: "Complete map of all pages, outfits, products, and articles on GOO.",
-};
+  path: "/sitemap-page",
+});
 
 const SITE_SECTIONS = [
   {
@@ -16,6 +18,7 @@ const SITE_SECTIONS = [
     links: [
       { href: "/", label: "Home" },
       { href: "/browse", label: "Browse Outfits" },
+      { href: "/brands", label: "All Brands" },
       { href: "/plans", label: "Plans & Pricing" },
       { href: "/about", label: "About" },
       { href: "/blog", label: "Journal" },
@@ -142,7 +145,7 @@ export default async function SitemapPage() {
                     >
                       <div className="min-w-0">
                         <p className="text-sm text-[var(--foreground)] group-hover:opacity-60 transition-opacity duration-150 truncate max-md:text-base">
-                          {outfit.name}
+                          {outfitDisplayName(outfit)}
                         </p>
                         <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 capitalize max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
                           {outfit.occasion}

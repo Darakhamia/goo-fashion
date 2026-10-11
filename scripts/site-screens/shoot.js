@@ -39,6 +39,8 @@ const PAGES = [
   ["saved", "/saved"], ["profile", "/profile"], ["plans", "/plans"], ["subscribe", "/subscribe?plan=pro"],
   ["cart", "/cart"], ["about", "/about"], ["privacy", "/privacy"], ["terms", "/terms"], ["cookie-policy", "/cookie"],
   ["refund", "/refund"], ["sitemap", "/sitemap-page"], ["not-found", "/no-such-page"], ["login", "/login"],
+  // Landing pages (docs/SEO_PLAN.md, SEO-17), on the demo catalogue.
+  ["brands", "/brands"], ["brand", "/brands/zara"], ["category", "/c/outerwear"], ["subcategory", "/c/tops/knitwear"],
 ].map(([name, url]) => ({ name, url }));
 
 const STATES = [
@@ -53,8 +55,10 @@ const STATES = [
     (q) => q.locator('button:has(circle[r="5.5"])'),
   ]) },
   { name: "outfits", url: "/browse", after: (p) => clickFirst(p, [(q) => q.getByRole("button", { name: /^outfits$/i })]) },
-  { name: "catalog-empty", url: "/browse", routes: { "/api/products": { json: [] } } },
-  { name: "catalog-error", url: "/browse", routes: { "/api/products": { status: 500, json: { error: "Stand: simulated failure" } } } },
+  // The header makes the stand's /browse skip its server-side lists (setup.sh),
+  // so the client's own fetch — faked here — is what fills the page.
+  { name: "catalog-empty", url: "/browse", clientFetch: true, routes: { "/api/products": { json: [] } } },
+  { name: "catalog-error", url: "/browse", clientFetch: true, routes: { "/api/products": { status: 500, json: { error: "Stand: simulated failure" } } } },
   { name: "product-stores", url: "/product/p-001", after: (p) => p.evaluate(() => {
     const h = [...document.querySelectorAll("h2,h3,p,span")].find((e) => /where to buy/i.test(e.textContent) && e.children.length === 0);
     if (h) window.scrollTo(0, h.getBoundingClientRect().top + window.scrollY - 90);
@@ -135,7 +139,13 @@ function overflow() {
     const V = VIEWPORT[vp];
     for (const pg of list) {
       if (pg.mobileOnly && !V.mobile) continue;
-      const ctx = await browser.newContext({ viewport: { width: V.width, height: V.height }, deviceScaleFactor: "metrics" in args || "overflow" in args ? 1 : 2, isMobile: V.mobile, hasTouch: V.mobile });
+      const ctx = await browser.newContext({
+        viewport: { width: V.width, height: V.height },
+        deviceScaleFactor: "metrics" in args || "overflow" in args ? 1 : 2,
+        isMobile: V.mobile,
+        hasTouch: V.mobile,
+        ...(pg.clientFetch ? { extraHTTPHeaders: { "x-stand-client-fetch": "1" } } : {}),
+      });
       await ctx.addInitScript(([t, consent]) => {
         try {
           if (consent) localStorage.setItem("goo-cookie-consent", "declined");

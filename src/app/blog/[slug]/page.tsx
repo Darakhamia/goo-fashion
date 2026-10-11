@@ -3,13 +3,23 @@ import Image from "@/components/ui/Image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getAllBlogPosts, getBlogPostBySlug } from "@/lib/data/db";
-import { renderBlogBody } from "@/lib/blog-render";
+import { linkBrandMentions, renderBlogBody } from "@/lib/blog-render";
+import { allLandings } from "@/lib/server/landing";
+import { withTimeout } from "@/lib/server/with-timeout";
 import JsonLd from "@/components/seo/JsonLd";
 import ReadingProgress from "@/components/blog/ReadingProgress";
 import ShareRow from "@/components/blog/ShareRow";
-import { SITE_URL, absoluteUrl, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 export const revalidate = 300;
+
+// `revalidate` alone cached nothing: a dynamic segment with no
+// generateStaticParams renders on every request. An empty list prerenders no
+// post at build time and caches each on its first visit; the blog API's
+// revalidatePath refreshes a post when it is edited.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
+}
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -31,9 +41,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
   if (!post) {
-    return { title: "Post not found — GOO" };
+    return { title: "Post not found" };
   }
-  const title = post.metaTitle || `${post.title} — GOO Journal`;
+  // The root layout's title template adds the site name.
+  const title = post.metaTitle || post.title;
   const description = post.metaDescription || post.excerpt;
   const image = post.ogImage || post.coverImageUrl;
   return {
@@ -42,8 +53,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
+      siteName: SITE_NAME,
+      url: `/blog/${post.slug}`,
       type: "article",
-      images: image ? [{ url: image }] : undefined,
+      images: image ? [{ url: image }] : [DEFAULT_OG_IMAGE],
       publishedTime: post.publishedAt,
       authors: [post.authorName],
     },
@@ -63,6 +76,13 @@ export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
   if (!post || !post.isPublished) notFound();
+
+  // Brands the catalogue has an indexed page for: their first mention in the
+  // post links there (SEO-23). A catalogue that can't be read costs the links,
+  // not the post.
+  const brandLinks = (await withTimeout(allLandings(), [], "journal brand links"))
+    .filter((l) => l.kind === "brand" && l.indexable)
+    .map((l) => ({ name: l.name, path: l.path }));
 
   const all = await getAllBlogPosts({ publishedOnly: true });
 
@@ -166,7 +186,7 @@ export default async function BlogPostPage({ params }: Props) {
         {post.body ? (
           <div
             className="blog-prose text-[var(--foreground)]"
-            dangerouslySetInnerHTML={{ __html: renderBlogBody(post.body) }}
+            dangerouslySetInnerHTML={{ __html: linkBrandMentions(renderBlogBody(post.body), brandLinks) }}
           />
         ) : (
           <p className="text-sm text-[var(--foreground-muted)] italic max-md:text-[17px] max-md:leading-[1.6]">

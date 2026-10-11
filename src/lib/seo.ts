@@ -3,15 +3,75 @@
  * structured-data (JSON-LD) builders. No "use client" — safe to import
  * from server components, generateMetadata, sitemap, etc.
  */
+import type { Metadata } from "next";
 import type { Outfit, Product } from "@/lib/types";
-import { CURRENCIES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
+import { CURRENCIES, DISPLAY_FALLBACK_RATES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
 
 /** Canonical site origin — always the non-www apex domain. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
 
+/**
+ * The brand as search results and link cards show it. "GOO" alone is a common
+ * word that other sites own in search; "GOO Fashion" matches the domain and the
+ * legal pages (docs/SEO_PLAN.md, Р-2).
+ */
+export const SITE_NAME = "GOO Fashion";
+
 /** Build an absolute, canonical (non-www) URL for a given path. */
 export function absoluteUrl(path = "/"): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+// ── Page metadata ───────────────────────────────────────────────────────────
+
+type OgImages = NonNullable<Metadata["openGraph"]>["images"];
+
+/** The branded card drawn by app/opengraph-image.tsx. */
+export const DEFAULT_OG_IMAGE = {
+  url: "/opengraph-image",
+  width: 1200,
+  height: 630,
+  alt: "GOO Fashion — AI stylist and outfit builder",
+};
+
+interface PageMetadataInput {
+  /** Without the brand: the root layout's title template appends " | GOO Fashion". */
+  title: string;
+  description: string;
+  /** This page's own path. It becomes the canonical URL and og:url. */
+  path: string;
+  /** Link-card images. Left out, the site-wide card from app/opengraph-image. */
+  images?: OgImages;
+  /** Keep the page out of the index; its links are still followed. */
+  noindex?: boolean;
+}
+
+/**
+ * Metadata for a page that has no data-driven tags of its own: title,
+ * description, a canonical pointing at the page itself and Open Graph tags that
+ * describe it. Every indexable page needs its own canonical — one inherited from
+ * the root layout told Google the whole site was a copy of the homepage.
+ */
+export function pageMetadata({ title, description, path, images, noindex }: PageMetadataInput): Metadata {
+  return {
+    title,
+    description,
+    // A page kept out of the index names no canonical: the two signals would
+    // contradict each other.
+    ...(noindex
+      ? { robots: { index: false, follow: true } }
+      : { alternates: { canonical: path } }),
+    openGraph: {
+      title,
+      description,
+      url: path,
+      siteName: SITE_NAME,
+      type: "website",
+      // Named explicitly: a page that sets its own openGraph block no longer
+      // inherits the image Next derives from app/opengraph-image.tsx.
+      images: images ?? [DEFAULT_OG_IMAGE],
+    },
+  };
 }
 
 // ── Currency ────────────────────────────────────────────────────────────────
@@ -48,11 +108,13 @@ const GENERIC_OUTFIT_NAMES = new Set([
 ]);
 
 function isGenericName(name?: string): boolean {
-  return !name || GENERIC_OUTFIT_NAMES.has(name.trim().toLowerCase());
+  const n = (name ?? "").trim().toLowerCase();
+  // The builder's own default ("Outfit 51") and its numbered variants.
+  return !n || GENERIC_OUTFIT_NAMES.has(n) || /^(community |my )?(outfit|look)( #?\d+)?$/.test(n);
 }
 
 export interface OutfitSeo {
-  /** Used for <h1> and og:title core (no " | GOO" suffix). */
+  /** Used for <h1>. */
   heading: string;
   title: string;
   description: string;
@@ -63,7 +125,8 @@ export interface OutfitSeo {
  * own data (brands + style + piece count + price) so Google does not cluster
  * the generically-named "Community Look" pages as duplicates.
  *
- * Example: "Y-3 + SP5DER streetwear look — 3 pieces from $765 | GOO"
+ * Example: "Y-3 + SP5DER streetwear look — 3 pieces from $765" (the root layout's
+ * title template adds the brand).
  */
 export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
   const brands = [...new Set(outfit.items.map((i) => i.product?.brand).filter(Boolean))] as string[];
@@ -82,10 +145,9 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
       : `${outfit.occasion} outfit`;
 
   const piecesLabel = pieces ? `${pieces} piece${pieces === 1 ? "" : "s"}` : "";
-  const titleCore = [heading, piecesLabel && `${piecesLabel} from ${price}`]
+  const title = [heading, piecesLabel && `${piecesLabel} from ${price}`]
     .filter(Boolean)
     .join(" — ");
-  const title = `${titleCore} | GOO`;
 
   const byBrands = brands.length ? ` featuring ${brands.slice(0, 3).join(", ")}` : "";
   const season = outfit.season && outfit.season !== "all" ? `${outfit.season} ` : "";
@@ -95,6 +157,102 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
   ).slice(0, 160);
 
   return { heading, title, description };
+}
+
+// ── Colour variants ─────────────────────────────────────────────────────────
+
+/**
+ * The product that stands for a colour group in search: the one marked as the
+ * group's main product, otherwise the newest — the same one the catalogue and
+ * the sitemap list (`groupVariants` in lib/data/db). Every colour of the group
+ * points its canonical here: they share a name, a description and a retailer,
+ * so as separate pages they were near-duplicates with one title between them
+ * (docs/SEO_PLAN.md, SEO-12, Р-3).
+ */
+export function primaryVariantId(product: Product): string {
+  const group = product.variants ?? [];
+  if (group.length < 2) return product.id;
+  const marked = group.find((v) => v.isGroupPrimary);
+  if (marked) return marked.id;
+  const newest = [...group].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))[0];
+  return newest?.createdAt ? newest.id : product.id;
+}
+
+/**
+ * The name to show for an outfit: its own, unless that is a placeholder like
+ * "Outfit 51" or "Community Look" — then the heading its page is built under,
+ * from its brands and style ("Carhartt WIP + Air Jordan streetwear look").
+ */
+export function outfitDisplayName(outfit: Outfit): string {
+  return isGenericName(outfit.name) ? buildOutfitSeo(outfit).heading : outfit.name;
+}
+
+// ── Product meta description ─────────────────────────────────────────────────
+
+/**
+ * Text some feeds put in the description field that says nothing about the
+ * piece: a reseller's condition or shipping line, the same on every product it
+ * lists. As a meta description it made dozens of pages share one snippet. It
+ * stays on the page itself, where the condition note is useful to a shopper.
+ */
+const BOILERPLATE_DESCRIPTIONS = [
+  /^pre-verified and ready to ship/i,
+  /^verified before shipping/i,
+  /^items are new and unworn, but have imperfections/i,
+  /^new with box/i,
+  /^used, /i,
+];
+
+/** Whether a product description is a reseller's stock line, not copy about the piece. */
+export function isBoilerplateDescription(text?: string): boolean {
+  const t = (text ?? "").trim();
+  return BOILERPLATE_DESCRIPTIONS.some((re) => re.test(t));
+}
+
+/**
+ * Text cut to fit a search snippet: line breaks, bullets and runs of spaces
+ * collapse to single spaces, and a cut lands on a word boundary with an
+ * ellipsis instead of halfway through a word.
+ */
+export function clipText(text: string, max = 155): string {
+  // A bulleted list reads as one run of clauses: "boots. Lace-up; padded collar".
+  const flat = text
+    .replace(/\s*\n+\s*[·•▪]\s*/g, (_m, at: number, all: string) =>
+      /[.!?:;,]$/.test(all.slice(0, at).trimEnd()) ? " " : "; ",
+    )
+    .replace(/[\s·•▪]+/g, " ")
+    .trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max - 1);
+  const atWord = cut.slice(0, cut.lastIndexOf(" ")).replace(/[\s,;:–—-]+$/, "");
+  return `${atWord || cut}…`;
+}
+
+/** The product's colour as a plain word, or undefined: retailers also write "25 Years/Black/Silver". */
+function plainColor(product: Product): string | undefined {
+  const first = product.colors?.[0] ?? "";
+  return /^[a-z][a-z -]{2,19}$/i.test(first) ? first : undefined;
+}
+
+/** Shortest description worth showing as a snippet; anything less is filler. */
+const MIN_OWN_DESCRIPTION = 60;
+
+/**
+ * The meta description of a product page: its own copy when there is enough of
+ * it, otherwise a line built from the product — what it is, who makes it, the
+ * lowest price and how many stores carry it.
+ */
+export function productMetaDescription(product: Product, lowestPrice: string): string {
+  const own = (product.description ?? "").trim();
+  if (own.replace(/\s+/g, " ").length >= MIN_OWN_DESCRIPTION && !isBoilerplateDescription(own)) {
+    return clipText(own);
+  }
+  const color = plainColor(product);
+  const byBrand = product.name.toLowerCase().includes(product.brand.toLowerCase()) ? "" : ` by ${product.brand}`;
+  const inColor = color && !product.name.toLowerCase().includes(color.toLowerCase()) ? ` in ${color.toLowerCase()}` : "";
+  const stores = product.retailers?.length ?? 0;
+  const where = stores > 1 ? `Compare prices at ${stores} stores` : "Compare prices";
+  return clipText(`${product.name}${byBrand}${inColor}, from ${lowestPrice}. ${where} and buy from the original retailer on GOO.`);
 }
 
 // ── Product styling copy (thin-affiliate mitigation) ─────────────────────────
@@ -160,11 +318,27 @@ function availabilityUrl(a?: string): string {
 }
 
 /**
- * JSON-LD prices must match what's shown on the page — Google flags rich
- * results when they diverge, so keep cents instead of rounding.
+ * A price as the page's first HTML prints it, which is what Google compares
+ * product markup against: in dollars, converted with the storefront's fallback
+ * rates and rounded to whole units, exactly as `applyFormat` displays it
+ * (lib/context/currency-context). The store's own euro figure here sat next to
+ * a "$250" on the page for every product priced in euros.
+ *
+ * A currency the storefront has no rate for keeps its own amount and code: the
+ * page cannot show it in dollars either, and the markup should not invent one.
  */
-function jsonLdPrice(amount: number): number {
-  return Number(amount.toFixed(2));
+function displayedPrice(amount: number, currency?: string): { price: number; priceCurrency: string } {
+  const code = normalizeCurrencyCode(currency);
+  if (code === "USD") return { price: Math.round(amount), priceCurrency: "USD" };
+  const rate = DISPLAY_FALLBACK_RATES[code];
+  if (!rate || rate <= 0) return { price: Number(amount.toFixed(2)), priceCurrency: code };
+  return { price: Math.round(amount / rate), priceCurrency: "USD" };
+}
+
+/** `displayedPrice` as text, the way the page prints it: "$250". */
+export function displayedPriceLabel(amount: number, currency?: string): string {
+  const { price, priceCurrency } = displayedPrice(amount, currency);
+  return formatMetaPrice(price, priceCurrency);
 }
 
 /** Build an Offer / AggregateOffer block from a product's retailers. */
@@ -174,41 +348,47 @@ function buildOffers(product: Product, productUrl: string): Record<string, unkno
   if (retailers.length === 0) {
     return {
       "@type": "Offer",
-      price: jsonLdPrice(product.priceMin),
-      priceCurrency: normalizeCurrencyCode(product.currency),
+      ...displayedPrice(product.priceMin, product.currency),
       availability: "https://schema.org/InStock",
       url: productUrl,
     };
   }
 
-  if (retailers.length === 1) {
-    const r = retailers[0];
-    return {
-      "@type": "Offer",
-      price: jsonLdPrice(r.price),
-      priceCurrency: normalizeCurrencyCode(r.currency),
-      availability: availabilityUrl(r.availability),
-      url: r.url || productUrl,
-      seller: { "@type": "Organization", name: r.name },
-    };
-  }
+  const offers = retailers.map((r) => ({
+    "@type": "Offer",
+    ...displayedPrice(r.price, r.currency ?? product.currency),
+    availability: availabilityUrl(r.availability),
+    url: r.url || productUrl,
+    seller: { "@type": "Organization", name: r.name },
+  }));
 
-  const prices = retailers.map((r) => r.price);
+  if (offers.length === 1) return offers[0];
+
+  // The range is stated in one currency, so it spans the offers that are in it.
+  const currency = offers[0].priceCurrency;
+  const prices = offers.filter((o) => o.priceCurrency === currency).map((o) => o.price);
   return {
     "@type": "AggregateOffer",
-    lowPrice: jsonLdPrice(Math.min(...prices)),
-    highPrice: jsonLdPrice(Math.max(...prices)),
-    offerCount: retailers.length,
-    priceCurrency: normalizeCurrencyCode(retailers[0].currency ?? product.currency),
-    offers: retailers.map((r) => ({
-      "@type": "Offer",
-      price: jsonLdPrice(r.price),
-      priceCurrency: normalizeCurrencyCode(r.currency),
-      availability: availabilityUrl(r.availability),
-      url: r.url || productUrl,
-      seller: { "@type": "Organization", name: r.name },
-    })),
+    lowPrice: Math.min(...prices),
+    highPrice: Math.max(...prices),
+    offerCount: offers.length,
+    priceCurrency: currency,
+    offers,
   };
+}
+
+/**
+ * The item's condition when a reseller's note says it isn't simply new. Left
+ * out otherwise: most of the catalogue is new stock, and the markup should not
+ * assert what the record doesn't say.
+ */
+function itemCondition(product: Product): string | undefined {
+  const text = `${product.name} ${product.description ?? ""}`.toLowerCase();
+  if (/\b(pre-owned|preowned|second-hand|used condition|gently used|worn once)\b/.test(text)) {
+    return "https://schema.org/UsedCondition";
+  }
+  if (/\b(imperfections?|defects?|damaged)\b/.test(text)) return "https://schema.org/DamagedCondition";
+  return undefined;
 }
 
 export function productJsonLd(product: Product): Record<string, unknown> {
@@ -218,6 +398,13 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     : product.imageUrl
       ? [product.imageUrl]
       : undefined;
+  const color = plainColor(product);
+  const condition = itemCondition(product);
+  const offers = buildOffers(product, url);
+  if (condition) {
+    const list = (offers.offers as Record<string, unknown>[] | undefined) ?? [offers];
+    for (const offer of list) offer.itemCondition = condition;
+  }
 
   return {
     "@context": "https://schema.org",
@@ -228,7 +415,13 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     ...(product.description ? { description: product.description } : {}),
     ...(product.category ? { category: product.category } : {}),
     ...(product.material ? { material: product.material } : {}),
-    offers: buildOffers(product, url),
+    ...(color ? { color } : {}),
+    // Codes that identify the item anywhere — how search engines match this
+    // page to the same product elsewhere. gtin is verified before it is stored.
+    ...(product.gtin ? { gtin: product.gtin } : {}),
+    ...(product.mpn ? { mpn: product.mpn } : {}),
+    ...(product.sku ? { sku: product.sku } : {}),
+    offers,
     url,
   };
 }
@@ -266,30 +459,35 @@ export function organizationJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "GOO",
+    name: SITE_NAME,
+    alternateName: "GOO",
     url: SITE_URL,
     // app/icon.png: the real 512×512 brand mark (the site icon), not a
     // system-font render. Google wants a real image of at least 112×112.
     logo: absoluteUrl("/icon.png"),
     description: "AI-powered fashion stylist and aggregator — curated outfits and premium fashion from leading retailers.",
+    // sameAs: the brand's profiles go here once there are any (SEO-26).
   };
 }
 
+/**
+ * The site's name for Google's "site name" in results — "GOO" alone is a word
+ * other sites own (docs/SEO_PLAN.md, Р-2). No SearchAction: Google retired the
+ * sitelinks search box it fed in November 2024.
+ */
 export function websiteJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "GOO",
+    name: SITE_NAME,
+    alternateName: ["GOO", "goo-fashion.com"],
     url: SITE_URL,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${SITE_URL}/browse?search={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
   };
+}
+
+/** The default byline of the journal — the brand itself, not a person. */
+function isHouseAuthor(name: string): boolean {
+  return /^goo( fashion)?( journal| team)?$/i.test(name.trim());
 }
 
 export function blogPostingJsonLd(post: {
@@ -310,10 +508,14 @@ export function blogPostingJsonLd(post: {
     ...(post.coverImageUrl ? { image: post.coverImageUrl } : {}),
     ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
     ...(post.updatedAt ? { dateModified: post.updatedAt } : {}),
-    author: { "@type": "Person", name: post.authorName },
+    // Posts written "by GOO" are the publication's, not a person's: marking the
+    // brand up as a Person is the kind of authorship signal Google discounts.
+    author: isHouseAuthor(post.authorName)
+      ? { "@type": "Organization", name: SITE_NAME, url: SITE_URL }
+      : { "@type": "Person", name: post.authorName },
     publisher: {
       "@type": "Organization",
-      name: "GOO",
+      name: SITE_NAME,
       logo: { "@type": "ImageObject", url: absoluteUrl("/icon.png") },
     },
     ...(post.category ? { articleSection: post.category } : {}),

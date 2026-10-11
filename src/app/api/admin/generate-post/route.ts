@@ -52,18 +52,13 @@ function isAllowedExternalUrl(raw: string): boolean {
   return true;
 }
 
-async function fetchPageText(url: string): Promise<{ text: string; ogImage?: string }> {
+async function fetchPageText(url: string): Promise<{ text: string }> {
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; GOO-Bot/1.0)" },
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`Failed to fetch URL: ${res.status}`);
   const html = await res.text();
-
-  // Extract og:image
-  const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-    || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-  const ogImage = ogMatch?.[1];
 
   // Strip scripts, styles, nav, footer, ads
   const stripped = html
@@ -77,7 +72,7 @@ async function fetchPageText(url: string): Promise<{ text: string; ogImage?: str
     .trim()
     .slice(0, 6000); // Keep within token limits
 
-  return { text: stripped, ogImage };
+  return { text: stripped };
 }
 
 export async function POST(req: Request) {
@@ -89,7 +84,7 @@ export async function POST(req: Request) {
 
     // Two modes. `url` rewrites someone else's article into an editorial post;
     // `brief` turns a few lines from the team into a product post, where there
-    // is no page to scrape and no og:image to inherit.
+    // is no page to scrape.
     const hasUrl = typeof url === "string" && url.trim().length > 0;
     const hasBrief = typeof brief === "string" && brief.trim().length > 0;
 
@@ -124,8 +119,7 @@ export async function POST(req: Request) {
     }
 
     // Only the URL mode reaches out to the network.
-    const scraped = hasUrl ? await fetchPageText(url) : { text: "", ogImage: undefined };
-    const ogImage = scraped.ogImage;
+    const scraped = hasUrl ? await fetchPageText(url) : { text: "" };
 
     // 60s cap so a stuck completion can't hold the serverless function open
     const client = new OpenAI({ apiKey, timeout: 60_000 });
@@ -185,7 +179,11 @@ export async function POST(req: Request) {
       category: parsed.category ?? "",
       metaTitle: parsed.metaTitle ?? "",
       metaDescription: parsed.metaDescription ?? "",
-      coverImageUrl: ogImage ?? "",
+      // Never the source's own picture: it belongs to the publication we are
+      // writing from (two posts went out with Vogue's photos as covers). The
+      // admin picks a cover — a catalogue photo or a generated outfit image
+      // (docs/SEO_PLAN.md, SEO-23).
+      coverImageUrl: "",
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";

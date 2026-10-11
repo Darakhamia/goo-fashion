@@ -30,7 +30,11 @@ export const MIN_WIDTH = 1000;
  * Keep this list in sync with `images.remotePatterns` in next.config.ts: a host
  * that reaches the optimizer without a matching pattern gets a hard 400.
  */
-const OWN_IMAGE_HOSTNAME = /(^|\.)(supabase\.co|replicate\.delivery)$/i;
+// supabase.goo-fashion.com is our self-hosted Supabase (MIGRATION_RUNBOOK.md):
+// since the move every catalogue photo lives there, and without it in this list
+// they all bypassed the optimizer — full-size files, no srcset, ~3 MB of photos
+// on a product page on a phone (docs/SEO_PLAN.md, SEO-13).
+const OWN_IMAGE_HOSTNAME = /(^|\.)(supabase\.co|supabase\.goo-fashion\.com|replicate\.delivery)$/i;
 
 /**
  * Whether `src` may be routed through `/_next/image`. Local paths ("/hero.png")

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Policy",
   description: "How Goo Fashion collects, uses, shares, and protects your personal data.",
-};
+  path: "/privacy",
+});
 
 function Bullet({ items }: { items: string[] }) {
   return (
@@ -379,6 +381,7 @@ export default function PrivacyPage() {
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
               Privacy Policy
             </h1>
+            {/* The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step. */}
             <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
               Last updated: September 26, 2026
             </p>

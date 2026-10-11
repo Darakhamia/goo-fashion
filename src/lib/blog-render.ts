@@ -83,3 +83,71 @@ export function estimateReadTime(body: string | null | undefined): string {
   const minutes = Math.max(1, Math.ceil(words / 200));
   return `${minutes} min`;
 }
+
+/** A brand the catalogue has a page for, as `linkBrandMentions` links it. */
+export interface BrandLink {
+  name: string;
+  path: string;
+}
+
+/** At most this many brand links in one post: a link on every name reads as spam. */
+const MAX_BRAND_LINKS = 8;
+
+/**
+ * The first mention of each catalogue brand in a rendered post, linked to the
+ * brand's page (docs/SEO_PLAN.md, SEO-23): the journal wrote about Prada and
+ * Timberland and linked to nothing the reader could buy.
+ *
+ * Works on the sanitized HTML from `renderBlogBody`, text between tags only —
+ * never inside an existing link or a heading. Longer names go first, so
+ * "adidas Originals" is linked as itself rather than as "adidas". Names of
+ * five letters or more match in any case; shorter ones ("COS", "Nike") only as
+ * written, so an ordinary word is not mistaken for a brand.
+ */
+export function linkBrandMentions(html: string, brands: BrandLink[]): string {
+  const pending = [...brands]
+    .filter((b) => b.name.trim().length >= 3)
+    .sort((a, b) => b.name.length - a.name.length);
+  if (!pending.length) return html;
+
+  const linked = new Set<string>();
+  let skipDepth = 0; // inside <a> or a heading
+  return html
+    .split(/(<[^>]+>)/)
+    .map((part) => {
+      if (part.startsWith("<")) {
+        if (/^<(a|h[1-6])\b/i.test(part)) skipDepth++;
+        else if (/^<\/(a|h[1-6])>/i.test(part)) skipDepth = Math.max(0, skipDepth - 1);
+        return part;
+      }
+      if (skipDepth > 0) return part;
+
+      // The text as pieces; a piece that became a link is never searched again.
+      let pieces: { html: string; link: boolean }[] = [{ html: part, link: false }];
+      for (const brand of pending) {
+        if (linked.size >= MAX_BRAND_LINKS) break;
+        if (linked.has(brand.path)) continue;
+        const name = escapeHtml(brand.name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const re = new RegExp(`(?<![\\p{L}\\p{N}])${name}(?![\\p{L}\\p{N}])`, brand.name.length >= 5 ? "iu" : "u");
+        const next: typeof pieces = [];
+        let done = false;
+        for (const piece of pieces) {
+          const match = !done && !piece.link ? re.exec(piece.html) : null;
+          if (!match) {
+            next.push(piece);
+            continue;
+          }
+          done = true;
+          next.push(
+            { html: piece.html.slice(0, match.index), link: false },
+            { html: `<a href="${brand.path}">${match[0]}</a>`, link: true },
+            { html: piece.html.slice(match.index + match[0].length), link: false },
+          );
+        }
+        if (done) linked.add(brand.path);
+        pieces = next;
+      }
+      return pieces.map((p) => p.html).join("");
+    })
+    .join("");
+}

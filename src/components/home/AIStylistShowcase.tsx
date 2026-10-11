@@ -7,6 +7,7 @@ import type { Product, Retailer } from "@/lib/types";
 import type { StylistChatLook, ShowcaseStore } from "@/lib/data/db";
 import { useStylist } from "@/lib/context/stylist-context";
 import { useCurrency } from "@/lib/context/currency-context";
+import { RETAILER_LINK_REL } from "@/lib/stores";
 
 interface AIStylistShowcaseProps {
   chatLooks: StylistChatLook[];
@@ -250,7 +251,7 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
     <a
       href={url || undefined}
       target={url ? "_blank" : undefined}
-      rel="noopener noreferrer"
+      rel={RETAILER_LINK_REL}
       onClick={(e) => {
         if (!url) {
           e.preventDefault();
