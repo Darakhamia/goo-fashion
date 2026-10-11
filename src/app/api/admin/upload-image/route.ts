@@ -72,7 +72,7 @@ export async function POST(req: Request) {
   // The server downloads this address, so it must not be one of our own
   // network's: loopback, private, link-local or cloud metadata. Checked after
   // the storage test above, since local Supabase lives on localhost.
-  const target = validateTargetUrl(url, "direct");
+  const target = validateTargetUrl(url);
   if ("error" in target) {
     return NextResponse.json({ error: target.error }, { status: 400 });
   }

@@ -76,7 +76,7 @@ function isOwnStoragePublicUrl(url: string): boolean {
  */
 async function isFetchableUrl(url: string): Promise<boolean> {
   if (isOwnStoragePublicUrl(url)) return true;
-  const valid = validateTargetUrl(url, "direct");
+  const valid = validateTargetUrl(url);
   if ("error" in valid) return false;
   return !(await isBlockedResolvedHost(valid.url.hostname));
 }

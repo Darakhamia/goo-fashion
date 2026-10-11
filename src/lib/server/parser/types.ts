@@ -1,10 +1,11 @@
 /**
  * Types for the universal product-page parser.
  *
- * The parser turns a single product URL (Farfetch, SSENSE, Mr Porter, a brand
- * store, …) into a normalised product the admin can preview and import. It is
- * intentionally site-agnostic: the generic extractor reads JSON-LD / OpenGraph /
- * microdata, and per-site "recipes" only add overrides where a site is unusual.
+ * The parser turns a product page the collect extension opened in the admin's
+ * browser (Farfetch, SSENSE, Mr Porter, a brand store, …) into a normalised
+ * product and imports it. It is intentionally site-agnostic: the generic
+ * extractor reads JSON-LD / OpenGraph / microdata, and per-site "recipes" only
+ * add overrides where a site is unusual.
  */
 // A spec row is defined where the helpers that read one live, so the parser
 // and the CSV importer cannot end up with two shapes for the same thing.
@@ -14,36 +15,6 @@ import type { SpecPair } from "@/lib/server/product-fields";
 export type { SpecPair };
 
 import type { Category, Gender } from "@/lib/types";
-
-/**
- * How HTML is fetched. Most luxury sites sit behind anti-bot (Cloudflare,
- * Akamai, DataDome). `direct` works for soft targets; the provider modes route
- * the request through a scraping service that does TLS/JA3 impersonation
- * (curl_cffi-style) and/or a headless browser. `custom` lets the admin point at
- * their own curl_cffi / playwright / cloakbrowser microservice.
- */
-export type FetchProvider =
-  | "direct"
-  | "scrapingbee"
-  | "scraperapi"
-  | "zenrows"
-  | "custom";
-
-export interface ParserFetchSettings {
-  provider: FetchProvider;
-  /**
-   * For `custom`: a URL template. `{url}` is replaced with the URL-encoded
-   * target and `{key}` with the API key. Example:
-   *   https://my-curl-cffi.fly.dev/fetch?token={key}&url={url}&impersonate=chrome
-   */
-  endpoint: string;
-  /** Ask the provider to render JS in a headless browser (slower, costs more). */
-  renderJs: boolean;
-  /** Browser fingerprint to impersonate — sent as User-Agent and to providers. */
-  impersonate: string;
-  /** Per-request timeout in milliseconds. */
-  timeoutMs: number;
-}
 
 /** A single field-extraction override applied to the raw HTML. */
 export interface FieldRule {
@@ -140,8 +111,8 @@ export interface PageEvidence {
   /**
    * The store's own product JSON, fetched by the extension from the page's
    * origin — for Shopify, `/products/<handle>.json` with the currency of
-   * `/meta.json`. The same record the server reads when it can reach the store
-   * itself; the extension reads it because a collected page is never fetched.
+   * `/meta.json`. The extension reads it because a collected page is never
+   * fetched by the server.
    */
   shopify?: { product: unknown; currency?: string };
   /**
@@ -308,7 +279,7 @@ export const DEFAULT_AI_SETTINGS: ParserAiSettings = {
   downloadImages: true,
 };
 
-/** Per-product outcome of a crawl run. */
+/** Per-product outcome of a collect run. */
 export interface CrawlItemResult {
   url: string;
   status: "imported" | "updated" | "skipped" | "failed";
@@ -342,11 +313,3 @@ export interface CrawlItemResult {
   /** What a links-only page did to a card, when it was not a merge. */
   linkNote?: string;
 }
-
-export const DEFAULT_FETCH_SETTINGS: ParserFetchSettings = {
-  provider: "direct",
-  endpoint: "",
-  renderJs: false,
-  impersonate: "chrome",
-  timeoutMs: 20_000,
-};

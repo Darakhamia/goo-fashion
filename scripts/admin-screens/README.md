@@ -53,7 +53,7 @@ NODE_PATH=/tmp/goo-admin-screens/pw/node_modules \
   - `users-drawer`, `users-bulk`, `email-confirm`, `account-menu`;
   - `catalogue-check-ready`;
   - `import-merchants`, `import-preview`;
-  - `parser-parse`, `parser-recipes`, `parser-fetch`, `parser-crawl`, `parser-collect-run`;
+  - `parser-recipes`, `parser-ai`, `parser-collect-run`;
   - `blog-editor`, `prompts-image`, `analytics-30d`, `settings-savebar`.
 
 ## Добавить страницу или состояние
