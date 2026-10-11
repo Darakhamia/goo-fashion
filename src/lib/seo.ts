@@ -157,6 +157,25 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
   return { heading, title, description };
 }
 
+// ── Colour variants ─────────────────────────────────────────────────────────
+
+/**
+ * The product that stands for a colour group in search: the one marked as the
+ * group's main product, otherwise the newest — the same one the catalogue and
+ * the sitemap list (`groupVariants` in lib/data/db). Every colour of the group
+ * points its canonical here: they share a name, a description and a retailer,
+ * so as separate pages they were near-duplicates with one title between them
+ * (docs/SEO_PLAN.md, SEO-12, Р-3).
+ */
+export function primaryVariantId(product: Product): string {
+  const group = product.variants ?? [];
+  if (group.length < 2) return product.id;
+  const marked = group.find((v) => v.isGroupPrimary);
+  if (marked) return marked.id;
+  const newest = [...group].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))[0];
+  return newest?.createdAt ? newest.id : product.id;
+}
+
 // ── Product meta description ─────────────────────────────────────────────────
 
 /**

@@ -12,6 +12,7 @@ import {
   breadcrumbJsonLd,
   displayedPriceLabel,
   productJsonLd,
+  primaryVariantId,
   productMetaDescription,
 } from "@/lib/seo";
 import { cheapestOffer } from "@/lib/server/fx";
@@ -57,18 +58,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = product.name.toLowerCase().includes(product.brand.toLowerCase())
     ? product.name
     : `${product.name} — ${product.brand}`;
+  const canonical = `${SITE_URL}/product/${primaryVariantId(product)}`;
   // The price as the page shows it, so the snippet and the page agree.
   const description = productMetaDescription(product, displayedPriceLabel(lowest.amount, lowest.currency));
 
   return {
     title,
     description,
-    alternates: { canonical: `${SITE_URL}/product/${id}` },
+    // A colour variant points at its group's main product (lib/seo).
+    alternates: { canonical },
     openGraph: {
       title,
       description,
       siteName: SITE_NAME,
-      url: `${SITE_URL}/product/${id}`,
+      url: canonical,
       type: "website",
       // Fall back to the site-wide branded card when the product has no photo,
       // so shared links always render with an image.

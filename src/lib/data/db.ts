@@ -313,6 +313,8 @@ function toSwatch(p: Product): ProductSwatch {
     sizes:         p.sizes ?? [],
     colorGroupIds: p.colorGroupIds,
     bgColor:       p.bgColor,
+    isGroupPrimary: p.isGroupPrimary,
+    createdAt:     p.createdAt,
   };
 }
 
@@ -391,7 +393,9 @@ export function groupVariants(all: Product[]): Product[] {
 
   const grouped: Product[] = [];
   for (const [, members] of groups) {
-    // Find primary; fall back to first member if none explicitly marked
+    // Find primary; fall back to first member if none explicitly marked. The
+    // list is newest first, so that is the newest — `primaryVariantId` in
+    // lib/seo picks the same one for the variant pages' canonical.
     const primary = members.find((m) => m.isGroupPrimary) ?? members[0];
     const swatches = members.map(toSwatch);
     // Merge colorGroupIds from all variants so any member's color shows in filters

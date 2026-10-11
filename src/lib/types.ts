@@ -94,6 +94,10 @@ export interface ProductSwatch {
    * the card's primary product — see `Product.bgColor`.
    */
   bgColor?: string;
+  /** Marked as the group's main product in the studio. */
+  isGroupPrimary?: boolean;
+  /** ISO date the variant was added; with no main product marked, the newest leads. */
+  createdAt?: string;
 }
 
 export interface CropData {
