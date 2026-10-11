@@ -503,14 +503,9 @@ function buildCsv() {
 const CSV_TEXT = buildCsv();
 
 // ═════════════════════════════════════════════════════════════════════════════
-// PARSER — config, parse, crawl (Collect tab), collect (extension page)
+// PARSER — config (recipes, AI & images), collect (extension page)
 // ═════════════════════════════════════════════════════════════════════════════
-const SB_KEY = "VQ3K8ZP1M4XWN7R2T6YB0CJ5HD9LFG3SAE8UQ1K7ZM4PX2NW6R0TB5YC9JH3DL7FG1SA4EU8Q23f9a";
-// Same shape as maskKey in api/admin/parser/config/route.ts: 4 + 8 dots + 4.
-const maskKey = (k) => k.slice(0, 4) + "•".repeat(8) + k.slice(-4);
 const PARSER_CONFIG = {
-  fetchSettings: { provider: "scrapingbee", endpoint: "", renderJs: true, impersonate: "chrome", timeoutMs: 30000 },
-  key: { configured: true, source: "database", masked: maskKey(SB_KEY) },
   siteConfigs: [
     { id: "farfetch", name: "Farfetch", domain: "farfetch.com", enabled: true, notes: "Farfetch ships full Product JSON-LD (name, brand, image[], offers). Generic extraction handles it; add regex rules only if a field is missed." },
     { id: "ssense", name: "SSENSE", domain: "ssense.com", enabled: true, notes: "JSON-LD + OpenGraph. Usually parses with no overrides." },
@@ -520,34 +515,6 @@ const PARSER_CONFIG = {
   aiSettings: { enabled: true, mode: "auto", downloadImages: true },
   openai: { configured: true },
 };
-
-const PARSE_URL = "https://www.ssense.com/en-us/men/product/lemaire/beige-twisted-shirt/17234561";
-const lemaireImgs = ["", "b", "c", "d", "e"].map((s, i) => IMG("lemaire-twisted" + s, ["#d8cbb0", "#cfc1a4", "#e3d8c2", "#bfb197", "#d8cbb0"][i], ["front", "back", "detail", "model", "flat"][i]));
-const PARSED = {
-  name: "Twisted Shirt", brand: "Lemaire", category: "shirts", subcategory: "Shirts", gender: "men",
-  description: "Long sleeve cotton poplin shirt. Spread collar, twisted seams, button closure at front, patch pocket at chest. Supplier colour: Mastic.",
-  imageUrl: lemaireImgs[0], images: lemaireImgs, colors: ["Mastic"], sizes: ["44", "46", "48", "50", "52"],
-  material: "100% cotton", price: 410, priceOriginal: 0, currency: "USD", sourceUrl: PARSE_URL, variantUrls: [],
-  sku: "241SH1050LF581", styleKeywords: ["minimal", "smart casual"], strategies: ["json-ld", "opengraph"], issues: [], valid: true,
-};
-
-const CRAWL_URL = "https://www.mrporter.com/en-us/mens/designer/our-legacy";
-const CRAWL_ITEMS = [
-  ["Box Shirt", "imported", { usedAi: false, imagesMirrored: 6 }],
-  ["Borrowed Button-Down Collar Shirt", "imported", { imagesMirrored: 5, variantsLinked: 2 }],
-  ["Third Cut Straight-Leg Jeans", "updated", { imagesMirrored: 0 }],
-  ["Popover Wool-Blend Hoodie", "imported", { imagesMirrored: 4 }],
-  ["Evening Polo Knitted Shirt", "imported", { imagesMirrored: 5, usedAi: true }],
-  ["Box Shirt", "updated", { merged: true, mergedBy: "name", linkNote: "added as a store to an existing product" }],
-  ["Mini Ruck Recycled Nylon Backpack", "skipped", { reason: "Sold out in every size — nothing to show a shopper" }],
-  ["Big Box Shirt", "imported", { imagesMirrored: 6 }],
-  ["Extended Third Cut Jeans", "imported", { imagesMirrored: 3, variantsLinked: 1 }],
-  ["Camion Suede Shoes", "failed", { reason: "Upstream responded 403 — store refused the request (Akamai)" }],
-  ["Coach Jacket", "imported", { imagesMirrored: 5 }],
-  ["Uniform Cotton-Twill Overshirt", "updated", { imagesMirrored: 0 }],
-];
-const crawlUrl = (name, i) => `https://www.mrporter.com/en-us/mens/product/our-legacy/clothing/${slug(name)}/${1647000000000 + i * 7919}`;
-const CRAWL_URLS = CRAWL_ITEMS.map(([n], i) => crawlUrl(n, i));
 
 const COLLECT_STORE = "https://www.ssense.com/en-us/men/designers/lemaire";
 const COLLECT_ITEMS = [
@@ -578,19 +545,6 @@ module.exports = {
       existing: (body && body.urls ? body.urls : []).filter((u) => hash(u) % 3 === 0),
     }),
     "GET /api/admin/parser/config": PARSER_CONFIG,
-    "POST /api/admin/parser/parse": () => ({
-      ok: true, products: [PARSED], isListing: false, links: [],
-      diagnostics: { provider: "scrapingbee", status: 200, htmlLength: 418_204, finalUrl: PARSE_URL, matchedConfig: { id: "ssense", name: "SSENSE", domain: "ssense.com" }, strategies: ["json-ld", "opengraph"], aiFields: [] },
-    }),
-    "POST /api/admin/parser/crawl": ({ body }) => {
-      if (body && body.action === "discover") return { ok: true, urls: CRAWL_URLS, isSingleProduct: false };
-      const results = (body && body.urls ? body.urls : []).map((u) => {
-        const i = CRAWL_URLS.indexOf(u);
-        const [name, status, extra] = CRAWL_ITEMS[i] || ["", "failed", { reason: "Unknown page" }];
-        return { url: u, status, name: status === "failed" ? undefined : name, productId: status === "failed" || status === "skipped" ? undefined : uid(u), ...extra };
-      });
-      return { ok: true, results, imported: results.filter((r) => r.status === "imported").length, updated: results.filter((r) => r.status === "updated").length };
-    },
     "POST /api/admin/parser/collect": ({ body }) => {
       if (body && body.action === "plan") {
         return {
@@ -641,43 +595,19 @@ module.exports = {
       },
     },
     {
-      name: "parser-parse",
-      url: "/goo-studio/parser",
-      after: async (page) => {
-        await page.getByRole("button", { name: /^(Parse URL|Разбор ссылки|Ссылка)$/ }).click();
-        await page.getByPlaceholder("https://www.farfetch.com/shopping/men/...").fill(PARSE_URL);
-        await page.getByRole("button", { name: /^(Parse|Разобрать)$/ }).click();
-        await page.getByText(/^(Preview & edit|Просмотр и правка)$/).waitFor({ timeout: 20000 });
-        await page.waitForLoadState("networkidle");
-        await page.mouse.move(1, 1);
-      },
-    },
-    {
       name: "parser-recipes",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: /^(Site recipes|Recipes|Рецепты сайтов|Рецепты)$/ }).click();
+        await page.getByRole("tab", { name: /^(Site recipes|Рецепты сайтов)$/ }).click();
         await page.getByRole("button", { name: /^(Edit|Изменить)$/ }).nth(2).click();
         await page.mouse.move(1, 1);
       },
     },
     {
-      name: "parser-fetch",
+      name: "parser-ai",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: /^(Fetch & anti-bot|Anti-bot|Загрузка и антибот|Антибот)$/ }).click();
-        await page.mouse.move(1, 1);
-      },
-    },
-    {
-      name: "parser-crawl",
-      url: "/goo-studio/parser",
-      after: async (page) => {
-        await page.getByPlaceholder("https://www.balenciaga.com/en-us/men/ready-to-wear").fill(CRAWL_URL);
-        // On a phone the first tab is named "Collect" too; the run's button comes after it.
-        await page.getByRole("button", { name: /^(Collect|Собрать)$/ }).last().click();
-        await page.getByText(/^(Finished|Готово)$/).waitFor({ timeout: 30000 });
-        await page.waitForLoadState("networkidle");
+        await page.getByRole("tab", { name: /^(AI & images|ИИ и фото)$/ }).click();
         await page.mouse.move(1, 1);
       },
     },

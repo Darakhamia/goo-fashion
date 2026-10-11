@@ -3,51 +3,22 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
 import {
-  getFetchSettings,
-  saveFetchSettings,
-  getFetchApiKey,
-  saveFetchApiKey,
-  deleteFetchApiKey,
   getSiteConfigs,
   saveSiteConfigs,
   getAiSettings,
   saveAiSettings,
 } from "@/lib/server/parser/configs";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
-import { DEFAULT_FETCH_SETTINGS, DEFAULT_AI_SETTINGS } from "@/lib/server/parser/types";
-import type {
-  FetchProvider,
-  ParserAiSettings,
-  ParserFetchSettings,
-  ParserSiteConfig,
-} from "@/lib/server/parser/types";
-
-const PROVIDERS: FetchProvider[] = ["direct", "scrapingbee", "scraperapi", "zenrows", "custom"];
-const IMPERSONATE = ["chrome", "safari", "firefox", "edge"];
-
-// A fixed run of dots, as in api/admin/settings: one per hidden character
-// pushed an 80-character key past the screen on a phone.
-function maskKey(key: string): string {
-  if (!key) return "";
-  if (key.length <= 8) return "•".repeat(key.length);
-  return key.slice(0, 4) + "•".repeat(8) + key.slice(-4);
-}
+import { DEFAULT_AI_SETTINGS } from "@/lib/server/parser/types";
+import type { ParserAiSettings, ParserSiteConfig } from "@/lib/server/parser/types";
 
 async function buildState() {
-  const [fetchSettings, keyInfo, siteConfigs, aiSettings, openaiKey] = await Promise.all([
-    getFetchSettings(),
-    getFetchApiKey(),
+  const [siteConfigs, aiSettings, openaiKey] = await Promise.all([
     getSiteConfigs(),
     getAiSettings(),
     getOpenAIKey(),
   ]);
   return {
-    fetchSettings,
-    key: {
-      configured: !!keyInfo.key,
-      source: keyInfo.source,
-      masked: keyInfo.key ? maskKey(keyInfo.key) : "",
-    },
     siteConfigs,
     aiSettings,
     // The AI fallback rides on the site's existing OpenAI key — the screen needs
@@ -56,29 +27,11 @@ async function buildState() {
   };
 }
 
-// GET — current fetch settings, key status (masked), and site recipes.
+// GET — site recipes and the AI & images settings the extension's imports run on.
 export async function GET() {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.json(await buildState());
-}
-
-function sanitizeFetchSettings(input: unknown): ParserFetchSettings {
-  const o = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-  const provider = PROVIDERS.includes(o.provider as FetchProvider)
-    ? (o.provider as FetchProvider)
-    : DEFAULT_FETCH_SETTINGS.provider;
-  const impersonate = IMPERSONATE.includes(String(o.impersonate))
-    ? String(o.impersonate)
-    : DEFAULT_FETCH_SETTINGS.impersonate;
-  const timeoutMs = Math.min(60_000, Math.max(1_000, Number(o.timeoutMs) || DEFAULT_FETCH_SETTINGS.timeoutMs));
-  return {
-    provider,
-    endpoint: typeof o.endpoint === "string" ? o.endpoint.trim().slice(0, 2000) : "",
-    renderJs: !!o.renderJs,
-    impersonate,
-    timeoutMs,
-  };
 }
 
 function sanitizeAiSettings(input: unknown): ParserAiSettings {
@@ -123,7 +76,7 @@ function sanitizeSiteConfigs(input: unknown): ParserSiteConfig[] | null {
   return out;
 }
 
-// POST — partial update: any of { fetchSettings, fetchKey, siteConfigs }.
+// POST — partial update: any of { aiSettings, siteConfigs }.
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -134,17 +87,6 @@ export async function POST(req: Request) {
   }
 
   const errors: string[] = [];
-
-  if ("fetchSettings" in body) {
-    const { error } = await saveFetchSettings(sanitizeFetchSettings(body.fetchSettings));
-    if (error) errors.push(error);
-  }
-
-  if ("fetchKey" in body && typeof body.fetchKey === "string") {
-    const value = body.fetchKey.trim();
-    const { error } = value ? await saveFetchApiKey(value) : await deleteFetchApiKey();
-    if (error) errors.push(error);
-  }
 
   if ("aiSettings" in body) {
     const { error } = await saveAiSettings(sanitizeAiSettings(body.aiSettings));

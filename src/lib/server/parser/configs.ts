@@ -3,19 +3,13 @@
  *
  * Everything lives in the existing `settings` key/value table (no new
  * migration), mirroring how the OpenAI key and prompt overrides are stored:
- *   - parser_fetch_settings  → JSON ParserFetchSettings
- *   - parser_fetch_key       → API key for the scraping provider (secret)
  *   - parser_site_configs    → JSON ParserSiteConfig[]
- *
- * The provider API key also falls back to the PARSER_FETCH_API_KEY env var,
- * exactly like getOpenAIKey() does for OPENAI_API_KEY.
+ *   - parser_ai_settings     → JSON ParserAiSettings
  */
 import { supabase } from "@/lib/supabase";
-import { DEFAULT_FETCH_SETTINGS, DEFAULT_AI_SETTINGS } from "./types";
-import type { ParserFetchSettings, ParserSiteConfig, ParserAiSettings } from "./types";
+import { DEFAULT_AI_SETTINGS } from "./types";
+import type { ParserSiteConfig, ParserAiSettings } from "./types";
 
-export const SETTING_FETCH = "parser_fetch_settings";
-export const SETTING_FETCH_KEY = "parser_fetch_key";
 export const SETTING_CONFIGS = "parser_site_configs";
 export const SETTING_AI = "parser_ai_settings";
 
@@ -72,21 +66,6 @@ async function writeSetting(key: string, value: string): Promise<{ error: string
   return { error: error?.message ?? null };
 }
 
-export async function getFetchSettings(): Promise<ParserFetchSettings> {
-  const raw = await readSetting(SETTING_FETCH);
-  if (!raw) return { ...DEFAULT_FETCH_SETTINGS };
-  try {
-    const parsed = JSON.parse(raw) as Partial<ParserFetchSettings>;
-    return { ...DEFAULT_FETCH_SETTINGS, ...parsed };
-  } catch {
-    return { ...DEFAULT_FETCH_SETTINGS };
-  }
-}
-
-export async function saveFetchSettings(settings: ParserFetchSettings) {
-  return writeSetting(SETTING_FETCH, JSON.stringify(settings));
-}
-
 export async function getAiSettings(): Promise<ParserAiSettings> {
   const raw = await readSetting(SETTING_AI);
   if (!raw) return { ...DEFAULT_AI_SETTINGS };
@@ -100,25 +79,6 @@ export async function getAiSettings(): Promise<ParserAiSettings> {
 
 export async function saveAiSettings(settings: ParserAiSettings) {
   return writeSetting(SETTING_AI, JSON.stringify(settings));
-}
-
-/** Resolve the provider API key: env var first, then the settings table. */
-export async function getFetchApiKey(): Promise<{ key: string; source: "env" | "database" | null }> {
-  const env = process.env.PARSER_FETCH_API_KEY?.trim();
-  if (env) return { key: env, source: "env" };
-  const stored = (await readSetting(SETTING_FETCH_KEY))?.trim();
-  if (stored) return { key: stored, source: "database" };
-  return { key: "", source: null };
-}
-
-export async function saveFetchApiKey(value: string) {
-  return writeSetting(SETTING_FETCH_KEY, value.trim());
-}
-
-export async function deleteFetchApiKey(): Promise<{ error: string | null }> {
-  if (!supabase) return { error: "Database not configured" };
-  const { error } = await supabase.from("settings").delete().eq("key", SETTING_FETCH_KEY);
-  return { error: error?.message ?? null };
 }
 
 export async function getSiteConfigs(): Promise<ParserSiteConfig[]> {

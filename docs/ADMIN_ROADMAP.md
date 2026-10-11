@@ -811,11 +811,7 @@
 **GS5-7. Site recipes: мелочи · S.**
 - Переключатели рецептов сохраняются сразу, без «Save recipes» (`parser/page.tsx` около `:1388, 1463-1466`).
 - Шаблон «Example — single-brand store» убрать из умолчаний (`parser/configs.ts:51-58`) и отфильтровать при чтении.
-- Подписи двух переключателей «Copy photos»:
-  - в Fetch & Anti-bot — «по умолчанию»;
-  - в Collect — «для этого запуска».
-
-  По коду так и есть: переключатель в Collect перекрывает умолчание.
+- ~~Подписи двух переключателей «Copy photos»~~ — снято 2026-10-11: вкладки Collect catalog и Fetch & anti-bot удалены (парсер — только расширение, решение CEO), переключатель остался один, на вкладке AI & images.
 - **DoD:** переключатель рецепта переживает перезагрузку без отдельного сохранения.
 
 **GS5-8. История импорта · M–L, миграция.**
@@ -829,6 +825,7 @@
 - **DoD:** после CSV-импорта и сбора расширением в History по одной строке с верными числами.
 
 **GS5-9. Import и Parser — один раздел · L.**
+- **2026-10-11:** парсер сведён к расширению (решение CEO): вкладок URL и Fetch & Anti-bot больше нет, на странице Parser — кнопка в приёмник расширения, Site recipes и AI & images. План ниже — снимок до этого.
 - **Что делать:**
   - **вкладки:** CSV feed · URL · Site recipes · History;
   - **Fetch & Anti-bot** — в Settings, вместе с вызовами `/api/admin/parser/config`.
@@ -1065,3 +1062,4 @@
 | `[ ]` | GS6-12 | Blog: просмотры по статьям | | |
 | `[ ]` | GS6-13 | Subscriptions: баннеры (курс → Б3-2) | | |
 | `[ ]` | GS6-14 | Поиск ⌘K | | |
+| `[x]` | — | Парсер: только расширение (прямое указание CEO 2026-10-11, вне этапов) | 2026-10-11 | удалены вкладки Collect catalog, Parse URL (с Paste page и букмарклетом) и Fetch & anti-bot, роуты `parser/parse`, `parser/crawl`, `parser/import` и серверная загрузка страниц (`crawl`, `storefront`, `woocommerce`, `squarespace`, `store-json`, провайдеры и ключ в `fetch.ts`/`configs.ts`). Остались: блок «Collect with the extension», Site recipes, AI & images, приёмник `/parser/collect`. `tsc`, `eslint`, `i18n-check --strict` — 0 ошибок; снимки стенда `parser`, `parser-recipes`, `parser-ai`, `parser-collect-run` до и после (обе темы, 1440 и 390 px); `--overflow` на 390px — fits, axe — 0 |

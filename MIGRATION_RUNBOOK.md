@@ -493,7 +493,6 @@ docker exec <supabase-db> psql -U postgres -c "SELECT to_regclass('public.settin
    | `BILLING_USD_UAH_RATE` | курс для «≈ $» в админке, только отображение | 41 |
    | `MONOBANK_PRICE_BASIC` / `_PRO` / `_PREMIUM` | цены тарифов в гривнах. Читаются только сервером: спишется новая цена, а `/plans`, `/subscribe`, `/profile` и окно апгрейда покажут старую — без нужды не задавать | 399 / 999 / 1799 |
    | `MONOBANK_API_BASE` | адрес API monobank | `https://api.monobank.ua` |
-   | `PARSER_FETCH_API_KEY` | ключ anti-bot-провайдера парсера | ключ из настроек парсера в базе |
    | `STYLIST_LLM_MODEL`, `STYLIST_SEMANTIC_SEARCH`, `STYLIST_SEMANTIC_MIN_SIM` | модель стилиста, поиск по смыслу в чате, порог похожести | `openai/gpt-4.1` через Replicate, поиск выкл., 0.2 |
    | `SUPABASE_REQUEST_TIMEOUT_MS` | потолок одного запроса к Supabase | 60000 |
    | `NEXT_PUBLIC_SUPABASE_URL` | только доп. разрешённый хост в `/api/looks/image`; `SUPABASE_URL` хватает | — |

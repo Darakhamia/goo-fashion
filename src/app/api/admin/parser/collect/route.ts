@@ -1,10 +1,7 @@
 /**
  * Catalogue collection driven from the admin's own browser.
  *
- * The sibling of `crawl/route.ts`, for the stores that route cannot reach. The
- * difference is where the fetching happens: `crawl` asks the store from our
- * server and is refused by anyone with anti-bot in front of them, while this
- * route never touches the store at all. A Chrome extension opens each page in a
+ * This route never touches the store. A Chrome extension opens each page in a
  * real tab on the admin's machine — their address, their cookies, the challenge
  * their browser already passed — and hands back the rendered DOM.
  *
@@ -13,11 +10,9 @@
  *   plan   — page + sitemaps + robots.txt in, product addresses and a pace out
  *   ingest — one page's markup in, one product in the catalogue out
  *
- * `ingest` is the bookmarklet's route with the clicking automated. It passes
- * `html` to `parsePage`, which skips the fetch and the storefront probe
- * entirely, so nothing is asked of the store from here — and then runs the same
- * extractor, gallery harvester and import as every other path into the
- * catalogue. There is no second code path for extension-collected products.
+ * `ingest` passes the markup to `parsePage`, so nothing is asked of the store
+ * from here, and then runs the same import as the CSV feed
+ * (`importParsedProduct`).
  *
  * The extension cannot call this route itself: our session is a Clerk cookie
  * that will not travel cross-origin, and an API token shipped inside an
@@ -39,22 +34,18 @@ import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-co
 import { commonTitleSuffix } from "@/lib/server/product-fields";
 import { measurePendingBackdrops } from "@/lib/server/bg-color";
 import { checkPendingProducts } from "@/lib/server/catalogue-check/store";
-import {
-  getFetchSettings,
-  getFetchApiKey,
-  getSiteConfigs,
-  getAiSettings,
-} from "@/lib/server/parser/configs";
+import { getSiteConfigs, getAiSettings } from "@/lib/server/parser/configs";
 import type { CrawlItemResult } from "@/lib/server/parser/types";
 
 export const maxDuration = 60;
 
 /**
- * Largest page we accept, matching `parse/route.ts`.
+ * Largest page we accept.
  *
- * The content script strips what the bookmarklet strips before sending, so a
- * page arriving over this means the strip did not run — worth saying plainly
- * rather than letting the platform refuse the body with an opaque error.
+ * The content script strips scripts, styles, SVG and inline data before
+ * sending, so a page arriving over this means the strip did not run — worth
+ * saying plainly rather than letting the platform refuse the body with an
+ * opaque error.
  */
 const MAX_PAGE_HTML = 3_000_000;
 
@@ -203,8 +194,7 @@ export async function POST(req: Request) {
 
   const html = typeof body?.html === "string" ? body.html : "";
   if (!html.trim()) {
-    // Without markup this route would fall through to a server fetch — the very
-    // request the extension exists to avoid. Refuse instead of quietly doing it.
+    // The server never fetches the store; without the page there is nothing to read.
     return NextResponse.json({ error: "html is required for ingest" }, { status: 400 });
   }
   if (html.length > MAX_PAGE_HTML) {
@@ -291,9 +281,7 @@ export async function POST(req: Request) {
     .slice(0, MAX_TITLES);
   const titleSuffix = commonTitleSuffix(titles);
 
-  const [fetchSettings, keyInfo, siteConfigs, aiSettings, categoryTree] = await Promise.all([
-    getFetchSettings(),
-    getFetchApiKey(),
+  const [siteConfigs, aiSettings, categoryTree] = await Promise.all([
     getSiteConfigs(),
     getAiSettings(),
     loadCategoryTree(),
@@ -311,8 +299,6 @@ export async function POST(req: Request) {
 
   try {
     const parsed = await parsePage(url, {
-      fetchSettings,
-      fetchApiKey: keyInfo.key,
       siteConfigs,
       aiSettings,
       categoryTree: categoryTree.groups,
@@ -335,16 +321,14 @@ export async function POST(req: Request) {
       titleSuffix: titleSuffix || undefined,
     });
 
-    const usedAi = (parsed.diagnostics.aiFields?.length ?? 0) > 0;
-    const product = parsed.products[0];
+    const usedAi = (parsed.aiFields?.length ?? 0) > 0;
+    const product = parsed.product;
 
-    if (!parsed.ok) {
-      result = { url, status: "failed", reason: parsed.error ?? "Could not read the page", usedAi };
-    } else if (!product || !product.name) {
+    if (!product || !product.name) {
       result = {
         url,
         status: "skipped",
-        reason: parsed.diagnostics.aiError ?? "No product data on the page",
+        reason: parsed.aiError ?? "No product data on the page",
         usedAi,
       };
     } else if (dryRun) {
