@@ -29,5 +29,22 @@ assert old in s, "getProductById changed shape: update scripts/site-screens/setu
 open(p, "w").write(s.replace(old, new, 1))
 EOF
 
+# /browse renders the catalogue on the server (SEO-16), so the states that fake
+# /api/products in the browser (catalog-empty, catalog-error) would never see
+# their fake. shoot.js sends x-stand-client-fetch for those; in the copy, that
+# header makes the page hand the client no lists, so it fetches them as before.
+python3 - "$ADMIN_SCREENS_DIR/app/src/app/browse/page.tsx" <<'EOF'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+old = """  const query = await searchParams;"""
+new = """  const query = await searchParams;
+  if ((await (await import("next/headers")).headers()).get("x-stand-client-fetch")) {
+    return <BrowseClient initial={{ params: {} }} />;
+  }"""
+assert old in s, "browse/page.tsx changed shape: update scripts/site-screens/setup.sh"
+open(p, "w").write(s.replace(old, new, 1))
+EOF
+
 echo "Ready on http://localhost:$ADMIN_SCREENS_PORT. Shoot with:"
 echo "  NODE_PATH=$ADMIN_SCREENS_DIR/pw/node_modules node $ROOT/scripts/site-screens/shoot.js --only=browse --theme=both --vp=phone"

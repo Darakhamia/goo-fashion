@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
 import { withTimeout } from "@/lib/server/with-timeout";
+import { allLandings } from "@/lib/server/landing";
 import { SITE_URL } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -52,10 +53,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Bounded, not just error-handled: this runs during `next build`, and a
   // database that goes quiet rather than failing would otherwise hang the deploy
   // until the platform's own timeout kills it. See lib/server/with-timeout.
-  const [products, outfits, blogPosts] = await Promise.all([
+  const [products, outfits, blogPosts, landings] = await Promise.all([
     withTimeout(getAllProducts(), [], "sitemap products"),
     withTimeout(getAllOutfits(), [], "sitemap outfits"),
     withTimeout(getAllBlogPosts({ publishedOnly: true }), [], "sitemap posts"),
+    withTimeout(allLandings(), [], "sitemap landing pages"),
   ]);
 
   const productRoutes: MetadataRoute.Sitemap = products.map((p) => {
@@ -86,6 +88,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
+  // Brand and category pages that have enough products to be indexed (SEO-17);
+  // a page changes when one of its products does.
+  const landingRoutes: MetadataRoute.Sitemap = landings
+    .filter((l) => l.indexable)
+    .map((l) => ({
+      url: `${SITE_URL}${l.path}`,
+      lastModified: latest(l.products.map((p) => toDate(p.updatedAt ?? p.createdAt))),
+      changeFrequency: "weekly",
+      priority: l.kind === "subcategory" ? 0.6 : 0.7,
+    }));
+
   const newestProduct = latest(productRoutes.map((r) => r.lastModified as Date | undefined));
   const newestOutfit = latest(outfitRoutes.map((r) => r.lastModified as Date | undefined));
   const newestPost = latest(blogRoutes.map((r) => r.lastModified as Date | undefined));
@@ -95,6 +108,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/`, lastModified: latest([newestOutfit, newestProduct]), changeFrequency: "weekly", priority: 1.0 },
     { url: `${SITE_URL}/browse`, lastModified: latest([newestProduct, newestOutfit]), changeFrequency: "daily", priority: 0.9 },
     { url: `${SITE_URL}/blog`, lastModified: newestPost, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE_URL}/brands`, lastModified: newestProduct, changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE_URL}/plans`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/about`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/sitemap-page`, lastModified: latest([newestProduct, newestOutfit, newestPost]), changeFrequency: "weekly", priority: 0.3 },
@@ -106,5 +120,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  return [...staticRoutes, ...productRoutes, ...outfitRoutes, ...blogRoutes];
+  return [...staticRoutes, ...landingRoutes, ...productRoutes, ...outfitRoutes, ...blogRoutes];
 }
