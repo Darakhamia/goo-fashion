@@ -54,3 +54,8 @@ export function parentBrandSlug(brand: string): string | undefined {
 export function brandSubcategoryPath(brand: string, label: string): string {
   return `${brandPath(brand)}/${landingSlug(label)}`;
 }
+
+/** /outfits/streetwear — outfit ideas of one style. */
+export function outfitStylePath(style: string): string {
+  return `/outfits/${landingSlug(style)}`;
+}

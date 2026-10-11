@@ -7,6 +7,7 @@ import { loadCategoryTree } from "@/lib/server/category-tree";
 import { brandPath, brandSubcategoryPath, categoryPath, subcategoryPath } from "@/lib/landing-paths";
 import { pageMetadata } from "@/lib/seo";
 import { allLandings } from "@/lib/server/landing";
+import { allOutfitLandings } from "@/lib/server/outfit-landing";
 import type { ColorGroup } from "@/lib/types";
 
 interface Props {
@@ -39,6 +40,7 @@ const DESCRIPTION =
  * - No filter: /browse itself. The outfits tab alone: its own address.
  * - A filter, or a brand with a subcategory, that an indexed landing page
  *   covers: that page, which lists the same products in HTML of its own.
+ *   Likewise the outfits tab with one style: that style's outfit ideas.
  * - Anything else (a search, a colour, other combinations): kept out of the
  *   index, its links still followed — a crawler that finds every combination
  *   of filters would otherwise index thousands of near-copies.
@@ -51,6 +53,11 @@ async function canonicalFor(params: Record<string, string>): Promise<{ path: str
   }
 
   const only = (...keys: string[]) => facets.length === keys.length && keys.every((k) => facets.includes(k));
+  if (only("view", "style") && params.view === "outfits") {
+    const styles = await withTimeout(allOutfitLandings(), [], "browse canonical");
+    const target = styles.find((l) => l.indexable && l.style === params.style.toLowerCase());
+    if (target) return { path: target.path };
+  }
   const candidates: string[] = [];
   if (only("brand")) candidates.push(brandPath(params.brand));
   if (only("category")) candidates.push(categoryPath(params.category));
@@ -67,16 +74,18 @@ async function canonicalFor(params: Record<string, string>): Promise<{ path: str
     const target = landings.find((l) => l.indexable && candidates.includes(l.path));
     if (target) return { path: target.path };
   }
-  return { path: "/browse", noindex: true };
+  return { path: params.view === "outfits" ? "/browse?view=outfits" : "/browse", noindex: true };
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { path, noindex } = await canonicalFor(singleValues(await searchParams));
-  if (path === "/browse?view=outfits") {
+  const params = singleValues(await searchParams);
+  const { path, noindex } = await canonicalFor(params);
+  if (params.view === "outfits") {
     return pageMetadata({
       title: "Outfit Ideas",
       description: "Ready-made outfits put together from pieces across stores, by our stylists and the AI stylist. See the total price and shop each piece.",
       path,
+      noindex,
     });
   }
   return pageMetadata({ title: TITLE, description: DESCRIPTION, path, noindex });
