@@ -248,11 +248,16 @@ async function selectProducts(
   run: (columns: string) => PromiseLike<ReadResult>,
 ): Promise<ReadResult> {
   for (;;) {
-    const result = await run(productReadColumns.join(","));
+    // The list this attempt asked for, not the shared one: a read running
+    // alongside may have dropped the same column meanwhile, and looking for it
+    // there would find nothing and hand back the error (the build-time sitemap
+    // lost every product that way when migration 027 had not run yet).
+    const columns = productReadColumns;
+    const result = await run(columns.join(","));
     const { error } = result;
     if (!error || !UNKNOWN_READ_COLUMN_CODES.has(error.code ?? "")) return result;
 
-    const missing = productReadColumns.find(
+    const missing = columns.find(
       (c) => OPTIONAL_READ_COLUMNS.has(c) && new RegExp(`\\b${c}\\b`).test(error.message),
     );
     if (!missing) return result;
