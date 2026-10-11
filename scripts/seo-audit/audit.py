@@ -163,6 +163,14 @@ def norm(url):
     return (url or "").rstrip("/")
 
 
+def same_page(a, b):
+    """Один ли адрес: путь и query без хоста — стенд пишет в canonical боевой домен."""
+    if not a or not b:
+        return False
+    pa, pb = urlparse(a), urlparse(b)
+    return (pa.path.rstrip("/"), pa.query) == (pb.path.rstrip("/"), pb.query)
+
+
 def offer_prices(product):
     """(цена, валюта) из Offer или AggregateOffer в JSON-LD товара."""
     offers = product.get("offers") or {}
@@ -222,9 +230,9 @@ def main():
     report("не 200 в sitemap", [p for p in pages[: len(sitemap_urls)] if p["status"] != 200],
            lambda p: f'{p["status"]} {p["url"]}')
     report("noindex в sitemap", [p for p in pages[: len(sitemap_urls)] if "noindex" in (p["robots"] or "")])
-    report("canonical не на свой адрес", [p for p in indexable if norm(p["canonical"]) != norm(p["url"])],
+    report("canonical не на свой адрес", [p for p in indexable if not same_page(p["canonical"], p["url"])],
            lambda p: f'{p["url"]} → {p["canonical"]}')
-    report("og:url нет или не свой адрес", [p for p in indexable if norm(p["og_url"]) != norm(p["url"])],
+    report("og:url нет или не свой адрес", [p for p in indexable if not same_page(p["og_url"], p["url"])],
            lambda p: f'{p["url"]} → {p["og_url"]}')
 
     for field, label in (("title", "title"), ("description", "description")):
