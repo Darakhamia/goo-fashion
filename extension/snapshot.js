@@ -7,11 +7,10 @@
  * in other colours.
  *
  * ── The markup ───────────────────────────────────────────────────────────────
- * This is the bookmarklet in `src/lib/parser-bookmarklet.ts`, with the clicking
- * automated. The strip list is deliberately identical — scripts except JSON-LD,
- * styles, stylesheet links, SVG, noscript, iframes, templates, and inline
- * data-URIs — because the server runs the very same extractor over what comes
- * out of here as over a pasted page.
+ * The strip list: scripts except JSON-LD, styles, stylesheet links, SVG,
+ * noscript, iframes, templates, and inline data-URIs. JSON-LD stays because it
+ * is the densest source of truth on the page and the server's extractor reads
+ * it first.
  *
  * What the strip is for: a retail page is several megabytes, almost all of it
  * script and style the parser never reads, and the route on the other end takes
@@ -33,9 +32,6 @@
  * not answers — the server puts them through the same host-and-naming tests as
  * every other candidate, because a page's script data names the "you may also
  * like" carousel too.
- *
- * This is a deliberate divergence from the bookmarklet, and the only one: the
- * extension can read a page the bookmarklet's one-shot copy cannot.
  *
  * Before reading anything it scrolls the page. That is the whole reason a real
  * tab is worth its cost over a server fetch: a gallery that lazy-loads on
