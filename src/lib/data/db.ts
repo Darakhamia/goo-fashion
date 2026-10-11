@@ -100,6 +100,7 @@ export function dbToProduct(row: DbProduct): Product {
     cropData: row.crop_data ?? undefined,
     colorGroupIds: row.color_group_ids?.length ? row.color_group_ids : undefined,
     createdAt: row.created_at,
+    updatedAt: row.updated_at ?? undefined,
     bgColor: row.bg_color ?? undefined,
     sourcePrice: row.source_price ?? undefined,
     sourceCurrency: row.source_currency ?? undefined,
@@ -218,11 +219,11 @@ const PRODUCT_READ_COLUMNS = [
   "price_min", "price_max", "currency", "is_new", "is_saved", "style_keywords",
   "gender", "created_at", "variant_group_id", "color_hex", "is_group_primary",
   "crop_data", "color_group_ids", "bg_color", "source_price", "source_currency",
-  "fx_rate", "fx_date", "gtin", "mpn", "sku",
+  "fx_rate", "fx_date", "gtin", "mpn", "sku", "updated_at",
 ];
 
 /** Read columns a database a migration behind may lack; the rest are required. */
-const OPTIONAL_READ_COLUMNS = new Set<string>([...OPTIONAL_COLUMNS, "gender"]);
+const OPTIONAL_READ_COLUMNS = new Set<string>([...OPTIONAL_COLUMNS, "gender", "updated_at"]);
 
 /**
  * Codes for "no such column": Postgres' own (what a select naming one returns)
@@ -633,6 +634,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     source: (row.source === "community" ? "community" : null),
     isHomepageFeatured: row.is_homepage_featured ?? false,
     createdAt: row.created_at,
+    updatedAt: row.updated_at ?? undefined,
   };
 }
 
