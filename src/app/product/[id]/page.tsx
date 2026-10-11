@@ -10,7 +10,7 @@ import {
   SITE_URL,
   absoluteUrl,
   breadcrumbJsonLd,
-  formatMetaPrice,
+  displayedPriceLabel,
   productJsonLd,
   productMetaDescription,
 } from "@/lib/seo";
@@ -57,7 +57,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = product.name.toLowerCase().includes(product.brand.toLowerCase())
     ? product.name
     : `${product.name} — ${product.brand}`;
-  const description = productMetaDescription(product, formatMetaPrice(lowest.amount, lowest.currency));
+  // The price as the page shows it, so the snippet and the page agree.
+  const description = productMetaDescription(product, displayedPriceLabel(lowest.amount, lowest.currency));
 
   return {
     title,

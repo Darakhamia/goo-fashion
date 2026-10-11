@@ -7,7 +7,12 @@ import {
   useEffect,
   useState,
 } from "react";
-import { CURRENCIES, withCurrencySymbol, type CurrencyCode } from "@/lib/currency";
+import {
+  CURRENCIES,
+  DISPLAY_FALLBACK_RATES as FALLBACK_RATES,
+  withCurrencySymbol,
+  type CurrencyCode,
+} from "@/lib/currency";
 
 // ── Supported currencies ───────────────────────────────────────────────────
 // The table lives in lib/currency, where the server's meta prices read it too;
@@ -47,11 +52,6 @@ const CURRENCY_KEY    = "goo-currency";
 const CACHE_TTL       = 3_600_000; // 1 h
 
 interface RateCache { rates: Record<string, number>; ts: number }
-
-// Approximate fallback rates (USD base)
-const FALLBACK_RATES: Record<string, number> = {
-  EUR: 0.85, GBP: 0.74, UAH: 44, CZK: 21, JPY: 157, TRY: 45,
-};
 
 // ── Context ────────────────────────────────────────────────────────────────
 interface CurrencyContextValue {

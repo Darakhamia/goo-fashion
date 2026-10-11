@@ -26,6 +26,19 @@ export const CURRENCIES: CurrencyInfo[] = [
   { code: "TRY", symbol: "₺",  position: "suffix", name: "Lira" },
 ];
 
+/**
+ * Approximate rates, USD base (units per 1 USD), that the storefront prices with
+ * until the browser has fetched live ones — and for good where it cannot: the
+ * server render and a crawler, for which /api/ is closed in robots.txt. So the
+ * dollar figure in the page's first HTML is always amount ÷ these, which is
+ * also what product JSON-LD states (lib/seo) to match it.
+ *
+ * Server-side imports convert with their own, larger table (lib/server/fx).
+ */
+export const DISPLAY_FALLBACK_RATES: Record<string, number> = {
+  EUR: 0.85, GBP: 0.74, UAH: 44, CZK: 21, JPY: 157, TRY: 45,
+};
+
 /** The table's entry for an exact ISO code, or undefined for one it does not list. */
 export function currencyInfo(code: string): CurrencyInfo | undefined {
   return CURRENCIES.find((c) => c.code === code);

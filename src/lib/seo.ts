@@ -5,7 +5,7 @@
  */
 import type { Metadata } from "next";
 import type { Outfit, Product } from "@/lib/types";
-import { CURRENCIES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
+import { CURRENCIES, DISPLAY_FALLBACK_RATES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
 
 /** Canonical site origin — always the non-www apex domain. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
@@ -283,11 +283,27 @@ function availabilityUrl(a?: string): string {
 }
 
 /**
- * JSON-LD prices must match what's shown on the page — Google flags rich
- * results when they diverge, so keep cents instead of rounding.
+ * A price as the page's first HTML prints it, which is what Google compares
+ * product markup against: in dollars, converted with the storefront's fallback
+ * rates and rounded to whole units, exactly as `applyFormat` displays it
+ * (lib/context/currency-context). The store's own euro figure here sat next to
+ * a "$250" on the page for every product priced in euros.
+ *
+ * A currency the storefront has no rate for keeps its own amount and code: the
+ * page cannot show it in dollars either, and the markup should not invent one.
  */
-function jsonLdPrice(amount: number): number {
-  return Number(amount.toFixed(2));
+function displayedPrice(amount: number, currency?: string): { price: number; priceCurrency: string } {
+  const code = normalizeCurrencyCode(currency);
+  if (code === "USD") return { price: Math.round(amount), priceCurrency: "USD" };
+  const rate = DISPLAY_FALLBACK_RATES[code];
+  if (!rate || rate <= 0) return { price: Number(amount.toFixed(2)), priceCurrency: code };
+  return { price: Math.round(amount / rate), priceCurrency: "USD" };
+}
+
+/** `displayedPrice` as text, the way the page prints it: "$250". */
+export function displayedPriceLabel(amount: number, currency?: string): string {
+  const { price, priceCurrency } = displayedPrice(amount, currency);
+  return formatMetaPrice(price, priceCurrency);
 }
 
 /** Build an Offer / AggregateOffer block from a product's retailers. */
@@ -297,40 +313,32 @@ function buildOffers(product: Product, productUrl: string): Record<string, unkno
   if (retailers.length === 0) {
     return {
       "@type": "Offer",
-      price: jsonLdPrice(product.priceMin),
-      priceCurrency: normalizeCurrencyCode(product.currency),
+      ...displayedPrice(product.priceMin, product.currency),
       availability: "https://schema.org/InStock",
       url: productUrl,
     };
   }
 
-  if (retailers.length === 1) {
-    const r = retailers[0];
-    return {
-      "@type": "Offer",
-      price: jsonLdPrice(r.price),
-      priceCurrency: normalizeCurrencyCode(r.currency),
-      availability: availabilityUrl(r.availability),
-      url: r.url || productUrl,
-      seller: { "@type": "Organization", name: r.name },
-    };
-  }
+  const offers = retailers.map((r) => ({
+    "@type": "Offer",
+    ...displayedPrice(r.price, r.currency ?? product.currency),
+    availability: availabilityUrl(r.availability),
+    url: r.url || productUrl,
+    seller: { "@type": "Organization", name: r.name },
+  }));
 
-  const prices = retailers.map((r) => r.price);
+  if (offers.length === 1) return offers[0];
+
+  // The range is stated in one currency, so it spans the offers that are in it.
+  const currency = offers[0].priceCurrency;
+  const prices = offers.filter((o) => o.priceCurrency === currency).map((o) => o.price);
   return {
     "@type": "AggregateOffer",
-    lowPrice: jsonLdPrice(Math.min(...prices)),
-    highPrice: jsonLdPrice(Math.max(...prices)),
-    offerCount: retailers.length,
-    priceCurrency: normalizeCurrencyCode(retailers[0].currency ?? product.currency),
-    offers: retailers.map((r) => ({
-      "@type": "Offer",
-      price: jsonLdPrice(r.price),
-      priceCurrency: normalizeCurrencyCode(r.currency),
-      availability: availabilityUrl(r.availability),
-      url: r.url || productUrl,
-      seller: { "@type": "Organization", name: r.name },
-    })),
+    lowPrice: Math.min(...prices),
+    highPrice: Math.max(...prices),
+    offerCount: offers.length,
+    priceCurrency: currency,
+    offers,
   };
 }
 
