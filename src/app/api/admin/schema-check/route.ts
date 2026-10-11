@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/server/admin-auth";
+import { isSuperAdminId, requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { checkSchema } from "@/lib/server/schema-check";
 
@@ -17,5 +17,6 @@ export async function GET() {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  return NextResponse.json(await checkSchema());
+  // canApply: the super admin may re-run the deploy's migration step from Settings.
+  return NextResponse.json({ ...(await checkSchema()), canApply: isSuperAdminId(admin.userId) });
 }

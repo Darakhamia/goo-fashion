@@ -1,3 +1,5 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
 import { supabase } from "@/lib/supabase";
 import { isMissingTable } from "@/lib/server/db-errors";
 import { OPTIONAL_COLUMNS } from "@/lib/data/db";
@@ -228,28 +230,101 @@ async function present(table: string, column: string): Promise<{ present: boolea
   return { present: false, error: error.message };
 }
 
+/** How the last deploy's migration run went, as scripts/migrate.mjs records it. */
+export type MigrationRun = {
+  at: string;
+  applied: string[];
+  failed: string | null;
+  error: string | null;
+};
+
+/**
+ * Migrations applied by the deploy (scripts/migrate.mjs, migration 026).
+ *
+ * `automatic` is false until 026 has been run by hand once; until then nothing
+ * applies itself and 026 is the migration to run. After it, `pending` is every
+ * file in supabase/migrations the database has not recorded — normally empty,
+ * because the deploy applies them before the site starts; a file still listed
+ * after a deploy failed, and `lastRun.error` says why.
+ */
+export type DeployMigrations = {
+  automatic: boolean;
+  pending: string[];
+  lastRun: MigrationRun | null;
+  /** The database could not be asked (not "026 missing"). */
+  error?: string;
+};
+
 export type SchemaReport = {
   ok: boolean;
   checks: (Check & { present: boolean; error?: string })[];
   /** The migrations to run, de-duplicated and in file order. */
   missingMigrations: string[];
+  deploy: DeployMigrations;
 };
+
+const RUNNER_MIGRATION = "026_migration_runner.sql";
+const MIGRATION_FILE = /^[0-9]{3}_[a-z0-9_]+\.sql$/;
+
+/** The numbered files this build carries, in the order the deploy applies them. */
+function repoMigrations(): string[] {
+  try {
+    return readdirSync(path.join(process.cwd(), "supabase", "migrations"))
+      .filter((f) => MIGRATION_FILE.test(f))
+      .sort();
+  } catch {
+    return [];
+  }
+}
+
+async function readDeployMigrations(): Promise<DeployMigrations> {
+  const { data, error } = await supabase!.from("schema_migrations").select("name").limit(10_000);
+  if (error) {
+    return isMissingTable(error)
+      ? { automatic: false, pending: [], lastRun: null }
+      : { automatic: false, pending: [], lastRun: null, error: error.message };
+  }
+  const applied = new Set(((data ?? []) as { name: string }[]).map((r) => r.name));
+  const pending = repoMigrations().filter((f) => !applied.has(f));
+
+  let lastRun: MigrationRun | null = null;
+  const { data: row } = await supabase!.from("settings").select("value").eq("key", "migrations_last_run").maybeSingle();
+  try {
+    const parsed = JSON.parse((row as { value?: string } | null)?.value ?? "null");
+    if (parsed && typeof parsed.at === "string") {
+      lastRun = {
+        at: parsed.at,
+        applied: Array.isArray(parsed.applied) ? parsed.applied.map(String) : [],
+        failed: typeof parsed.failed === "string" ? parsed.failed : null,
+        error: typeof parsed.error === "string" ? parsed.error : null,
+      };
+    }
+  } catch {
+    /* an unreadable record is no record */
+  }
+  return { automatic: true, pending, lastRun };
+}
 
 /** Asks the database about every optional column (about thirty one-row reads). */
 export async function checkSchema(): Promise<SchemaReport> {
-  const results = await Promise.all(
-    CHECKS.map(async (check) => ({ ...check, ...(await present(check.table, check.column)) })),
-  );
+  const [results, deploy] = await Promise.all([
+    Promise.all(CHECKS.map(async (check) => ({ ...check, ...(await present(check.table, check.column)) }))),
+    readDeployMigrations(),
+  ]);
 
   const missing = results.filter((r) => !r.present && !r.error);
   const failed = results.filter((r) => !!r.error);
+  // Files the deploy has not applied are as much "to run" as a missing column:
+  // 026 until it has been run by hand, then whatever a deploy failed on.
+  const notDeployed = deploy.error ? [] : deploy.automatic ? deploy.pending : [RUNNER_MIGRATION];
 
   return {
-    ok: missing.length === 0 && failed.length === 0,
+    ok: missing.length === 0 && failed.length === 0 && notDeployed.length === 0 && !deploy.error,
     checks: results,
     // The migrations to run, de-duplicated and in file order — the actual
     // next action, rather than a list of columns to work back from.
-    missingMigrations: [...new Set(missing.map((m) => m.migration))].sort(byRunOrder),
+    missingMigrations: [...new Set([...missing.map((m) => m.migration), ...notDeployed])].sort(byRunOrder),
+    deploy,
   };
 }
 

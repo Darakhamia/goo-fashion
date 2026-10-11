@@ -433,6 +433,14 @@ docker exec <supabase-db> psql -U postgres -c \
 docker exec <supabase-db> psql -U postgres -c "SELECT to_regclass('public.settings');"
 ```
 
+**С миграции `026` (октябрь 2026) этот шаг больше не ручной.** Деплой сам применяет новые
+файлы `supabase/migrations` до запуска сайта (`scripts/migrate.mjs`, README → «Деплой»),
+через тот же HTTPS к PostgREST, что и сайт, поэтому сайту и Supabase на разных серверах
+не нужен открытый между ними порт 5432 и `DATABASE_URL`. При переезде таблица
+`schema_migrations` переезжает вместе с базой, и деплой на новом сервере применит
+только то, чего в ней нет. Если база поднимается заново, а не копией, — сначала
+схема и корневые файлы, затем один раз `026_migration_runner.sql` руками.
+
 То же без psql: `/goo-studio/settings` → блок «Database schema» показывает, каких
 таблиц и колонок из миграций в базе нет, и называет файл миграции. Таблицы
 биллинга (`subscriptions`, `billing_events`) он не проверяет — их отсутствие видно

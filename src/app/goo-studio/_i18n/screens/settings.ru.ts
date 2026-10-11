@@ -34,6 +34,19 @@ export const settingsRu: Partial<Record<Key, Message>> = {
   "settings.schema.showPresent": "Показать колонки на месте: {count}",
   "settings.schema.runInOrder": "Примените по порядку (нумерованные файлы лежат в {dir}, {file} — в корне репозитория): {list}",
   "settings.schema.recheck": "Проверить снова",
+  "settings.schema.notApplied": { one: "{count} миграция не применена", few: "{count} миграции не применены", many: "{count} миграций не применено", other: "{count} миграции не применены" },
+  "settings.schema.deploy.manual":
+    "Миграции пока применяются вручную. Один раз выполните {file} в SQL-редакторе Supabase — после этого каждый деплой сам применяет новые файлы миграций до запуска сайта.",
+  "settings.schema.deploy.auto": "Новые файлы миграций применяются автоматически при каждом деплое.",
+  "settings.schema.deploy.pending":
+    "Ещё не применены: {list}. Следующий деплой их применит; если файл остался здесь после деплоя, причина — в строке ниже или в логе деплоя.",
+  "settings.schema.deploy.lastOk": "Последний деплой, {date}: применять было нечего.",
+  "settings.schema.deploy.lastApplied": "Последний деплой, {date}: применены {list}.",
+  "settings.schema.deploy.lastFailed": "Последний деплой, {date}: {file} не применилась и откатилась — {error}",
+  "settings.schema.deploy.applyNow": "Применить сейчас",
+  "settings.schema.deploy.applying": "Применяю…",
+  "settings.schema.deploy.applyHint": "Повторяет шаг миграций из деплоя — для файлов, которые уже есть в этой сборке.",
+  "settings.schema.deploy.unreadable": "Не удалось прочитать, какие миграции применил деплой: {error}",
 
   "settings.showcase.title": "Витрина главной",
   "settings.showcase.description": "Товары в четырёх карточках «How it works». В пустых слотах — картинки по умолчанию.",

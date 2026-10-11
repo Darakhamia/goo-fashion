@@ -48,3 +48,84 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Every migration, applied the way a deploy applies it: scripts/migrate.mjs →
+  # PostgREST → goo_apply_migration (migration 026). Since migrations run by
+  # themselves on deploy, a file that fails must fail here, before the merge.
+  migrations:
+    name: migrations apply cleanly
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        # Supabase's Postgres is 15 with pgvector (migration 005).
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      POSTGREST_VERSION: v12.2.3
+      # Throwaway: signs the service-role token for this job's PostgREST only.
+      JWT_SECRET: ci-only-jwt-secret-ci-only-jwt-secret-0000
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+
+      - name: Supabase roles and the schema the numbered files build on
+        run: |
+          psql -v ON_ERROR_STOP=1 -q <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+          create role authenticator login noinherit password 'authenticator';
+          grant anon, authenticated, service_role to authenticator;
+          grant usage on schema public to anon, authenticated, service_role;
+          alter default privileges in schema public grant all on tables to service_role;
+          alter default privileges in schema public grant all on sequences to service_role;
+          alter default privileges in schema public grant all on functions to service_role;
+          SQL
+          for f in supabase-schema.sql supabase-migration-subscriptions.sql \
+                   supabase-migration-billing-events.sql supabase-migration-user-data.sql \
+                   supabase-migration-brand-logos.sql scripts/ci/tables-without-migration.sql; do
+            echo "== $f"; psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+          # On a live database 026 records 001–024 as applied. Here the whole
+          # chain should go through the deploy path, so it is told to skip that.
+          PGOPTIONS='-c goo.migration_baseline=skip' psql -v ON_ERROR_STOP=1 -q -f supabase/migrations/026_migration_runner.sql
+
+      - name: Start PostgREST
+        run: |
+          curl -sSfL -o /tmp/postgrest.tar.xz \
+            "https://github.com/PostgREST/postgrest/releases/download/${POSTGREST_VERSION}/postgrest-${POSTGREST_VERSION}-linux-static-x64.tar.xz"
+          tar -xf /tmp/postgrest.tar.xz -C /tmp
+          PGRST_DB_URI="postgres://authenticator:authenticator@localhost:5432/postgres" \
+          PGRST_DB_SCHEMAS=public PGRST_DB_ANON_ROLE=anon PGRST_JWT_SECRET="$JWT_SECRET" \
+          PGRST_SERVER_PORT=3001 nohup /tmp/postgrest > /tmp/postgrest.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3001/ > /dev/null && break; sleep 1; done
+          curl -sf http://localhost:3001/ > /dev/null
+
+      - name: Apply every migration the way a deploy does
+        run: |
+          export SUPABASE_REST_URL=http://localhost:3001
+          export SUPABASE_SERVICE_ROLE_KEY="$(node scripts/ci/service-role-jwt.mjs)"
+          node scripts/migrate.mjs --strict
+          # The next deploy finds nothing left to do.
+          node scripts/migrate.mjs --strict | tee /tmp/second-run.log
+          grep -q "up to date" /tmp/second-run.log
+
+      - name: PostgREST log
+        if: failure()
+        run: cat /tmp/postgrest.log || true
