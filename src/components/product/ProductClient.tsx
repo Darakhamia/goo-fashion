@@ -24,6 +24,7 @@ import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { groupForProduct, resolveSubcategory } from "@/lib/categories";
 import { photoBackdrop } from "@/lib/image";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
+import { RETAILER_LINK_REL } from "@/lib/stores";
 
 interface Props {
   product: Product;
@@ -522,7 +523,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                         key={retailer.name}
                         href={retailer.url}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel={RETAILER_LINK_REL}
                         className={`min-h-[70px] flex items-center gap-3 px-3.5 py-3 ${i > 0 ? "shadow-[inset_0_1px_0_var(--border)]" : ""}`}
                       >
                         <RetailerLogo
@@ -565,7 +566,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       key={retailer.name}
                       href={retailer.url}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel={RETAILER_LINK_REL}
                       className="group flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-colors duration-200"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">

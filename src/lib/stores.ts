@@ -27,6 +27,16 @@ export const SUPPORTED_STORES: SupportedStore[] = [
   { name: "ASOS", domain: "asos.com" },
 ];
 
+/**
+ * `rel` for every link that sends a shopper to a store. Many of them are
+ * affiliate links (Awin and others), and Google's link-spam policy wants paid
+ * and affiliate links marked `sponsored`; `nofollow` covers the plain store
+ * links the same way, so one value fits them all. `noreferrer` keeps the
+ * shopper's path private — drop it only if partners ask for the referrer
+ * (docs/SEO_PLAN.md, Р-7).
+ */
+export const RETAILER_LINK_REL = "sponsored nofollow noopener noreferrer";
+
 /** Store homepage link — the "Where to buy" redirect target. */
 export function storeHomepageUrl(domain: string): string {
   return `https://www.${domain}`;
