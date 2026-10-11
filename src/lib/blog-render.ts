@@ -84,27 +84,29 @@ export function estimateReadTime(body: string | null | undefined): string {
   return `${minutes} min`;
 }
 
-/** A brand the catalogue has a page for, as `linkBrandMentions` links it. */
-export interface BrandLink {
+/** A catalogue page — a brand, a category, a brand's kind of thing — as `linkCatalogMentions` links it. */
+export interface CatalogLink {
   name: string;
   path: string;
 }
 
-/** At most this many brand links in one post: a link on every name reads as spam. */
-const MAX_BRAND_LINKS = 8;
+/** At most this many catalogue links in one post: a link on every name reads as spam. */
+const MAX_CATALOG_LINKS = 8;
 
 /**
- * The first mention of each catalogue brand in a rendered post, linked to the
- * brand's page (docs/SEO_PLAN.md, SEO-23): the journal wrote about Prada and
- * Timberland and linked to nothing the reader could buy.
+ * The first mention of each catalogue page's name in a rendered post — a brand,
+ * a category, a brand's kind of thing — linked to that page (docs/SEO_PLAN.md,
+ * SEO-23): the journal wrote about Prada, sneakers and Timberland boots and
+ * linked to nothing the reader could buy.
  *
  * Works on the sanitized HTML from `renderBlogBody`, text between tags only —
  * never inside an existing link or a heading. Longer names go first, so
- * "adidas Originals" is linked as itself rather than as "adidas". Names of
- * five letters or more match in any case; shorter ones ("COS", "Nike") only as
- * written, so an ordinary word is not mistaken for a brand.
+ * "Timberland Boots" links to that page rather than to the brand, and
+ * "adidas Originals" is not taken for "adidas". Names of five letters or more
+ * match in any case; shorter ones ("COS", "Nike", "Hats") only as written, so
+ * an ordinary word is not mistaken for a name.
  */
-export function linkBrandMentions(html: string, brands: BrandLink[]): string {
+export function linkCatalogMentions(html: string, brands: CatalogLink[]): string {
   const pending = [...brands]
     .filter((b) => b.name.trim().length >= 3)
     .sort((a, b) => b.name.length - a.name.length);
@@ -125,7 +127,7 @@ export function linkBrandMentions(html: string, brands: BrandLink[]): string {
       // The text as pieces; a piece that became a link is never searched again.
       let pieces: { html: string; link: boolean }[] = [{ html: part, link: false }];
       for (const brand of pending) {
-        if (linked.size >= MAX_BRAND_LINKS) break;
+        if (linked.size >= MAX_CATALOG_LINKS) break;
         if (linked.has(brand.path)) continue;
         const name = escapeHtml(brand.name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const re = new RegExp(`(?<![\\p{L}\\p{N}])${name}(?![\\p{L}\\p{N}])`, brand.name.length >= 5 ? "iu" : "u");

@@ -9,6 +9,7 @@ import {
   SITE_NAME,
   SITE_URL,
   absoluteUrl,
+  fittedTitle,
   breadcrumbJsonLd,
   displayedPriceLabel,
   productJsonLd,
@@ -66,7 +67,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = productMetaDescription(product, displayedPriceLabel(lowest.amount, lowest.currency));
 
   return {
-    title,
+    title: fittedTitle(title),
     description,
     // A colour variant points at its group's main product (lib/seo).
     alternates: { canonical },

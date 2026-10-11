@@ -19,6 +19,7 @@ import {
   SITE_NAME,
   SITE_URL,
   absoluteUrl,
+  fittedTitle,
   breadcrumbJsonLd,
   buildOutfitSeo,
   outfitDisplayName,
@@ -50,7 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { title, description } = buildOutfitSeo(outfit);
 
   return {
-    title,
+    title: fittedTitle(title),
     description,
     alternates: { canonical: `${SITE_URL}/outfit/${id}` },
     openGraph: {

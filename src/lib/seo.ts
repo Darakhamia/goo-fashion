@@ -24,6 +24,20 @@ export function absoluteUrl(path = "/"): string {
 
 // ── Page metadata ───────────────────────────────────────────────────────────
 
+/** What the root layout's title template appends. */
+const TITLE_SUFFIX = ` | ${SITE_NAME}`;
+/** About what a results page shows of a title before cutting it. */
+const TITLE_MAX = 60;
+
+/**
+ * A data-driven title (a product's or an outfit's name) as page metadata: with
+ * the brand suffix when that still fits in a search result, on its own when
+ * the suffix would only push the end of the name out of sight.
+ */
+export function fittedTitle(title: string): Metadata["title"] {
+  return title.length + TITLE_SUFFIX.length <= TITLE_MAX ? title : { absolute: title };
+}
+
 type OgImages = NonNullable<Metadata["openGraph"]>["images"];
 
 /** The branded card drawn by app/opengraph-image.tsx. */
@@ -145,9 +159,9 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
       : `${outfit.occasion} outfit`;
 
   const piecesLabel = pieces ? `${pieces} piece${pieces === 1 ? "" : "s"}` : "";
-  const title = [heading, piecesLabel && `${piecesLabel} from ${price}`]
-    .filter(Boolean)
-    .join(" — ");
+  // The piece count goes first when the whole title would be cut off in results.
+  const full = [heading, piecesLabel && `${piecesLabel} from ${price}`].filter(Boolean).join(" — ");
+  const title = full.length + TITLE_SUFFIX.length <= TITLE_MAX ? full : `${heading} from ${price}`;
 
   const byBrands = brands.length ? ` featuring ${brands.slice(0, 3).join(", ")}` : "";
   const season = outfit.season && outfit.season !== "all" ? `${outfit.season} ` : "";
