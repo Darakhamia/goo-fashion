@@ -91,7 +91,7 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Structured data: Organization + WebSite (with sitelinks SearchAction) */}
+      {/* Structured data: Organization + WebSite (the site name in results) */}
       <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
 
       {/* On wide screens, one wheel notch / swipe / arrow key moves to the next

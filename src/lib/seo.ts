@@ -217,6 +217,12 @@ export function clipText(text: string, max = 155): string {
   return `${atWord || cut}…`;
 }
 
+/** The product's colour as a plain word, or undefined: retailers also write "25 Years/Black/Silver". */
+function plainColor(product: Product): string | undefined {
+  const first = product.colors?.[0] ?? "";
+  return /^[a-z][a-z -]{2,19}$/i.test(first) ? first : undefined;
+}
+
 /** Shortest description worth showing as a snippet; anything less is filler. */
 const MIN_OWN_DESCRIPTION = 60;
 
@@ -230,8 +236,7 @@ export function productMetaDescription(product: Product, lowestPrice: string): s
   if (own.replace(/\s+/g, " ").length >= MIN_OWN_DESCRIPTION && !isBoilerplateDescription(own)) {
     return clipText(own);
   }
-  // Only a plain colour word: retailers also write "25 Years/Black/Silver".
-  const color = /^[a-z][a-z -]{2,19}$/i.test(product.colors?.[0] ?? "") ? product.colors[0] : undefined;
+  const color = plainColor(product);
   const byBrand = product.name.toLowerCase().includes(product.brand.toLowerCase()) ? "" : ` by ${product.brand}`;
   const inColor = color && !product.name.toLowerCase().includes(color.toLowerCase()) ? ` in ${color.toLowerCase()}` : "";
   const stores = product.retailers?.length ?? 0;
@@ -361,6 +366,20 @@ function buildOffers(product: Product, productUrl: string): Record<string, unkno
   };
 }
 
+/**
+ * The item's condition when a reseller's note says it isn't simply new. Left
+ * out otherwise: most of the catalogue is new stock, and the markup should not
+ * assert what the record doesn't say.
+ */
+function itemCondition(product: Product): string | undefined {
+  const text = `${product.name} ${product.description ?? ""}`.toLowerCase();
+  if (/\b(pre-owned|preowned|second-hand|used condition|gently used|worn once)\b/.test(text)) {
+    return "https://schema.org/UsedCondition";
+  }
+  if (/\b(imperfections?|defects?|damaged)\b/.test(text)) return "https://schema.org/DamagedCondition";
+  return undefined;
+}
+
 export function productJsonLd(product: Product): Record<string, unknown> {
   const url = absoluteUrl(`/product/${product.id}`);
   const images = product.images?.length
@@ -368,6 +387,13 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     : product.imageUrl
       ? [product.imageUrl]
       : undefined;
+  const color = plainColor(product);
+  const condition = itemCondition(product);
+  const offers = buildOffers(product, url);
+  if (condition) {
+    const list = (offers.offers as Record<string, unknown>[] | undefined) ?? [offers];
+    for (const offer of list) offer.itemCondition = condition;
+  }
 
   return {
     "@context": "https://schema.org",
@@ -378,7 +404,13 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     ...(product.description ? { description: product.description } : {}),
     ...(product.category ? { category: product.category } : {}),
     ...(product.material ? { material: product.material } : {}),
-    offers: buildOffers(product, url),
+    ...(color ? { color } : {}),
+    // Codes that identify the item anywhere — how search engines match this
+    // page to the same product elsewhere. gtin is verified before it is stored.
+    ...(product.gtin ? { gtin: product.gtin } : {}),
+    ...(product.mpn ? { mpn: product.mpn } : {}),
+    ...(product.sku ? { sku: product.sku } : {}),
+    offers,
     url,
   };
 }
@@ -416,29 +448,29 @@ export function organizationJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "GOO",
+    name: SITE_NAME,
+    alternateName: "GOO",
     url: SITE_URL,
     // app/icon.png: the real 512×512 brand mark (the site icon), not a
     // system-font render. Google wants a real image of at least 112×112.
     logo: absoluteUrl("/icon.png"),
     description: "AI-powered fashion stylist and aggregator — curated outfits and premium fashion from leading retailers.",
+    // sameAs: the brand's profiles go here once there are any (SEO-26).
   };
 }
 
+/**
+ * The site's name for Google's "site name" in results — "GOO" alone is a word
+ * other sites own (docs/SEO_PLAN.md, Р-2). No SearchAction: Google retired the
+ * sitelinks search box it fed in November 2024.
+ */
 export function websiteJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "GOO",
+    name: SITE_NAME,
+    alternateName: ["GOO", "goo-fashion.com"],
     url: SITE_URL,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${SITE_URL}/browse?search={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
   };
 }
 
