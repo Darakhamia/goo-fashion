@@ -48,7 +48,9 @@ const nextConfig: NextConfig = {
     //
     // Keep in sync with OWN_IMAGE_HOSTNAME in src/lib/image.ts.
     remotePatterns: [
-      // Supabase Storage: product mirrors, generated outfits, brand logos.
+      // Supabase Storage: product mirrors, generated outfits, brand logos —
+      // self-hosted since the move, hosted Supabase before it.
+      { protocol: "https", hostname: "supabase.goo-fashion.com" },
       { protocol: "https", hostname: "*.supabase.co" },
       // Replicate output, before generate-outfit persists it to Storage.
       { protocol: "https", hostname: "replicate.delivery" },
