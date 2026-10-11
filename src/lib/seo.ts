@@ -3,15 +3,75 @@
  * structured-data (JSON-LD) builders. No "use client" — safe to import
  * from server components, generateMetadata, sitemap, etc.
  */
+import type { Metadata } from "next";
 import type { Outfit, Product } from "@/lib/types";
 import { CURRENCIES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
 
 /** Canonical site origin — always the non-www apex domain. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
 
+/**
+ * The brand as search results and link cards show it. "GOO" alone is a common
+ * word that other sites own in search; "GOO Fashion" matches the domain and the
+ * legal pages (docs/SEO_PLAN.md, Р-2).
+ */
+export const SITE_NAME = "GOO Fashion";
+
 /** Build an absolute, canonical (non-www) URL for a given path. */
 export function absoluteUrl(path = "/"): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+// ── Page metadata ───────────────────────────────────────────────────────────
+
+type OgImages = NonNullable<Metadata["openGraph"]>["images"];
+
+/** The branded card drawn by app/opengraph-image.tsx. */
+export const DEFAULT_OG_IMAGE = {
+  url: "/opengraph-image",
+  width: 1200,
+  height: 630,
+  alt: "GOO Fashion — AI stylist and outfit builder",
+};
+
+interface PageMetadataInput {
+  /** Without the brand: the root layout's title template appends " | GOO Fashion". */
+  title: string;
+  description: string;
+  /** This page's own path. It becomes the canonical URL and og:url. */
+  path: string;
+  /** Link-card images. Left out, the site-wide card from app/opengraph-image. */
+  images?: OgImages;
+  /** Keep the page out of the index; its links are still followed. */
+  noindex?: boolean;
+}
+
+/**
+ * Metadata for a page that has no data-driven tags of its own: title,
+ * description, a canonical pointing at the page itself and Open Graph tags that
+ * describe it. Every indexable page needs its own canonical — one inherited from
+ * the root layout told Google the whole site was a copy of the homepage.
+ */
+export function pageMetadata({ title, description, path, images, noindex }: PageMetadataInput): Metadata {
+  return {
+    title,
+    description,
+    // A page kept out of the index names no canonical: the two signals would
+    // contradict each other.
+    ...(noindex
+      ? { robots: { index: false, follow: true } }
+      : { alternates: { canonical: path } }),
+    openGraph: {
+      title,
+      description,
+      url: path,
+      siteName: SITE_NAME,
+      type: "website",
+      // Named explicitly: a page that sets its own openGraph block no longer
+      // inherits the image Next derives from app/opengraph-image.tsx.
+      images: images ?? [DEFAULT_OG_IMAGE],
+    },
+  };
 }
 
 // ── Currency ────────────────────────────────────────────────────────────────
@@ -52,7 +112,7 @@ function isGenericName(name?: string): boolean {
 }
 
 export interface OutfitSeo {
-  /** Used for <h1> and og:title core (no " | GOO" suffix). */
+  /** Used for <h1>. */
   heading: string;
   title: string;
   description: string;
@@ -63,7 +123,8 @@ export interface OutfitSeo {
  * own data (brands + style + piece count + price) so Google does not cluster
  * the generically-named "Community Look" pages as duplicates.
  *
- * Example: "Y-3 + SP5DER streetwear look — 3 pieces from $765 | GOO"
+ * Example: "Y-3 + SP5DER streetwear look — 3 pieces from $765" (the root layout's
+ * title template adds the brand).
  */
 export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
   const brands = [...new Set(outfit.items.map((i) => i.product?.brand).filter(Boolean))] as string[];
@@ -82,10 +143,9 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
       : `${outfit.occasion} outfit`;
 
   const piecesLabel = pieces ? `${pieces} piece${pieces === 1 ? "" : "s"}` : "";
-  const titleCore = [heading, piecesLabel && `${piecesLabel} from ${price}`]
+  const title = [heading, piecesLabel && `${piecesLabel} from ${price}`]
     .filter(Boolean)
     .join(" — ");
-  const title = `${titleCore} | GOO`;
 
   const byBrands = brands.length ? ` featuring ${brands.slice(0, 3).join(", ")}` : "";
   const season = outfit.season && outfit.season !== "all" ? `${outfit.season} ` : "";

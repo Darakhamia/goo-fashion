@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Terms & Conditions — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Terms & Conditions",
   description: "The terms and conditions governing your access to and use of Goo Fashion.",
-};
+  path: "/terms",
+});
 
 function Bullet({ items }: { items: string[] }) {
   return (

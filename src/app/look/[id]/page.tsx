@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "@/components/ui/Image";
 import Price from "@/components/ui/Price";
 import { getUserLookById, sharedLookFromShareData, type SharedLook } from "@/lib/data/db";
-import { SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 // Looks are created at runtime, so a given id may not exist at build time and
 // must always be re-fetched — never statically cached (which could freeze in a
@@ -67,7 +67,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   if (!resolved) return {};
   const { look, fromLink } = resolved;
 
-  const title = `${lookHeading(look)} · GOO`;
+  const title = lookHeading(look);
   const description =
     look.description?.trim() ||
     `A look with ${look.pieces.length} ${look.pieces.length === 1 ? "piece" : "pieces"}, shared on GOO.`;
@@ -85,9 +85,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
+      siteName: SITE_NAME,
       url: `${SITE_URL}/look/${id}`,
       type: "website",
-      images: look.generatedImage ? [{ url: look.generatedImage, alt: lookHeading(look) }] : [],
+      images: look.generatedImage ? [{ url: look.generatedImage, alt: lookHeading(look) }] : [DEFAULT_OG_IMAGE],
     },
   };
 }

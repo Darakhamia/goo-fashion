@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Policy",
   description: "How Goo Fashion collects, uses, shares, and protects your personal data.",
-};
+  path: "/privacy",
+});
 
 function Bullet({ items }: { items: string[] }) {
   return (

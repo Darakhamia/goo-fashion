@@ -1286,10 +1286,11 @@ export default function BrowsePage() {
   return (
     <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto">
-        {/* ── Page header — desktop only: on a phone the catalogue starts right
-            under the header capsule (DESIGN_SYSTEM.md §12.1) ── */}
-        <h1 className="sr-only md:hidden">Browse</h1>
-        <div className="hidden md:block px-6 md:px-12 pt-12 md:pt-16">
+        {/* ── Page header — shown from md: on a phone the catalogue starts right
+            under the header capsule (DESIGN_SYSTEM.md §12.1), and the header
+            stays only for screen readers. One element at every width, so the
+            page has a single <h1>. ── */}
+        <div className="max-md:sr-only px-6 md:px-12 pt-12 md:pt-16">
           <div className="mb-8">
             <h1 className="text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
               Browse

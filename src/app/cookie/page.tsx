@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import CookieSettings from "@/components/consent/CookieSettings";
 
-export const metadata: Metadata = {
-  title: "Cookie Policy — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Cookie Policy",
   description: "Every cookie and browser-storage key Goo Fashion uses, and how to manage them.",
-};
+  path: "/cookie",
+});
 
 function P({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">{children}</p>;

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Subscription & Refund Policy — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Subscription & Refund Policy",
   description: "How Goo Fashion subscriptions are billed and renewed, how to cancel, and when refunds apply.",
-};
+  path: "/refund",
+});
 
 function Bullet({ items }: { items: string[] }) {
   return (

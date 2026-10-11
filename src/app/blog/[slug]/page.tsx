@@ -7,7 +7,7 @@ import { renderBlogBody } from "@/lib/blog-render";
 import JsonLd from "@/components/seo/JsonLd";
 import ReadingProgress from "@/components/blog/ReadingProgress";
 import ShareRow from "@/components/blog/ShareRow";
-import { SITE_URL, absoluteUrl, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -31,9 +31,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
   if (!post) {
-    return { title: "Post not found — GOO" };
+    return { title: "Post not found" };
   }
-  const title = post.metaTitle || `${post.title} — GOO Journal`;
+  // The root layout's title template adds the site name.
+  const title = post.metaTitle || post.title;
   const description = post.metaDescription || post.excerpt;
   const image = post.ogImage || post.coverImageUrl;
   return {
@@ -42,8 +43,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
+      siteName: SITE_NAME,
       type: "article",
-      images: image ? [{ url: image }] : undefined,
+      images: image ? [{ url: image }] : [DEFAULT_OG_IMAGE],
       publishedTime: post.publishedAt,
       authors: [post.authorName],
     },

@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
 import { withTimeout } from "@/lib/server/with-timeout";
+import { pageMetadata } from "@/lib/seo";
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: "Sitemap — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Sitemap",
   description: "Complete map of all pages, outfits, products, and articles on GOO.",
-};
+  path: "/sitemap-page",
+});
 
 const SITE_SECTIONS = [
   {

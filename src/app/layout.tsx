@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { SITE_URL } from "@/lib/seo";
+import { SITE_NAME, SITE_URL } from "@/lib/seo";
 import { Inter_Tight, Poppins } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { LikesProvider } from "@/lib/context/likes-context";
@@ -31,16 +31,16 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   // Resolves all relative canonical/og URLs against the canonical non-www origin.
   metadataBase: new URL(SITE_URL),
-  title: "GOO — AI Stylist",
-  description: "Your personal AI stylist. Curated outfits, premium fashion, one platform.",
-  keywords: ["fashion", "AI stylist", "outfits", "luxury fashion", "personal stylist"],
-  alternates: { canonical: "/" },
+  // Pages give their title without the brand; the template adds it. The default
+  // only shows on pages that set no title (404, error).
+  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+  applicationName: SITE_NAME,
+  // No canonical, og:url, og:title or description here: each page states its
+  // own (lib/seo `pageMetadata`). Inherited from this layout they made every
+  // page without its own claim to be the homepage.
   openGraph: {
-    title: "GOO — AI Stylist",
-    description: "Your personal AI stylist. Curated outfits, premium fashion, one platform.",
+    siteName: SITE_NAME,
     type: "website",
-    url: SITE_URL,
-    siteName: "GOO",
   },
   // Only the card type: with no twitter:title/description of its own, Next fills
   // them from each page's Open Graph tags. Setting them here made every page

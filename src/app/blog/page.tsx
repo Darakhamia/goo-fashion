@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
 import { getAllBlogPosts } from "@/lib/data/db";
 import JournalFeed from "@/components/blog/JournalFeed";
+import { pageMetadata } from "@/lib/seo";
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: "Journal — GOO",
+export const metadata: Metadata = pageMetadata({
+  title: "Journal",
   description:
     "Style essays, shopping guides, product updates and announcements from GOO. Filter by topic or year.",
-  openGraph: {
-    title: "Journal — GOO",
-    description:
-      "Style essays, shopping guides, product updates and announcements from GOO.",
-    type: "website",
-  },
-};
+  path: "/blog",
+});
 
 export default async function BlogPage() {
   const posts = await getAllBlogPosts({ publishedOnly: true });

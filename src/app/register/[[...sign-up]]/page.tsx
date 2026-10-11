@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AuthForm } from "@/components/auth/AuthForm";
 
 export const metadata: Metadata = {
-  title: "Create an account — GOO",
+  title: "Create an account",
   description: "Create a GOO account to build looks, save outfits and use the AI stylist.",
   robots: { index: false, follow: false },
 };

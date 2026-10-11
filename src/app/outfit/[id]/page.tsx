@@ -14,7 +14,7 @@ import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
-import { SITE_URL, absoluteUrl, buildOutfitSeo, outfitJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, buildOutfitSeo, outfitJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -39,9 +39,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
+      siteName: SITE_NAME,
       url: `${SITE_URL}/outfit/${id}`,
       type: "website",
-      images: outfit.imageUrl ? [{ url: outfit.imageUrl, alt: outfit.name }] : [],
+      images: outfit.imageUrl ? [{ url: outfit.imageUrl, alt: outfit.name }] : [DEFAULT_OG_IMAGE],
     },
   };
 }

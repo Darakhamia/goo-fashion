@@ -25,6 +25,9 @@ export function HeroSection() {
 
       {/* Center content */}
       <div className="relative z-10 flex flex-col items-center gap-7 md:gap-8 px-6 text-center">
+        {/* The morphing word is the visual title but says nothing about the
+            site, so the page's one heading is for screen readers and search. */}
+        <h1 className="sr-only">GOO Fashion — AI stylist and outfit builder</h1>
         <div className="flex flex-col items-center gap-3 w-full">
           <GooeyText
             texts={["GOO", "Outfits", "Looks", "Style", "Fits"]}

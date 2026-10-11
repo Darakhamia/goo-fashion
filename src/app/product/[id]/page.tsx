@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getProductById, getRelatedProducts, getOutfitsByProductId, getBrandLogos, getAllColorGroups } from "@/lib/data/db";
 import ProductClient from "@/components/product/ProductClient";
 import JsonLd from "@/components/seo/JsonLd";
-import { SITE_URL, absoluteUrl, formatMetaPrice, productJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, formatMetaPrice, productJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { cheapestOffer } from "@/lib/server/fx";
 
 // ISR: a product page is served from cache and regenerated at most every five
@@ -42,7 +42,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     currency: product.currency,
   });
 
-  const title = `${product.name} — ${product.brand} | GOO`;
+  // The brand only when the name doesn't already carry it ("adidas Originals
+  // Gazelle" needs no "— adidas Originals" after it); the root layout's title
+  // template adds the site name.
+  const title = product.name.toLowerCase().includes(product.brand.toLowerCase())
+    ? product.name
+    : `${product.name} — ${product.brand}`;
   const description = product.description
     ? product.description.slice(0, 155)
     : `Shop ${product.name} by ${product.brand}. From ${formatMetaPrice(lowest.amount, lowest.currency)}.`;
@@ -54,13 +59,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
+      siteName: SITE_NAME,
       url: `${SITE_URL}/product/${id}`,
       type: "website",
       // Fall back to the site-wide branded card when the product has no photo,
       // so shared links always render with an image.
       images: product.imageUrl
         ? [{ url: product.imageUrl, alt: product.name }]
-        : [{ url: absoluteUrl("/opengraph-image"), alt: "GOO — AI Stylist" }],
+        : [DEFAULT_OG_IMAGE],
     },
   };
 }
