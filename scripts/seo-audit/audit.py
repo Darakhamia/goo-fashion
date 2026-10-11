@@ -49,10 +49,16 @@ class Page(HTMLParser):
         self._title_buf = None
         self._h1_buf = None
         self._jsonld_buf = None
+        # Потоковый рендер (dev-сервер, Suspense) присылает готовый кусок страницы
+        # в <div hidden id="S:…">, который скрипт потом ставит на место заглушки.
+        # Заголовок, повторённый в таком куске, — не второй H1.
+        self._stream_at = None
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         self._stack.append(tag)
+        if tag == "div" and "hidden" in a and (a.get("id") or "").startswith("S:"):
+            self._stream_at = len(self._stack)
         if tag == "title" and self.title is None:
             self._title_buf = []
         elif tag == "meta":
@@ -81,7 +87,9 @@ class Page(HTMLParser):
             self.title = "".join(self._title_buf).strip()
             self._title_buf = None
         elif tag == "h1" and self._h1_buf is not None:
-            self.h1.append(" ".join("".join(self._h1_buf).split()))
+            h1 = " ".join("".join(self._h1_buf).split())
+            if not (self._stream_at and h1 in self.h1):
+                self.h1.append(h1)
             self._h1_buf = None
         elif tag == "script" and self._jsonld_buf is not None:
             try:
@@ -96,6 +104,8 @@ class Page(HTMLParser):
         if tag in self._stack:
             while self._stack and self._stack.pop() != tag:
                 pass
+        if self._stream_at and len(self._stack) < self._stream_at:
+            self._stream_at = None
 
     def handle_data(self, data):
         if self._title_buf is not None:
