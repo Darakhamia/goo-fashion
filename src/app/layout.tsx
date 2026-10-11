@@ -49,7 +49,22 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
   },
+  verification: siteVerification(),
 };
+
+/**
+ * Ownership tags for Google Search Console and Bing Webmaster Tools, when the
+ * codes are set. Verifying by DNS record instead needs neither (.env.example).
+ */
+function siteVerification(): Metadata["verification"] {
+  const google = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+  const bing = process.env.BING_SITE_VERIFICATION?.trim();
+  if (!google && !bing) return undefined;
+  return {
+    ...(google ? { google } : {}),
+    ...(bing ? { other: { "msvalidate.01": bing } } : {}),
+  };
+}
 
 // viewportFit: "cover" lets the page extend under the iPhone notch/home-indicator
 // so `env(safe-area-inset-*)` returns real values for our fixed bottom nav & sheets.
