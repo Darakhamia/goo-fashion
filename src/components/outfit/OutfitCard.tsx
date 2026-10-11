@@ -8,6 +8,7 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import OutfitCollage from "./OutfitCollage";
+import { outfitDisplayName } from "@/lib/seo";
 
 interface OutfitCardProps {
   outfit: Outfit;
@@ -30,6 +31,8 @@ export default function OutfitCard({ outfit }: OutfitCardProps) {
   const { formatPrice } = useCurrency();
   const liked = isOutfitLiked(outfit.id);
   const pieceCount = outfit.items.length;
+  // "Outfit 51" says nothing in a grid of them; its brands and style do.
+  const displayName = outfitDisplayName(outfit);
 
   const handleLike = () => {
     if (!isLoggedIn) { login(); return; }
@@ -50,7 +53,7 @@ export default function OutfitCard({ outfit }: OutfitCardProps) {
             <div className="absolute inset-0">
               <Image
                 src={outfit.imageUrl}
-                alt={outfit.name}
+                alt={displayName}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
@@ -116,7 +119,7 @@ export default function OutfitCard({ outfit }: OutfitCardProps) {
       {/* Info. Phones put the piece count beside the price, as on the product card. */}
       <Link href={`/outfit/${outfit.id}`} className="block px-3 pt-2.5 pb-3 md:px-5 md:pt-4 md:pb-5">
         <h3 className="text-[13px] md:text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
-          {outfit.name}
+          {displayName}
         </h3>
         <p className="mt-1.5 md:mt-1 flex max-md:flex-wrap items-baseline justify-between gap-x-1.5 max-md:gap-y-0.5 md:block text-[13px] font-medium md:font-normal text-[var(--foreground)] md:text-[var(--foreground-muted)]">
           <span className="max-md:min-w-0 max-md:truncate">

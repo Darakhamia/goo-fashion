@@ -14,7 +14,16 @@ import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, buildOutfitSeo, outfitJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import {
+  DEFAULT_OG_IMAGE,
+  SITE_NAME,
+  SITE_URL,
+  absoluteUrl,
+  breadcrumbJsonLd,
+  buildOutfitSeo,
+  outfitDisplayName,
+  outfitJsonLd,
+} from "@/lib/seo";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -42,7 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: SITE_NAME,
       url: `${SITE_URL}/outfit/${id}`,
       type: "website",
-      images: outfit.imageUrl ? [{ url: outfit.imageUrl, alt: outfit.name }] : [DEFAULT_OG_IMAGE],
+      images: outfit.imageUrl ? [{ url: outfit.imageUrl, alt: outfitDisplayName(outfit) }] : [DEFAULT_OG_IMAGE],
     },
   };
 }
@@ -102,7 +111,7 @@ export default async function OutfitDetailPage({ params }: Props) {
               {outfit.imageUrl ? (
                 <Image
                   src={outfit.imageUrl}
-                  alt={outfit.name}
+                  alt={outfitDisplayName(outfit)}
                   fill
                   className="object-cover"
                   priority

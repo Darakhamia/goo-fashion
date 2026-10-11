@@ -108,7 +108,9 @@ const GENERIC_OUTFIT_NAMES = new Set([
 ]);
 
 function isGenericName(name?: string): boolean {
-  return !name || GENERIC_OUTFIT_NAMES.has(name.trim().toLowerCase());
+  const n = (name ?? "").trim().toLowerCase();
+  // The builder's own default ("Outfit 51") and its numbered variants.
+  return !n || GENERIC_OUTFIT_NAMES.has(n) || /^(community |my )?(outfit|look)( #?\d+)?$/.test(n);
 }
 
 export interface OutfitSeo {
@@ -174,6 +176,15 @@ export function primaryVariantId(product: Product): string {
   if (marked) return marked.id;
   const newest = [...group].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))[0];
   return newest?.createdAt ? newest.id : product.id;
+}
+
+/**
+ * The name to show for an outfit: its own, unless that is a placeholder like
+ * "Outfit 51" or "Community Look" — then the heading its page is built under,
+ * from its brands and style ("Carhartt WIP + Air Jordan streetwear look").
+ */
+export function outfitDisplayName(outfit: Outfit): string {
+  return isGenericName(outfit.name) ? buildOutfitSeo(outfit).heading : outfit.name;
 }
 
 // ── Product meta description ─────────────────────────────────────────────────
