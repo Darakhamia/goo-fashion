@@ -41,7 +41,10 @@ the only thing that can run renewals.
 
 ## Setup checklist
 
-1. **Run the DB migrations** in the Supabase SQL editor (or `psql`), in order:
+1. **Run the DB migrations** in the Supabase SQL editor (or `psql`), in order.
+   These two root files are the starting schema, not numbered migrations, so the
+   deploy does not apply them (it applies `supabase/migrations/*` from 026 on —
+   README, "Деплой"):
    - `supabase-migration-subscriptions.sql` — the `subscriptions` table;
    - `supabase-migration-billing-events.sql` — the `billing_events` log. Without
      it there is no "Total earned", no cron heartbeat and no transaction log.

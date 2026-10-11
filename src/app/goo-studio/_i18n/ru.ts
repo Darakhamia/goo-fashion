@@ -509,6 +509,7 @@ export const ru: Partial<Record<Key, Message>> = {
   "act.settings.homepage_showcase_updated": "Обновлена витрина главной",
   "act.settings.homepage_stylist_updated": "Обновлён стилист на главной",
   "act.settings.prompt_updated": "Изменён промпт",
+  "act.settings.migrations_applied": "Применены миграции базы",
   "act.settings.prompt_reset": "Промпт сброшен",
   "act.parser.config_updated": "Изменены настройки парсера",
   "act.parser.product_imported": "Импортирован товар",

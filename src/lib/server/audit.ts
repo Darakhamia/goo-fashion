@@ -15,6 +15,7 @@ export type AdminAction =
   | "settings.homepage_stylist_updated"
   | "settings.prompt_updated"
   | "settings.prompt_reset"
+  | "settings.migrations_applied"
   | "parser.config_updated"
   | "parser.product_imported"
   | "parser.crawl_batch"

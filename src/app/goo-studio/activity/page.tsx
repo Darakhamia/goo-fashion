@@ -55,6 +55,7 @@ const ACTION_TONE: Record<AdminAction, Tone | null> = {
   "settings.homepage_stylist_updated": null,
   "settings.prompt_updated": null,
   "settings.prompt_reset": null,
+  "settings.migrations_applied": "warn",
   "parser.config_updated": null,
   "parser.product_imported": null,
   "parser.crawl_batch": null,

@@ -478,6 +478,8 @@
 
 Разделы:
 - **Database schema** — какие таблицы и необязательные колонки код ожидает, каких не хватает и какие миграции прогнать. Кнопка **Re-check**. Недостающая колонка не ломает сохранение, но молча выключает свою функцию, поэтому после деплоя сюда стоит заглянуть.
+  - **Миграции при деплое.** Пока миграция `026_migration_runner.sql` не выполнена руками, карточка просит её выполнить (и дашборд показывает её в «Needs attention»). После неё каждый деплой сам применяет новые файлы `supabase/migrations` до запуска сайта, а карточка показывает, чем закончился последний деплой: «применять было нечего», «применены …» или «… не применилась и откатилась — причина». Файл, который деплой ещё не применил, назван отдельно.
+  - **Apply now** (только супер-админ, когда есть неприменённые файлы) — повторяет шаг миграций из деплоя для файлов, которые уже есть в этой сборке: например, если база была недоступна во время деплоя. Вывод скрипта показывается под кнопкой. Журнал: `settings.migrations_applied`.
 - **Homepage showcase** — 4 шага витрины на главной: Choose items (1 товар), Build your look (до 3 товаров), Generate preview (1 образ), Shop the look (до 3 товаров). Сохраняется полосой Save и попадает на главную при следующей загрузке. Пока текущий выбор не загрузился, менять и сохранять его нельзя, чтобы пустой выбор не затёр живой.
 - **AI Stylist showcase** — блок стилиста на главной: до 2 образов в чате, товар «Featured product», до 6 дополнительных магазинов в «Where to buy».
 - **OpenAI API key** — ключ для функций на OpenAI: черновики блога, AI-текст писем, AI-разбор страниц в парсере, баг-репорты, эмбеддинги (смысловой поиск стилиста). Чат стилиста и генерация картинок идут через Replicate (`REPLICATE_API_TOKEN`), этот ключ на них не влияет.
@@ -515,6 +517,7 @@
 | | `settings.homepage_showcase_updated` | Updated homepage showcase | Settings → Homepage showcase |
 | | `settings.homepage_stylist_updated` | Updated homepage stylist | Settings → AI Stylist showcase |
 | | `settings.prompt_updated` / `settings.prompt_reset` | Updated / Reset prompt | Prompts |
+| | `settings.migrations_applied` | Applied database migrations | Settings → Database schema → Apply now (супер-админ); в подробностях код выхода и конец вывода скрипта |
 | Parser | `parser.config_updated` | Updated parser config | сохранение Site recipes или AI & images |
 | | `parser.product_imported` | Imported product | импорт из Parse URL (вкладка удалена 2026-10-11, остались старые записи) |
 | | `parser.crawl_batch` | Crawled batch | пачка Collect catalog (вкладка удалена 2026-10-11, остались старые записи) |

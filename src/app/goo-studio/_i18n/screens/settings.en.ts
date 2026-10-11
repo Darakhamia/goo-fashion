@@ -26,9 +26,22 @@ export const settingsEn = {
   "settings.schema.allPresent": { one: "{count} column present", other: "All {count} columns present" },
   "settings.schema.missing": { one: "{count} column missing", other: "{count} columns missing" },
   "settings.schema.run": "Run {migration}.",
+  "settings.schema.notApplied": { one: "{count} migration not applied", other: "{count} migrations not applied" },
   "settings.schema.showPresent": { one: "Show {count} present column", other: "Show {count} present columns" },
   "settings.schema.runInOrder": "Run, in order (numbered files are in {dir}, {file} is at the repo root): {list}",
   "settings.schema.recheck": "Re-check",
+  "settings.schema.deploy.manual":
+    "Migrations are still applied by hand. Run {file} once in the Supabase SQL editor — after that every deploy applies new migration files by itself, before the site starts.",
+  "settings.schema.deploy.auto": "New migration files are applied automatically on every deploy.",
+  "settings.schema.deploy.pending":
+    "Not applied yet: {list}. The next deploy applies them; if one is still here after a deploy, the line below or the deploy log says why.",
+  "settings.schema.deploy.lastOk": "Last deploy, {date}: nothing new to apply.",
+  "settings.schema.deploy.lastApplied": "Last deploy, {date}: applied {list}.",
+  "settings.schema.deploy.lastFailed": "Last deploy, {date}: {file} failed and was rolled back — {error}",
+  "settings.schema.deploy.applyNow": "Apply now",
+  "settings.schema.deploy.applying": "Applying…",
+  "settings.schema.deploy.applyHint": "Runs the deploy's migration step again, for files this build already carries.",
+  "settings.schema.deploy.unreadable": "Could not read which migrations the deploy applied: {error}",
 
   // Homepage showcase: the four "How it works" cards on the homepage.
   "settings.showcase.title": "Homepage showcase",

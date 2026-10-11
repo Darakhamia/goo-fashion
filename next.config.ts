@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
   // deploy the route without them and render cards with no text at all.
   outputFileTracingIncludes: {
     "/api/admin/export-images": ["./src/assets/fonts/**"],
+    // The schema check compares the migration files this build carries with the
+    // ones the database has applied (lib/server/schema-check.ts), by directory.
+    "/api/admin/schema-check": ["./supabase/migrations/**"],
+    "/api/admin/stats": ["./supabase/migrations/**"],
+    // "Apply now" runs the deploy's own script, which reads the same folder.
+    "/api/admin/migrations": ["./scripts/migrate.mjs", "./supabase/migrations/**"],
   },
   // The CSV import page used to live at /goo-studio/brightdata, although it
   // never talked to BrightData. Keep old bookmarks working.

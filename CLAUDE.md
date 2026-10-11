@@ -41,6 +41,15 @@
 - `AI_ARCHITECTURE.md`, `BILLING.md`, `PARSER.md`, `MIGRATION_RUNBOOK.md`, `extension/README.md` — по своим областям. Выполненные планы — в `docs/archive/`, как история, не как инструкция.
 - Прод живёт на Coolify. Деплоя на Vercel больше нет (подтвердил CEO 2026-09-27), `vercel.json` удалён; cron продления подписок — только Scheduled Task в Coolify (`BILLING.md`).
 
+## Миграции базы — применяются сами при деплое
+
+С миграции `026` деплой сам применяет новые файлы `supabase/migrations/NNN_*.sql` (`scripts/migrate.mjs` перед `next start`; подробности — README, раздел «Деплой»). Поэтому:
+- изменение схемы или данных базы — только новым файлом со следующим номером; ручные шаги «выполните в SQL-редакторе» больше не пишем;
+- уже применённый файл не правим — скрипт его не перезапустит, а только предупредит; исправление — новым файлом;
+- файл должен быть идемпотентным (`if not exists`, `create or replace`, `on conflict do nothing`) и выполняться внутри одной транзакции: без `create index concurrently`, `vacuum` и прочего, что транзакция не пускает; свои `begin;`/`commit;` скрипт вырезает сам;
+- перед слиянием файл проходит задачу CI `migrations apply cleanly`; локально — `npm run migrate` против тестовой базы;
+- миграции, меняющие или удаляющие данные на проде, по-прежнему только с подтверждения CEO: после слияния они выполнятся сами.
+
 ## Branch Policy
 - Always work directly on the `master` branch
 - Never create new feature branches

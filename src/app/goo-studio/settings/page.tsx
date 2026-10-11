@@ -94,6 +94,84 @@ interface SchemaReport {
   ok: boolean;
   checks: SchemaCheck[];
   missingMigrations: string[];
+  /** The super admin may re-run the deploy's migration step from here. */
+  canApply?: boolean;
+  /** Migrations the deploy applies (scripts/migrate.mjs). */
+  deploy?: {
+    automatic: boolean;
+    pending: string[];
+    lastRun: { at: string; applied: string[]; failed: string | null; error: string | null } | null;
+    error?: string;
+  };
+}
+
+/** The deploy's side of migrations: still by hand, or automatic and how the last run went. */
+function DeployMigrations({
+  deploy,
+  canApply,
+  onApplied,
+  t,
+}: {
+  deploy: NonNullable<SchemaReport["deploy"]>;
+  canApply: boolean;
+  onApplied: () => void;
+  t: T;
+}) {
+  const [applying, setApplying] = useState(false);
+  const [log, setLog] = useState("");
+  const mono = (s: string) => <span className="font-mono text-[var(--foreground)]">{s}</span>;
+  const applyNow = async () => {
+    setApplying(true);
+    try {
+      const res = await fetch("/api/admin/migrations", { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+      setLog(String(json.log || json.error || `HTTP ${res.status}`));
+    } catch {
+      setLog(t("settings.unreachable"));
+    } finally {
+      setApplying(false);
+      onApplied();
+    }
+  };
+  const run = deploy.lastRun;
+  const date = run ? new Date(run.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
+  return (
+    <div className="mt-3 space-y-1.5 text-[11px] text-[var(--foreground-muted)] leading-relaxed">
+      {deploy.error ? (
+        <p className="text-[var(--err)]">{t("settings.schema.deploy.unreadable", { error: deploy.error })}</p>
+      ) : !deploy.automatic ? (
+        <p>{withSlots(t("settings.schema.deploy.manual"), { file: mono("supabase/migrations/026_migration_runner.sql") })}</p>
+      ) : (
+        <>
+          <p>{t("settings.schema.deploy.auto")}</p>
+          {deploy.pending.length > 0 && (
+            <p>{withSlots(t("settings.schema.deploy.pending"), { list: mono(deploy.pending.join(", ")) })}</p>
+          )}
+          {run && (
+            <p className={run.failed ? "text-[var(--err)]" : undefined}>
+              {run.failed
+                ? withSlots(t("settings.schema.deploy.lastFailed"), { date, file: mono(run.failed), error: run.error ?? "" })
+                : run.applied.length
+                ? withSlots(t("settings.schema.deploy.lastApplied"), { date, list: mono(run.applied.join(", ")) })
+                : t("settings.schema.deploy.lastOk", { date })}
+            </p>
+          )}
+          {canApply && deploy.pending.length > 0 && (
+            <div className="pt-1">
+              <button onClick={applyNow} disabled={applying} title={t("settings.schema.deploy.applyHint")} className={btn("secondary")}>
+                {applying ? t("settings.schema.deploy.applying") : t("settings.schema.deploy.applyNow")}
+              </button>
+            </div>
+          )}
+          {log && (
+            <pre className="mt-2 max-h-48 overflow-auto rounded-lg border border-[var(--border)] p-2 font-mono text-[10px] text-[var(--foreground-muted)] whitespace-pre-wrap">
+              {log}
+            </pre>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 function renderSchemaCheck(c: SchemaCheck, t: T) {
@@ -832,6 +910,10 @@ export default function SettingsPage() {
   }
 
   const missingColumns = schema ? schema.checks.filter((c) => !c.present).length : 0;
+  // Once the deploy applies migrations itself, a file it has not applied yet is
+  // its job, not one to run by hand: only the rest is listed under "Run, in order".
+  const deployPending = schema?.deploy?.automatic ? schema.deploy.pending : [];
+  const runByHand = schema ? schema.missingMigrations.filter((m) => !deployPending.includes(m)) : [];
 
   return (
     <AdminPage
@@ -879,6 +961,8 @@ export default function SettingsPage() {
               <Badge tone={schema.ok ? "ok" : "warn"}>
                 {schema.ok
                   ? t("settings.schema.allPresent", { count: schema.checks.length })
+                  : missingColumns === 0 && schema.missingMigrations.length > 0
+                  ? t("settings.schema.notApplied", { count: schema.missingMigrations.length })
                   : t("settings.schema.missing", { count: missingColumns })}
               </Badge>
 
@@ -900,14 +984,17 @@ export default function SettingsPage() {
                 </details>
               )}
 
-              {schema.missingMigrations.length > 0 && (
+              {runByHand.length > 0 && (
                 <p className="text-[11px] text-[var(--foreground-muted)] mt-3 leading-relaxed">
                   {withSlots(t("settings.schema.runInOrder"), {
                     dir: <span className="font-mono">{"supabase/migrations/"}</span>,
                     file: <span className="font-mono">{"supabase-schema.sql"}</span>,
-                    list: <span className="font-mono text-[var(--foreground)]">{schema.missingMigrations.join(", ")}</span>,
+                    list: <span className="font-mono text-[var(--foreground)]">{runByHand.join(", ")}</span>,
                   })}
                 </p>
+              )}
+              {schema.deploy && (
+                <DeployMigrations deploy={schema.deploy} canApply={!!schema.canApply} onApplied={loadSchema} t={t} />
               )}
             </>
           )}

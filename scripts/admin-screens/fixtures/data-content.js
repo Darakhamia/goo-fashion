@@ -262,13 +262,34 @@ const SCHEMA_CHECKS = [
   {"table":"products","column":"sku","migration":"020_product_codes.sql","breaks":"Store SKUs are dropped on every save and import."},
 ];
 const MISSING_MIGRATIONS = new Set(["019_product_price_usd.sql", "019_product_source_price.sql", "020_product_codes.sql", "025_catalogue_check.sql"]);
+// GS0-5: until 026 has been run by hand the deploy applies nothing, and 026 is
+// one of the migrations to run (lib/server/schema-check.ts adds it).
 const schemaReport = () => {
   const checks = SCHEMA_CHECKS.map((c) => ({ ...c, present: !MISSING_MIGRATIONS.has(c.migration) }));
   return {
     ok: false,
     checks,
-    missingMigrations: [...MISSING_MIGRATIONS].sort(),
+    missingMigrations: [...MISSING_MIGRATIONS, "026_migration_runner.sql"].sort(),
+    deploy: { automatic: false, pending: [], lastRun: null },
+    canApply: true,
   };
+};
+// After 026: the deploy applies files itself; this one failed on the last deploy.
+const schemaReportAfterFailedDeploy = {
+  ok: false,
+  checks: SCHEMA_CHECKS.map((c) => ({ ...c, present: true })),
+  missingMigrations: ["027_brand_aliases.sql"],
+  deploy: {
+    automatic: true,
+    pending: ["027_brand_aliases.sql"],
+    lastRun: {
+      at: "2026-10-05T11:42:00Z",
+      applied: [],
+      failed: "027_brand_aliases.sql",
+      error: '409 duplicate key value violates unique constraint "brand_aliases_alias_key"',
+    },
+  },
+  canApply: true,
 };
 
 // Same shape as maskKey in api/admin/settings/route.ts: 8 + 8 dots + 4.
@@ -422,6 +443,23 @@ const pages = [
       await page.locator("#showcase").getByRole("button", { name: /^(Remove|Убрать) / }).first().click();
       await page.getByRole("region", { name: /Save changes|Сохранение/ }).waitFor();
       await page.waitForTimeout(600);
+    },
+  },
+  // GS0-5: migrations apply on deploy; the last deploy failed on one, so the
+  // super admin sees why and an "Apply now" button.
+  {
+    name: "settings-migrations",
+    url: "/goo-studio/settings",
+    fullPage: false,
+    wait: 1800,
+    after: async (page) => {
+      await page.route("**/api/admin/schema-check", (route) =>
+        route.fulfill({ contentType: "application/json", body: JSON.stringify(schemaReportAfterFailedDeploy) }),
+      );
+      await page.locator("#schema").getByRole("button", { name: /^(Re-check|Проверить снова)$/ }).click();
+      await page.locator("#schema").getByRole("button", { name: /^(Apply now|Применить сейчас)$/ }).waitFor();
+      await page.locator("#schema").scrollIntoViewIfNeeded();
+      await page.waitForTimeout(400);
     },
   },
   {

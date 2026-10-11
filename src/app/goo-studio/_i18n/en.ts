@@ -514,6 +514,7 @@ export const en = {
   "act.settings.homepage_stylist_updated": "Updated the homepage stylist",
   "act.settings.prompt_updated": "Updated a prompt",
   "act.settings.prompt_reset": "Reset a prompt",
+  "act.settings.migrations_applied": "Applied database migrations",
   "act.parser.config_updated": "Updated the parser settings",
   "act.parser.product_imported": "Imported a product",
   "act.parser.crawl_batch": "Collected a batch",
