@@ -21,7 +21,8 @@ import { recordView } from "@/lib/recently-viewed";
 import { buildStylingNotes } from "@/lib/seo";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
-import { groupForProduct, resolveSubcategory } from "@/lib/categories";
+import { groupForCategory, groupForProduct, resolveSubcategory } from "@/lib/categories";
+import { brandPath, categoryPath, subcategoryPath } from "@/lib/landing-paths";
 import { photoBackdrop } from "@/lib/image";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { RETAILER_LINK_REL } from "@/lib/stores";
@@ -117,9 +118,11 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
     active?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
   }, [activeIdx]);
 
-  // Home / Browse / Pieces / Category / Subcategory / Gender / Colour / Brand /
-  // Name. Every step links back into the catalog with that filter applied; the
-  // optional ones are dropped when the product doesn't carry them.
+  // Home / Browse / Category / Subcategory / Gender / Colour / Brand / Name.
+  // Category, subcategory and brand lead to their landing pages (SEO-17) — the
+  // pages that rank for "timberland boots"; gender and colour, which have none,
+  // into the catalog with that filter applied. The optional steps are dropped
+  // when the product doesn't carry them.
   const productCrumbs: Crumb[] = useMemo(() => {
     const group = groupForProduct(product.category, product.subcategory, categoryGroups);
     const subcategory = resolveSubcategory(product.category, product.subcategory, categoryGroups);
@@ -135,15 +138,14 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
     const items: Crumb[] = [
       { label: "Home", href: "/" },
       { label: "Browse", href: "/browse" },
-      { label: "Pieces", href: q({}) },
     ];
-    if (group) items.push({ label: group.label, href: q({ category: group.id }) });
-    if (subcategory) items.push({ label: subcategory, href: q({ subcat: subcategory }) });
+    if (group) items.push({ label: group.label, href: categoryPath(group.id) });
+    if (subcategory && group) items.push({ label: subcategory, href: subcategoryPath(group.id, subcategory) });
     if (product.gender) items.push({ label: product.gender, href: q({ gender: product.gender }) });
     // No colour filter set, or only ids of groups since deleted: the crumb is
     // dropped rather than filled with something that leads nowhere.
     if (colour) items.push({ label: colour.name, href: q({ color: colour.name }) });
-    if (product.brand) items.push({ label: product.brand, href: q({ brand: product.brand }) });
+    if (product.brand) items.push({ label: product.brand, href: brandPath(product.brand) });
     items.push({ label: product.name });
     return items;
   }, [product, categoryGroups, colorGroups]);
@@ -151,6 +153,12 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   // Unique, data-derived styling copy so the page isn't a thin duplicate of the
   // source catalog feed.
   const styling = useMemo(() => buildStylingNotes(product), [product]);
+  // A "pairs with" bucket leads to its group's landing page; one the tree has
+  // no group for still filters the catalog.
+  const pairHref = (cat: string) => {
+    const g = groupForCategory(cat, categoryGroups);
+    return g ? categoryPath(g.id) : `/browse?category=${cat}`;
+  };
 
   return (
     <>
@@ -317,8 +325,12 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
           {/* Brand + Name */}
           <div className="mb-6">
+            {/* The brand leads to its page — on phones, where the breadcrumb
+                trail is hidden, the one way there from a product. */}
             <p className="text-[13px] md:text-[10px] md:tracking-[0.2em] md:uppercase font-semibold md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-0.5 md:mb-2">
-              {product.brand}
+              <Link href={brandPath(product.brand)} className="hover:text-[var(--foreground)] transition-colors duration-200">
+                {product.brand}
+              </Link>
             </p>
             {/* Any `tracking-` class turns off the size-based tracking rule in
                 globals.css, so desktop's −0.015em is spelled out here. */}
@@ -664,7 +676,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               {styling.pairWith.map((cat) => (
                 <Link
                   key={cat}
-                  href={`/browse?category=${cat}`}
+                  href={pairHref(cat)}
                   className="max-md:relative max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-1 inline-flex md:inline items-center h-9 md:h-auto px-3.5 md:px-3 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[13px] md:text-[11px] capitalize text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] md:hover:border-[var(--foreground-muted)] transition-colors duration-200"
                 >
                   {cat}

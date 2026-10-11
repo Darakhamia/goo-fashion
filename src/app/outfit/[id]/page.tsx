@@ -78,7 +78,7 @@ export default async function OutfitDetailPage({ params }: Props) {
 
   const breadcrumb = breadcrumbJsonLd([
     { name: "Home", url: SITE_URL },
-    { name: "Outfits", url: absoluteUrl("/browse") },
+    { name: "Outfits", url: absoluteUrl("/browse?view=outfits") },
     { name: heading },
   ]);
 
