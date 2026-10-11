@@ -44,7 +44,7 @@ Write a GOO Journal post based on that source. Return a JSON object with exactly
 - metaDescription: max 155 chars.
 - slug: lowercase, words joined by hyphens, max 60 chars, no dates.
 
-The source is someone else's reporting. Rewrite it in GOO's voice with GOO's angle — what this means for someone deciding what to wear or buy. Do not copy sentences from the source, and do not present its opinions as GOO's own reporting.
+The source is someone else's reporting. Rewrite it in GOO's voice with GOO's angle — what this means for someone deciding what to wear or buy. Do not copy sentences from the source, and do not present its opinions as GOO's own reporting. End the body with one line crediting it: <p>Source: <a href="{{url}}">the original article</a>.</p>
 
 If the page turned out to be off-topic or too thin to write from, say so in \`excerpt\` and keep \`body\` to a short paragraph instead of inventing material.`;
 
