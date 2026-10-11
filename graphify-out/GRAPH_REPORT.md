@@ -1,17 +1,17 @@
 # Graph Report - goo-fashion  (2026-10-11)
 
 ## Corpus Check
-- 496 files · ~851,866 words
+- 496 files · ~852,026 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: .ttf 3, (none) 2, .css 2)
 
 ## Summary
-- 4580 nodes · 11773 edges · 203 communities (191 shown, 12 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 623 edges (avg confidence: 0.94)
+- 4580 nodes · 11774 edges · 203 communities (191 shown, 12 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 624 edges (avg confidence: 0.94)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7d121b5e`
+- Built from commit: `5c0cebd0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
