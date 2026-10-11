@@ -1,0 +1,2107 @@
+"use client";
+
+import { useState, useMemo, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import OutfitCard from "@/components/outfit/OutfitCard";
+import ProductCard from "@/components/product/ProductCard";
+import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch, StyleKeyword } from "@/lib/types";
+import { STYLE_KEYWORD_LIST, matchesStyles, styleLabel, stylesFromParam } from "@/lib/style-keywords";
+import { DEFAULT_CATEGORY_GROUPS, subcategoryToValue, resolveSubcategory } from "@/lib/categories";
+import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
+import { StylistDrawer } from "@/components/stylist/StylistDrawer";
+import { useLikes } from "@/lib/context/likes-context";
+import { track } from "@/lib/analytics/track";
+import { useScrollLock } from "@/lib/hooks/useScrollLock";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
+
+type View = "outfits" | "pieces";
+type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
+
+const OCCASIONS: Occasion[] = [
+  "casual", "work", "evening", "formal", "weekend", "sport",
+];
+
+const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
+  { id: 1,  name: "White",      hexCode: "#ffffff", sortOrder: 1 },
+  { id: 2,  name: "Multicolor", hexCode: "#multicolor", sortOrder: 2 },
+  { id: 3,  name: "Brown",      hexCode: "#7a4f35", sortOrder: 3 },
+  { id: 4,  name: "Pink",       hexCode: "#e8698a", sortOrder: 4 },
+  { id: 5,  name: "Yellow",     hexCode: "#f5c518", sortOrder: 5 },
+  { id: 6,  name: "Orange",     hexCode: "#e87722", sortOrder: 6 },
+  { id: 7,  name: "Grey",       hexCode: "#808080", sortOrder: 7 },
+  { id: 8,  name: "Black",      hexCode: "#111111", sortOrder: 8 },
+  { id: 9,  name: "Green",      hexCode: "#2d6a3f", sortOrder: 9 },
+  { id: 10, name: "Red",        hexCode: "#c0392b", sortOrder: 10 },
+  { id: 11, name: "Violet",     hexCode: "#7b3fa0", sortOrder: 11 },
+  { id: 12, name: "Blue",       hexCode: "#1a47a0", sortOrder: 12 },
+  { id: 13, name: "Beige",      hexCode: "#d4c5a9", sortOrder: 13 },
+];
+
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  outerwear: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M5 2L2 5V7.5L4 6.5V14H12V6.5L14 7.5V5L11 2C11 2 10.2 3.5 8 3.5C5.8 3.5 5 2 5 2ZM6 2.5V7M10 2.5V7"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  ),
+  tops: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M6 2L2 5V7L4 6V14H12V6L14 7V5L10 2C10 2 9.5 4 8 4C6.5 4 6 2 6 2Z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+    </svg>
+  ),
+  bottoms: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M4 2H12L13 8H9L8 14H8L7 8H3L4 2Z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+    </svg>
+  ),
+  dresses: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M6 2H10M8 2V5M5 5C5 5 4 7 3 9C2 11 2 14 2 14H14C14 14 14 11 13 9C12 7 11 5 11 5C10.5 6 9.5 7 8 7C6.5 7 5.5 6 5 5Z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  ),
+  footwear: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2 11.5C2 11.5 4 10 7 10C9 10 10 11 11 11H13.5C13.5 11 14 11 14 12V13H2V11.5Z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d="M7 10V7.5C7 7.5 7.5 5 10 5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  ),
+  accessories: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="3" y="6" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.1" />
+      <path d="M6 6V4.5C6 3.7 6.7 3 7.5 3H8.5C9.3 3 10 3.7 10 4.5V6" stroke="currentColor" strokeWidth="1.1" />
+    </svg>
+  ),
+};
+
+
+/** A removable filter. Below md it is the soft 32px chip of DESIGN_SYSTEM.md §12.10. */
+function ActiveChip({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
+  return (
+    <button
+      onClick={onRemove}
+      aria-label={`Remove ${label}`}
+      className="flex items-center gap-1.5 h-8 pl-3 pr-2.5 md:h-auto rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:hover:bg-[var(--fg-overlay-05)] text-[13px] md:text-[9px] md:tracking-[0.10em] md:uppercase md:border md:border-[var(--foreground)] text-[var(--foreground)] md:px-2.5 md:py-1 transition-colors duration-200 capitalize"
+    >
+      {label}
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="md:hidden" aria-hidden="true">
+        <path d="M7 7l10 10M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+      <svg width="7" height="7" viewBox="0 0 7 7" fill="none" className="hidden md:block">
+        <path
+          d="M1 1L6 6M6 1L1 6"
+          stroke="currentColor"
+          strokeWidth="1.1"
+          strokeLinecap="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
+/* ── Phone filter sheet pieces (DESIGN_SYSTEM.md §12.7, §12.10) ── */
+
+const SORT_CHOICES: { value: SortOption; label: string }[] = [
+  { value: "featured", label: "Featured" },
+  { value: "newest", label: "New in" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+];
+
+const PRICE_CHOICES: { max: number | null; label: string }[] = [
+  { max: null, label: "Any price" },
+  { max: 200, label: "Under $200" },
+  { max: 500, label: "Under $500" },
+  { max: 1000, label: "Under $1k" },
+  { max: 2000, label: "Under $2k" },
+];
+
+function SheetSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h3 className="mb-2.5 text-[13px] text-[var(--foreground-muted)]">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+/** 36px to the eye, 44px to the finger: the hit area reaches 4px above and below. */
+function SheetChip({
+  on,
+  onClick,
+  children,
+  expanded,
+}: {
+  on: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  expanded?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={expanded === undefined ? on : undefined}
+      aria-expanded={expanded}
+      className={`relative h-9 min-w-11 px-3.5 rounded-full text-[13px] transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${
+        on ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SheetToggle({ label, on, onChange }: { label: string; on: boolean; onChange: () => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={on}
+      onClick={onChange}
+      className="w-full h-[52px] px-3.5 rounded-2xl bg-[var(--fg-overlay-08)] flex items-center justify-between text-[15px] text-[var(--foreground)]"
+    >
+      {label}
+      <span className={`relative w-11 h-[26px] rounded-full transition-colors duration-200 ${on ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"}`}>
+        <span className={`absolute top-[3px] left-[3px] w-5 h-5 rounded-full bg-[var(--background)] transition-transform duration-200 ${on ? "translate-x-[18px]" : ""}`} />
+      </span>
+    </button>
+  );
+}
+
+/* ── Main page ── */
+
+/**
+ * What the server hands the catalogue (app/browse/page.tsx): the lists it read
+ * and the query string of the request. Rendering from these, the first HTML
+ * already holds the product grid — for a crawler too, which can't fetch /api/
+ * (robots.txt) — and the filters a link asks for, so nothing flashes from the
+ * full catalogue to the filtered one when the page wakes up. A list the server
+ * could not read is left out and the client fetches it as before.
+ */
+export interface BrowseInitial {
+  products?: Product[];
+  outfits?: Outfit[];
+  colorGroups?: ColorGroup[];
+  params: Record<string, string>;
+}
+
+/**
+ * The filters a URL asks for — what the breadcrumbs on a product or outfit
+ * page link into, and what survives browser back navigation. Colours and
+ * category groups are named in the link and resolved against the lists the
+ * page starts with; one not in them yet is held as pending and resolved when
+ * the live list arrives (the admin panel edits both).
+ */
+function filtersFromParams(params: Record<string, string>, colorGroups: ColorGroup[]) {
+  const view: View = params.view === "outfits" ? "outfits" : "pieces";
+  const gender = params.gender;
+  const occasion = params.occasion;
+
+  // ?category= is a group id and selects every subcategory under it;
+  // ?subcat= picks a single one. A breadcrumb uses whichever it means.
+  let subcategories: string[] = [];
+  let pendingCategoryGroup: string | null = null;
+  if (params.subcat) subcategories = [params.subcat];
+  else if (params.category) {
+    const group = DEFAULT_CATEGORY_GROUPS.find((g) => g.id === params.category);
+    if (group) subcategories = group.items.map((i) => i.label);
+    else pendingCategoryGroup = params.category;
+  }
+
+  // Colours are stored as groups; the link carries the group's name.
+  let colorGroupIds: number[] = [];
+  let pendingColorName: string | null = null;
+  if (params.color) {
+    const match = colorGroups.find((g) => g.name.toLowerCase() === params.color.toLowerCase());
+    if (match) colorGroupIds = [match.id];
+    else pendingColorName = params.color;
+  }
+
+  return {
+    view,
+    search: params.search ?? "",
+    subcategories,
+    pendingCategoryGroup,
+    gender: gender === "women" || gender === "men" || gender === "unisex" ? (gender as Gender) : null,
+    brands: params.brand ? [params.brand] : [],
+    occasions: occasion && (OCCASIONS as string[]).includes(occasion) ? [occasion as Occasion] : [],
+    aiOnly: params.ai === "1",
+    styles: stylesFromParam(params.style ?? null),
+    colorGroupIds,
+    pendingColorName,
+  };
+}
+
+export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
+  // Computed once: every filter below starts from it, on the server and in the
+  // browser alike, so the two renders agree.
+  const [fromUrl] = useState(() =>
+    filtersFromParams(initial.params, initial.colorGroups ?? DEFAULT_COLOR_GROUPS),
+  );
+  const [view, setView] = useState<View>(fromUrl.view);
+  const [searchQuery, setSearchQuery] = useState(fromUrl.search);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
+  const [searchExpandedWidth, setSearchExpandedWidth] = useState(220);
+  useEffect(() => {
+    const update = () => setSearchExpandedWidth(window.innerWidth < 480 ? 140 : 220);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  const [stylistOpen, setStylistOpen] = useState(false);
+
+  // Report search terms (debounced) so the admin analytics "Search Terms"
+  // list has data — fires once the user stops typing for a second.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) return;
+    const id = setTimeout(() => track("search", { query: q }), 1000);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+
+  const [sort, setSort] = useState<SortOption>("featured");
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+  // Pages appended below the current one via "Show more". Reset whenever the
+  // page or the filters change, so it never silently carries over.
+  const [extraPages, setExtraPages] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Phones get a bottom sheet instead of the side drawer; it plays its exit.
+  const sheetOv = useOverlayPresence(filtersOpen);
+  const sheetCloseRef = useRef<HTMLButtonElement>(null);
+  const [likedOnly, setLikedOnly] = useState(false);
+  const { likedProducts } = useLikes();
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [sortOpen]);
+
+  useEffect(() => {
+    if (filtersOpen) sheetCloseRef.current?.focus({ preventScroll: true });
+  }, [filtersOpen]);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setFiltersOpen(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [filtersOpen]);
+
+  // Lock background scroll while the filter sidebar is open
+  useScrollLock(filtersOpen);
+
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(initial.products ?? []);
+  const [loadingProducts, setLoadingProducts] = useState(!initial.products);
+  const [catalogOutfits, setCatalogOutfits] = useState<Outfit[]>(initial.outfits ?? []);
+  const [loadingOutfits, setLoadingOutfits] = useState(!initial.outfits);
+  // A failed load is an error, not an empty catalogue: phones say so and offer
+  // "Try again", which bumps the attempt and re-runs the fetch.
+  const [productsFailed, setProductsFailed] = useState(false);
+  const [outfitsFailed, setOutfitsFailed] = useState(false);
+  const [productsAttempt, setProductsAttempt] = useState(0);
+  const [outfitsAttempt, setOutfitsAttempt] = useState(0);
+  const [colorGroups, setColorGroups] = useState<ColorGroup[]>(initial.colorGroups ?? DEFAULT_COLOR_GROUPS);
+
+  // The server's lists are the first load; the client fetches only what it
+  // didn't get, or again when "Try again" bumps the attempt.
+  const hasProducts = Boolean(initial.products);
+  const hasOutfits = Boolean(initial.outfits);
+  const hasColorGroups = Boolean(initial.colorGroups);
+
+  useEffect(() => {
+    if (productsAttempt === 0 && hasProducts) return;
+    fetch("/api/products")
+      .then((r) => { if (!r.ok) throw new Error(`products ${r.status}`); return r.json(); })
+      .then((d) => { if (!Array.isArray(d)) throw new Error("products: not a list"); setCatalogProducts(d); setProductsFailed(false); })
+      .catch(() => setProductsFailed(true))
+      .finally(() => setLoadingProducts(false));
+  }, [productsAttempt, hasProducts]);
+
+  useEffect(() => {
+    if (outfitsAttempt === 0 && hasOutfits) return;
+    fetch("/api/outfits")
+      .then((r) => { if (!r.ok) throw new Error(`outfits ${r.status}`); return r.json(); })
+      .then((d) => { if (!Array.isArray(d)) throw new Error("outfits: not a list"); setCatalogOutfits(d); setOutfitsFailed(false); })
+      .catch(() => setOutfitsFailed(true))
+      .finally(() => setLoadingOutfits(false));
+  }, [outfitsAttempt, hasOutfits]);
+
+  useEffect(() => {
+    if (hasColorGroups) return;
+    fetch("/api/color-groups")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setColorGroups(d); })
+      .catch(() => {});
+  }, [hasColorGroups]);
+
+  const products = catalogProducts;
+  const BRANDS = useMemo(
+    () => [...new Set(products.map((p) => p.brand))].sort() as string[],
+    [products]
+  );
+
+  /* Filters */
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(fromUrl.brands);
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>(fromUrl.subcategories);
+  const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
+  const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>(fromUrl.occasions);
+  const [selectedGender, setSelectedGender] = useState<Gender | null>(fromUrl.gender);
+  const [genderOpen, setGenderOpen] = useState(false);
+  const [occasionOpen, setOccasionOpen] = useState(false);
+  const [priceOpen, setPriceOpen] = useState(false);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>(fromUrl.colorGroupIds);
+  const [aiOnly, setAiOnly] = useState(fromUrl.aiOnly);
+  // Styles, for pieces and outfits alike: the same five tags the catalogue
+  // files both under. Any one picked is enough.
+  const [selectedStyles, setSelectedStyles] = useState<StyleKeyword[]>(fromUrl.styles);
+  const [styleOpen, setStyleOpen] = useState(false);
+  // A ?color= link names a colour group, but the groups arrive from the API —
+  // hold the name until they do, then resolve it to an id.
+  const [pendingColorName, setPendingColorName] = useState<string | null>(fromUrl.pendingColorName);
+  // Same for ?category=: it names a group in a tree the admin panel edits, so
+  // the group it points at may only exist once /api/categories has answered.
+  const [pendingCategoryGroup, setPendingCategoryGroup] = useState<string | null>(fromUrl.pendingCategoryGroup);
+
+  // The filter tree is the shared one, so a breadcrumb that links to
+  // ?category=bottoms always names a group this list actually has.
+  const categoryGroups = useCategoryTree();
+  const browseCategoryGroups = useMemo(
+    () => categoryGroups.map((g) => ({ ...g, icon: CATEGORY_ICONS[g.id] })),
+    [categoryGroups],
+  );
+  const subcatToValue = useMemo(() => subcategoryToValue(categoryGroups), [categoryGroups]);
+
+  // A colour or category group the starting lists didn't know (filtersFromParams)
+  // is resolved here once the live list arrives — the admin panel edits both.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!pendingColorName) return;
+    const match = colorGroups.find(
+      (g) => g.name.toLowerCase() === pendingColorName.toLowerCase(),
+    );
+    if (!match) return;
+    setSelectedColorGroupIds([match.id]);
+    setPendingColorName(null);
+  }, [pendingColorName, colorGroups]);
+
+  useEffect(() => {
+    if (!pendingCategoryGroup) return;
+    const match = categoryGroups.find((g) => g.id === pendingCategoryGroup);
+    if (!match) return;
+    setSelectedSubcategories(match.items.map((i) => i.label));
+    setPendingCategoryGroup(null);
+  }, [pendingCategoryGroup, categoryGroups]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const [brandSearch, setBrandSearch] = useState("");
+  const [showAllBrands, setShowAllBrands] = useState(false);
+  const [showAllColors, setShowAllColors] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [colorsOpen, setColorsOpen] = useState(false);
+  const [brandsOpen, setBrandsOpen] = useState(false);
+
+  /* Togglers */
+  const toggleBrand = (b: string) =>
+    setSelectedBrands((p) => (p.includes(b) ? p.filter((x) => x !== b) : [...p, b]));
+  const toggleSubcategory = (label: string) =>
+    setSelectedSubcategories(p => p.includes(label) ? p.filter(x => x !== label) : [...p, label]);
+  const toggleOccasion = (o: Occasion) =>
+    setSelectedOccasions((p) =>
+      p.includes(o) ? p.filter((x) => x !== o) : [...p, o]
+    );
+
+  const toggleStyle = (s: StyleKeyword) =>
+    setSelectedStyles((p) => (p.includes(s) ? p.filter((x) => x !== s) : [...p, s]));
+
+  const toggleColorGroup = (id: number) =>
+    setSelectedColorGroupIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  // Shared by the desktop pill and the phone toggle: a new view starts unfiltered.
+  const switchView = (v: View) => {
+    if (v === view) return;
+    setView(v);
+    setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+    setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
+    setSearchQuery(""); setSearchOpen(false); setSelectedStyles([]);
+    const url = new URL(window.location.href); url.searchParams.set("view", v);
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  const activeFiltersCount =
+    selectedBrands.length +
+    selectedSubcategories.length +
+    selectedOccasions.length +
+    selectedColorGroupIds.length +
+    (selectedGender !== null ? 1 : 0) +
+    (maxPrice !== null ? 1 : 0) +
+    (aiOnly ? 1 : 0) +
+    (likedOnly ? 1 : 0) +
+    selectedStyles.length;
+
+  const clearAll = () => {
+    setSelectedBrands([]);
+    setSelectedSubcategories([]);
+    setExpandedCategoryGroups(new Set());
+    setSelectedOccasions([]);
+    setSelectedGender(null);
+    setMaxPrice(null);
+    setSelectedColorGroupIds([]);
+    setAiOnly(false);
+    setLikedOnly(false);
+    setSearchQuery("");
+    setSelectedStyles([]);
+  };
+
+  /* Filtered data */
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    let r = products
+      .filter((p) => !selectedBrands.length || selectedBrands.includes(p.brand))
+      .filter((p) => {
+        if (!selectedSubcategories.length) return true;
+        const vals = [...new Set(selectedSubcategories.map(l => subcatToValue[l]).filter(Boolean))];
+        if (!vals.includes(p.category)) return false;
+        // Narrow by subcategory only for pieces that record one. A piece
+        // without it still answers to its whole category, so nothing vanishes
+        // from the catalog while the field is being filled in.
+        const sub = resolveSubcategory(p.category, p.subcategory, categoryGroups);
+        return !sub || selectedSubcategories.includes(sub);
+      })
+      .filter(
+        (p) =>
+          !selectedGender ||
+          !p.gender ||
+          p.gender === selectedGender ||
+          p.gender === "unisex"
+      )
+      .filter(
+        (p) =>
+          maxPrice === null || p.priceMin <= maxPrice
+      )
+      .filter(
+        (p) =>
+          !selectedColorGroupIds.length ||
+          (p.colorGroupIds ?? []).some((id) => selectedColorGroupIds.includes(id))
+      )
+      .filter((p) => matchesStyles(p.styleKeywords, selectedStyles))
+      .filter(
+        (p) =>
+          !q ||
+          p.name.toLowerCase().includes(q) ||
+          p.brand.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q)
+      )
+      .filter((p) => !likedOnly || likedProducts.includes(p.id));
+
+    if (sort === "price-asc") r = [...r].sort((a, b) => a.priceMin - b.priceMin);
+    else if (sort === "price-desc")
+      r = [...r].sort((a, b) => b.priceMax - a.priceMax);
+    else if (sort === "newest")
+      r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
+    return r;
+  }, [products, selectedBrands, selectedSubcategories, subcatToValue, categoryGroups, selectedGender, maxPrice, selectedColorGroupIds, selectedStyles, searchQuery, sort, likedOnly, likedProducts]);
+
+  const filteredOutfits = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    let r = catalogOutfits
+      .filter(
+        (o) =>
+          !selectedOccasions.length ||
+          selectedOccasions.includes(o.occasion as Occasion)
+      )
+      .filter((o) => !aiOnly || o.isAIGenerated)
+      .filter(
+        (o) =>
+          maxPrice === null || o.totalPriceMin <= maxPrice
+      )
+      .filter(
+        (o) =>
+          !selectedStyles.length ||
+          // "casual" is an occasion as well as a style, and an outfit filed
+          // under it answers to either.
+          selectedStyles.includes(o.occasion.toLowerCase() as StyleKeyword) ||
+          matchesStyles(o.styleKeywords, selectedStyles)
+      )
+      .filter(
+        (o) =>
+          !q ||
+          o.name.toLowerCase().includes(q) ||
+          o.occasion.toLowerCase().includes(q) ||
+          o.styleKeywords.some((k) => k.toLowerCase().includes(q))
+      );
+
+    if (sort === "price-asc")
+      r = [...r].sort((a, b) => a.totalPriceMin - b.totalPriceMin);
+    else if (sort === "price-desc")
+      r = [...r].sort((a, b) => b.totalPriceMax - a.totalPriceMax);
+    return r;
+  }, [catalogOutfits, selectedOccasions, aiOnly, maxPrice, selectedStyles, searchQuery, sort]);
+
+  // When color filters are active, expand each product into one entry per matching
+  // color variant. This lets a single product appear as multiple cards when multiple
+  // selected colors are present in its variant group.
+  type DisplayItem = { product: Product; forcedVariant: ProductSwatch | null; key: string };
+  const displayItems = useMemo((): DisplayItem[] => {
+    if (!selectedColorGroupIds.length) {
+      return filteredProducts.map((p) => ({ product: p, forcedVariant: null, key: p.id }));
+    }
+
+    const items: DisplayItem[] = [];
+    const seen = new Set<string>();
+
+    for (const product of filteredProducts) {
+      const variants = product.variants ?? [];
+
+      if (!variants.length) {
+        // Standalone product (no variant group) — show once
+        if (!seen.has(product.id)) {
+          seen.add(product.id);
+          items.push({ product, forcedVariant: null, key: product.id });
+        }
+        continue;
+      }
+
+      // Find all variants whose colorGroupIds intersect the active color filter
+      const matching = variants.filter((v) =>
+        (v.colorGroupIds ?? []).some((id) => selectedColorGroupIds.includes(id))
+      );
+
+      if (!matching.length) {
+        // No variant specifically tagged — fall back to showing the base card once
+        if (!seen.has(product.id)) {
+          seen.add(product.id);
+          items.push({ product, forcedVariant: null, key: product.id });
+        }
+        continue;
+      }
+
+      for (const variant of matching) {
+        if (!seen.has(variant.id)) {
+          seen.add(variant.id);
+          // If the matching variant IS the base product, don't force a variant
+          const forcedVariant = variant.id === product.id ? null : variant;
+          items.push({ product, forcedVariant, key: `${product.id}__${variant.id}` });
+        }
+      }
+    }
+
+    return items;
+  }, [filteredProducts, selectedColorGroupIds]);
+
+  const count =
+    view === "outfits" ? filteredOutfits.length : displayItems.length;
+
+  // Reset to page 1 whenever filters/sort/view change. Done while rendering
+  // (React's "adjust state when inputs change" pattern) rather than in an
+  // effect; the inputs are compared the way effect dependencies would be.
+  const pageResetInputs = [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyles];
+  const [prevPageResetInputs, setPrevPageResetInputs] = useState(pageResetInputs);
+  if (pageResetInputs.some((v, i) => !Object.is(v, prevPageResetInputs[i]))) {
+    setPrevPageResetInputs(pageResetInputs);
+    setPage(1);
+    setExtraPages(0);
+  }
+
+  const totalPages = Math.ceil(count / PAGE_SIZE);
+  // One index past the last item on screen — the current page plus anything
+  // "Show more" has appended.
+  const shownEnd = Math.min((page + extraPages) * PAGE_SIZE, count);
+  const hasMore = shownEnd < count;
+  const pagedItems = useMemo(
+    () => displayItems.slice((page - 1) * PAGE_SIZE, (page + extraPages) * PAGE_SIZE),
+    [displayItems, page, extraPages, PAGE_SIZE]
+  );
+  const pagedOutfits = useMemo(
+    () => filteredOutfits.slice((page - 1) * PAGE_SIZE, (page + extraPages) * PAGE_SIZE),
+    [filteredOutfits, page, extraPages, PAGE_SIZE]
+  );
+
+  /* Browse context passed to the AI Stylist — mirrors active filter state */
+  const browseContext = useMemo(() => ({
+    view,
+    searchQuery: searchQuery || undefined,
+    categories: selectedSubcategories.length ? selectedSubcategories : undefined,
+    brands: selectedBrands.length ? selectedBrands : undefined,
+    occasions: selectedOccasions.length ? (selectedOccasions as string[]) : undefined,
+    gender: selectedGender ?? undefined,
+    styles: selectedStyles.length ? (selectedStyles as string[]) : undefined,
+    priceLabel: maxPrice !== null ? `<$${maxPrice.toLocaleString()}` : undefined,
+    visibleCount: count,
+  }), [view, searchQuery, selectedSubcategories, selectedBrands, selectedOccasions, selectedGender, selectedStyles, maxPrice, count]);
+
+  const filteredBrandsForSearch = BRANDS.filter(
+    (b) => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())
+  );
+
+  /* Style — the same section in both views */
+  const renderStyleFilter = () => (
+    <div className="border-b border-[var(--border)] px-5 py-4">
+      <button
+        onClick={() => setStyleOpen(v => !v)}
+        aria-expanded={styleOpen}
+        className="w-full flex items-center justify-between group"
+      >
+        <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+          Style{selectedStyles.length > 0 && <span className="ml-2 text-[10px] font-semibold opacity-60 normal-case">— {selectedStyles.length === 1 ? styleLabel(selectedStyles[0]) : `${selectedStyles.length} selected`}</span>}
+        </p>
+        <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${styleOpen ? "rotate-180" : ""}`}>
+          <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {styleOpen && (
+        <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
+          <button
+            onClick={() => setSelectedStyles([])}
+            className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
+          >
+            <span className={`text-[14px] font-bold ${selectedStyles.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
+            {selectedStyles.length === 0 && (
+              <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            )}
+          </button>
+          {STYLE_KEYWORD_LIST.map((st) => {
+            const isChk = selectedStyles.includes(st);
+            return (
+              <button
+                key={st}
+                onClick={() => toggleStyle(st)}
+                aria-pressed={isChk}
+                className="w-full flex items-center justify-between px-4 py-3.5 border-t border-[var(--border)] transition-colors hover:bg-[var(--surface)]"
+              >
+                <span className={`text-[14px] font-bold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{styleLabel(st)}</span>
+                <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                  {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  /* Sidebar filter content — matches builder style exactly */
+  const renderFilters = () => (
+    <div>
+      {/* MY LIKED ITEMS */}
+      <div className="border-b border-[var(--border)] px-5 py-4">
+        <button
+          onClick={() => setLikedOnly((v) => !v)}
+          className="w-full flex items-center justify-between group"
+        >
+          <span className="flex items-center gap-2.5">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
+              <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.5" fill={likedOnly ? "currentColor" : "none"} />
+            </svg>
+            <span className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)]" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>My Liked Items</span>
+          </span>
+          <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${likedOnly ? "rotate-180" : ""}`}>
+            <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      {view === "outfits" ? (
+        <>
+          {/* AI ONLY */}
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Curated by AI</p>
+            <button
+              onClick={() => setAiOnly((v) => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-colors duration-150 ${
+                aiOnly
+                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <span className="text-[11px] font-semibold">AI outfits only</span>
+              {aiOnly && (
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
+          </div>
+          {/* OCCASION */}
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Occasion</p>
+            <button
+              onClick={() => setOccasionOpen(v => !v)}
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-xl border transition-[color,background-color,border-color,opacity] duration-150 ${
+                occasionOpen || selectedOccasions.length > 0
+                  ? "border-[var(--foreground)] text-[var(--foreground)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground)] opacity-55 hover:opacity-100 hover:border-[var(--foreground)]"
+              }`}
+            >
+              <span className="text-[13px] font-bold capitalize">
+                {selectedOccasions.length === 0 ? "All" : selectedOccasions.length === 1 ? selectedOccasions[0] : `${selectedOccasions.length} selected`}
+              </span>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${occasionOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {occasionOpen && (
+              <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setSelectedOccasions([])}
+                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
+                >
+                  <span className={`text-[14px] font-bold ${selectedOccasions.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
+                  {selectedOccasions.length === 0 && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  )}
+                </button>
+                {OCCASIONS.map((occ, i) => {
+                  const isChk = selectedOccasions.includes(occ);
+                  return (
+                    <button key={occ} onClick={() => toggleOccasion(occ)}
+                      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-[var(--surface)] ${i >= 0 ? "border-t border-[var(--border)]" : ""}`}
+                    >
+                      <span className={`text-[14px] font-bold capitalize ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{occ}</span>
+                      <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                        {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {renderStyleFilter()}
+        </>
+      ) : (
+        <>
+          {/* CATEGORY */}
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <button
+              onClick={() => setCategoryOpen(v => !v)}
+              className="w-full flex items-center justify-between mb-0 group"
+            >
+              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Category</p>
+              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${categoryOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {categoryOpen && (
+            <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
+              {/* All */}
+              <button
+                onClick={() => setSelectedSubcategories([])}
+                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
+              >
+                <span className={`text-[14px] font-bold ${selectedSubcategories.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
+                {selectedSubcategories.length === 0 && (
+                  <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                )}
+              </button>
+              {browseCategoryGroups.map(group => {
+                const grpOpen = expandedCategoryGroups.has(group.id);
+                const grpLabels = group.items.map(i => i.label);
+                const grpViewAllChecked = grpLabels.every(l => selectedSubcategories.includes(l));
+                const grpActive = grpLabels.some(l => selectedSubcategories.includes(l));
+                return (
+                  <div key={group.id} className="border-t border-[var(--border)]">
+                    {/* Group header */}
+                    <button
+                      onClick={() => setExpandedCategoryGroups(prev => {
+                        const next = new Set(prev);
+                        next.has(group.id) ? next.delete(group.id) : next.add(group.id);
+                        return next;
+                      })}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
+                    >
+                      <span className={`shrink-0 text-base ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{group.icon}</span>
+                      <span className={`flex-1 text-left text-[14px] font-bold ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{group.label}</span>
+                      <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] opacity-50 transition-transform duration-200 ${grpOpen ? "rotate-180" : ""}`}>
+                        <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    {grpOpen && (
+                      <>
+                        {/* View all */}
+                        <button
+                          onClick={() => setSelectedSubcategories(prev =>
+                            grpViewAllChecked
+                              ? prev.filter(l => !grpLabels.includes(l))
+                              : [...new Set([...prev, ...grpLabels])]
+                          )}
+                          className="w-full flex items-center justify-between pl-6 pr-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                        >
+                          <span className={`text-[13px] font-black tracking-wide uppercase ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>View all</span>
+                          <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
+                            {grpViewAllChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                          </div>
+                        </button>
+                        {/* Sub-items */}
+                        {group.items.map(item => {
+                          const isChk = selectedSubcategories.includes(item.label);
+                          return (
+                            <button
+                              key={item.label}
+                              onClick={() => toggleSubcategory(item.label)}
+                              className={`w-full flex items-center justify-between pl-6 pr-4 py-2.5 hover:bg-[var(--surface)] transition-colors ${isChk ? "bg-[var(--surface)]" : ""}`}
+                            >
+                              <span className={`text-[14px] font-semibold transition-opacity ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-60"}`}>{item.label}</span>
+                              <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                                {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            )}
+          </div>
+          {renderStyleFilter()}
+          {/* GENDER */}
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <button
+              onClick={() => setGenderOpen(v => !v)}
+              className="w-full flex items-center justify-between group"
+            >
+              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+                Gender{selectedGender !== null && <span className="ml-2 text-[10px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
+              </p>
+              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {genderOpen && (
+              <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
+                {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g, i) => {
+                  const label = g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1);
+                  const isActive = selectedGender === g;
+                  return (
+                    <button key={label}
+                      onClick={() => { setSelectedGender(g); setGenderOpen(false); }}
+                      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-[var(--surface)] ${i > 0 ? "border-t border-[var(--border)]" : ""}`}
+                    >
+                      <span className={`text-[14px] font-bold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{label}</span>
+                      {isActive && (
+                        <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {/* COLORS */}
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <button
+              onClick={() => setColorsOpen(v => !v)}
+              className="w-full flex items-center justify-between group"
+            >
+              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Colors</p>
+              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${colorsOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {colorsOpen && (<>
+            <div className="flex flex-wrap gap-2.5 mt-3">
+              {(showAllColors ? colorGroups : colorGroups.slice(0, 6)).map((cg) => {
+                const isActive = selectedColorGroupIds.includes(cg.id);
+                return (
+                  <button
+                    key={cg.id}
+                    title={cg.name}
+                    onClick={() => toggleColorGroup(cg.id)}
+                    className={`w-9 h-9 rounded-full cursor-pointer transition-[transform,opacity] ${isActive ? "scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"}`}
+                    style={{
+                      background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode,
+                      boxShadow: isActive
+                        ? "0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
+                        : "inset 0 0 0 1px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.06)",
+                    }}
+                  />
+                );
+              })}
+            </div>
+            {colorGroups.length > 6 && (
+              <button
+                onClick={() => setShowAllColors((v) => !v)}
+                className="mt-2 text-[12px] font-semibold text-[var(--foreground)] opacity-50 hover:opacity-100 transition-opacity underline underline-offset-2"
+              >
+                {showAllColors ? "Show less" : `Show ${colorGroups.length - 6} more`}
+              </button>
+            )}
+            </>)}
+          </div>
+          {/* DESIGNER / BRANDS */}
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <button
+              onClick={() => setBrandsOpen(v => !v)}
+              className="w-full flex items-center justify-between group"
+            >
+              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Designer</p>
+              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${brandsOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {brandsOpen && (<>
+            <div className="relative mb-3 mt-3">
+              <input
+                type="text"
+                value={brandSearch}
+                onChange={(e) => setBrandSearch(e.target.value)}
+                placeholder="Search brands…"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+              />
+              {brandSearch && (
+                <button
+                  onClick={() => setBrandSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                >
+                  <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M1 1L9 9M9 1L1 9" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {filteredBrandsForSearch.slice(0, showAllBrands ? undefined : 8).map((brand) => {
+                const isActive = selectedBrands.includes(brand);
+                return (
+                  <button
+                    key={brand}
+                    onClick={() => toggleBrand(brand)}
+                    className="w-full flex items-center justify-between px-1 py-2.5 hover:bg-[var(--surface)] rounded-lg transition-colors"
+                  >
+                    <span className={`text-[13px] truncate text-left font-semibold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-55"}`}>
+                      {brand}
+                    </span>
+                    <div className="shrink-0 flex items-center justify-center border transition-colors ml-2" style={{ width: 18, height: 18, borderRadius: "50%", background: isActive ? "var(--foreground)" : "transparent", borderColor: isActive ? "var(--foreground)" : "var(--border-strong)" }}>
+                      {isActive && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                    </div>
+                  </button>
+                );
+              })}
+              {filteredBrandsForSearch.length === 0 && (
+                <p className="px-1 py-2 text-[13px] text-[var(--foreground)] opacity-40">No brands found</p>
+              )}
+            </div>
+            {filteredBrandsForSearch.length > 8 && (
+              <button
+                onClick={() => setShowAllBrands((v) => !v)}
+                className="mt-2 text-[12px] font-semibold text-[var(--foreground)] opacity-50 hover:opacity-100 transition-opacity underline underline-offset-2"
+              >
+                {showAllBrands ? "Show less" : `Show ${filteredBrandsForSearch.length - 8} more`}
+              </button>
+            )}
+            </>)}
+          </div>
+        </>
+      )}
+      {/* PRICE */}
+      <div className="border-b border-[var(--border)] px-5 py-4">
+        <button
+          onClick={() => setPriceOpen(v => !v)}
+          className="w-full flex items-center justify-between group"
+        >
+          <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+            Price{maxPrice !== null && maxPrice < 2000 && <span className="ml-2 text-[10px] font-semibold opacity-60">{`— < $${maxPrice.toLocaleString()}`}</span>}
+          </p>
+          <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${priceOpen ? "rotate-180" : ""}`}>
+            <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {priceOpen && (
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[12px] font-semibold text-[var(--foreground)] opacity-40">$0</span>
+              <span className="text-[13px] font-bold text-[var(--foreground)]">
+                {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={2000}
+              step={50}
+              value={maxPrice ?? 2000}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+              }}
+              className="w-full cursor-pointer mb-3"
+              style={{ accentColor: "var(--foreground)" }}
+            />
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {([
+                { label: "All", max: null },
+                { label: "<$200", max: 200 },
+                { label: "<$500", max: 500 },
+                { label: "<$1k", max: 1000 },
+                { label: "<$2k", max: 2000 },
+              ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
+                <button
+                  key={label}
+                  onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                  className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-colors ${
+                    maxPrice === max
+                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      {/* CLEAR FILTERS */}
+      {activeFiltersCount > 0 && (
+        <div className="px-5 py-4">
+          <button
+            onClick={clearAll}
+            className="w-full py-2 rounded-lg border border-[var(--border-strong)] text-[10px] tracking-[0.12em] uppercase font-bold text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  /* Phone: sort and every filter in one sheet from the bottom (DESIGN_SYSTEM.md §12.7,
+     mockup v1 «Б · Фильтры и сортировка»). Same state as the desktop drawer. */
+  const noun = view === "outfits" ? (count === 1 ? "outfit" : "outfits") : (count === 1 ? "piece" : "pieces");
+  const closeSheet = () => setFiltersOpen(false);
+  const renderSheet = () => (
+    <div className="md:hidden">
+      <div aria-hidden="true" className={sheetOv.cls("ov-scrim fixed inset-0 z-50 bg-black/60 backdrop-blur-sm")} onClick={closeSheet} />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="browse-sheet-title"
+        onTransitionEnd={sheetOv.onTransitionEnd}
+        className={sheetOv.cls("ov-rise fixed inset-x-0 bottom-0 z-50 max-h-[calc(100%-56px)] rounded-t-3xl bg-[var(--surface)] flex flex-col pb-[calc(env(safe-area-inset-bottom)+16px)]")}
+      >
+        <div aria-hidden="true" className="mx-auto mt-2 w-9 h-1 shrink-0 rounded-full bg-[var(--border-strong)]" />
+        <div className="flex items-center pl-5 pr-2 shrink-0">
+          <h2 id="browse-sheet-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">Sort &amp; filter</h2>
+          <button
+            ref={sheetCloseRef}
+            onClick={closeSheet}
+            aria-label="Close"
+            className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-2 pb-4 space-y-[22px]">
+          <SheetSection title="Sort by">
+            <div className="flex flex-wrap gap-2">
+              {SORT_CHOICES.map((o) => (
+                <SheetChip key={o.value} on={sort === o.value} onClick={() => setSort(o.value)}>{o.label}</SheetChip>
+              ))}
+            </div>
+          </SheetSection>
+
+          {view === "pieces" ? (
+            <>
+              <SheetSection title="Category">
+                <div className="flex flex-wrap gap-2">
+                  <SheetChip on={selectedSubcategories.length === 0} onClick={() => setSelectedSubcategories([])}>All</SheetChip>
+                  {browseCategoryGroups.map((group) => {
+                    const picked = group.items.filter((i) => selectedSubcategories.includes(i.label)).length;
+                    return (
+                      <SheetChip
+                        key={group.id}
+                        on={picked > 0}
+                        expanded={expandedCategoryGroups.has(group.id)}
+                        onClick={() => setExpandedCategoryGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(group.id)) next.delete(group.id); else next.add(group.id);
+                          return next;
+                        })}
+                      >
+                        {group.label}{picked > 0 && <span className="ml-1 opacity-60">{picked}</span>}
+                      </SheetChip>
+                    );
+                  })}
+                </div>
+                {browseCategoryGroups.filter((g) => expandedCategoryGroups.has(g.id)).map((group) => {
+                  const labels = group.items.map((i) => i.label);
+                  const all = labels.every((l) => selectedSubcategories.includes(l));
+                  return (
+                    <div key={group.id} className="mt-3.5">
+                      <p className="mb-2 text-[12px] text-[var(--foreground-muted)]">{group.label}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <SheetChip
+                          on={all}
+                          onClick={() => setSelectedSubcategories((prev) =>
+                            all ? prev.filter((l) => !labels.includes(l)) : [...new Set([...prev, ...labels])]
+                          )}
+                        >
+                          All {group.label.toLowerCase()}
+                        </SheetChip>
+                        {group.items.map((item) => (
+                          <SheetChip key={item.label} on={selectedSubcategories.includes(item.label)} onClick={() => toggleSubcategory(item.label)}>
+                            {item.label}
+                          </SheetChip>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </SheetSection>
+
+              <SheetSection title="Colour">
+                <div className="flex flex-wrap -mx-1.5">
+                  {colorGroups.map((cg) => {
+                    const on = selectedColorGroupIds.includes(cg.id);
+                    return (
+                      <button
+                        key={cg.id}
+                        onClick={() => toggleColorGroup(cg.id)}
+                        aria-label={cg.name}
+                        aria-pressed={on}
+                        className="w-11 h-11 flex items-center justify-center"
+                      >
+                        <span
+                          className="w-[30px] h-[30px] rounded-full"
+                          style={{
+                            background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode,
+                            boxShadow: on
+                              ? "0 0 0 2px var(--surface), 0 0 0 3.5px var(--foreground)"
+                              : "0 0 0 1px var(--border)",
+                          }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </SheetSection>
+
+              <SheetSection title="Gender">
+                <div className="flex flex-wrap gap-2">
+                  {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g) => (
+                    <SheetChip key={g ?? "all"} on={selectedGender === g} onClick={() => setSelectedGender(g)}>
+                      {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
+                    </SheetChip>
+                  ))}
+                </div>
+              </SheetSection>
+            </>
+          ) : (
+            <>
+              <SheetSection title="Occasion">
+                <div className="flex flex-wrap gap-2">
+                  <SheetChip on={selectedOccasions.length === 0} onClick={() => setSelectedOccasions([])}>All</SheetChip>
+                  {OCCASIONS.map((occ) => (
+                    <SheetChip key={occ} on={selectedOccasions.includes(occ)} onClick={() => toggleOccasion(occ)}>
+                      {occ.charAt(0).toUpperCase() + occ.slice(1)}
+                    </SheetChip>
+                  ))}
+                </div>
+              </SheetSection>
+              <SheetToggle label="AI outfits only" on={aiOnly} onChange={() => setAiOnly((v) => !v)} />
+            </>
+          )}
+
+          <SheetSection title="Style">
+            <div className="flex flex-wrap gap-2">
+              <SheetChip on={selectedStyles.length === 0} onClick={() => setSelectedStyles([])}>All</SheetChip>
+              {STYLE_KEYWORD_LIST.map((st) => (
+                <SheetChip key={st} on={selectedStyles.includes(st)} onClick={() => toggleStyle(st)}>{styleLabel(st)}</SheetChip>
+              ))}
+            </div>
+          </SheetSection>
+
+          <SheetSection title="Price">
+            <div className="flex flex-wrap gap-2">
+              {PRICE_CHOICES.map(({ max, label }) => (
+                <SheetChip key={label} on={maxPrice === max} onClick={() => setMaxPrice(maxPrice === max ? null : max)}>{label}</SheetChip>
+              ))}
+            </div>
+            <label className="mt-4 block">
+              <span className="flex items-center justify-between text-[13px] text-[var(--foreground-muted)]">
+                Up to
+                <span className="text-[15px] font-medium text-[var(--foreground)]">
+                  {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+                </span>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={2000}
+                step={50}
+                value={maxPrice ?? 2000}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+                }}
+                aria-label="Maximum price"
+                className="mt-2 w-full h-11 cursor-pointer"
+                style={{ accentColor: "var(--foreground)" }}
+              />
+            </label>
+          </SheetSection>
+
+          {view === "pieces" && (
+            <SheetSection title="Designer">
+              <input
+                type="search"
+                value={brandSearch}
+                onChange={(e) => setBrandSearch(e.target.value)}
+                placeholder="Search designers"
+                aria-label="Search designers"
+                className="w-full h-12 px-3.5 rounded-2xl bg-[var(--fg-overlay-08)] text-base text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none! focus-visible:shadow-[inset_0_0_0_1px_var(--foreground)] [&::-webkit-search-cancel-button]:hidden"
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {filteredBrandsForSearch.slice(0, showAllBrands ? undefined : 12).map((brand) => (
+                  <SheetChip key={brand} on={selectedBrands.includes(brand)} onClick={() => toggleBrand(brand)}>{brand}</SheetChip>
+                ))}
+              </div>
+              {filteredBrandsForSearch.length === 0 && (
+                <p className="mt-1 text-[13px] text-[var(--foreground-muted)]">No designers found</p>
+              )}
+              {filteredBrandsForSearch.length > 12 && (
+                <button
+                  onClick={() => setShowAllBrands((v) => !v)}
+                  className="mt-1 h-11 -ml-3 px-3 text-[15px] text-[var(--foreground-muted)]"
+                >
+                  {showAllBrands ? "Show fewer" : `Show ${filteredBrandsForSearch.length - 12} more`}
+                </button>
+              )}
+            </SheetSection>
+          )}
+
+          <SheetToggle label="Only my likes" on={likedOnly} onChange={() => setLikedOnly((v) => !v)} />
+        </div>
+
+        <div className="shrink-0 px-5 pt-3 flex items-center gap-2.5">
+          <button
+            onClick={() => { clearAll(); setSort("featured"); }}
+            disabled={activeFiltersCount === 0 && sort === "featured"}
+            className="h-12 px-5 rounded-full bg-[var(--fg-overlay-08)] text-[15px] font-medium text-[var(--foreground)] disabled:opacity-40"
+          >
+            Clear
+          </button>
+          <button
+            onClick={closeSheet}
+            className="flex-1 h-12 px-6 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold"
+          >
+            Show {count} {noun}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen">
+      <div className="max-w-[1440px] mx-auto">
+        {/* ── Page header — shown from md: on a phone the catalogue starts right
+            under the header capsule (DESIGN_SYSTEM.md §12.1), and the header
+            stays only for screen readers. One element at every width, so the
+            page has a single <h1>. ── */}
+        <div className="max-md:sr-only px-6 md:px-12 pt-12 md:pt-16">
+          <div className="mb-8">
+            <h1 className="text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
+              Browse
+            </h1>
+            <p className="mt-3 text-sm font-medium text-[var(--foreground-muted)] max-w-xs leading-relaxed">
+              Curated pieces from the world&apos;s most forward-thinking brands.
+            </p>
+            <div className="mt-6 border-t border-[var(--border)]" />
+          </div>
+
+          {/* View tabs — moved to toolbar */}
+        </div>
+
+
+        {/* ── FILTER SIDEBAR OVERLAY ── */}
+        <AnimatePresence>
+          {filtersOpen && (
+            <motion.div
+              key="filter-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="hidden md:block fixed inset-0 z-40 bg-black/20"
+              onClick={() => setFiltersOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {filtersOpen && (
+            <motion.div
+              key="filter-sidebar"
+              initial={{ x: -280, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -280, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
+              className="fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] hidden md:flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+                <p className="text-[15px] tracking-[0.14em] uppercase font-black text-[var(--foreground)]" style={{ textShadow: "0 0 14px rgba(255,255,255,0.3)" }}>Filters</p>
+                <motion.button
+                  onClick={() => setFiltersOpen(false)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="p-1.5 -mr-1.5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
+                    <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </motion.button>
+              </div>
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto">
+                {renderFilters()}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {sheetOv.rendered && renderSheet()}
+
+        {/* Main content */}
+        <div>
+          <main className="px-3 md:px-8 lg:px-10">
+            {/* Phone toolbar: one row — view toggle, search, filters (DESIGN_SYSTEM.md
+                §12.5, mockup v2 «Б · Каталог»). Search swaps the row for a field. */}
+            <div className="md:hidden pt-3">
+              {!searchOpen ? (
+                <div className="flex items-center gap-2">
+                  {/* Each half is a full 44px target; the frame is an inset shadow and the
+                      active pill sits 3px inside, so no edge of the control is dead. */}
+                  <div role="group" aria-label="Show" className="flex-1 h-11 grid grid-cols-2 rounded-full bg-[var(--surface)] shadow-[inset_0_0_0_1px_var(--border)]">
+                    {(["pieces", "outfits"] as View[]).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => switchView(v)}
+                        aria-pressed={view === v}
+                        className={`relative h-11 rounded-full text-[14px] capitalize transition-colors duration-200 ${
+                          view === v ? "text-[var(--background)] font-semibold" : "text-[var(--foreground-muted)] font-medium"
+                        }`}
+                      >
+                        {view === v && <span aria-hidden="true" className="absolute inset-[3px] rounded-full bg-[var(--foreground)]" />}
+                        <span className="relative">{v}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => { setSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
+                    aria-label="Search"
+                    className="shrink-0 w-11 h-11 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] flex items-center justify-center"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                      <circle cx="11" cy="11" r="6.5" />
+                      <path d="M16 16l4 4" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => { setStylistOpen(false); setFiltersOpen(true); }}
+                    aria-label={activeFiltersCount > 0 ? `Sort and filter, ${activeFiltersCount} on` : "Sort and filter"}
+                    className="relative shrink-0 w-11 h-11 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] flex items-center justify-center"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                      <path d="M4 7h16M7 12h10M10 17h4" />
+                    </svg>
+                    {activeFiltersCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[9px] font-bold leading-4 text-center">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1 -mr-2">
+                    <label className="flex-1 min-w-0 h-11 flex items-center gap-2 pl-3.5 rounded-full border border-[var(--border-strong)] focus-within:border-[var(--foreground)] bg-[var(--surface)] text-[var(--foreground-muted)] transition-colors">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" className="shrink-0">
+                        <circle cx="11" cy="11" r="6.5" />
+                        <path d="M16 16l4 4" />
+                      </svg>
+                      {/* The capsule shows focus; `!` because the global :focus-visible
+                          ring is unlayered and beats a plain utility. */}
+                      <input
+                        ref={mobileSearchRef}
+                        type="search"
+                        enterKeyHint="search"
+                        aria-label={`Search ${view}`}
+                        placeholder={`Search ${view}`}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1 min-w-0 bg-transparent outline-none! text-base text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] [&::-webkit-search-cancel-button]:hidden"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => { setSearchQuery(""); mobileSearchRef.current?.focus(); }}
+                          aria-label="Clear search"
+                          className="shrink-0 w-11 h-11 -my-px rounded-full flex items-center justify-center"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                            <path d="M7 7l10 10M17 7L7 17" />
+                          </svg>
+                        </button>
+                      )}
+                    </label>
+                    <button
+                      onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                      className="shrink-0 h-11 px-3 text-[15px] text-[var(--foreground)]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {searchQuery.trim() && (
+                    <p className="pt-3.5 px-1 text-[13px] text-[var(--foreground-muted)]" aria-live="polite">
+                      {count} {view === "outfits" ? (count === 1 ? "outfit" : "outfits") : (count === 1 ? "piece" : "pieces")} for “{searchQuery.trim()}”
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Toolbar: flex row, items-end so chips align with bottom pill */}
+            <div className="hidden md:block pt-4 pb-4 border-b border-[var(--border)]">
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-3 sm:flex-nowrap">
+
+                {/* Left column: Filter+Search on top, Pieces/Outfits below.
+                    Full width on mobile so the segmented toggle never clips. */}
+                <div className="flex flex-col gap-3 shrink-0 w-full sm:w-auto">
+                  <div className="flex gap-2 items-center">
+                    {/* Filter */}
+                    <button
+                      onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
+                      className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-colors duration-200 ${
+                        filtersOpen
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                      }`}
+                    >
+                      <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                        <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                      <span className="hidden sm:inline">Filter</span>
+                      {activeFiltersCount > 0 && (
+                        <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+                          {activeFiltersCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Search */}
+                    <div className="shrink-0 relative">
+                      <AnimatePresence mode="wait" initial={false}>
+                        {!searchOpen ? (
+                          <motion.button
+                            key="search-btn"
+                            onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.92 }}
+                            transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                            className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                            </svg>
+                            <span className="hidden sm:inline">Search</span>
+                          </motion.button>
+                        ) : (
+                          <motion.div
+                            key="search-input"
+                            initial={{ opacity: 0, width: 80, scale: 0.96 }}
+                            animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
+                            exit={{ opacity: 0, width: 80, scale: 0.96 }}
+                            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                            className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
+                              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                            </svg>
+                            <input
+                              ref={searchInputRef}
+                              type="text"
+                              placeholder="Search…"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-base md:text-[11px] mx-2 min-w-0 flex-1"
+                            />
+                            <button
+                              onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                              className="w-6 h-6 rounded-full bg-[var(--border)] hover:bg-[var(--border-strong)] flex items-center justify-center shrink-0 transition-colors"
+                            >
+                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                                <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-[var(--foreground)]" />
+                              </svg>
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  {/* Pieces/Outfits pill — w-full fills column = Filter+Search width */}
+                  <div className="w-full relative flex border border-[var(--foreground-muted)] rounded-full overflow-hidden">
+                    <motion.div
+                      className="absolute inset-y-0 w-1/2 bg-[var(--foreground)] rounded-full"
+                      animate={{ x: view === "pieces" ? "0%" : "100%" }}
+                      transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
+                    />
+                    {(["pieces", "outfits"] as View[]).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => switchView(v)}
+                        className="relative z-10 flex-1 py-2.5 text-[11px] tracking-[0.14em] uppercase font-bold whitespace-nowrap transition-colors duration-200 text-center"
+                        style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sort — ml-auto holds the right edge now that nothing fills the
+                    middle; self-end keeps it on the Pieces/Outfits line */}
+                <div className="relative shrink-0 ml-auto self-end" ref={sortRef}>
+                  <button
+                    onClick={() => setSortOpen((o) => !o)}
+                    className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-colors duration-200 ${
+                      sortOpen
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
+                  >
+                    <svg width="11" height="10" viewBox="0 0 11 10" fill="none">
+                      <path d="M1 1.5H10M2.5 5H8.5M4 8.5H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                    <span className="hidden sm:inline">
+                      {sort === "featured" && "Featured"}
+                      {sort === "price-asc" && "Price ↑"}
+                      {sort === "price-desc" && "Price ↓"}
+                      {sort === "newest" && "Newest"}
+                    </span>
+                    {sort !== "featured" && (
+                      <span className="sm:hidden text-[9px]">
+                        {sort === "price-asc" && "↑"}
+                        {sort === "price-desc" && "↓"}
+                        {sort === "newest" && "New"}
+                      </span>
+                    )}
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}>
+                      <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {sortOpen && (
+                    <div className="absolute right-0 top-full mt-2 z-50 min-w-[140px] bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden">
+                      {([
+                        { value: "featured", label: "Featured" },
+                        { value: "price-asc", label: "Price ↑" },
+                        { value: "price-desc", label: "Price ↓" },
+                        { value: "newest", label: "Newest" },
+                      ] as { value: SortOption; label: string }[]).map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setSort(opt.value); setSortOpen(false); }}
+                          className={`w-full text-left px-5 py-3 text-[10px] tracking-[0.14em] uppercase font-bold transition-colors duration-150 flex items-center justify-between gap-3 ${
+                            sort === opt.value
+                              ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                          }`}
+                        >
+                          {opt.label}
+                          {sort === opt.value && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
+
+            {/* Active filter chips */}
+            {activeFiltersCount > 0 && (
+              <div className="flex items-center gap-1.5 md:gap-2 flex-wrap pt-3 md:pt-4">
+                <AnimatePresence>
+                {selectedBrands.map((brand) => (
+                  <motion.div
+                    key={brand}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={brand}
+                      onRemove={() => toggleBrand(brand)}
+                    />
+                  </motion.div>
+                ))}
+                {selectedSubcategories.map((sub) => (
+                  <motion.div
+                    key={sub}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={sub}
+                      onRemove={() => toggleSubcategory(sub)}
+                    />
+                  </motion.div>
+                ))}
+                {selectedOccasions.map((occ) => (
+                  <motion.div
+                    key={occ}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={occ}
+                      onRemove={() => toggleOccasion(occ)}
+                    />
+                  </motion.div>
+                ))}
+                {selectedGender && (
+                  <motion.div
+                    key="gender"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={selectedGender}
+                      onRemove={() => setSelectedGender(null)}
+                    />
+                  </motion.div>
+                )}
+                {maxPrice !== null && (
+                  <motion.div
+                    key="price"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={maxPrice < 2000 ? `<$${maxPrice.toLocaleString()}` : "<$2k"}
+                      onRemove={() => setMaxPrice(null)}
+                    />
+                  </motion.div>
+                )}
+                {selectedColorGroupIds.map((id) => {
+                  const cg = colorGroups.find((g) => g.id === id);
+                  if (!cg) return null;
+                  return (
+                    <motion.div
+                      key={id}
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ duration: 0.15 }}
+                      layout
+                    >
+                      <button
+                        onClick={() => toggleColorGroup(id)}
+                        aria-label={`Remove ${cg.name}`}
+                        className="flex items-center gap-1.5 h-8 pl-2.5 pr-2.5 md:h-auto rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:hover:bg-[var(--fg-overlay-05)] text-[13px] md:text-[9px] md:tracking-[0.10em] md:uppercase md:border md:border-[var(--foreground)] text-[var(--foreground)] md:px-2.5 md:py-1 transition-colors duration-200"
+                      >
+                        <span
+                          className="w-3.5 h-3.5 md:w-2.5 md:h-2.5 shrink-0 rounded-full shadow-[0_0_0_1px_var(--border)] md:shadow-none"
+                          style={
+                            cg.hexCode === "#multicolor"
+                              ? { background: "conic-gradient(red, orange, yellow, green, blue, violet, red)" }
+                              : { backgroundColor: cg.hexCode }
+                          }
+                        />
+                        {cg.name}
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="md:hidden" aria-hidden="true">
+                          <path d="M7 7l10 10M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                        <svg width="7" height="7" viewBox="0 0 7 7" fill="none" className="hidden md:block">
+                          <path d="M1 1L6 6M6 1L1 6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </motion.div>
+                  );
+                })}
+                {aiOnly && (
+                  <motion.div
+                    key="aiOnly"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip label="AI Only" onRemove={() => setAiOnly(false)} />
+                  </motion.div>
+                )}
+                {selectedStyles.map((st) => (
+                  <motion.div
+                    key={`style-${st}`}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip label={styleLabel(st)} onRemove={() => toggleStyle(st)} />
+                  </motion.div>
+                ))}
+                </AnimatePresence>
+              </div>
+            )}
+
+
+            {/* Product / Outfit grid */}
+            <AnimatePresence mode="wait">
+            <motion.div
+              key={view}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="mt-3 md:mt-10 md:pb-16"
+            >
+              {view === "outfits" && loadingOutfits ? (
+                <>
+                <PhoneSkeleton noun="outfits" />
+                <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
+                      <div className="animate-pulse p-2">
+                        <div className="bg-[var(--surface)] aspect-[3/4] w-full mb-3" />
+                        <div className="bg-[var(--surface)] h-3 w-3/4 mb-2" />
+                        <div className="bg-[var(--surface)] h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
+              ) : view === "pieces" && loadingProducts ? (
+                <>
+                <PhoneSkeleton noun="pieces" />
+                <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
+                      <div className="animate-pulse p-2">
+                        <div className="bg-[var(--surface)] aspect-[3/4] w-full mb-3" />
+                        <div className="bg-[var(--surface)] h-3 w-3/4 mb-2" />
+                        <div className="bg-[var(--surface)] h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
+              ) : view === "outfits" ? (
+                filteredOutfits.length > 0 ? (
+                  <motion.div
+                    className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 md:gap-4 stagger-children"
+                    variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
+                    initial="hidden"
+                    animate="show"
+                  >
+                    {pagedOutfits.map((outfit) => (
+                      <motion.div
+                        key={outfit.id}
+                        className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200"
+                        variants={{ hidden: { opacity: 0, y: 16, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.8 } } }}
+                      >
+                        <OutfitCard outfit={outfit} />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <CatalogEmpty
+                    noun="outfits"
+                    failed={outfitsFailed}
+                    canClear={activeFiltersCount > 0 || searchQuery.trim() !== ""}
+                    onClear={clearAll}
+                    onRetry={() => { setLoadingOutfits(true); setOutfitsFailed(false); setOutfitsAttempt((n) => n + 1); }}
+                  />
+                )
+              ) : displayItems.length > 0 ? (
+                <motion.div
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 md:gap-4 stagger-children"
+                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
+                  initial="hidden"
+                  animate="show"
+                >
+                  {pagedItems.map(({ product, forcedVariant, key }) => (
+                    <motion.div
+                      key={key}
+                      className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200"
+                      variants={{ hidden: { opacity: 0, y: 16, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.8 } } }}
+                    >
+                      <ProductCard product={product} initialVariant={forcedVariant} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ) : (
+                <CatalogEmpty
+                  noun="pieces"
+                  failed={productsFailed}
+                  canClear={activeFiltersCount > 0 || searchQuery.trim() !== ""}
+                  onClear={clearAll}
+                  onRetry={() => { setLoadingProducts(true); setProductsFailed(false); setProductsAttempt((n) => n + 1); }}
+                />
+              )}
+
+              {/* ── Show more — appends the next page below the current one, so the
+                  catalog can be read straight through without paging ── */}
+              {hasMore && (
+                <div className="flex justify-center pt-5 md:pt-10">
+                  <button
+                    onClick={() => setExtraPages((n) => n + 1)}
+                    className="w-full md:w-auto h-12 md:h-auto rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border-strong)] text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:border-[var(--foreground)] md:hover:text-[var(--foreground)] md:px-6 md:py-3 text-[15px] md:text-xs md:tracking-[0.14em] md:uppercase font-medium transition-colors duration-200"
+                  >
+                    Show more
+                  </button>
+                </div>
+              )}
+
+              {/* ── Pagination ── */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-1 md:gap-4 pt-3 md:pt-8 md:pb-6 md:border-t md:border-[var(--border)] md:mt-6">
+                  {/* Phones: the page numbers first and this line under them (mockup v2 «Б · Подвал»). */}
+                  <span className="order-last sm:order-none text-[13px] md:text-[10px] md:tracking-[0.14em] md:uppercase text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)]">
+                    Showing {(page - 1) * PAGE_SIZE + 1}–{shownEnd} of {count} {view === "outfits" ? "outfits" : "pieces"}
+                  </span>
+                  <nav aria-label="Pages" className="flex flex-wrap items-center justify-center gap-1 max-w-full">
+                    <button
+                      onClick={() => { setPage((p) => Math.max(1, p - 1)); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      disabled={page === 1}
+                      aria-label="Previous page"
+                      className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="md:hidden" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                      <svg width="7" height="11" viewBox="0 0 7 11" fill="none" className="hidden md:block"><path d="M6 1L1 5.5L6 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                    {/* Phones: five slots, so the row of 44px circles fits 360px. */}
+                    <div className="contents md:hidden">
+                      {phonePageSlots(page, totalPages).map((p, i) =>
+                        p === -1 ? (
+                          <span key={`m-gap-${i}`} aria-hidden="true" className="w-6 text-center text-[13px] text-[var(--foreground-muted)]">…</span>
+                        ) : (
+                          <button
+                            key={`m-${p}`}
+                            onClick={() => { setPage(p); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                            aria-current={page === p ? "page" : undefined}
+                            className={`w-11 h-11 rounded-full flex items-center justify-center text-[14px] transition-colors duration-150 ${
+                              page === p ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "text-[var(--foreground)]"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+                    </div>
+                    <div className="hidden md:contents">
+                    {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => {
+                      let p: number;
+                      if (totalPages <= 7) {
+                        p = i + 1;
+                      } else if (page <= 4) {
+                        p = i < 5 ? i + 1 : i === 5 ? -1 : totalPages;
+                      } else if (page >= totalPages - 3) {
+                        p = i === 0 ? 1 : i === 1 ? -1 : totalPages - 6 + i;
+                      } else {
+                        p = i === 0 ? 1 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages : page + i - 3;
+                      }
+                      if (p === -1) {
+                        return <span key={`ellipsis-${i}`} className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[9px] text-[var(--foreground-subtle)]">…</span>;
+                      }
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => { setPage(p); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          className={`w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[10px] tracking-[0.08em] transition-colors duration-150 ${
+                            page === p
+                              ? "bg-[var(--foreground)] text-[var(--background)] rounded-lg"
+                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                    </div>
+                    <button
+                      onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      disabled={page === totalPages}
+                      aria-label="Next page"
+                      className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="md:hidden" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                      <svg width="7" height="11" viewBox="0 0 7 11" fill="none" className="hidden md:block"><path d="M1 1L6 5.5L1 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                  </nav>
+                </div>
+              )}
+            </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
+      </div>
+
+      {/* ── AI Stylist drawer ── */}
+      <StylistDrawer
+        isOpen={stylistOpen}
+        onClose={() => setStylistOpen(false)}
+        surface="browse"
+        products={catalogProducts}
+        browseContext={browseContext}
+      />
+
+    </div>
+  );
+}
+
+/** Five page slots for phones: first, last, current, gaps (-1) between. */
+function phonePageSlots(page: number, total: number): number[] {
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+  if (page <= 3) return [1, 2, 3, -1, total];
+  if (page >= total - 2) return [1, -1, total - 2, total - 1, total];
+  return [1, -1, page, -1, total];
+}
+
+/** Phone skeleton: the card plaque with soft blocks (mockup v2 «Б · Каталог — загрузка»). */
+function PhoneSkeleton({ noun }: { noun: string }) {
+  return (
+    <div role="status" aria-label={`Loading ${noun}`} className="md:hidden grid grid-cols-2 gap-2.5">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-2xl bg-[var(--surface)] overflow-hidden animate-pulse">
+          <div className="aspect-[3/4] bg-[var(--fg-overlay-08)]" />
+          <div className="p-3">
+            <div className="h-[11px] w-3/5 rounded-md bg-[var(--fg-overlay-08)]" />
+            <div className="mt-2 h-[11px] w-[85%] rounded-md bg-[var(--fg-overlay-08)]" />
+            <div className="mt-3 h-[11px] w-2/5 rounded-md bg-[var(--fg-overlay-08)]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Nothing to show. Phones tell an empty result from a failed load (DESIGN_SYSTEM.md
+ * §12.12): the error says so and offers "Try again". Desktop keeps its block as is.
+ */
+function CatalogEmpty({
+  noun,
+  failed,
+  canClear,
+  onClear,
+  onRetry,
+}: {
+  noun: string;
+  failed: boolean;
+  canClear: boolean;
+  onClear: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      <div role={failed ? "alert" : undefined} className="md:hidden rounded-2xl bg-[var(--surface)] px-6 py-12 text-center">
+        <span className="mx-auto w-14 h-14 rounded-full bg-[var(--fg-overlay-08)] grid place-items-center text-[var(--foreground-muted)]">
+          {failed ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5" />
+            </svg>
+          ) : (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M16 16l4 4" />
+            </svg>
+          )}
+        </span>
+        <h2 className="mt-4 text-[19px] font-semibold text-[var(--foreground)]">
+          {failed ? "Couldn’t load the catalogue" : `No ${noun} found`}
+        </h2>
+        <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--foreground-muted)]">
+          {failed ? "Check your connection and try again." : "Try adjusting your search or filters."}
+        </p>
+        {(failed || canClear) && (
+          <button
+            onClick={failed ? onRetry : onClear}
+            className="mt-5 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold"
+          >
+            {failed ? "Try again" : "Clear all filters"}
+          </button>
+        )}
+      </div>
+      <div className="hidden md:block">
+        <EmptyState onClear={onClear} noun={noun} />
+      </div>
+    </>
+  );
+}
+
+function EmptyState({
+  onClear,
+  noun,
+}: {
+  onClear: () => void;
+  noun: string;
+}) {
+  return (
+    <div className="py-24 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)] mx-2">
+      <p className="text-xl font-semibold text-[var(--foreground)] mb-2">
+        No {noun} found
+      </p>
+      <p className="text-sm text-[var(--foreground-muted)] mb-4">
+        Try adjusting your search or filters
+      </p>
+      <button
+        onClick={onClear}
+        className="text-xs text-[var(--foreground)] link-underline"
+      >
+        Clear all filters
+      </button>
+    </div>
+  );
+}
