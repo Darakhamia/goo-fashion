@@ -1,9 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { categoryPath } from "@/lib/landing-paths";
+
+// Landing pages linked from every page, so a crawler reaches the catalogue's
+// category and brand pages from anywhere (docs/SEO_PLAN.md, SEO-19). Ids of the
+// category tree's groups; keep to groups that have products — Dresses has
+// none yet.
+const shopLinks = [
+  { label: "Outerwear", href: categoryPath("outerwear") },
+  { label: "Tops", href: categoryPath("tops") },
+  { label: "Bottoms", href: categoryPath("bottoms") },
+  { label: "Footwear", href: categoryPath("footwear") },
+  { label: "Accessories", href: categoryPath("accessories") },
+  { label: "All brands", href: "/brands" },
+];
 
 // Phones get shorter labels so each group fits on a line or two (DESIGN_SYSTEM.md §12.13).
 const mobileLinks: { group: string; links: { label: string; href: string }[] }[] = [
+  { group: "Shop", links: shopLinks },
   { group: "Platform", links: [
     { label: "Browse", href: "/browse" }, { label: "Builder", href: "/builder" }, { label: "Saved", href: "/saved" },
     { label: "Plans", href: "/plans" }, { label: "Profile", href: "/profile" },
@@ -16,6 +31,7 @@ const mobileLinks: { group: string; links: { label: string; href: string }[] }[]
 ];
 
 const footerLinks = {
+  Shop: shopLinks,
   Platform: [
     { label: "Browse",     href: "/browse" },
     { label: "Builder",    href: "/builder" },
@@ -77,7 +93,7 @@ export default function Footer() {
 
         {/* Desktop layout */}
         <div className="hidden md:block">
-          <div className="grid grid-cols-5 gap-8">
+          <div className="grid grid-cols-6 gap-8">
             {/* Brand */}
             <div className="col-span-2">
               <Link

@@ -18,6 +18,7 @@ const SITE_SECTIONS = [
     links: [
       { href: "/", label: "Home" },
       { href: "/browse", label: "Browse Outfits" },
+      { href: "/brands", label: "All Brands" },
       { href: "/plans", label: "Plans & Pricing" },
       { href: "/about", label: "About" },
       { href: "/blog", label: "Journal" },
