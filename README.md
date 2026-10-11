@@ -50,18 +50,18 @@
 
 | Путь | Что там |
 |---|---|
-| `src/app/` | публичный сайт: главная, `/browse`, `/product/[id]`, `/outfit/[id]`, `/look/[id]`, `/builder`, `/plans`, `/subscribe`, `/blog`, `/profile`, `/saved`, `/cart`, юридические страницы |
+| `src/app/` | публичный сайт: главная, `/browse` (серверный рендер каталога), `/product/[id]`, `/outfit/[id]`, `/look/[id]`, посадочные `/brands`, `/brands/[slug]`, `/c/[category]`, `/c/[category]/[subcategory]`, `/builder`, `/plans`, `/subscribe`, `/blog`, `/profile`, `/saved`, `/cart`, юридические страницы |
 | `src/app/goo-studio/` | админка: товары, образы, импорт, парсер, бренды, блог, рассылки, пользователи, подписки, аналитика, журнал действий. Руководство — `docs/ADMIN.md` |
 | `src/app/api/` | API-роуты: публичные (`products`, `outfits`, `stylist`, `generate-outfit`, `billing`, `analytics` и др.) и `api/admin/*` для админки |
 | `src/proxy.ts` | proxy Next 16 (бывший middleware): редирект 308 с `www.` на домен без `www`, доступ к `/goo-studio` (только админы), `/profile`, `/saved` (только после входа) |
 | `src/components/` | компоненты интерфейса. Общего компонента кнопки нет: кнопки собираются по рецептам `DESIGN_SYSTEM.md` (§5.3, в админке §9) |
-| `src/lib/` | общий код: тарифы (`plans.ts`), SEO (`seo.ts`), клиент Supabase (`supabase.ts`), слой данных (`data/db.ts`: демо-данные отдаются только без Supabase), контексты, таксономия |
+| `src/lib/` | общий код: тарифы (`plans.ts`), SEO (`seo.ts`: метаданные страниц, JSON-LD, описания), адреса посадочных (`landing-paths.ts`; данные посадочных — `server/landing.ts`), клиент Supabase (`supabase.ts`), слой данных (`data/db.ts`: демо-данные отдаются только без Supabase), контексты, таксономия |
 | `src/lib/server/` | только серверный код: проверка админа, monobank, подписки, оповещения по оплате, rate-limit, AI-клиенты, журнал действий админов, зеркалирование фото товаров |
 | `src/lib/server/parser/` | парсер страниц, которые присылает расширение, и общий конвейер импорта (`import-product.ts`): через него идут расширение и CSV |
 | `extension/` | расширение Chrome «Goo Collect»: собирает каталог магазина через браузер админа, когда магазин не пускает сервер |
 | `supabase/migrations/` | пронумерованные SQL-миграции |
 | `supabase-schema.sql`, `supabase-migration-*.sql` | базовая схема и ранние миграции (подписки, события оплаты, лайки и сохранённые образы, логотипы брендов); цветовые группы — `supabase/migrations/021_color_groups.sql` |
-| `scripts/` | `migration-smoke.sh` (smoke-проверка сайта и Supabase при переезде сервера), вспомогательные Python-скрипты для картинок |
+| `scripts/` | `migration-smoke.sh` (smoke-проверка сайта и Supabase при переезде сервера), `seo-audit/audit.py` (SEO-проверка живого сайта или стенда, `docs/SEO_PLAN.md`), вспомогательные Python-скрипты для картинок |
 
 ## Деплой
 
