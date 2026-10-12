@@ -41,6 +41,7 @@ const PAGES = [
   ["refund", "/refund"], ["sitemap", "/sitemap-page"], ["not-found", "/no-such-page"], ["login", "/login"],
   // Landing pages (docs/SEO_PLAN.md, SEO-17), on the demo catalogue.
   ["brands", "/brands"], ["brand", "/brands/zara"], ["category", "/c/outerwear"], ["subcategory", "/c/tops/knitwear"],
+  ["brand-subcategory", "/brands/zara/jackets"], ["outfit-style", "/outfits/minimal"],
 ].map(([name, url]) => ({ name, url }));
 
 const STATES = [

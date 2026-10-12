@@ -4,10 +4,10 @@ import BrowseClient from "./BrowseClient";
 import { getAllColorGroups, readAllOutfits, readAllProducts } from "@/lib/data/db";
 import { withTimeout } from "@/lib/server/with-timeout";
 import { loadCategoryTree } from "@/lib/server/category-tree";
-import { brandPath, categoryPath, landingSlug, subcategoryPath } from "@/lib/landing-paths";
-import { groupForProduct, resolveSubcategory } from "@/lib/categories";
+import { brandPath, brandSubcategoryPath, categoryPath, subcategoryPath } from "@/lib/landing-paths";
 import { pageMetadata } from "@/lib/seo";
-import { LANDING_MIN_PRODUCTS } from "@/lib/server/landing";
+import { allLandings } from "@/lib/server/landing";
+import { allOutfitLandings } from "@/lib/server/outfit-landing";
 import type { ColorGroup } from "@/lib/types";
 
 interface Props {
@@ -24,7 +24,8 @@ function singleValues(query: Record<string, string | string[] | undefined>): Rec
   return params;
 }
 
-// One catalogue read per request, shared by the metadata and the page.
+// The storefront's catalogue read, in its shuffled "featured" order. Metadata
+// asks the landing pages instead (lib/server/landing), which sort it newest first.
 const readCatalog = cache(() =>
   withTimeout(readAllProducts(), { products: [], error: "timed out" }, "browse products"),
 );
@@ -37,11 +38,12 @@ const DESCRIPTION =
  * Which address stands for a filtered view (docs/SEO_PLAN.md, SEO-18).
  *
  * - No filter: /browse itself. The outfits tab alone: its own address.
- * - One filter that has an indexed landing page — a brand, a category group,
- *   a subcategory: that page, which lists the same products in HTML of its own.
- * - Anything else (a search, a colour, several filters at once): kept out of
- *   the index, its links still followed — a crawler that finds every
- *   combination of filters would otherwise index thousands of near-copies.
+ * - A filter, or a brand with a subcategory, that an indexed landing page
+ *   covers: that page, which lists the same products in HTML of its own.
+ *   Likewise the outfits tab with one style: that style's outfit ideas.
+ * - Anything else (a search, a colour, other combinations): kept out of the
+ *   index, its links still followed — a crawler that finds every combination
+ *   of filters would otherwise index thousands of near-copies.
  */
 async function canonicalFor(params: Record<string, string>): Promise<{ path: string; noindex?: boolean }> {
   const facets = Object.keys(params).filter((k) => !(k === "view" && params.view === "pieces"));
@@ -49,40 +51,41 @@ async function canonicalFor(params: Record<string, string>): Promise<{ path: str
   if (facets.length === 1 && facets[0] === "view" && params.view === "outfits") {
     return { path: "/browse?view=outfits" };
   }
-  if (facets.length === 1) {
-    const [key] = facets;
-    const value = params[key];
-    const [{ products }, tree] = await Promise.all([readCatalog(), loadCategoryTree()]);
+
+  const only = (...keys: string[]) => facets.length === keys.length && keys.every((k) => facets.includes(k));
+  if (only("view", "style") && params.view === "outfits") {
+    const styles = await withTimeout(allOutfitLandings(), [], "browse canonical");
+    const target = styles.find((l) => l.indexable && l.style === params.style.toLowerCase());
+    if (target) return { path: target.path };
+  }
+  const candidates: string[] = [];
+  if (only("brand")) candidates.push(brandPath(params.brand));
+  if (only("category")) candidates.push(categoryPath(params.category));
+  if (only("brand", "subcat")) candidates.push(brandSubcategoryPath(params.brand, params.subcat));
+  if (only("subcat")) {
+    const tree = await loadCategoryTree();
+    const group = tree.groups.find((g) => g.items.some((i) => i.label === params.subcat));
+    if (group) candidates.push(subcategoryPath(group.id, params.subcat));
+  }
+  if (candidates.length) {
     // Only a landing page that is itself indexed: pointing at one that isn't
     // would contradict its own noindex.
-    const enough = (test: (p: (typeof products)[number]) => boolean) =>
-      products.filter(test).length >= LANDING_MIN_PRODUCTS;
-    if (key === "brand" && enough((p) => landingSlug(p.brand) === landingSlug(value))) {
-      return { path: brandPath(value) };
-    }
-    if (key === "category") {
-      const group = tree.groups.find((g) => g.id === value);
-      if (group && enough((p) => groupForProduct(p.category, p.subcategory, tree.groups)?.id === group.id)) {
-        return { path: categoryPath(group.id) };
-      }
-    }
-    if (key === "subcat") {
-      const group = tree.groups.find((g) => g.items.some((i) => i.label === value));
-      if (group && enough((p) => resolveSubcategory(p.category, p.subcategory, tree.groups) === value)) {
-        return { path: subcategoryPath(group.id, value) };
-      }
-    }
+    const landings = await withTimeout(allLandings(), [], "browse canonical");
+    const target = landings.find((l) => l.indexable && candidates.includes(l.path));
+    if (target) return { path: target.path };
   }
-  return { path: "/browse", noindex: true };
+  return { path: params.view === "outfits" ? "/browse?view=outfits" : "/browse", noindex: true };
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { path, noindex } = await canonicalFor(singleValues(await searchParams));
-  if (path === "/browse?view=outfits") {
+  const params = singleValues(await searchParams);
+  const { path, noindex } = await canonicalFor(params);
+  if (params.view === "outfits") {
     return pageMetadata({
       title: "Outfit Ideas",
       description: "Ready-made outfits put together from pieces across stores, by our stylists and the AI stylist. See the total price and shop each piece.",
       path,
+      noindex,
     });
   }
   return pageMetadata({ title: TITLE, description: DESCRIPTION, path, noindex });

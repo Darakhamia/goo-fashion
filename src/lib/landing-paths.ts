@@ -34,3 +34,28 @@ export function categoryPath(groupId: string): string {
 export function subcategoryPath(groupId: string, label: string): string {
   return `${categoryPath(groupId)}/${landingSlug(label)}`;
 }
+
+/**
+ * Brands that are a line of another brand in the catalogue: line slug → the
+ * parent's slug and name. A line keeps its own page; the parent's page lists
+ * the line's products too, because to a shopper "adidas Originals" is still
+ * adidas (CEO, 2026-10-11).
+ */
+export const BRAND_LINES: Record<string, { parent: string; parentName: string }> = {
+  "adidas-originals": { parent: "adidas", parentName: "adidas" },
+};
+
+/** The parent brand's slug of a line, or undefined for a brand of its own. */
+export function parentBrandSlug(brand: string): string | undefined {
+  return BRAND_LINES[landingSlug(brand)]?.parent;
+}
+
+/** /brands/timberland/boots — one brand's pieces of one subcategory. */
+export function brandSubcategoryPath(brand: string, label: string): string {
+  return `${brandPath(brand)}/${landingSlug(label)}`;
+}
+
+/** /outfits/streetwear — outfit ideas of one style. */
+export function outfitStylePath(style: string): string {
+  return `/outfits/${landingSlug(style)}`;
+}

@@ -5,41 +5,43 @@ import JsonLd from "@/components/seo/JsonLd";
 import { absoluteUrl, breadcrumbJsonLd } from "@/lib/seo";
 import type { Landing, LandingCopy, LandingLink } from "@/lib/server/landing";
 
-interface Props {
-  page: Landing;
+interface ShellProps {
+  path: string;
   copy: LandingCopy;
   /** Small caps above the heading, from md: "Brand", "Category". */
   eyebrow: string;
   crumbs: Crumb[];
   related: { title: string; links: LandingLink[] }[];
-  /** Most products to list; the rest are behind the "see all" link. */
-  limit?: number;
+  /** What the page lists, for its ItemList markup. */
+  items: { url: string; name: string }[];
+  /** The catalogue view with the same items, and what the link says. */
+  browseHref: string;
+  browseLabel: string;
+  /** The grid of cards. */
+  children: React.ReactNode;
 }
 
 /**
- * A landing page: heading, a paragraph about what is here, links to the
- * neighbouring pages and the products as the catalogue shows them
- * (docs/SEO_PLAN.md, SEO-17). Server-rendered throughout, so the list is in
- * the HTML a crawler reads.
+ * The frame every landing page shares: heading, a paragraph about what is
+ * here, links to the neighbouring pages, the cards and a way on into the
+ * catalogue (docs/SEO_PLAN.md, SEO-17). Server-rendered throughout, so the
+ * list is in the HTML a crawler reads.
  */
-export default function LandingView({ page, copy, eyebrow, crumbs, related, limit }: Props) {
-  const shown = limit ? page.products.slice(0, limit) : page.products;
-  const hidden = page.products.length - shown.length;
-
+export function LandingShell({ path, copy, eyebrow, crumbs, related, items, browseHref, browseLabel, children }: ShellProps) {
   const collection = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: copy.title,
     description: copy.intro,
-    url: absoluteUrl(page.path),
+    url: absoluteUrl(path),
     mainEntity: {
       "@type": "ItemList",
-      numberOfItems: shown.length,
-      itemListElement: shown.map((p, i) => ({
+      numberOfItems: items.length,
+      itemListElement: items.map((item, i) => ({
         "@type": "ListItem",
         position: i + 1,
-        url: absoluteUrl(`/product/${p.id}`),
-        name: p.name,
+        url: absoluteUrl(item.url),
+        name: item.name,
       })),
     },
   };
@@ -90,22 +92,53 @@ export default function LandingView({ page, copy, eyebrow, crumbs, related, limi
         ))}
 
         <div className="mt-5 md:mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-4">
-          {shown.map((product) => (
-            <div key={product.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200">
-              <ProductCard product={product} />
-            </div>
-          ))}
+          {children}
         </div>
 
         <div className="mt-6 md:mt-10 md:pb-16 px-1 md:px-0">
           <Link
-            href={page.browseHref}
+            href={browseHref}
             className="inline-flex items-center h-11 md:h-auto text-[14px] md:text-sm text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] underline underline-offset-4 transition-colors duration-200"
           >
-            {hidden > 0 ? `See all ${page.products.length} in the catalog` : "Filter and sort in the catalog"}
+            {browseLabel}
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+interface Props {
+  page: Landing;
+  copy: LandingCopy;
+  eyebrow: string;
+  crumbs: Crumb[];
+  related: { title: string; links: LandingLink[] }[];
+  /** Most products to list; the rest are behind the "see all" link. */
+  limit?: number;
+}
+
+/** A landing page of products: a brand, a category, a brand's kind of thing. */
+export default function LandingView({ page, copy, eyebrow, crumbs, related, limit }: Props) {
+  const shown = limit ? page.products.slice(0, limit) : page.products;
+  const hidden = page.products.length - shown.length;
+
+  return (
+    <LandingShell
+      path={page.path}
+      copy={copy}
+      eyebrow={eyebrow}
+      crumbs={crumbs}
+      related={related}
+      items={shown.map((p) => ({ url: `/product/${p.id}`, name: p.name }))}
+      browseHref={page.browseHref}
+      browseLabel={hidden > 0 ? `See all ${page.products.length} in the catalog` : "Filter and sort in the catalog"}
+    >
+      {shown.map((product) => (
+        <div key={product.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200">
+          <ProductCard product={product} />
+        </div>
+      ))}
+    </LandingShell>
   );
 }

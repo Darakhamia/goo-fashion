@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-/** A brand's landing page: every product of it, newest first (SEO-17). */
+/** A brand's landing page: every product of it and of its lines, newest first (SEO-17). */
 export default async function BrandPage({ params }: Props) {
   const { slug } = await params;
   const found = await load(slug);
@@ -53,6 +53,8 @@ export default async function BrandPage({ params }: Props) {
       crumbs={[
         { label: "Home", href: "/" },
         { label: "Brands", href: "/brands" },
+        // A line sits under its brand: Brands / adidas / adidas Originals.
+        ...(page.parent ? [{ label: page.parent.name, href: page.parent.path }] : []),
         { label: page.name },
       ]}
       related={await relatedLinks(page)}

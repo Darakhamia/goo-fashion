@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
 import { withTimeout } from "@/lib/server/with-timeout";
+import { outfitLandingsFrom } from "@/lib/server/outfit-landing";
 import { outfitDisplayName, pageMetadata } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -44,6 +45,13 @@ export default async function SitemapPage() {
     withTimeout(getAllOutfits(), [], "sitemap outfits"),
     withTimeout(getAllBlogPosts({ publishedOnly: true }), [], "sitemap posts"),
   ]);
+  // Outfit ideas by style, the ones with enough outfits to be indexed (SEO-17).
+  const styleLinks = outfitLandingsFrom(outfits)
+    .filter((l) => l.indexable)
+    .map((l) => ({ href: l.path, label: `${l.label} outfits` }));
+  const sections = styleLinks.length
+    ? [SITE_SECTIONS[0], { label: "Outfit ideas", links: styleLinks }, ...SITE_SECTIONS.slice(1)]
+    : SITE_SECTIONS;
 
   return (
     <div className="min-h-screen">
@@ -65,7 +73,7 @@ export default async function SitemapPage() {
       <section className="border-t border-[var(--border)]">
         <div className="max-w-[1440px] mx-auto px-5 md:px-12 py-8 md:py-20">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--border)] max-md:gap-2.5 max-md:bg-transparent">
-            {SITE_SECTIONS.map((section) => (
+            {sections.map((section) => (
               <div key={section.label} className="bg-[var(--background)] p-8 max-md:rounded-2xl max-md:bg-[var(--surface)] max-md:px-4 max-md:pt-3.5 max-md:pb-1">
                 <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6 max-md:font-sans max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)] max-md:mb-1">
                   {section.label}

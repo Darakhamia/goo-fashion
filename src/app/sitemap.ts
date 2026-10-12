@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
 import { withTimeout } from "@/lib/server/with-timeout";
 import { allLandings } from "@/lib/server/landing";
+import { outfitLandingsFrom } from "@/lib/server/outfit-landing";
 import { SITE_URL } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -96,7 +97,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}${l.path}`,
       lastModified: latest(l.products.map((p) => toDate(p.updatedAt ?? p.createdAt))),
       changeFrequency: "weekly",
-      priority: l.kind === "subcategory" ? 0.6 : 0.7,
+      priority: l.kind === "brand" || l.kind === "category" ? 0.7 : 0.6,
+    }));
+
+  // Outfit ideas by style, from the same outfit list (SEO-17).
+  const outfitStyleRoutes: MetadataRoute.Sitemap = outfitLandingsFrom(outfits)
+    .filter((l) => l.indexable)
+    .map((l) => ({
+      url: `${SITE_URL}${l.path}`,
+      lastModified: latest(l.outfits.map((o) => toDate(o.updatedAt ?? o.createdAt))),
+      changeFrequency: "weekly",
+      priority: 0.6,
     }));
 
   const newestProduct = latest(productRoutes.map((r) => r.lastModified as Date | undefined));
@@ -120,5 +131,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  return [...staticRoutes, ...landingRoutes, ...productRoutes, ...outfitRoutes, ...blogRoutes];
+  return [...staticRoutes, ...landingRoutes, ...outfitStyleRoutes, ...productRoutes, ...outfitRoutes, ...blogRoutes];
 }

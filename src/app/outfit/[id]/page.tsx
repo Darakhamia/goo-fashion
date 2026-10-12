@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import Image from "@/components/ui/Image";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import OutfitCollage from "@/components/outfit/OutfitCollage";
@@ -12,6 +13,7 @@ import RecentlyViewed from "@/components/product/RecentlyViewed";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
+import { outfitStylePath } from "@/lib/landing-paths";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
 import {
@@ -19,6 +21,7 @@ import {
   SITE_NAME,
   SITE_URL,
   absoluteUrl,
+  fittedTitle,
   breadcrumbJsonLd,
   buildOutfitSeo,
   outfitDisplayName,
@@ -50,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { title, description } = buildOutfitSeo(outfit);
 
   return {
-    title,
+    title: fittedTitle(title),
     description,
     alternates: { canonical: `${SITE_URL}/outfit/${id}` },
     openGraph: {
@@ -192,15 +195,16 @@ export default async function OutfitDetailPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Style tags */}
+            {/* Style tags — each leads to that style's outfit ideas */}
             <div className="flex flex-wrap gap-1.5 md:gap-2 mb-5 md:mb-10">
               {outfit.styleKeywords.map((kw) => (
-                <span
+                <Link
                   key={kw}
-                  className="inline-flex md:inline items-center h-7 md:h-auto px-3 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[12px] md:text-[9px] md:tracking-[0.16em] md:uppercase text-[var(--foreground)] md:text-[var(--foreground-muted)] capitalize"
+                  href={outfitStylePath(kw)}
+                  className="max-md:relative max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-2 inline-flex md:inline items-center h-7 md:h-auto px-3 md:py-1.5 rounded-full bg-[var(--fg-overlay-08)] md:bg-transparent md:border md:border-[var(--border)] text-[12px] md:text-[9px] md:tracking-[0.16em] md:uppercase text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:text-[var(--foreground)] md:hover:border-[var(--foreground-muted)] capitalize transition-colors duration-200"
                 >
                   {kw}
-                </span>
+                </Link>
               ))}
             </div>
 

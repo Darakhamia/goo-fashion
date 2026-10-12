@@ -3,13 +3,13 @@ import Image from "@/components/ui/Image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getAllBlogPosts, getBlogPostBySlug } from "@/lib/data/db";
-import { linkBrandMentions, renderBlogBody } from "@/lib/blog-render";
+import { linkCatalogMentions, renderBlogBody } from "@/lib/blog-render";
 import { allLandings } from "@/lib/server/landing";
 import { withTimeout } from "@/lib/server/with-timeout";
 import JsonLd from "@/components/seo/JsonLd";
 import ReadingProgress from "@/components/blog/ReadingProgress";
 import ShareRow from "@/components/blog/ShareRow";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, fittedTitle, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = post.metaDescription || post.excerpt;
   const image = post.ogImage || post.coverImageUrl;
   return {
-    title,
+    title: fittedTitle(title),
     description,
     openGraph: {
       title,
@@ -77,11 +77,11 @@ export default async function BlogPostPage({ params }: Props) {
   const post = await getBlogPostBySlug(slug);
   if (!post || !post.isPublished) notFound();
 
-  // Brands the catalogue has an indexed page for: their first mention in the
-  // post links there (SEO-23). A catalogue that can't be read costs the links,
-  // not the post.
-  const brandLinks = (await withTimeout(allLandings(), [], "journal brand links"))
-    .filter((l) => l.kind === "brand" && l.indexable)
+  // Catalogue pages that are indexed — brands, categories, a brand's kinds of
+  // thing: the first mention of each in the post links there (SEO-23). A
+  // catalogue that can't be read costs the links, not the post.
+  const catalogLinks = (await withTimeout(allLandings(), [], "journal catalogue links"))
+    .filter((l) => l.indexable)
     .map((l) => ({ name: l.name, path: l.path }));
 
   const all = await getAllBlogPosts({ publishedOnly: true });
@@ -186,7 +186,7 @@ export default async function BlogPostPage({ params }: Props) {
         {post.body ? (
           <div
             className="blog-prose text-[var(--foreground)]"
-            dangerouslySetInnerHTML={{ __html: linkBrandMentions(renderBlogBody(post.body), brandLinks) }}
+            dangerouslySetInnerHTML={{ __html: linkCatalogMentions(renderBlogBody(post.body), catalogLinks) }}
           />
         ) : (
           <p className="text-sm text-[var(--foreground-muted)] italic max-md:text-[17px] max-md:leading-[1.6]">
