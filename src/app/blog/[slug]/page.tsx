@@ -9,7 +9,7 @@ import { withTimeout } from "@/lib/server/with-timeout";
 import JsonLd from "@/components/seo/JsonLd";
 import ReadingProgress from "@/components/blog/ReadingProgress";
 import ShareRow from "@/components/blog/ShareRow";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, fittedTitle, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, absoluteUrl, clipText, fittedTitle, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -45,7 +45,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   // The root layout's title template adds the site name.
   const title = post.metaTitle || post.title;
-  const description = post.metaDescription || post.excerpt;
+  // An excerpt typed with line breaks would carry them into the snippet.
+  const description = clipText(post.metaDescription || post.excerpt || "", 160) || undefined;
   const image = post.ogImage || post.coverImageUrl;
   return {
     title: fittedTitle(title),

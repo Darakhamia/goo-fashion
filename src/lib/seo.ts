@@ -6,6 +6,7 @@
 import type { Metadata } from "next";
 import type { Outfit, Product } from "@/lib/types";
 import { CURRENCIES, DISPLAY_FALLBACK_RATES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
+import { landingSlug } from "@/lib/landing-paths";
 
 /** Canonical site origin — always the non-www apex domain. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
@@ -35,7 +36,12 @@ const TITLE_MAX = 60;
  * the suffix would only push the end of the name out of sight.
  */
 export function fittedTitle(title: string): Metadata["title"] {
-  return title.length + TITLE_SUFFIX.length <= TITLE_MAX ? title : { absolute: title };
+  return titleFits(title) ? title : { absolute: title };
+}
+
+/** True when the title and the brand suffix both show in a results page. */
+export function titleFits(title: string): boolean {
+  return title.length + TITLE_SUFFIX.length <= TITLE_MAX;
 }
 
 type OgImages = NonNullable<Metadata["openGraph"]>["images"];
@@ -161,7 +167,7 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
   const piecesLabel = pieces ? `${pieces} piece${pieces === 1 ? "" : "s"}` : "";
   // The piece count goes first when the whole title would be cut off in results.
   const full = [heading, piecesLabel && `${piecesLabel} from ${price}`].filter(Boolean).join(" — ");
-  const title = full.length + TITLE_SUFFIX.length <= TITLE_MAX ? full : `${heading} from ${price}`;
+  const title = titleFits(full) ? full : `${heading} from ${price}`;
 
   const byBrands = brands.length ? ` featuring ${brands.slice(0, 3).join(", ")}` : "";
   const season = outfit.season && outfit.season !== "all" ? `${outfit.season} ` : "";
@@ -256,13 +262,23 @@ const MIN_OWN_DESCRIPTION = 60;
  * it, otherwise a line built from the product — what it is, who makes it, the
  * lowest price and how many stores carry it.
  */
+/**
+ * Whether a product's name already says its brand, as whole words and
+ * whatever the accents or case: "Comme Des Garcons Black Eyes T Shirt" carries
+ * "Comme des Garçons", so a title adds no "— Comme des Garçons" after it.
+ */
+export function nameHasBrand(name: string, brand: string): boolean {
+  const b = landingSlug(brand);
+  return b !== "" && `-${landingSlug(name)}-`.includes(`-${b}-`);
+}
+
 export function productMetaDescription(product: Product, lowestPrice: string): string {
   const own = (product.description ?? "").trim();
   if (own.replace(/\s+/g, " ").length >= MIN_OWN_DESCRIPTION && !isBoilerplateDescription(own)) {
     return clipText(own);
   }
   const color = plainColor(product);
-  const byBrand = product.name.toLowerCase().includes(product.brand.toLowerCase()) ? "" : ` by ${product.brand}`;
+  const byBrand = nameHasBrand(product.name, product.brand) ? "" : ` by ${product.brand}`;
   const inColor = color && !product.name.toLowerCase().includes(color.toLowerCase()) ? ` in ${color.toLowerCase()}` : "";
   const stores = product.retailers?.length ?? 0;
   const where = stores > 1 ? `Compare prices at ${stores} stores` : "Compare prices";

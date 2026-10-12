@@ -10,6 +10,7 @@ import {
   SITE_URL,
   absoluteUrl,
   fittedTitle,
+  nameHasBrand,
   breadcrumbJsonLd,
   displayedPriceLabel,
   productJsonLd,
@@ -59,9 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // The brand only when the name doesn't already carry it ("adidas Originals
   // Gazelle" needs no "— adidas Originals" after it); the root layout's title
   // template adds the site name.
-  const title = product.name.toLowerCase().includes(product.brand.toLowerCase())
-    ? product.name
-    : `${product.name} — ${product.brand}`;
+  const title = nameHasBrand(product.name, product.brand) ? product.name : `${product.name} — ${product.brand}`;
   const canonical = `${SITE_URL}/product/${primaryVariantId(product)}`;
   // The price as the page shows it, so the snippet and the page agree.
   const description = productMetaDescription(product, displayedPriceLabel(lowest.amount, lowest.currency));

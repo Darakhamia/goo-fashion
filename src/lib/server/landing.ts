@@ -23,7 +23,7 @@ import {
   landingSlug,
   subcategoryPath,
 } from "@/lib/landing-paths";
-import { displayedPriceLabel } from "@/lib/seo";
+import { displayedPriceLabel, titleFits } from "@/lib/seo";
 import type { Product } from "@/lib/types";
 
 /** Fewer products than this and the page is kept out of the index: too thin to rank, too thin to be worth landing on. */
@@ -312,6 +312,12 @@ export function landingCopy(page: Landing, tree: CategoryGroup[]): LandingCopy {
   const storeBit = stores.length ? ` Sold by ${listPhrase(stores, moreStores)}.` : "";
   const genders = top(products, (p) => (p.gender === "unisex" ? undefined : p.gender), 2);
   const forWhom = genders.length === 2 ? " for men and women" : genders.length === 1 ? ` for ${genders[0]}` : "";
+  // The longest of the titles that still shows whole beside « | GOO Fashion»
+  // in a results page, else the shortest: "Outerwear from Yori, Balenciaga &
+  // Manière De Voir" is cut off there, "Outerwear from Yori & Balenciaga" is not.
+  const fitted = (titles: string[]) => titles.find(titleFits) ?? titles[titles.length - 1];
+  const named = (lead: string, names: string[]) =>
+    names.map((_, i) => `${lead}${listPhrase(names.slice(0, names.length - i)).replace(" and ", " & ")}`);
 
   if (page.kind === "brand") {
     const kinds = top(products, (p) => resolveSubcategory(p.category, p.subcategory, tree)?.toLowerCase() ?? p.category, 3);
@@ -319,7 +325,7 @@ export function landingCopy(page: Landing, tree: CategoryGroup[]): LandingCopy {
     const lines = page.lines?.length ? `, including ${listPhrase(page.lines.map((l) => l.name))}` : "";
     const lineOf = page.parent ? ` — a line of ${page.parent.name}` : "";
     return {
-      title: kindTitle.length ? `${name} ${listPhrase(kindTitle).replace(" and ", " & ")}` : name,
+      title: kindTitle.length ? fitted(named(`${name} `, kindTitle)) : name,
       heading: name,
       intro:
         `${n} ${name} ${n === 1 ? "piece" : "pieces"}${lineOf}${lines}${kinds.length ? `, mostly ${listPhrase(kinds)}` : ""}${forWhom}${prices}.` +
@@ -329,7 +335,10 @@ export function landingCopy(page: Landing, tree: CategoryGroup[]): LandingCopy {
 
   if (page.kind === "brand-subcategory" && page.parent && page.facet) {
     return {
-      title: `${name}${genders.length === 2 ? " for Men & Women" : genders.length === 1 ? ` for ${genders[0] === "men" ? "Men" : "Women"}` : ""}`,
+      title: fitted([
+        `${name}${genders.length === 2 ? " for Men & Women" : genders.length === 1 ? ` for ${genders[0] === "men" ? "Men" : "Women"}` : ""}`,
+        name,
+      ]),
       heading: name,
       intro:
         `${n} ${page.parent.name} ${page.facet.label.toLowerCase()}${forWhom}${prices}.` +
@@ -342,7 +351,7 @@ export function landingCopy(page: Landing, tree: CategoryGroup[]): LandingCopy {
   const what = name.toLowerCase();
   const parentBit = page.parent ? ` in ${page.parent.name.toLowerCase()}` : "";
   return {
-    title: brands.length ? `${name} from ${listPhrase(brands).replace(" and ", " & ")}` : name,
+    title: brands.length ? fitted(named(`${name} from `, brands)) : name,
     heading: name,
     intro:
       `${n} ${n === 1 ? "piece" : "pieces"} of ${what}${parentBit}${forWhom}${brands.length ? ` from ${listPhrase(brands, moreBrands)}` : ""}${prices}.` +
