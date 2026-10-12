@@ -1,0 +1,27 @@
+{
+  "name": "goo-portfolio-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Silent looping product video of GOO Fashion for the portfolio site, built with Remotion from the app's own UI.",
+  "scripts": {
+    "studio": "remotion studio",
+    "preview": "node scripts/render.mjs preview",
+    "render": "node scripts/render.mjs final",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/inter-tight": "5.3.0",
+    "@remotion/bundler": "4.0.529",
+    "@remotion/cli": "4.0.529",
+    "@remotion/renderer": "4.0.529",
+    "@remotion/tailwind-v4": "4.0.529",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3"
+  }
+}

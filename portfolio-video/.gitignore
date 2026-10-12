@@ -1,0 +1,6 @@
+node_modules/
+# Previews, masters and stills stay local; only the five final files in out/ are committed.
+out/preview/
+out/master/
+out/stills/
+*.log

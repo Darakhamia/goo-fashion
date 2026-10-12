@@ -1,6 +1,6 @@
 # GOO Fashion: portfolio loop, storyboard and plan
 
-A 24-second silent loop of the GOO interface for a portfolio site. It is built with Remotion in this folder only: it has its own `package.json`, and nothing in the app's code or dependencies changes. Status: **waiting for approval**. Decisions D1–D5 at the end come first.
+A 24-second silent loop of the GOO interface for a portfolio site. It is built with Remotion in this folder only: it has its own `package.json`, and nothing in the app's code or dependencies changes. Status: **approved 2026-10-12**, decisions in §4; what changed while building is in §5.
 
 ---
 
@@ -106,22 +106,34 @@ Deliverables in `out/`: `goo-16x9.mp4`, `goo-16x9.webm`, `goo-1x1.mp4`, `goo-1x1
 
 ---
 
-## 4. Decisions needed before building
+## 4. Decisions (approved by the owner, 2026-10-12)
 
-**D1. Product photos.** This matters most for how the video looks.
-- **A. The seed catalogue as-is.** Unsplash lifestyle shots: 4 dead links, mismatched items, no white cards. *Not recommended.*
-- **B. Real catalogue photos (recommended).**
-  - What: about 16 white-background product shots that the live site already shows (Purple Brand jacket and tee, Ralph Lauren jeans, Air Jordan 1 "Royal", Timberland, Balenciaga…), copied **once** from GOO's own image storage into `public/fixtures/`. Names, brands and prices come from the catalogue.
-  - After that the render is fully offline.
-  - Cost: it is a one-time download, which your brief excludes for render time. Hence the question.
-- **C. Seed data with only the few usable photos, renamed to match them.** That means inventing product data. *Not recommended.*
+- **D1 — photos:** about 16 real white-background product shots, copied once from GOO's own storage (the ones the live site shows). Renders run fully offline.
+- **D2 — store prices:** the featured item gets 3 store prices in the seed catalogue's format. Goat $148 is real; StockX $162 and Farfetch $185 are illustrative and marked so in `src/fixtures/story.ts`.
+- **D3 — cursor:** a subtle pointer, only for presses and picks.
+- **D4 — end card:** the hero's big "GOO", so the loop flows into the hero without a jump.
+- **D5 — renders:** the final files are committed to a separate `portfolio-video` branch, not to main, with no PR to main.
+- **Poster:** not the end card. It is the outfit builder with the board filled and the total shown.
+- **Framing rules:**
+  - the subject fills ~70–80 % of the frame;
+  - it stays readable in a card ~800 px wide;
+  - nothing is cropped at the frame edges by accident.
 
-**D2. Store prices on the product page** (only if B). Live catalogue items carry one store each. For the "several stores" scene I'd give the hero item 3 store prices in the seed catalogue's format, for example GOAT $148 (Best) · StockX $162 · Farfetch $185. The values are illustrative and marked as such in the fixtures. OK, or do you prefer a real single-store row?
+## 5. Changes made while building, and why
 
-**D3. Cursor.** I'd show a subtle pointer only for presses and picks in the desktop scenes, and a soft touch dot on the phone, so the actions have a visible cause. Recommended; easy to drop.
+Each change serves the framing rules above, the real UI, or both.
 
-**D4. End-card "GOO".** Two options:
-- the hero's display "GOO" (Inter Tight, the morph word), which lets the loop flow straight into the hero without a jump (my pick);
-- the nav logo (Poppins 800, letter-spaced), which then needs a cross-fade at the seam.
-
-**D5. Renders in git.** Commit only the five final files in `out/` (about 15–20 MB together) and gitignore previews and masters, or keep `out/` fully ignored and only send the files?
+- **Scale.** At the app's own size, a desktop page shrinks to 4–6 px type in an 800 px card. Pages therefore play in a rounded "screen" panel at 1.6× (16:9) or 1.25× (1:1). Any cut is the panel's viewport, never the frame's edge.
+- **Builder (scene 3) and the poster.**
+  - The desktop builder has no board: a catalogue grid sits next to the "In this look" list. Only the phone layout has the board.
+  - The scene therefore stages two real builder surfaces side by side: the board (the phone layout's collage canvas, with its "$1,740 · 5 pieces" pill) and the desktop "In this look" column.
+  - The pieces drop onto the board; the list fills; "N pieces" and the total count up.
+- **Browse (scene 2).** Desktop browse has no row of category chips: filters live in a side panel. The switch therefore uses the page's real active-filter chip (`ActiveChip`): "Outerwear" → "Footwear", and the grid re-deals.
+- **AI stylist (scene 4).**
+  - The drawer's desktop styles are 12 px bubbles, 72 px tiles and a small "BUILD THIS LOOK" pill.
+  - The scene uses the same drawer's phone styles: 15 px bubbles, 84 px tiles and the "Build this look · 2 pieces" row card the storyboard describes. It appears as a sheet over the dimmed browse page.
+- **Product page (scene 5).**
+  - The page is laid out at 1440 px like the real site; at narrower widths the store rows truncate the store names.
+  - The camera then pushes in until "Where to buy" fills ~85 % of the panel.
+  - Store logos use the app's own monogram fallback, since the real logos come from the network.
+- **Phone (scene 6).** No caption. The look settles onto the phone's board.

@@ -1,0 +1,121 @@
+/* GOO portfolio video — styles.
+   Everything between the BEGIN/END markers is copied verbatim from the app's
+   src/app/globals.css at 4840928 (theme curves, motion tokens, colour tokens,
+   body, .no-scrollbar). Only the Tailwind source path and the video-only rules
+   at the bottom are new. */
+@import "tailwindcss" source("../");
+
+/* ── BEGIN copied from src/app/globals.css:6-85 ─────────────────────────── */
+@theme inline {
+  /* Кривые доступны и как Tailwind-утилиты: ease-out, ease-in-out, ease-drawer */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  /* Font families — injected by next/font/google as CSS variables on <html> */
+  --font-body:    var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
+  --font-mono:    var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
+
+  /* ── Движение ───────────────────────────────────────────────────────────
+     Кривые названы, а не вписываются руками. До этого в проекте жили четыре
+     семейства кривых в 43 местах без единого имени. Значения — из планки
+     (Emil Kowalski / Apple), а не подобраны на глаз.
+       --ease-out    — вход, выход, всё интерфейсное по умолчанию
+       --ease-in-out — перемещение уже видимого элемента
+       --ease-drawer — выдвижные панели (кривая Ionic/iOS)
+     Длительности: интерфейс живёт под 300 мс; drawer и модалки — до 500. */
+  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --dur-press:   160ms;
+  --dur-fast:    150ms;
+  --dur-base:    200ms;
+  --dur-slow:    260ms;
+}
+
+/* Colour tokens. goo-studio has a theme switch of its own, independent of the
+   site theme on <html>: its root carries .admin-theme-light or
+   .admin-theme-dark, and the tokens declared there override the ones every
+   admin element would otherwise inherit from <html>. The light block has to
+   stay before the dark one — :root and .dark tie on specificity, so on <html>
+   the later rule wins. */
+:root,
+.admin-theme-light {
+  /* Light mode colors */
+  --background: #F4F2EE;
+  --surface: #FFFFFF;
+  --foreground: #0A0A0A;
+  --foreground-muted: #6B6B6B;
+  --foreground-subtle: #A8A8A8;
+  --border: #E8E6E0;
+  --border-strong: #C0BEB8;
+
+  /* Pre-computed semi-transparent variants (avoids Tailwind v4 opacity modifier issues with CSS vars) */
+  --bg-overlay-90: rgba(244, 242, 238, 0.90);
+  --bg-overlay-95: rgba(244, 242, 238, 0.95);
+  --fg-overlay-05: rgba(10, 10, 10, 0.05);
+  --fg-overlay-08: rgba(10, 10, 10, 0.08);
+  --fg-on-dark-60: rgba(244, 242, 238, 0.60);
+  --fg-on-dark-70: rgba(244, 242, 238, 0.70);
+  --fg-on-dark-80: rgba(244, 242, 238, 0.80);
+  /* Floating bars on phones (bottom nav, buy bar), see DESIGN_SYSTEM.md §12 */
+  --surface-overlay-92: rgba(255, 255, 255, 0.92);
+}
+
+.dark,
+.admin-theme-dark {
+  --background: #0A0A0A;
+  --surface: #141414;
+  --foreground: #F0EEE8;
+  --foreground-muted: #888884;
+  --foreground-subtle: #6E6E6A;
+  --border: #222220;
+  --border-strong: #3A3A38;
+
+  /* Dark mode semi-transparent variants */
+  --bg-overlay-90: rgba(10, 10, 10, 0.90);
+  --bg-overlay-95: rgba(10, 10, 10, 0.95);
+  --fg-overlay-05: rgba(240, 238, 232, 0.05);
+  --fg-overlay-08: rgba(240, 238, 232, 0.08);
+  --fg-on-dark-60: rgba(10, 10, 10, 0.60);
+  --fg-on-dark-70: rgba(10, 10, 10, 0.70);
+  --fg-on-dark-80: rgba(10, 10, 10, 0.80);
+  --surface-overlay-92: rgba(20, 20, 20, 0.92);
+}
+/* ── END copied ─────────────────────────────────────────────────────────── */
+
+/* ── BEGIN copied from src/app/globals.css:240-255 ─────────────────────── */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+/* ── END copied ─────────────────────────────────────────────────────────── */
+
+/* ── Video only ────────────────────────────────────────────────────────── */
+/* next/font injects --font-inter-tight on <html>; here the face comes from
+   @fontsource/inter-tight (src/styles/fonts.ts), so the variable names it. */
+:root {
+  --font-inter-tight: "Inter Tight";
+  --font-poppins: "Poppins";
+}
+html, body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
