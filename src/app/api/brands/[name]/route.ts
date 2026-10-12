@@ -12,8 +12,9 @@ export async function DELETE(
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Database not configured." }, { status: 501 });
   }
-  const { name } = await params;
-  const decodedName = decodeURIComponent(name);
+  // Next.js hands the segment over already decoded. Decoding it again breaks on a
+  // name with "%" ("30% Off …"): decodeURIComponent throws and the route 500s.
+  const { name: decodedName } = await params;
   const { data: deleted, error } = await supabase
     .from("brands")
     .delete()
