@@ -1,10 +1,7 @@
 {
   "directed": false,
   "multigraph": false,
-  "graph": {
-    "schema_version": 1,
-    "graphify_version": "0.9.86"
-  },
+  "graph": {},
   "nodes": [
     {
       "id": "src_components_cart_cartpanel_cartrowprops",
@@ -53836,6 +53833,7 @@
     {
       "id": "src_components_ui_image_imageprops",
       "label": "src_components_ui_image_imageprops",
+      "_origin": "semantic",
       "community": 116,
       "community_name": "image.ts",
       "external": true,
@@ -53847,6 +53845,7 @@
     {
       "id": "src_app_goo_studio_i18n_index_key",
       "label": "src_app_goo_studio_i18n_index_key",
+      "_origin": "semantic",
       "community": 117,
       "community_name": "react",
       "external": true,
@@ -53858,6 +53857,7 @@
     {
       "id": "ref_node_dns",
       "label": "ref_node_dns",
+      "_origin": "semantic",
       "community": 120,
       "community_name": "fetch.ts",
       "external": true,
@@ -53869,6 +53869,7 @@
     {
       "id": "ref_node_net",
       "label": "ref_node_net",
+      "_origin": "semantic",
       "community": 120,
       "community_name": "fetch.ts",
       "external": true,
@@ -53880,6 +53881,7 @@
     {
       "id": "src_lib_server_parser_variant_group_samemodelfamily",
       "label": "src_lib_server_parser_variant_group_samemodelfamily",
+      "_origin": "semantic",
       "community": 126,
       "community_name": "import-product.ts",
       "external": true,
@@ -53891,6 +53893,7 @@
     {
       "id": "ref_node_module",
       "label": "ref_node_module",
+      "_origin": "semantic",
       "community": 13,
       "community_name": "i18n-check.mjs",
       "external": true,
@@ -53902,6 +53905,7 @@
     {
       "id": "ref_node_path",
       "label": "ref_node_path",
+      "_origin": "semantic",
       "community": 13,
       "community_name": "i18n-check.mjs",
       "external": true,
@@ -53913,6 +53917,7 @@
     {
       "id": "ref_node_crypto",
       "label": "ref_node_crypto",
+      "_origin": "semantic",
       "community": 201,
       "community_name": "ref_node_crypto",
       "external": true,
@@ -53924,6 +53929,7 @@
     {
       "id": "ref_fs",
       "label": "ref_fs",
+      "_origin": "semantic",
       "community": 32,
       "community_name": "admin-screens/shoot.js",
       "external": true,
@@ -53935,6 +53941,7 @@
     {
       "id": "ref_os",
       "label": "ref_os",
+      "_origin": "semantic",
       "community": 32,
       "community_name": "admin-screens/shoot.js",
       "external": true,
@@ -53946,6 +53953,7 @@
     {
       "id": "ref_path",
       "label": "ref_path",
+      "_origin": "semantic",
       "community": 32,
       "community_name": "admin-screens/shoot.js",
       "external": true,
@@ -53957,6 +53965,7 @@
     {
       "id": "ref_playwright_core",
       "label": "ref_playwright_core",
+      "_origin": "semantic",
       "community": 32,
       "community_name": "admin-screens/shoot.js",
       "external": true,
@@ -53968,6 +53977,7 @@
     {
       "id": "ref_node_fs",
       "label": "ref_node_fs",
+      "_origin": "semantic",
       "community": 34,
       "community_name": "build.mjs",
       "external": true,
@@ -53979,6 +53989,7 @@
     {
       "id": "ref_node_url",
       "label": "ref_node_url",
+      "_origin": "semantic",
       "community": 34,
       "community_name": "build.mjs",
       "external": true,
@@ -53990,6 +54001,7 @@
     {
       "id": "ref_node_os",
       "label": "ref_node_os",
+      "_origin": "semantic",
       "community": 56,
       "community_name": "card-image.ts",
       "external": true,
@@ -54001,6 +54013,7 @@
     {
       "id": "ref_node_child_process",
       "label": "ref_node_child_process",
+      "_origin": "semantic",
       "community": 58,
       "community_name": "requireAdmin",
       "external": true,
@@ -54012,6 +54025,7 @@
     {
       "id": "argparse",
       "label": "argparse",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54023,6 +54037,7 @@
     {
       "id": "collections",
       "label": "collections",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54034,6 +54049,7 @@
     {
       "id": "concurrent_futures",
       "label": "concurrent_futures",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54045,6 +54061,7 @@
     {
       "id": "cv2",
       "label": "cv2",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54056,6 +54073,7 @@
     {
       "id": "dataclasses",
       "label": "dataclasses",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54067,6 +54085,7 @@
     {
       "id": "html_parser",
       "label": "html_parser",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54078,6 +54097,7 @@
     {
       "id": "io",
       "label": "io",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54089,6 +54109,7 @@
     {
       "id": "json",
       "label": "json",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54100,6 +54121,7 @@
     {
       "id": "numpy",
       "label": "numpy",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54111,6 +54133,7 @@
     {
       "id": "pathlib",
       "label": "pathlib",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54122,6 +54145,7 @@
     {
       "id": "pil",
       "label": "pil",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54133,6 +54157,7 @@
     {
       "id": "re",
       "label": "re",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54144,6 +54169,7 @@
     {
       "id": "sys",
       "label": "sys",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54155,6 +54181,7 @@
     {
       "id": "typing",
       "label": "typing",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54166,6 +54193,7 @@
     {
       "id": "urllib_error",
       "label": "urllib_error",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54177,6 +54205,7 @@
     {
       "id": "urllib_parse",
       "label": "urllib_parse",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54188,6 +54217,7 @@
     {
       "id": "urllib_request",
       "label": "urllib_request",
+      "_origin": "semantic",
       "community": 62,
       "community_name": "audit.py",
       "external": true,
@@ -54199,6 +54229,7 @@
     {
       "id": "scripts_admin_screens_fixtures_catalog_total_products",
       "label": "scripts_admin_screens_fixtures_catalog_total_products",
+      "_origin": "semantic",
       "community": 91,
       "community_name": "ops.js",
       "external": true,
@@ -54210,6 +54241,7 @@
     {
       "id": "src_app_globals",
       "label": "src_app_globals",
+      "_origin": "semantic",
       "community": 95,
       "community_name": "app/layout.tsx",
       "external": true,
@@ -61489,7 +61521,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/api/brands/[name]/route.ts",
-      "source_location": "L25",
+      "source_location": "L26",
       "weight": 1.0
     },
     {
@@ -91262,6 +91294,7 @@
       "context": "export",
       "source_file": "src/lib/server/parser/types.ts",
       "source_location": "L15",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -122630,6 +122663,7 @@
       "context": "import",
       "source_file": "src/app/api/admin/parser/config/route.ts",
       "source_location": "L13",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -125500,6 +125534,7 @@
       "context": "import",
       "source_file": "src/app/api/products/[id]/route.ts",
       "source_location": "L5",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -125584,6 +125619,7 @@
       "context": "import",
       "source_file": "src/app/api/products/route.ts",
       "source_location": "L6",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -125680,6 +125716,7 @@
       "context": "import",
       "source_file": "src/app/api/report-bug/route.ts",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -126209,6 +126246,7 @@
       "context": "import",
       "source_file": "src/app/blog/[slug]/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -126281,6 +126319,7 @@
       "context": "import",
       "source_file": "src/app/brands/page.tsx",
       "source_location": "L2",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -126329,6 +126368,7 @@
       "context": "import",
       "source_file": "src/app/brands/[slug]/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -126401,6 +126441,7 @@
       "context": "import",
       "source_file": "src/app/brands/[slug]/[subcategory]/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -127030,6 +127071,7 @@
       "context": "import",
       "source_file": "src/app/c/[category]/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -127090,6 +127132,7 @@
       "context": "import",
       "source_file": "src/app/c/[category]/[subcategory]/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -127211,6 +127254,7 @@
       "context": "import",
       "source_file": "src/app/cookie/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -127470,6 +127514,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/analytics/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -127556,6 +127601,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/audit/page.tsx",
       "source_location": "L20",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -127690,6 +127736,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/blog/page.tsx",
       "source_location": "L11",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -127702,6 +127749,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/blog/page.tsx",
       "source_location": "L13",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -127726,6 +127774,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/blog/page.tsx",
       "source_location": "L16",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -128237,6 +128286,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/categories/page.tsx",
       "source_location": "L21",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -128722,6 +128772,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/email/page.tsx",
       "source_location": "L9",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -129708,6 +129759,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/outfits/page.tsx",
       "source_location": "L12",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -129732,6 +129784,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/outfits/page.tsx",
       "source_location": "L15",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -129768,6 +129821,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/outfits/page.tsx",
       "source_location": "L19",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -129937,6 +129991,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -130047,6 +130102,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/parser/collect/page.tsx",
       "source_location": "L32",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -130266,6 +130322,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/parser/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -130390,6 +130447,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/products/_editor/PhotoGrid.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -130714,6 +130772,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/products/[id]/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -131005,6 +131064,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/products/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -131648,6 +131708,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/settings/recipes.tsx",
       "source_location": "L6",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -131735,6 +131796,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/subscriptions/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -131965,6 +132027,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/users/page.tsx",
       "source_location": "L10",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -131977,6 +132040,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/users/page.tsx",
       "source_location": "L12",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -132013,6 +132077,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/users/page.tsx",
       "source_location": "L16",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -132025,6 +132090,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/users/page.tsx",
       "source_location": "L18",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -132061,6 +132127,7 @@
       "context": "import",
       "source_file": "src/app/goo-studio/users/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -132339,6 +132406,7 @@
       "context": "import",
       "source_file": "src/app/layout.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -132448,6 +132516,7 @@
       "context": "import",
       "source_file": "src/app/look/[id]/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -132689,6 +132758,7 @@
       "context": "import",
       "source_file": "src/app/outfit/[id]/page.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -132773,6 +132843,7 @@
       "context": "import",
       "source_file": "src/app/outfits/[style]/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -132929,6 +133000,7 @@
       "context": "import",
       "source_file": "src/app/page.tsx",
       "source_location": "L6",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133062,6 +133134,7 @@
       "context": "import",
       "source_file": "src/app/privacy/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133134,6 +133207,7 @@
       "context": "import",
       "source_file": "src/app/product/[id]/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133339,6 +133413,7 @@
       "context": "import",
       "source_file": "src/app/refund/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133692,6 +133767,7 @@
       "context": "import",
       "source_file": "src/app/sitemap-page/page.tsx",
       "source_location": "L2",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133849,6 +133925,7 @@
       "context": "import",
       "source_file": "src/app/terms/page.tsx",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133861,6 +133938,7 @@
       "context": "import",
       "source_file": "src/components/admin/AdminPage.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133873,6 +133951,7 @@
       "context": "import",
       "source_file": "src/components/admin/AttentionList.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133970,6 +134049,7 @@
       "context": "import",
       "source_file": "src/components/admin/BulkBar.tsx",
       "source_location": "L5",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -133982,6 +134062,7 @@
       "context": "import",
       "source_file": "src/components/admin/ConfirmDialog.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134042,6 +134123,7 @@
       "context": "import",
       "source_file": "src/components/admin/DataTable.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134114,6 +134196,7 @@
       "context": "import",
       "source_file": "src/components/admin/FilterBar.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134298,6 +134381,7 @@
       "context": "import",
       "source_file": "src/components/admin/Menu.tsx",
       "source_location": "L5",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134322,6 +134406,7 @@
       "context": "import",
       "source_file": "src/components/admin/Modal.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134358,6 +134443,7 @@
       "context": "import",
       "source_file": "src/components/admin/PageHeader.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134466,6 +134552,7 @@
       "context": "import",
       "source_file": "src/components/admin/SidePanel.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134526,6 +134613,7 @@
       "context": "import",
       "source_file": "src/components/admin/Tabs.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134550,6 +134638,7 @@
       "context": "import",
       "source_file": "src/components/admin/Toast.tsx",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -134574,6 +134663,7 @@
       "context": "import",
       "source_file": "src/components/admin/useDialog.ts",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -137051,6 +137141,7 @@
       "context": "import",
       "source_file": "src/components/upgrade/UpgradeModal.tsx",
       "source_location": "L7",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -137491,6 +137582,7 @@
       "context": "import",
       "source_file": "src/lib/hooks/useOverlayPresence.ts",
       "source_location": "L4",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -138622,6 +138714,7 @@
       "context": "import",
       "source_file": "src/lib/server/parser/configs.ts",
       "source_location": "L11",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -139924,6 +140017,7 @@
       "context": "import",
       "source_file": "src/proxy.ts",
       "source_location": "L3",
+      "type_only": true,
       "weight": 1.0
     },
     {
@@ -191657,5 +191751,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5c0cebd0f16e9cebc0296d9b2c7d641eac031f1a"
+  "built_at_commit": "3cd083c90ae90d9f79c2d08708b9977fe08a63c7"
 }
