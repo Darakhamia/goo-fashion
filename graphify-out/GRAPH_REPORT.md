@@ -1,7 +1,7 @@
-# Graph Report - goo-fashion  (2026-10-11)
+# Graph Report - goo-fashion  (2026-10-12)
 
 ## Corpus Check
-- 496 files · ~852,026 words
+- 496 files · ~852,050 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: .ttf 3, (none) 2, .css 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5c0cebd0`
+- Built from commit: `3cd083c9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1010,7 +1010,7 @@ Cohesion: 0.25
 Nodes (7): prompts(), audit(), Добавить страницу или состояние, Запуск, Имена страниц, Как устроено, Стенд скриншотов админки
 
 ## Knowledge Gaps
-- **10 isolated node(s):** `@tailwindcss/postcss`, `@types/node`, `@types/react`, `@types/react-dom`, `@types/sanitize-html` (+5 more)
+- **1573 isolated node(s):** `eslintConfig`, `REFUSAL_STATUSES`, `state`, `sleepers`, `COLLECT_URLS` (+1568 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1770 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **12 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -1021,8 +1021,8 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.244) - this node is a cross-community bridge._
 - **Are the 14 inferred relationships involving `requireAdmin()` (e.g. with `3.2 Что происходит при запросе `POST /api/stylist/chat`` and `Переменные`) actually correct?**
   _`requireAdmin()` has 14 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `@tailwindcss/postcss`, `@types/node`, `@types/react` to the rest of the system?**
-  _10 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `eslintConfig`, `REFUSAL_STATUSES`, `state` to the rest of the system?**
+  _1573 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `chat/route.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.09846153846153846 - nodes in this community are weakly interconnected._
 - **Why does `react` connect `react` to `CartPanel.tsx`, `users/page.tsx`, `package.json`, `products/page.tsx`, `recipes.ts`, `JournalFeed.tsx`, `plans/page.tsx`, `BrowseClient.tsx`, `useFormat`, `browse/page.tsx`, `lib/types.ts`, `next`, `MyLooksPanel.tsx`, `useOverlayPresence`, `seo.ts`, `HomeFullPageScroll`, `Badge`, `look/[id]/page.tsx`, `3. Сетка, отступы, контейнеры`, `AnalyticsTracker.tsx`, `btn`, `app/page.tsx`, `StylistDrawer.tsx`, `landing.ts`, `HowItWorksSection.tsx`, `clerk-stub.tsx`, `HeroSection.tsx`, `outfit-landing.ts`, `profile/page.tsx`, `report/page.tsx`, `ConditionalSiteLayout.tsx`, `collect/page.tsx`, `app/layout.tsx`, `useT`, `outfit/[id]/page.tsx`, `products/[id]/page.tsx`, `ProductClient.tsx`, `image.ts`, `import/page.tsx`?**
