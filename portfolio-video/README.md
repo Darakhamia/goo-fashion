@@ -27,6 +27,35 @@ seamless:
 </video>
 ```
 
+## Portrait card (`out/card/`)
+
+A 3:4 card for the portfolio's filmstrip carousel. It shows the builder with its
+board filled, recomposed from the builder's own phone layout ("New look" header,
+board, chips row, catalogue strip) on the site's background `#0A0A0A`. No
+caption, no logo.
+
+| File | |
+|---|---|
+| `goo-card.png` | 1200×1600 still |
+| `goo-card.webp` | 1200×1600 still, under 300 KB |
+| `goo-card-loop.mp4` | 900×1200, 7 s seamless loop, H.264, under 2 MB |
+| `goo-card-loop.webm` | 900×1200, 7 s seamless loop, VP9, under 2 MB |
+
+The carousel clips unfocused cards to their top half with `object-position:
+50% 26%`, which shows about y 208–1008 of the 1600 px card. The board, its five
+pieces and the "$1,740 · 5 pieces" pill fill that band. The header is above it
+and the strip below, so the full card reads too.
+
+The loop holds the full look, clears it ("Clear look"), then lands the five
+pieces again, each strip badge turning to ✓, and holds. Frame 0 (the still)
+and the last frame are the same picture.
+
+```bash
+node scripts/stills.mjs out/stills/card 1 Card:0   # the still, 1200×1600
+node scripts/render.mjs card                       # loop master, 900×1200
+scripts/encode-card.sh                             # → out/card/
+```
+
 ## Make it again
 
 ```bash

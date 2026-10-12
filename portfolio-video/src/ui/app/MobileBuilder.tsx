@@ -50,6 +50,82 @@ export function MobileBottomNav({ active }: { active: string }) {
 
 export const MOBILE_CHIPS = ["All", "Tops", "Bottoms", "Shoes", "Accessories"];
 
+export function MobileHeader({ hasPieces }: { hasPieces: boolean }) {
+  return (
+    <div className="shrink-0 flex items-center gap-2 px-3 pt-2">
+      <span className="w-11 h-11 shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] flex items-center justify-center text-[var(--foreground)]">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+      </span>
+      <h1 className="flex-1 min-w-0 ml-1 truncate text-[17px] font-semibold text-[var(--foreground)]">New look</h1>
+      <span className="shrink-0 h-11 px-4 rounded-full border text-[14px] font-semibold bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)] flex items-center">AI</span>
+      <span
+        className={`shrink-0 h-11 px-[18px] rounded-full text-[14px] font-semibold flex items-center ${
+          hasPieces ? "bg-[var(--foreground)] text-[var(--background)]" : "bg-[var(--fg-overlay-08)] text-[var(--foreground-muted)]"
+        }`}
+      >
+        Save
+      </span>
+    </div>
+  );
+}
+
+export function MobileChips() {
+  return (
+    <div className="shrink-0 flex items-center gap-1.5 px-3 pt-3 pb-0.5 overflow-hidden">
+      <span className="relative shrink-0 w-10 h-10 rounded-full border flex items-center justify-center bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)]">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+          <path d="M4 7h16M7 12h10M10 17h4" />
+        </svg>
+      </span>
+      {MOBILE_CHIPS.map((label) => (
+        <span
+          key={label}
+          className={`relative shrink-0 h-10 px-[15px] rounded-full text-[13px] whitespace-nowrap flex items-center ${
+            label === "All" ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
+          }`}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function MobileStrip({ strip, picked, stripScroll = 0 }: { strip: Product[]; picked: Set<string>; stripScroll?: number }) {
+  return (
+    <div className="shrink-0 overflow-hidden" style={{ minHeight: 204 }}>
+      <div className="flex gap-2 px-3 pt-3 pb-1 items-start" style={{ transform: `translateX(${-stripScroll}px)` }}>
+        {strip.map((product) => {
+          const isSelected = picked.has(product.id);
+          return (
+            <div key={product.id} className="shrink-0 w-[124px] flex flex-col rounded-[14px] overflow-hidden bg-[var(--surface)]">
+              <div className="relative overflow-hidden bg-white h-[140px]">
+                <Img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain" />
+                <span
+                  aria-hidden="true"
+                  className={`absolute right-2 bottom-2 w-[26px] h-[26px] rounded-full flex items-center justify-center ${
+                    isSelected ? "bg-[var(--foreground)] text-[var(--background)]" : "bg-white/90 text-black"
+                  }`}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={isSelected ? "M5 12l5 5 9-10" : "M12 6v12M6 12h12"} />
+                  </svg>
+                </span>
+              </div>
+              <div className="px-2.5 pt-2 pb-2.5">
+                <p className="text-[12px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
+                <p className="text-[12px] text-[var(--foreground-muted)] leading-snug">{formatPrice(product.priceMin)}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function MobileBuilder({
   width,
   height,
@@ -77,71 +153,13 @@ export function MobileBuilder({
   return (
     <div className="relative bg-[var(--background)] text-[var(--foreground)] overflow-hidden" style={{ width, height }}>
       <div className="flex flex-col" style={{ height: height - navSpace }}>
-        <div className="shrink-0 flex items-center gap-2 px-3 pt-2">
-          <span className="w-11 h-11 shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] flex items-center justify-center text-[var(--foreground)]">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
-          </span>
-          <h1 className="flex-1 min-w-0 ml-1 truncate text-[17px] font-semibold text-[var(--foreground)]">New look</h1>
-          <span className="shrink-0 h-11 px-4 rounded-full border text-[14px] font-semibold bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)] flex items-center">AI</span>
-          <span
-            className={`shrink-0 h-11 px-[18px] rounded-full text-[14px] font-semibold flex items-center ${
-              pieces.length > 0 ? "bg-[var(--foreground)] text-[var(--background)]" : "bg-[var(--fg-overlay-08)] text-[var(--foreground-muted)]"
-            }`}
-          >
-            Save
-          </span>
-        </div>
+        <MobileHeader hasPieces={pieces.length > 0} />
         <div className="mx-3 mt-3">
           <BuilderBoard width={width - 24} height={boardH} pieces={pieces} relayout={relayout} total={total} />
         </div>
         <div className="shrink-0 flex flex-col pb-3 mt-auto">
-          <div className="shrink-0 flex items-center gap-1.5 px-3 pt-3 pb-0.5 overflow-hidden">
-            <span className="relative shrink-0 w-10 h-10 rounded-full border flex items-center justify-center bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)]">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-                <path d="M4 7h16M7 12h10M10 17h4" />
-              </svg>
-            </span>
-            {MOBILE_CHIPS.map((label) => (
-              <span
-                key={label}
-                className={`relative shrink-0 h-10 px-[15px] rounded-full text-[13px] whitespace-nowrap flex items-center ${
-                  label === "All" ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "bg-[var(--fg-overlay-08)] text-[var(--foreground)]"
-                }`}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-          <div className="shrink-0 overflow-hidden" style={{ minHeight: 204 }}>
-            <div className="flex gap-2 px-3 pt-3 pb-1 items-start" style={{ transform: `translateX(${-stripScroll}px)` }}>
-              {strip.map((product) => {
-                const isSelected = picked.has(product.id);
-                return (
-                  <div key={product.id} className="shrink-0 w-[124px] flex flex-col rounded-[14px] overflow-hidden bg-[var(--surface)]">
-                    <div className="relative overflow-hidden bg-white h-[140px]">
-                      <Img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain" />
-                      <span
-                        aria-hidden="true"
-                        className={`absolute right-2 bottom-2 w-[26px] h-[26px] rounded-full flex items-center justify-center ${
-                          isSelected ? "bg-[var(--foreground)] text-[var(--background)]" : "bg-white/90 text-black"
-                        }`}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d={isSelected ? "M5 12l5 5 9-10" : "M12 6v12M6 12h12"} />
-                        </svg>
-                      </span>
-                    </div>
-                    <div className="px-2.5 pt-2 pb-2.5">
-                      <p className="text-[12px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
-                      <p className="text-[12px] text-[var(--foreground-muted)] leading-snug">{formatPrice(product.priceMin)}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <MobileChips />
+          <MobileStrip strip={strip} picked={picked} stripScroll={stripScroll} />
         </div>
       </div>
       <MobileBottomNav active="Builder" />

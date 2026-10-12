@@ -54,7 +54,10 @@ export function BuilderBoard({
   relayout,
   total,
   emptyCopy = true,
+  pillOpacity = 1,
 }: {
+  /** The total pill and clear button fade with the look on "Clear look". */
+  pillOpacity?: number;
   width: number;
   height: number;
   pieces: BoardPiece[];
@@ -124,8 +127,8 @@ export function BuilderBoard({
           })}
         </div>
       )}
-      {n > 0 && (
-        <>
+      {n > 0 && pillOpacity > 0 && (
+        <div style={{ opacity: pillOpacity }}>
           <span className="absolute left-3 bottom-3 z-10 h-8 px-3 rounded-full bg-white/85 text-black flex items-center gap-1 text-[13px]">
             <b className="font-semibold">{formatPrice(total)}</b> · {n} {n === 1 ? "piece" : "pieces"}
           </span>
@@ -136,7 +139,7 @@ export function BuilderBoard({
               </svg>
             </span>
           </span>
-        </>
+        </div>
       )}
     </div>
   );
