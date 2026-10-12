@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "src/app/blog/[slug]/page.tsx": {
-    "mtime": 1791761253.8141553,
-    "seen": 1791762153.2701216,
-    "ast_hash": "043c530b3146c267860e54dfdde494b2",
+    "mtime": 1791798335.2110724,
+    "seen": 1791798599.1493518,
+    "ast_hash": "2ee7086df2366437f8fb6fe16e09fd40",
     "semantic_hash": ""
   },
   "src/app/blog/page.tsx": {
@@ -606,9 +606,9 @@
     "semantic_hash": ""
   },
   "src/app/product/[id]/page.tsx": {
-    "mtime": 1791761171.0860019,
-    "seen": 1791762153.2773924,
-    "ast_hash": "008b86f6598a935aeec539272bd8c3d3",
+    "mtime": 1791798359.132095,
+    "seen": 1791798599.1540549,
+    "ast_hash": "45e7b32899c0bc6a6b40b86d78aff51c",
     "semantic_hash": ""
   },
   "src/app/profile/page.tsx": {
@@ -918,9 +918,9 @@
     "semantic_hash": ""
   },
   "src/lib/seo.ts": {
-    "mtime": 1791761171.0852945,
-    "seen": 1791762153.2838087,
-    "ast_hash": "459eb48602ddaf299bd12e962eec94c9",
+    "mtime": 1791798359.1204157,
+    "seen": 1791798599.1582835,
+    "ast_hash": "c07e7041f490f7204ced7c1faaa89336",
     "semantic_hash": ""
   },
   "src/lib/server/admin-auth.ts": {
@@ -3320,9 +3320,9 @@
     "semantic_hash": ""
   },
   "docs/SEO_PLAN.md": {
-    "mtime": 1791762342.5189986,
-    "seen": 1791762360.3353662,
-    "ast_hash": "718f9b13f2b9eadd47812fd345aab66e",
+    "mtime": 1791798582.7810354,
+    "seen": 1791798599.161431,
+    "ast_hash": "5d6192c0d810ebaebc91e17dbfaa0426",
     "semantic_hash": ""
   },
   "src/app/about/layout.tsx": {
@@ -3404,9 +3404,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/landing.ts": {
-    "mtime": 1791761095.2493112,
-    "seen": 1791762153.2846622,
-    "ast_hash": "e99846e7edb4ceca3136b43d55030353",
+    "mtime": 1791798321.2233438,
+    "seen": 1791798599.1591303,
+    "ast_hash": "c132ad5a2c9bb788fab4dee95b288ca0",
     "semantic_hash": ""
   },
   "src/app/brands/[slug]/[subcategory]/page.tsx": {
