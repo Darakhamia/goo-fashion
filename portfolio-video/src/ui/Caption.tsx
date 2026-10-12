@@ -10,7 +10,10 @@ export function Caption({
   x,
   y,
   size,
+  at,
 }: {
+  /** Draw this frame instead of the current one (posters). */
+  at?: number;
   text: string;
   from: number;
   to: number;
@@ -19,7 +22,8 @@ export function Caption({
   y: number;
   size: number;
 }) {
-  const frame = useCurrentFrame();
+  const current = useCurrentFrame();
+  const frame = at ?? current;
   const enter = ramp(frame, from, from + 15);
   const exit = ramp(frame, to - 9, to, easeInOut);
   const opacity = Math.min(enter, 1 - exit);

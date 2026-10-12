@@ -1,7 +1,7 @@
 import "./styles/app.css";
 import "./fonts";
 import React from "react";
-import { AbsoluteFill, Composition, Freeze, Still } from "remotion";
+import { AbsoluteFill, Composition, Still } from "remotion";
 import { Film } from "./Film";
 import { LAYOUTS, type Format } from "./layout";
 import { DURATION, POSTER_LOCAL_FRAME } from "./timeline";
@@ -32,10 +32,8 @@ function Poster({ format }: { format: Format }) {
   const L = LAYOUTS[format];
   return (
     <AbsoluteFill className="dark" style={{ background: "var(--background)", fontFamily: "var(--font-body)" }}>
-      <Freeze frame={POSTER_LOCAL_FRAME}>
-        <BuilderScene L={L} poster />
-        <Caption text="Build the look" from={0} to={100000} x={L.caption.x} y={L.caption.y} size={L.caption.size} />
-      </Freeze>
+      <BuilderScene L={L} poster at={POSTER_LOCAL_FRAME} />
+      <Caption text="Build the look" from={0} to={100000} at={60} x={L.caption.x} y={L.caption.y} size={L.caption.size} />
     </AbsoluteFill>
   );
 }

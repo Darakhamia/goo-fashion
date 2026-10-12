@@ -39,10 +39,10 @@ export const LAYOUTS: Record<Format, Layout> = {
     heroScale: 2.5,
     caption: { x: 192, y: 1003, size: 34 },
     builder: {
-      board: { x: 247, y: 84, w: 980, h: 840 },
+      board: { x: 262, y: 84, w: 980, h: 840 },
       boardScale: 2,
-      list: { x: 1283, y: 84, w: 390, h: 840 },
-      listScale: 1.3,
+      list: { x: 1298, y: 84, w: 360, h: 840 },
+      listScale: 1.2,
     },
     sheet: { x: 1116, y: 80, w: 588, h: 832, scale: 1.4 },
     browseScroll: 560,

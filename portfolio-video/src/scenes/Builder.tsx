@@ -30,12 +30,15 @@ export function builderState(f: number) {
   return { pieces, relayout, total, filled, count, landedCount: landed.length };
 }
 
-/** Keep the newest slot in view: the column scrolls as the list fills. */
+/** Keep the newest slot in view: the column scrolls as the list fills, and
+ *  stops on a card's top edge so no card is left half under the header. */
 function listScroll(f: number, visible: number) {
+  const tops = SLOT_H.map((_, j) => 12 + SLOT_H.slice(0, j).reduce((a, h) => a + h + 12, 0));
   const targets = BUILDER_PICKS.map((_, k) => {
-    let bottom = 12;
-    for (let j = 0; j <= k; j++) bottom += SLOT_H[j] + (j > 0 ? 12 : 0);
-    return Math.max(0, bottom + 12 - visible);
+    const need = tops[k] + SLOT_H[k] + 12 - visible;
+    if (need <= 0) return 0;
+    const snap = tops.find((t) => t - 12 >= need);
+    return snap !== undefined ? snap - 12 : need;
   });
   let scroll = 0;
   BUILDER_PICKS.forEach((at, k) => {
@@ -44,8 +47,9 @@ function listScroll(f: number, visible: number) {
   return scroll;
 }
 
-export function BuilderScene({ L, poster = false }: { L: Layout; poster?: boolean }) {
-  const f = useCurrentFrame();
+export function BuilderScene({ L, poster = false, at }: { L: Layout; poster?: boolean; at?: number }) {
+  const current = useCurrentFrame();
+  const f = at ?? current;
   const B = L.builder;
   const enter = ramp(f, 0, 18);
   const leave = poster ? 0 : ramp(f, 132, 147, easeInOut);

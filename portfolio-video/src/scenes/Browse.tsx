@@ -10,7 +10,7 @@ import { Panel } from "../ui/Panel";
 import { BrowsePage, type CardState } from "../ui/app/BrowsePage";
 import { BROWSE_FOOTWEAR, BROWSE_OUTERWEAR } from "../fixtures/story";
 
-const SWITCH = 44;
+const SWITCH = 58;
 
 function cardIn(f: number, start: number): CardState {
   // ProductCard: spring, bounce 0.2, 0.8 s.
@@ -33,7 +33,8 @@ export function browseAt(L: Layout, f: number) {
     { label: "Outerwear", opacity: 1 - chipOut, scale: mix(1, 0.85, chipOut) },
     { label: "Footwear", opacity: chipIn, scale: mix(0.85, 1, chipIn) },
   ].filter((c) => c.opacity > 0.001);
-  const scrollY = L.browseScroll * ramp(f, 64, 118, easeInOut);
+  // One slow glide down the page; the chip switches once the first row is in view.
+  const scrollY = L.browseScroll * ramp(f, 12, 124, easeInOut);
   return { grid, gridShift, chips, scrollY };
 }
 
