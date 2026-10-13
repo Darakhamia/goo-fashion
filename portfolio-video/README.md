@@ -19,6 +19,15 @@ A 28.5-second silent promo for GOO Fashion, made with [Remotion](https://www.rem
 | `goo-1x1.webm` | 1080×1080, VP9 two-pass |
 | `goo-poster.png` | 1920×1080: the outfit builder with the board filled and the total shown |
 
+Checked with `ffprobe` (2026-10-13). All four are full resolution, 30 fps, 855 frames (28.5 s), yuv420p. The MP4s carry `moov` before `mdat` (faststart).
+
+| File | Codec | Size | Bitrate |
+|---|---|---|---|
+| `goo-16x9.mp4` | H.264 High, CRF 18 | 5.84 MB | 1.64 Mb/s |
+| `goo-1x1.mp4` | H.264 High, CRF 18 | 4.57 MB | 1.28 Mb/s |
+| `goo-16x9.webm` | VP9 two-pass, CRF 30 | 3.19 MB | 0.89 Mb/s |
+| `goo-1x1.webm` | VP9 two-pass, CRF 30 | 2.79 MB | 0.78 Mb/s |
+
 The last frame equals the first (both are the type cards' black), so the loop is seamless:
 
 ```html
