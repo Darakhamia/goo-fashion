@@ -2,7 +2,7 @@
 
 A 28.5-second silent promo for the portfolio site, in the style of a product-launch ad: bold kinetic type, a few product moments shown big and clean, and a strong ending. It is not a screen walkthrough. It replaces the first cut (a walkthrough, rebuilt from vendored components); see [History](#history).
 
-**Status:** waiting for the owner's OK. Six full-resolution stills, one per key beat, have been sent. Nothing is rendered until the OK.
+**Status:** approved 2026-10-13, after six full-resolution stills (one per key beat) and the side-by-side check against the live site.
 
 ---
 
