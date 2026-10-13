@@ -1,0 +1,80 @@
+[
+ {
+  "id": 1,
+  "name": "White",
+  "hex_code": "#ffffff",
+  "sort_order": 1
+ },
+ {
+  "id": 2,
+  "name": "Multicolor",
+  "hex_code": "#multicolor",
+  "sort_order": 2
+ },
+ {
+  "id": 3,
+  "name": "Brown",
+  "hex_code": "#7a4f35",
+  "sort_order": 3
+ },
+ {
+  "id": 4,
+  "name": "Pink",
+  "hex_code": "#e8698a",
+  "sort_order": 4
+ },
+ {
+  "id": 5,
+  "name": "Yellow",
+  "hex_code": "#f5c518",
+  "sort_order": 5
+ },
+ {
+  "id": 6,
+  "name": "Orange",
+  "hex_code": "#e87722",
+  "sort_order": 6
+ },
+ {
+  "id": 7,
+  "name": "Grey",
+  "hex_code": "#808080",
+  "sort_order": 7
+ },
+ {
+  "id": 8,
+  "name": "Black",
+  "hex_code": "#111111",
+  "sort_order": 8
+ },
+ {
+  "id": 9,
+  "name": "Green",
+  "hex_code": "#2d6a3f",
+  "sort_order": 9
+ },
+ {
+  "id": 10,
+  "name": "Red",
+  "hex_code": "#c0392b",
+  "sort_order": 10
+ },
+ {
+  "id": 11,
+  "name": "Violet",
+  "hex_code": "#7b3fa0",
+  "sort_order": 11
+ },
+ {
+  "id": 12,
+  "name": "Blue",
+  "hex_code": "#1a47a0",
+  "sort_order": 12
+ },
+ {
+  "id": 13,
+  "name": "Beige",
+  "hex_code": "#d4c5a9",
+  "sort_order": 13
+ }
+]

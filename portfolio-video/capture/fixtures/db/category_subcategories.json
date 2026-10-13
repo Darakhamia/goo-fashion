@@ -1,0 +1,607 @@
+[
+ {
+  "id": 1,
+  "group_id": "outerwear",
+  "label": "Jackets",
+  "value": "outerwear",
+  "sort_order": 0,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 2,
+  "group_id": "outerwear",
+  "label": "Coats",
+  "value": "outerwear",
+  "sort_order": 1,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 3,
+  "group_id": "outerwear",
+  "label": "Parkas",
+  "value": "outerwear",
+  "sort_order": 2,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 4,
+  "group_id": "outerwear",
+  "label": "Vests",
+  "value": "outerwear",
+  "sort_order": 3,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 5,
+  "group_id": "outerwear",
+  "label": "Bomber Jackets",
+  "value": "outerwear",
+  "sort_order": 4,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 6,
+  "group_id": "outerwear",
+  "label": "Raincoats",
+  "value": "outerwear",
+  "sort_order": 5,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 7,
+  "group_id": "outerwear",
+  "label": "Blazers",
+  "value": "blazers",
+  "sort_order": 6,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 33,
+  "group_id": "outerwear",
+  "label": "Track Jackets",
+  "value": "outerwear",
+  "sort_order": 7,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 34,
+  "group_id": "outerwear",
+  "label": "Fleeces",
+  "value": "outerwear",
+  "sort_order": 8,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 40,
+  "group_id": "outerwear",
+  "label": "Puffers",
+  "value": "outerwear",
+  "sort_order": 9,
+  "size_type": null,
+  "sizes": null
+ },
+ {
+  "id": 8,
+  "group_id": "tops",
+  "label": "T-Shirts",
+  "value": "tops",
+  "sort_order": 0,
+  "size_type": "letter",
+  "sizes": [
+   "XXS",
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL",
+   "XXXL"
+  ]
+ },
+ {
+  "id": 9,
+  "group_id": "tops",
+  "label": "Hoodies",
+  "value": "tops",
+  "sort_order": 1,
+  "size_type": "letter",
+  "sizes": [
+   "XXS",
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL",
+   "XXXL"
+  ]
+ },
+ {
+  "id": 10,
+  "group_id": "tops",
+  "label": "Shirts",
+  "value": "shirts",
+  "sort_order": 2,
+  "size_type": "letter",
+  "sizes": [
+   "XXS",
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 11,
+  "group_id": "tops",
+  "label": "Knitwear",
+  "value": "knitwear",
+  "sort_order": 3,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 26,
+  "group_id": "tops",
+  "label": "Sweatshirts",
+  "value": "tops",
+  "sort_order": 4,
+  "size_type": "letter",
+  "sizes": [
+   "XXS",
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL",
+   "XXXL"
+  ]
+ },
+ {
+  "id": 27,
+  "group_id": "tops",
+  "label": "Polo Shirts",
+  "value": "tops",
+  "sort_order": 5,
+  "size_type": "letter",
+  "sizes": [
+   "XXS",
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL",
+   "XXXL"
+  ]
+ },
+ {
+  "id": 28,
+  "group_id": "tops",
+  "label": "Long Sleeves",
+  "value": "tops",
+  "sort_order": 6,
+  "size_type": "letter",
+  "sizes": [
+   "XXS",
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL",
+   "XXXL"
+  ]
+ },
+ {
+  "id": 29,
+  "group_id": "tops",
+  "label": "Tank-Tops",
+  "value": "tops",
+  "sort_order": 7,
+  "size_type": "letter",
+  "sizes": [
+   "XXS",
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL",
+   "XXXL"
+  ]
+ },
+ {
+  "id": 35,
+  "group_id": "tops",
+  "label": "Blouses",
+  "value": "tops",
+  "sort_order": 8,
+  "size_type": "letter",
+  "sizes": null
+ },
+ {
+  "id": 38,
+  "group_id": "tops",
+  "label": "Corsets",
+  "value": "tops",
+  "sort_order": 9,
+  "size_type": "letter",
+  "sizes": null
+ },
+ {
+  "id": 39,
+  "group_id": "tops",
+  "label": "Bralettes",
+  "value": "tops",
+  "sort_order": 10,
+  "size_type": "letter",
+  "sizes": null
+ },
+ {
+  "id": 12,
+  "group_id": "bottoms",
+  "label": "Pants",
+  "value": "bottoms",
+  "sort_order": 0,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 13,
+  "group_id": "bottoms",
+  "label": "Jeans",
+  "value": "jeans",
+  "sort_order": 1,
+  "size_type": "number",
+  "sizes": [
+   "24",
+   "25",
+   "26",
+   "27",
+   "28",
+   "29",
+   "30",
+   "31",
+   "32",
+   "33",
+   "34",
+   "36",
+   "38"
+  ]
+ },
+ {
+  "id": 14,
+  "group_id": "bottoms",
+  "label": "Shorts",
+  "value": "shorts",
+  "sort_order": 2,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 15,
+  "group_id": "bottoms",
+  "label": "Skirts",
+  "value": "skirts",
+  "sort_order": 3,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL"
+  ]
+ },
+ {
+  "id": 16,
+  "group_id": "dresses",
+  "label": "Dresses",
+  "value": "dresses",
+  "sort_order": 0,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 17,
+  "group_id": "dresses",
+  "label": "Jumpsuits",
+  "value": "jumpsuits",
+  "sort_order": 1,
+  "size_type": "letter",
+  "sizes": [
+   "XS",
+   "S",
+   "M",
+   "L",
+   "XL",
+   "XXL"
+  ]
+ },
+ {
+  "id": 18,
+  "group_id": "footwear",
+  "label": "Sneakers",
+  "value": "footwear",
+  "sort_order": 0,
+  "size_type": "eu",
+  "sizes": [
+   "35",
+   "36",
+   "37",
+   "38",
+   "39",
+   "40",
+   "41",
+   "42",
+   "43",
+   "44",
+   "45",
+   "46"
+  ]
+ },
+ {
+  "id": 19,
+  "group_id": "footwear",
+  "label": "Sandals",
+  "value": "footwear",
+  "sort_order": 1,
+  "size_type": "eu",
+  "sizes": [
+   "35",
+   "36",
+   "37",
+   "38",
+   "39",
+   "40",
+   "41",
+   "42",
+   "43",
+   "44",
+   "45",
+   "46"
+  ]
+ },
+ {
+  "id": 20,
+  "group_id": "footwear",
+  "label": "Boots",
+  "value": "footwear",
+  "sort_order": 2,
+  "size_type": "eu",
+  "sizes": [
+   "35",
+   "36",
+   "37",
+   "38",
+   "39",
+   "40",
+   "41",
+   "42",
+   "43",
+   "44",
+   "45",
+   "46"
+  ]
+ },
+ {
+  "id": 32,
+  "group_id": "footwear",
+  "label": "Flip-Flops",
+  "value": "footwear",
+  "sort_order": 3,
+  "size_type": "eu",
+  "sizes": [
+   "35",
+   "36",
+   "37",
+   "38",
+   "39",
+   "40",
+   "41",
+   "42",
+   "43",
+   "44",
+   "45",
+   "46"
+  ]
+ },
+ {
+  "id": 36,
+  "group_id": "footwear",
+  "label": "Shoes",
+  "value": "footwear",
+  "sort_order": 4,
+  "size_type": null,
+  "sizes": null
+ },
+ {
+  "id": 21,
+  "group_id": "accessories",
+  "label": "Bags",
+  "value": "bags",
+  "sort_order": 0,
+  "size_type": "one-size",
+  "sizes": [
+   "One Size"
+  ]
+ },
+ {
+  "id": 22,
+  "group_id": "accessories",
+  "label": "Hats",
+  "value": "accessories",
+  "sort_order": 1,
+  "size_type": "one-size",
+  "sizes": [
+   "One Size",
+   "XS/S",
+   "S/M",
+   "M/L",
+   "L/XL"
+  ]
+ },
+ {
+  "id": 23,
+  "group_id": "accessories",
+  "label": "Belts",
+  "value": "accessories",
+  "sort_order": 2,
+  "size_type": "number",
+  "sizes": [
+   "70",
+   "75",
+   "80",
+   "85",
+   "90",
+   "95",
+   "100",
+   "105",
+   "110"
+  ]
+ },
+ {
+  "id": 24,
+  "group_id": "accessories",
+  "label": "Sunglasses",
+  "value": "accessories",
+  "sort_order": 3,
+  "size_type": "one-size",
+  "sizes": [
+   "One Size"
+  ]
+ },
+ {
+  "id": 25,
+  "group_id": "accessories",
+  "label": "Watches",
+  "value": "accessories",
+  "sort_order": 4,
+  "size_type": "one-size",
+  "sizes": [
+   "One Size"
+  ]
+ },
+ {
+  "id": 37,
+  "group_id": "accessories",
+  "label": "Scarf/Shawl",
+  "value": "accessories",
+  "sort_order": 5,
+  "size_type": "one-size",
+  "sizes": null
+ },
+ {
+  "id": 31,
+  "group_id": "other",
+  "label": "Suits",
+  "value": "other",
+  "sort_order": 0,
+  "size_type": "letter",
+  "sizes": null
+ }
+]

@@ -4,3 +4,7 @@ out/preview/
 out/master/
 out/stills/
 *.log
+
+# Photo copies the capture run makes from GOO storage (137 MB): re-made with COPY_MISSING=1.
+capture/fixtures/storage/
+capture/fixtures/remote/

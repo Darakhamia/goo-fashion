@@ -1,0 +1,11 @@
+{
+  "_note": "ILLUSTRATIVE DATA, not in the live catalogue. Owner-approved D2 (STORYBOARD.md): the featured item gets two extra stores so the 'Where to buy' beat shows a comparison. Its first store (Goat, from the live export) is real; the StockX and Farfetch rows and prices are made up and exist only in this video. build-fixtures.mjs appends them to the product's retailers.",
+  "products": {
+    "6575d398-1a28-4a7a-a1fd-91fad620ef92": {
+      "appendRetailers": [
+        { "name": "StockX", "url": "https://stockx.com/air-jordan-1-retro-high-og-royal-2026", "price": 162, "currency": "USD", "availability": "in stock", "isOfficial": false },
+        { "name": "Farfetch", "url": "https://www.farfetch.com/shopping/men/air-jordan-1-retro-high-og-royal-2026.aspx", "price": 185, "currency": "USD", "availability": "low stock", "isOfficial": false }
+      ]
+    }
+  }
+}

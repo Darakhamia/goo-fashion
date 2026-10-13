@@ -1,0 +1,37 @@
+[
+ {
+  "id": "outerwear",
+  "label": "Outerwear",
+  "sort_order": 0
+ },
+ {
+  "id": "tops",
+  "label": "Tops",
+  "sort_order": 1
+ },
+ {
+  "id": "bottoms",
+  "label": "Bottoms",
+  "sort_order": 2
+ },
+ {
+  "id": "dresses",
+  "label": "Dresses",
+  "sort_order": 3
+ },
+ {
+  "id": "footwear",
+  "label": "Footwear",
+  "sort_order": 4
+ },
+ {
+  "id": "accessories",
+  "label": "Accessories",
+  "sort_order": 5
+ },
+ {
+  "id": "other",
+  "label": "Other",
+  "sort_order": 6
+ }
+]

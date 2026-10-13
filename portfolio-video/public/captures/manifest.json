@@ -1,0 +1,1138 @@
+{
+ "catalogue": {
+  "image": "captures/catalogue.png",
+  "frames": "captures/catalogue-frames.png",
+  "size": {
+   "w": 1440,
+   "h": 2302.1875
+  },
+  "background": "rgb(244, 242, 238)",
+  "cards": [
+   {
+    "href": "/product/3c50c1ba-60f7-421b-bec4-0955a387b6e5",
+    "card": {
+     "x": 40,
+     "y": 40,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 41,
+     "y": 41,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/70594364-6cb3-448e-894c-78fa34f9328c",
+    "card": {
+     "x": 384,
+     "y": 40,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 385,
+     "y": 41,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/cd4a15d5-bda6-4627-a06c-06106b764230",
+    "card": {
+     "x": 728,
+     "y": 40,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 729,
+     "y": 41,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/a79d3fdb-deae-440f-91ab-74e5b06db42d",
+    "card": {
+     "x": 1072,
+     "y": 40,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 1073,
+     "y": 41,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/e807ab4f-ba25-4ba4-ab7b-46f64ad9d28c",
+    "card": {
+     "x": 40,
+     "y": 599.55,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 41,
+     "y": 600.55,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/7a788f9f-37bd-4a6e-a9dc-ed7648d9ce1e",
+    "card": {
+     "x": 384,
+     "y": 599.55,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 385,
+     "y": 600.55,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/f4874885-f6a7-4beb-93c3-61669098256d",
+    "card": {
+     "x": 728,
+     "y": 599.55,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 729,
+     "y": 600.55,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/3ae967e1-2b34-466c-be65-9e88796d0ce4",
+    "card": {
+     "x": 1072,
+     "y": 599.55,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 1073,
+     "y": 600.55,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/71f5eadd-b5c0-4c70-8ee3-e9c7f9be9b11",
+    "card": {
+     "x": 40,
+     "y": 1159.09,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 41,
+     "y": 1160.09,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/989dea41-7bd7-4b6a-83ed-4b432bdab83c",
+    "card": {
+     "x": 384,
+     "y": 1159.09,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 385,
+     "y": 1160.09,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/ea2afa28-a2f8-4383-9ce0-3af1357ba84a",
+    "card": {
+     "x": 728,
+     "y": 1159.09,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 729,
+     "y": 1160.09,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/fb8b4b46-e891-4db7-b340-8b560acafccf",
+    "card": {
+     "x": 1072,
+     "y": 1159.09,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 1073,
+     "y": 1160.09,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/1c571e34-db67-4757-ac31-e8a64223d5f6",
+    "card": {
+     "x": 40,
+     "y": 1718.64,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 41,
+     "y": 1719.64,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/6bdb16b4-29ce-4d4a-b0ad-d863f1ba53fc",
+    "card": {
+     "x": 384,
+     "y": 1718.64,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 385,
+     "y": 1719.64,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/9673c52d-0879-4cb9-adb7-9fe050e67bc4",
+    "card": {
+     "x": 728,
+     "y": 1718.64,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 729,
+     "y": 1719.64,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   },
+   {
+    "href": "/product/7c99aef3-9324-4cb7-a961-42ada28c3f75",
+    "card": {
+     "x": 1072,
+     "y": 1718.64,
+     "w": 328,
+     "h": 543.55
+    },
+    "photo": {
+     "x": 1073,
+     "y": 1719.64,
+     "w": 326,
+     "h": 434.66
+    },
+    "broken": false
+   }
+  ]
+ },
+ "builder": {
+  "size": {
+   "w": 390,
+   "h": 844
+  },
+  "states": [
+   {
+    "image": "captures/builder-0.png",
+    "canvas": {
+     "x": 12,
+     "y": 64,
+     "w": 366,
+     "h": 451
+    },
+    "cells": [],
+    "pill": null,
+    "pillText": null
+   },
+   {
+    "image": "captures/builder-1.png",
+    "canvas": {
+     "x": 12,
+     "y": 64,
+     "w": 366,
+     "h": 451
+    },
+    "cells": [
+     {
+      "name": "Suede Carpenter Jacket",
+      "cell": {
+       "x": 12,
+       "y": 64,
+       "w": 366,
+       "h": 451
+      },
+      "img": {
+       "x": 12,
+       "y": 64,
+       "w": 366,
+       "h": 451
+      }
+     }
+    ],
+    "pill": {
+     "x": 24,
+     "y": 471,
+     "w": 114.31,
+     "h": 32
+    },
+    "pillText": "$1,295 \u00b7 1 piece"
+   },
+   {
+    "image": "captures/builder-2.png",
+    "canvas": {
+     "x": 12,
+     "y": 64,
+     "w": 366,
+     "h": 451
+    },
+    "cells": [
+     {
+      "name": "Suede Carpenter Jacket",
+      "cell": {
+       "x": 12,
+       "y": 64,
+       "w": 182.5,
+       "h": 451
+      },
+      "img": {
+       "x": 12,
+       "y": 64,
+       "w": 182.5,
+       "h": 451
+      }
+     },
+     {
+      "name": "Countries Tee",
+      "cell": {
+       "x": 195.5,
+       "y": 64,
+       "w": 182.5,
+       "h": 451
+      },
+      "img": {
+       "x": 195.5,
+       "y": 64,
+       "w": 182.5,
+       "h": 451
+      }
+     }
+    ],
+    "pill": {
+     "x": 24,
+     "y": 471,
+     "w": 123.81,
+     "h": 32
+    },
+    "pillText": "$1,390 \u00b7 2 pieces"
+   },
+   {
+    "image": "captures/builder-3.png",
+    "canvas": {
+     "x": 12,
+     "y": 64,
+     "w": 366,
+     "h": 451
+    },
+    "cells": [
+     {
+      "name": "Suede Carpenter Jacket",
+      "cell": {
+       "x": 12,
+       "y": 64,
+       "w": 182.5,
+       "h": 270.59
+      },
+      "img": {
+       "x": 12,
+       "y": 64,
+       "w": 182.5,
+       "h": 270.59
+      }
+     },
+     {
+      "name": "Countries Tee",
+      "cell": {
+       "x": 195.5,
+       "y": 64,
+       "w": 182.5,
+       "h": 270.59
+      },
+      "img": {
+       "x": 195.5,
+       "y": 64,
+       "w": 182.5,
+       "h": 270.59
+      }
+     },
+     {
+      "name": "P001 Legacy Blues",
+      "cell": {
+       "x": 12,
+       "y": 335.59,
+       "w": 366,
+       "h": 179.41
+      },
+      "img": {
+       "x": 12,
+       "y": 335.59,
+       "w": 366,
+       "h": 179.41
+      }
+     }
+    ],
+    "pill": {
+     "x": 24,
+     "y": 471,
+     "w": 124.16,
+     "h": 32
+    },
+    "pillText": "$1,590 \u00b7 3 pieces"
+   },
+   {
+    "image": "captures/builder-4.png",
+    "canvas": {
+     "x": 12,
+     "y": 64,
+     "w": 366,
+     "h": 451
+    },
+    "cells": [
+     {
+      "name": "Suede Carpenter Jacket",
+      "cell": {
+       "x": 12,
+       "y": 64,
+       "w": 182.5,
+       "h": 225
+      },
+      "img": {
+       "x": 12,
+       "y": 64,
+       "w": 182.5,
+       "h": 225
+      }
+     },
+     {
+      "name": "Countries Tee",
+      "cell": {
+       "x": 195.5,
+       "y": 64,
+       "w": 182.5,
+       "h": 225
+      },
+      "img": {
+       "x": 195.5,
+       "y": 64,
+       "w": 182.5,
+       "h": 225
+      }
+     },
+     {
+      "name": "P001 Legacy Blues",
+      "cell": {
+       "x": 12,
+       "y": 290,
+       "w": 182.5,
+       "h": 225
+      },
+      "img": {
+       "x": 12,
+       "y": 290,
+       "w": 182.5,
+       "h": 225
+      }
+     },
+     {
+      "name": "Air Jordan 1 Retro High OG 'Royal' 2026",
+      "cell": {
+       "x": 195.5,
+       "y": 290,
+       "w": 182.5,
+       "h": 225
+      },
+      "img": {
+       "x": 195.5,
+       "y": 290,
+       "w": 182.5,
+       "h": 225
+      }
+     }
+    ],
+    "pill": {
+     "x": 24,
+     "y": 471,
+     "w": 122.36,
+     "h": 32
+    },
+    "pillText": "$1,745 \u00b7 4 pieces"
+   },
+   {
+    "image": "captures/builder-5.png",
+    "canvas": {
+     "x": 12,
+     "y": 64,
+     "w": 366,
+     "h": 451
+    },
+    "cells": [
+     {
+      "name": "Suede Carpenter Jacket",
+      "cell": {
+       "x": 12,
+       "y": 64,
+       "w": 182.5,
+       "h": 257.06
+      },
+      "img": {
+       "x": 12,
+       "y": 64,
+       "w": 182.5,
+       "h": 257.06
+      }
+     },
+     {
+      "name": "Countries Tee",
+      "cell": {
+       "x": 195.5,
+       "y": 64,
+       "w": 182.5,
+       "h": 257.06
+      },
+      "img": {
+       "x": 195.5,
+       "y": 64,
+       "w": 182.5,
+       "h": 257.06
+      }
+     },
+     {
+      "name": "P001 Legacy Blues",
+      "cell": {
+       "x": 12,
+       "y": 322.06,
+       "w": 121.33,
+       "h": 193.92
+      },
+      "img": {
+       "x": 12,
+       "y": 322.06,
+       "w": 121.33,
+       "h": 193.92
+      }
+     },
+     {
+      "name": "Air Jordan 1 Retro High OG 'Royal' 2026",
+      "cell": {
+       "x": 134.33,
+       "y": 322.06,
+       "w": 121.33,
+       "h": 193.92
+      },
+      "img": {
+       "x": 134.33,
+       "y": 322.06,
+       "w": 121.33,
+       "h": 193.92
+      }
+     },
+     {
+      "name": "V001 Skye",
+      "cell": {
+       "x": 256.66,
+       "y": 322.06,
+       "w": 121.33,
+       "h": 193.92
+      },
+      "img": {
+       "x": 256.66,
+       "y": 322.06,
+       "w": 121.33,
+       "h": 193.92
+      }
+     }
+    ],
+    "pill": {
+     "x": 24,
+     "y": 471,
+     "w": 123.67,
+     "h": 32
+    },
+    "pillText": "$1,945 \u00b7 5 pieces"
+   }
+  ]
+ },
+ "stylist": {
+  "size": {
+   "w": 390,
+   "h": 844
+  },
+  "open": "captures/stylist-open.png",
+  "sent": "captures/stylist-sent.png",
+  "reply": "captures/stylist-reply.png",
+  "question": "All black for a gallery opening",
+  "bar": {
+   "x": 16,
+   "y": 778,
+   "w": 358,
+   "h": 50
+  },
+  "send": {
+   "x": 313,
+   "y": 6,
+   "w": 38,
+   "h": 38
+  },
+  "typed": [
+   {
+    "image": "captures/stylist-type-00.png",
+    "chars": 0,
+    "caret": {
+     "x": 19,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-01.png",
+    "chars": 1,
+    "caret": {
+     "x": 29.06,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-02.png",
+    "chars": 2,
+    "caret": {
+     "x": 32.11,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-03.png",
+    "chars": 3,
+    "caret": {
+     "x": 35.16,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-04.png",
+    "chars": 4,
+    "caret": {
+     "x": 38.91,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-05.png",
+    "chars": 5,
+    "caret": {
+     "x": 47.89,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-06.png",
+    "chars": 6,
+    "caret": {
+     "x": 50.94,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-07.png",
+    "chars": 7,
+    "caret": {
+     "x": 59.22,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-08.png",
+    "chars": 8,
+    "caret": {
+     "x": 67.45,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-09.png",
+    "chars": 9,
+    "caret": {
+     "x": 75.41,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-10.png",
+    "chars": 10,
+    "caret": {
+     "x": 79.16,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-11.png",
+    "chars": 11,
+    "caret": {
+     "x": 84.17,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-12.png",
+    "chars": 12,
+    "caret": {
+     "x": 92.61,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-13.png",
+    "chars": 13,
+    "caret": {
+     "x": 97.81,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-14.png",
+    "chars": 14,
+    "caret": {
+     "x": 101.56,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-15.png",
+    "chars": 15,
+    "caret": {
+     "x": 109.84,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-16.png",
+    "chars": 16,
+    "caret": {
+     "x": 113.59,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-17.png",
+    "chars": 17,
+    "caret": {
+     "x": 122.59,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-18.png",
+    "chars": 18,
+    "caret": {
+     "x": 130.88,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-19.png",
+    "chars": 19,
+    "caret": {
+     "x": 133.92,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-20.png",
+    "chars": 20,
+    "caret": {
+     "x": 136.97,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-21.png",
+    "chars": 21,
+    "caret": {
+     "x": 145.5,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-22.png",
+    "chars": 22,
+    "caret": {
+     "x": 150.7,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-23.png",
+    "chars": 23,
+    "caret": {
+     "x": 159.13,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-24.png",
+    "chars": 24,
+    "caret": {
+     "x": 162.88,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-25.png",
+    "chars": 25,
+    "caret": {
+     "x": 171.67,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-26.png",
+    "chars": 26,
+    "caret": {
+     "x": 180.66,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-27.png",
+    "chars": 27,
+    "caret": {
+     "x": 189.19,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-28.png",
+    "chars": 28,
+    "caret": {
+     "x": 197.81,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-29.png",
+    "chars": 29,
+    "caret": {
+     "x": 200.86,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-30.png",
+    "chars": 30,
+    "caret": {
+     "x": 209.48,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   },
+   {
+    "image": "captures/stylist-type-31.png",
+    "chars": 31,
+    "caret": {
+     "x": 218.48,
+     "y": 15,
+     "w": 1.5,
+     "h": 20,
+     "color": "rgb(10, 10, 10)"
+    }
+   }
+  ],
+  "sheet": {
+   "x": 0,
+   "y": 56,
+   "w": 390,
+   "h": 788
+  },
+  "bubbles": [
+   {
+    "text": "Hi! I'm your AI Stylist. Tell me what vibe you're going for,",
+    "rect": {
+     "x": 16,
+     "y": 136.78,
+     "w": 315.03,
+     "h": 64
+    }
+   },
+   {
+    "text": "All black for a gallery opening",
+    "rect": {
+     "x": 154.64,
+     "y": 210.78,
+     "w": 219.36,
+     "h": 43
+    }
+   },
+   {
+    "text": "Tonal and sharp: a black leather trucker over a wide long sl",
+    "rect": {
+     "x": 16,
+     "y": 263.78,
+     "w": 315.03,
+     "h": 85
+    }
+   }
+  ],
+  "strip": {
+   "x": 16,
+   "y": 356.78,
+   "w": 358,
+   "h": 152.25
+  },
+  "cards": [
+   {
+    "x": 16,
+    "y": 356.78,
+    "w": 84,
+    "h": 148.25
+   },
+   {
+    "x": 108,
+    "y": 356.78,
+    "w": 84,
+    "h": 148.25
+   },
+   {
+    "x": 200,
+    "y": 356.78,
+    "w": 84,
+    "h": 148.25
+   },
+   {
+    "x": 292,
+    "y": 356.78,
+    "w": 84,
+    "h": 148.25
+   }
+  ],
+  "look": {
+   "x": 16,
+   "y": 517.03,
+   "w": 300,
+   "h": 72
+  }
+ },
+ "product": {
+  "image": "captures/product.png",
+  "size": {
+   "w": 1440,
+   "h": 900
+  },
+  "whereToBuy": {
+   "x": 749,
+   "y": 610.39,
+   "w": 602,
+   "h": 305.17
+  },
+  "rows": [
+   {
+    "x": 749,
+    "y": 656.39,
+    "w": 602,
+    "h": 70.39
+   },
+   {
+    "x": 749,
+    "y": 734.78,
+    "w": 602,
+    "h": 70.39
+   },
+   {
+    "x": 749,
+    "y": 813.17,
+    "w": 602,
+    "h": 70.39
+   }
+  ],
+  "photo": {
+   "x": 140,
+   "y": 162,
+   "w": 528,
+   "h": 703.33
+  },
+  "title": {
+   "x": 749,
+   "y": 235,
+   "w": 602,
+   "h": 90
+  },
+  "info": {
+   "x": 708,
+   "y": 162,
+   "w": 684,
+   "h": 802.56
+  }
+ },
+ "hero": {
+  "dark": {
+   "image": "captures/hero-dark.png",
+   "background": "captures/hero-dark-bg.png",
+   "size": {
+    "w": 1440,
+    "h": 900
+   },
+   "word": {
+    "x": 585.2,
+    "y": 345.5,
+    "w": 270.82,
+    "h": 155
+   },
+   "svg": {
+    "x": 624.91,
+    "y": 349,
+    "w": 190.17,
+    "h": 148
+   },
+   "line": {
+    "x": 671.3,
+    "y": 509,
+    "w": 97.38,
+    "h": 24
+   },
+   "button": {
+    "x": 624.91,
+    "y": 565,
+    "w": 190.17,
+    "h": 52
+   }
+  }
+ }
+}

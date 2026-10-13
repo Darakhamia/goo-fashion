@@ -1,139 +1,124 @@
-# GOO Fashion: portfolio loop, storyboard and plan
+# GOO Fashion: promo video, storyboard and plan
 
-A 24-second silent loop of the GOO interface for a portfolio site. It is built with Remotion in this folder only: it has its own `package.json`, and nothing in the app's code or dependencies changes. Status: **approved 2026-10-12**, decisions in §4; what changed while building is in §5.
+A 28.5-second silent promo for the portfolio site, in the style of a product-launch ad: bold kinetic type, a few product moments shown big and clean, and a strong ending. It is not a screen walkthrough. It replaces the first cut (a walkthrough, rebuilt from vendored components); see [History](#history).
+
+**Status:** waiting for the owner's OK. Six full-resolution stills, one per key beat, have been sent. Nothing is rendered until the OK.
 
 ---
 
-## 1. What the repo allows (and what it doesn't)
+## 1. How the UI is captured
 
-Checked against the code at `4840928`.
+**Nothing in the video is redrawn. Every piece of interface in it is a screenshot of the real app.**
 
-| Finding | Consequence for the video |
-|---|---|
-| Page components (`builder/page.tsx` 3,102 lines, `BrowseClient.tsx` 2,107, `StylistDrawer.tsx` 1,056, `ProductClient.tsx` 818) depend on `next/link`, `next/image`, `next/navigation`, Clerk, and contexts that fetch live data (`currency-context` → `/api/exchange-rates`, the stylist → `/api/stylist/chat`). | They can't be mounted as-is without a server. |
-| Motion in the app is wall-clock: framer-motion, CSS `@keyframes` (`EtherealShadow`, `dot-bounce`) and a `requestAnimationFrame` loop (`GooeyText`). | Remotion renders frame by frame. Wall-clock animation would land on random in-between states, so all motion has to be driven by `useCurrentFrame()`. |
-| Tokens live in `src/app/globals.css`: dark theme under `.dark` (`--background #0A0A0A`, `--surface #141414`, `--foreground #F0EEE8`, `--border #222220`…). Easing tokens: `--ease-out cubic-bezier(.23,1,.32,1)`, `--ease-drawer cubic-bezier(.32,.72,0,1)`. Fonts: Inter Tight (body and display), Poppins 800 (nav wordmark). | Use them verbatim: the same CSS variables, the same curves, the same fonts. |
-| The seed catalogue (`src/lib/data/products.ts`, 24 items; `outfits.ts`) has rich multi-store pricing: 2–3 retailers per item with different prices, which suits "Best price, found". | Good source for names, brands, prices and stores. |
-| **The seed photos are a problem.** All 38 are Unsplash links. **4 of 24 product images are dead (404:** p-002, p-010, p-011, p-019). Many don't match the product: "Linen Shirt" (p-008) is a Chanel perfume bottle, "Oversized Wool Coat" (p-001) is a bomber, p-023 is a landscape. All are lifestyle shots on mixed backgrounds, not the site's white product cards. | **See D1.** As-is, they would make the video look unlike the real site. |
+1. **The real app runs locally.** It is a production build (`next build && next start`) of `master` at `e947728`, made in a separate worktree, so this branch's video folder stays out of the app's type check.
+2. **Its database is a stand-in.**
+   - `capture/mock-supabase.mjs` answers the app's PostgREST reads from JSON tables.
+   - The app is unchanged. It reads through its own code: `dbToProduct`, `groupVariants` and the seeded shuffle.
+3. **The fixtures are the real catalogue.**
+   - Source: `capture/fixtures/source/`, exported once from goo-fashion.com's public API on 2026-10-13:
+     - `/api/products`: 554 items;
+     - `/api/categories`, `/api/color-groups` and `/api/brands`.
+   - `capture/build-fixtures.mjs` turns the export back into table rows.
+   - Product photos are the white-background shots the live site serves from its own storage. A capture run copies them once into `capture/fixtures/storage/` (`COPY_MISSING=1`). After that, capturing is offline.
+   - The photo cache is not committed (137 MB). The captures made from it are.
+4. **One exception to "as exported"** is the D2 store rows.
+   - The featured item (Air Jordan 1 "Royal") is sold by one store in the live catalogue, Goat.
+   - As approved before (D2), two illustrative stores are added: StockX at $162 and Farfetch at $185.
+   - They live in their own file, `capture/fixtures/illustrative.json`, which says so in its first line.
+5. **The browser is Playwright Chromium at `deviceScaleFactor 2`.**
+   - Viewports: 1440×900 for desktop, 390×844 for phone.
+   - Light theme, cookie choice already made, the one-time "AI Stylist" tip dismissed.
+   - `Math.random` is seeded, so every load of a page is identical.
+6. **The AI stylist exchange is scripted.**
+   - The capture answers the app's `POST /api/stylist/chat` with a fixed reply in the route's own response shape.
+   - No model is called.
+   - The question is typed into the real input one key at a time, and each keystroke is captured.
+7. **What the captures are.** `capture/shoot.cjs` writes PNGs to `public/captures/`, plus `manifest.json` with every element's rectangle measured from the DOM. The video only moves, crops, layers and reveals these captures.
 
-### Approach: real UI, frame-driven
+### Captures against the real site
 
-1. **Vendored leaf components, unchanged.**
-   - Which: presentational pieces such as `ProductCard`, `ProductImage`, `OutfitCollage`, `Price`, the retailer logo, plus the `lib/` helpers they need. The final list is settled while building.
-   - How: copied byte-for-byte into `src/vendor/` and recorded in `VENDORED.md` with source path and commit.
-   - They run through small shims, picked by webpack alias in `remotion.config.ts`:
-     - `next/link` → `<a>`, `next/image` → `<img>`;
-     - Clerk and the contexts → fixture values;
-     - `framer-motion` → renders the settled `animate` state.
-2. **Page layouts rebuilt from the same markup.**
-   - Which: the desktop nav pill, the hero, the browse header and toolbar with `ActiveChip`, the builder catalogue plus "In this look" panel, the stylist drawer (bubbles, product tiles, "Build this look" card), the "Where to buy" rows with the `Best` badge, and the mobile builder board and bottom nav.
-   - How: the JSX and Tailwind classes are copied from the source lines, but their state comes from the frame number instead of `useState` and fetches.
-   - Each file names its source in a header comment, e.g. `// from src/app/builder/page.tsx:1692`.
-3. **Tokens and styles.** The token blocks of `globals.css` are copied in. Tailwind v4 runs through `@remotion/tailwind-v4`. The composition root carries `className="dark"`.
-4. **Data and offline rendering.** Everything comes from `src/fixtures/*.ts`. Images are local files under `public/fixtures/`. No network at render time: no API, no LLM, no Google Fonts (fonts come from `@fontsource` packages).
+Before building, three captures were put side by side with goo-fashion.com, at the same viewport and scale (`capture/compare.cjs`):
+
+| View | Pixels differing | What differs |
+|---|---|---|
+| Browse grid, desktop | 0.46% | Sign in / Sign up in the header (Clerk loads them from its servers, so they can't appear offline), and anti-aliasing on photo edges (live serves resized photos; locally the originals load). Products, order and layout are identical. |
+| Builder with the look, phone | 4.17% | Only the catalogue strip under the board. It is a random shuffle, and on live Clerk and analytics draw random numbers first. The board, the pieces and the total are identical. The video crops to the board. |
+| Featured product page, desktop | 1.12% | The two illustrative store rows (D2) and the header, as above. The photo, title, price and the real Goat row are identical. |
+
+The desktop header never appears in the video.
 
 ---
 
 ## 2. Storyboard
 
-24.0 s · 30 fps · 720 frames. All times are in seconds.
+28.5 s · 30 fps · 855 frames. Formats: 1920×1080 (16:9) and 1080×1080 (1:1, recomposed, not cropped).
 
-| # | Time | Scene | What moves | Caption |
-|---|---|---|---|---|
-| 0 | 0.0 | **Loop seam (= last frame)** | Frame 0 is the finished end card: black, the big "GOO", "Your look, found and priced.", "goo-fashion.com". It is also the poster. | — |
-| 1 | 0.0–3.0 | **Home hero** | <ul><li>0.0–0.8: the tagline and URL fade and drift 8 px down. "Build your look" and the CTA rise in beneath the same "GOO", which never moves. The nav pill settles from −12 px. The `EtherealShadow` blobs and grain fade in, now driven by the frame.</li><li>Slow push-in 1.00 → 1.03 over the scene.</li><li>2.2: the CTA gets a soft press (scale 1 → 0.97 → 1 over 160 ms, the site's `--dur-press`).</li></ul> | — |
-| 2 | 3.0–7.0 | **Browse** | <ul><li>The hero lifts out (−24 px, fade). The browse page rises in: the "BROWSE" display title, then the Filter/Search toolbar and the Pieces/Outfits switch.</li><li>The white-card grid scrolls about 1.5 rows with an ease-in-out glide.</li><li>At 5.2 an `ActiveChip` switches "Outerwear" → "Footwear". The grid re-deals with a 40 ms stagger of fade-up cards.</li></ul> | Browse every store |
-| 3 | 7.0–11.5 | **Outfit builder** | <ul><li>The real builder layout: chips row, catalogue, "In this look" panel.</li><li>Five picks, 0.6 s apart. On each: the card gets its selected ring and check, the matching slot fills with a soft spring (y −10 → 0, scale 0.97 → 1), "N pieces" ticks up, and **TOTAL counts up** to the full price.</li><li>Push-in toward the panel (1.00 → 1.06, anchored right).</li></ul> | Build the look |
-| 4 | 11.5–15.5 | **AI stylist** | <ul><li>The drawer slides in on `--ease-drawer` over the dimmed browse page.</li><li>"What's trending?" is typed into the field (about 0.7 s) and sent. The user bubble pops in, then three typing dots for 0.5 s.</li><li>The reply reveals word by word. Two product tiles pop in (120 ms stagger), then the "Build this look · 2 pieces · Opens in the builder" card slides up.</li><li>Push-in on the drawer.</li></ul> | Ask the AI stylist |
-| 5 | 15.5–19.0 | **Product page** | <ul><li>Match cut from the chat's second tile to **the same item's** product page: the gallery image grows from the tile's spot.</li><li>"Where to buy" rows arrive with a stagger from 3 stores. The cheapest row then takes the `Best` badge and the highlighted border. "From $X" settles.</li></ul> | Best price, found |
-| 6 | 19.0–21.5 | **Phone** | <ul><li>The product page recedes (scale 0.94, darkens).</li><li>An iPhone frame slides up with a subtle spring, showing the **mobile builder board**: the same pieces settle into the collage one by one, and "$N · 5 pieces" ticks.</li><li>The real mobile chrome: "New look" header and bottom nav with Builder active.</li></ul> | — |
-| 7 | 21.5–24.0 | **End card** | <ul><li>The phone drops away. Black. The big "GOO" fades in where the hero has it.</li><li>"Your look, found and priced." then "goo-fashion.com" follow at a 150 ms stagger.</li><li>From 23.0 it holds still, so frame 719 is pixel-identical to frame 0.</li></ul> | — |
+**Type cards** (beats 1, 3, 5 and 7):
+- Inter Tight 800 (the site's face), tight tracking, in the site's light text colour on near-black.
+- 164–172 px at 1080p in 16:9 and 128–144 px in 1:1, never below 64 px.
+- Words rise in from behind a mask, one after another. Each line holds at least 1 s fully set.
 
-**Captions.** Bottom-left, 4 words at most, in English, in the site's dark tokens.
-- Type: Inter Tight Medium, 30 px at 1080p, `--foreground`, with a 24 px hairline in front of it.
-- Motion: in with a 12 px rise over 0.5 s; out with a fade over 0.3 s.
+**Product shots** (beats 2, 4, 6 and 8):
+- The site's own light page colour behind them (`rgb(244 242 238)`).
+- The capture floats with a soft shadow, and the camera pushes in slowly.
 
-**Motion language.** Editorial and unhurried.
-- Every ease-out uses the site's `--ease-out` curve; the drawer uses `--ease-drawer`.
-- Pieces settle on a spring with low overshoot (damping ≈ 18, mass 0.8).
-- Every scene runs a slow push-in. Cross-scene moves are ≤ 24 px offsets with cross-dissolves: no wipes, no whip-pans.
+| # | Time | Beat | On screen |
+|---|---|---|---|
+| 1 | 0.0–2.5 | **"Every store. / One wardrobe."** | From black: two lines rise in, hold, then lift away. |
+| 2 | 2.5–6.5 | **The catalogue** | The real browse grid, the first 16 cards of today's catalogue in the site's own order, on a plane tilted in 3D. The product photos fly in from all four sides and land in their slots. The cards' frames, names and prices fade in around them, and the grid becomes the exact capture. The plane straightens as the camera pushes in. |
+| 3 | 6.5–8.3 | **"Build the look."** | Type card. |
+| 4 | 8.3–12.8 | **The outfit builder** | The phone builder's board, cropped from the real phone screen (top bar plus board) and shown big. Five real pieces snap onto it one by one: suede jacket, tee, jeans, Air Jordan 1 "Royal", sunglasses. Each piece flies in from the side and lands where the app put it, and the board reflows between the app's own captured states. The real total pill counts up $1,295 → $1,390 → $1,590 → $1,745 → **$1,945 · 5 pieces**. |
+| 5 | 12.8–14.6 | **"Ask the AI stylist."** | Type card. |
+| 6 | 14.6–19.6 | **The stylist** | The real chat input, huge: "All black for a gallery opening" is typed into it, one captured keystroke at a time. Send. The camera pulls back to the stylist sheet: the message bubble and the typing dots. Then the reply rises in: the answer, four real pieces (leather trucker, wide long sleeve, black trousers, Jordan 8 "Chrome"), and the "Build this look · 4 pieces" card. (The trousers are from `bottoms`, not `jeans`: the app's stylist maps only `bottoms` to the builder's bottom slot, so a pair of jeans would make the card say "3 pieces".) The camera pushes in on the look. |
+| 7 | 19.6–21.8 | **"Find where to buy / every piece."** | Type card. |
+| 8 | 21.8–25.3 | **Where to buy** | The real product page of the Jordan 1 "Royal" in a browser frame. The camera pushes in from the photo to "Where to buy" as the store rows cascade in: Goat $155 **Best** (real), StockX $162 and Farfetch $185 (illustrative, D2). |
+| 9 | 25.3–28.5 | **End card** | The site's real dark hero, cropped below the nav: the big **GOO**, "Build your look" and the "Build your look ↗" button rise in. **goo-fashion.com** sets underneath. Everything fades to the type cards' black, which is frame 0, so the loop is seamless. |
 
-**Square cut (1080×1080).** The same scenes are re-laid out, not cropped:
-- browse: a 3-column grid;
-- builder: 2 catalogue columns plus the panel;
-- drawer: about 60 % of the width;
-- product page: a tighter two-column layout;
-- phone: larger and centred;
-- captions and margins: re-spaced for 1:1.
+Pace: every beat is 1.8–5 s, with type cards at 1.8–2.5 s. The camera never stops: there are no static holds, only slow drifts.
 
----
+**Logos.** No brand logo is ever the subject. GOO's own wordmark appears only on the end card. The pieces were picked for small or no logos.
 
-## 3. Build and render plan
+**Poster** (`goo-poster.png`): the builder board filled, with "$1,945 · 5 pieces", from beat 4 in 16:9. It is a product frame, not the end card.
 
-```
-portfolio-video/
-  package.json            remotion 4.0.x, @remotion/cli, @remotion/tailwind-v4, react 19, tailwindcss 4, @fontsource/*
-  remotion.config.ts      tailwind, webpack aliases → src/shims, local headless-shell
-  src/Root.tsx            compositions GOO-16x9, GOO-1x1 (+ one per scene for previews)
-  src/fixtures/           products, look, stylist script, store prices
-  src/vendor/             verbatim copies of leaf components (+ VENDORED.md)
-  src/shims/              next/link, next/image, framer-motion, contexts
-  src/ui/                 page layouts rebuilt from the app's markup, frame-driven
-  src/scenes/             Hero, Browse, Builder, Stylist, Product, Phone, EndCard
-  src/motion/             curves, springs, Caption, push-in
-  public/fixtures/        local product images
-  scripts/encode.sh       ffmpeg encode + size check
-  out/                    deliverables
-```
+### 1:1 recomposition
 
-**Render**
-1. Preview: render both formats at half resolution and send you stills of 5 key frames: hero press, browse with chips, builder with the total, stylist with tiles, product with the Best row.
-2. Final:
-   - Remotion renders a near-lossless master per format.
-   - ffmpeg encodes **H.264** (High, yuv420p, `+faststart`) and **VP9** WebM (2-pass, constrained quality).
-   - The CRF and bitrate are searched down to the lowest setting that stays under 5 MB. Then the result is checked frame by frame for banding and blocking on the dark gradients and grain.
-   - `goo-poster.png` is frame 0.
-   - The loop is verified by diffing frame 0 against the last frame.
+The type is re-set with its own line breaks: "Ask the / AI stylist." and "Find where / to buy / every piece."
 
-Deliverables in `out/`: `goo-16x9.mp4`, `goo-16x9.webm`, `goo-1x1.mp4`, `goo-1x1.webm`, `goo-poster.png`.
-
-**Environment** (checked here):
-- the npm registry is reachable, `remotion@4.0.535`;
-- Chromium headless shell is at `/opt/pw-browsers`;
-- system ffmpeg is 6.1.1.
-
-**License.** Remotion is free for individuals and for companies of up to 3 people. Larger companies need a company license.
+| Beat | 16:9 | 1:1 |
+|---|---|---|
+| Catalogue plane | Covers the frame | Covers the frame, from a different angle |
+| Builder board, stylist sheet | Centred, filling the height | Centred, filling the height |
+| Browser | 1700 px wide; the camera ends framed on "Where to buy" | Smaller; the push-in ends tighter on the rows |
+| Hero | Covers the frame | Re-cropped to a square around GOO |
 
 ---
 
-## 4. Decisions (approved by the owner, 2026-10-12)
+## 3. Output (`out/`, replacing the old files)
 
-- **D1 — photos:** about 16 real white-background product shots, copied once from GOO's own storage (the ones the live site shows). Renders run fully offline.
-- **D2 — store prices:** the featured item gets 3 store prices in the seed catalogue's format. Goat $148 is real; StockX $162 and Farfetch $185 are illustrative and marked so in `src/fixtures/story.ts`.
-- **D3 — cursor:** a subtle pointer, only for presses and picks.
-- **D4 — end card:** the hero's big "GOO", so the loop flows into the hero without a jump.
-- **D5 — renders:** the final files are committed to a separate `portfolio-video` branch, not to main, with no PR to main.
-- **Poster:** not the end card. It is the outfit builder with the board filled and the total shown.
-- **Framing rules:**
-  - the subject fills ~70–80 % of the frame;
-  - it stays readable in a card ~800 px wide;
-  - nothing is cropped at the frame edges by accident.
+| File | Spec |
+|---|---|
+| `goo-16x9.mp4` | 1920×1080, 30 fps, H.264 High, yuv420p, CRF 18–20, `+faststart`, ≤ 8 MB |
+| `goo-1x1.mp4` | 1080×1080, same settings |
+| `goo-16x9.webm`, `goo-1x1.webm` | VP9, two-pass |
+| `goo-poster.png` | 1920×1080, the builder frame |
 
-## 5. Changes made while building, and why
+- Rendering is from a lossless master at full resolution, never from a preview.
+- Every file is checked with `ffprobe`, and its width, height and bitrate are reported.
 
-Each change serves the framing rules above, the real UI, or both.
+---
 
-- **Scale.** At the app's own size, a desktop page shrinks to 4–6 px type in an 800 px card. Pages therefore play in a rounded "screen" panel at 1.6× (16:9) or 1.25× (1:1). Any cut is the panel's viewport, never the frame's edge.
-- **Builder (scene 3) and the poster.**
-  - The desktop builder has no board: a catalogue grid sits next to the "In this look" list. Only the phone layout has the board.
-  - The scene therefore stages two real builder surfaces side by side: the board (the phone layout's collage canvas, with its "$1,740 · 5 pieces" pill) and the desktop "In this look" column.
-  - The pieces drop onto the board; the list fills; "N pieces" and the total count up.
-- **Browse (scene 2).** Desktop browse has no row of category chips: filters live in a side panel. The switch therefore uses the page's real active-filter chip (`ActiveChip`): "Outerwear" → "Footwear", and the grid re-deals.
-- **AI stylist (scene 4).**
-  - The drawer's desktop styles are 12 px bubbles, 72 px tiles and a small "BUILD THIS LOOK" pill.
-  - The scene uses the same drawer's phone styles: 15 px bubbles, 84 px tiles and the "Build this look · 2 pieces" row card the storyboard describes. It appears as a sheet over the dimmed browse page.
-- **Product page (scene 5).**
-  - The page is laid out at 1440 px like the real site; at narrower widths the store rows truncate the store names.
-  - The camera then pushes in until "Where to buy" fills ~85 % of the panel.
-  - Store logos use the app's own monogram fallback, since the real logos come from the network.
-- **Phone (scene 6).** No caption. The look settles onto the phone's board.
+## 4. Decisions
+
+- **D1 (photos), carried over.** Real white-background shots from GOO's own storage, copied once.
+  - Now they are copied by the capture run, for the real app to display. The video uses no loose photos.
+- **D2 (store prices), carried over.** The featured item gets two illustrative stores, marked as such in `capture/fixtures/illustrative.json`.
+  - Alternative, if you prefer real data only: the page shows its one real row, and the site's own label then reads "1 STORES".
+- **D3 (cursor).** None this time: the motion is the camera's and the pieces'.
+- **D4 (end card).** The site's real dark hero with the big GOO.
+- **D5 (branch).** Everything is committed to `portfolio-video`. No PR to `main`.
+
+---
+
+## History
+
+The first cut (approved 2026-10-12) was a 24 s walkthrough built from vendored components and recreated page layouts. Its storyboard is in this file's git history, at commit `67c4442`. This promo replaces it. Only the portrait card (`src/card/`, `out/card/`) still uses that code.

@@ -4,13 +4,7 @@ import path from "node:path";
 
 const src = path.resolve("src");
 const SHIMS = {
-  "next/link": "shims/next-link.tsx",
-  "next/image": "shims/next-image.tsx",
-  "framer-motion": "shims/framer-motion.tsx",
-  "@/lib/context/likes-context": "shims/likes-context.tsx",
-  "@/lib/context/auth-context": "shims/auth-context.tsx",
   "@/lib/context/currency-context": "shims/currency-context.tsx",
-  "@/lib/context/cart-context": "shims/cart-context.tsx",
 };
 
 export function webpackOverride(config) {

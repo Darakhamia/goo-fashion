@@ -13,13 +13,7 @@
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "baseUrl": ".",
     "paths": {
-      "next/link": ["./src/shims/next-link.tsx"],
-      "next/image": ["./src/shims/next-image.tsx"],
-      "framer-motion": ["./src/shims/framer-motion.tsx"],
-      "@/lib/context/likes-context": ["./src/shims/likes-context.tsx"],
-      "@/lib/context/auth-context": ["./src/shims/auth-context.tsx"],
       "@/lib/context/currency-context": ["./src/shims/currency-context.tsx"],
-      "@/lib/context/cart-context": ["./src/shims/cart-context.tsx"],
       "@/*": ["./src/vendor/*"]
     }
   },
