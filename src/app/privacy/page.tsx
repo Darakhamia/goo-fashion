@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import ByLocale from "@/components/i18n/ByLocale";
+import type { LegalSection } from "@/lib/i18n/legal";
+import { STRINGS_UK, SECTIONS_UK, type PrivacyStrings } from "./uk";
 
 export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
@@ -43,7 +46,7 @@ function Processor({ name, purpose, data }: { name: string; purpose: string; dat
   );
 }
 
-const SECTIONS = [
+const SECTIONS: LegalSection[] = [
   {
     number: "1",
     title: "Who We Are",
@@ -367,7 +370,20 @@ const SECTIONS = [
   },
 ];
 
-export default function PrivacyPage() {
+const STRINGS_EN: PrivacyStrings = {
+  kicker: "Legal",
+  title: "Privacy Policy",
+  // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
+  lastUpdated: "Last updated: September 26, 2026",
+  intro:
+    "Goo Fashion respects your privacy. This policy explains, in plain language, exactly what personal data we collect, why we collect it, which service providers it is shared with, and the rights you have over it.",
+  navTerms: "Terms of Service",
+  navCookie: "Cookie Policy",
+  navRefund: "Refund Policy",
+  navHome: "Back to GOO",
+};
+
+function PrivacyDoc({ t, sections }: { t: PrivacyStrings; sections: LegalSection[] }) {
   return (
     <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto px-5 md:px-12">
@@ -376,29 +392,27 @@ export default function PrivacyPage() {
           {/* Header */}
           <div className="mb-8 md:mb-16 animate-fade-up">
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 max-md:hidden">
-              Legal
+              {t.kicker}
             </p>
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
-              Privacy Policy
+              {t.title}
             </h1>
             {/* The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step. */}
             <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
-              Last updated: September 26, 2026
+              {t.lastUpdated}
             </p>
           </div>
 
           {/* Intro */}
           <div className="mb-8 pb-8 md:mb-16 md:pb-16 border-b border-[var(--border)]">
             <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-              Goo Fashion respects your privacy. This policy explains, in plain language, exactly what
-              personal data we collect, why we collect it, which service providers it is shared with, and the
-              rights you have over it.
+              {t.intro}
             </p>
           </div>
 
           {/* Sections */}
           <div className="space-y-8 md:space-y-12">
-            {SECTIONS.map((section) => (
+            {sections.map((section) => (
               <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6 max-md:block">
                 <div className="pt-0.5 max-md:hidden">
                   <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
@@ -419,16 +433,16 @@ export default function PrivacyPage() {
           {/* Footer nav */}
           <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6 max-md:mt-12 max-md:pt-4 max-md:gap-x-5 max-md:gap-y-0">
             <Link href="/terms" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Terms of Service
+              {t.navTerms}
             </Link>
             <Link href="/cookie" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Cookie Policy
+              {t.navCookie}
             </Link>
             <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Refund Policy
+              {t.navRefund}
             </Link>
             <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Back to GOO
+              {t.navHome}
             </Link>
           </div>
 
@@ -436,4 +450,8 @@ export default function PrivacyPage() {
       </div>
     </div>
   );
+}
+
+export default function PrivacyPage() {
+  return <ByLocale en={<PrivacyDoc t={STRINGS_EN} sections={SECTIONS} />} uk={<PrivacyDoc t={STRINGS_UK} sections={SECTIONS_UK} />} />;
 }

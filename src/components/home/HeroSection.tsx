@@ -4,8 +4,30 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { GooeyText } from "@/components/ui/gooey-text-morphing";
 import { EtherealShadow } from "@/components/ui/etheral-shadow";
+import { defineDict } from "@/lib/i18n/locale";
+import { useDict } from "@/lib/context/locale-context";
+
+// The morph words are module-level so GooeyText's loop restarts only when the
+// language changes, not on every render.
+const DICT = defineDict({
+  en: {
+    heading: "GOO Fashion — AI stylist and outfit builder",
+    morph: ["GOO", "Outfits", "Looks", "Style", "Fits"],
+    buildLook: "Build your look",
+    nextSection: "Go to the next section",
+    scrollHint: "Scroll to explore",
+  },
+  uk: {
+    heading: "GOO Fashion — AI-стиліст і конструктор образів",
+    morph: ["GOO", "Образи", "Луки", "Стиль", "Мода"],
+    buildLook: "Зберіть свій образ",
+    nextSection: "До наступного розділу",
+    scrollHint: "Гортайте далі",
+  },
+});
 
 export function HeroSection() {
+  const t = useDict(DICT);
   return (
     // The nav sits above the hero in the flow, so the hero takes the rest of the
     // first screen — putting the next section exactly one screen down. On phones
@@ -27,10 +49,10 @@ export function HeroSection() {
       <div className="relative z-10 flex flex-col items-center gap-7 md:gap-8 px-6 text-center">
         {/* The morphing word is the visual title but says nothing about the
             site, so the page's one heading is for screen readers and search. */}
-        <h1 className="sr-only">GOO Fashion — AI stylist and outfit builder</h1>
+        <h1 className="sr-only">{t.heading}</h1>
         <div className="flex flex-col items-center gap-3 w-full">
           <GooeyText
-            texts={["GOO", "Outfits", "Looks", "Style", "Fits"]}
+            texts={t.morph}
             morphTime={1}
             cooldownTime={0.35}
             firstTextCooldown={2.2}
@@ -44,7 +66,7 @@ export function HeroSection() {
             transition={{ duration: 0.7, delay: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="text-[15px] md:text-base tracking-[-0.01em] text-[var(--foreground-muted)]"
           >
-            Build your look
+            {t.buildLook}
           </motion.p>
         </div>
 
@@ -58,7 +80,7 @@ export function HeroSection() {
             href="/builder"
             className="group relative inline-flex items-center gap-2.5 bg-[var(--foreground)] text-[var(--background)] rounded-full px-8 py-3.5 text-[15px] font-semibold tracking-[-0.01em] hover:gap-4 transition-opacity duration-300 hover:opacity-90"
           >
-            Build your look
+            {t.buildLook}
             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--background)]/15 group-hover:bg-[var(--background)]/25 transition-colors">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M2 8L8 2M8 2H3M8 2V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -72,7 +94,7 @@ export function HeroSection() {
       <button
         type="button"
         onClick={() => window.dispatchEvent(new Event("home-fullpage:next"))}
-        aria-label="Go to the next section"
+        aria-label={t.nextSection}
         className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-10 cursor-pointer hover:opacity-70 transition-opacity max-md:w-11 max-md:h-11 max-md:justify-center"
       >
         {/* Phones: just a quiet chevron (mockup v2 «Б · Главная»). */}
@@ -80,7 +102,7 @@ export function HeroSection() {
           <path d="M6 9l6 6 6-6" />
         </svg>
         <span className="max-md:hidden text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
-          Scroll to explore
+          {t.scrollHint}
         </span>
         <div className="max-md:hidden animate-scroll-hint text-[var(--foreground-subtle)]">
           <svg width="14" height="22" viewBox="0 0 14 22" fill="none">

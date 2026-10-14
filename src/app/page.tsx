@@ -19,6 +19,7 @@ import {
   getHomepageStylist,
 } from "@/lib/data/db";
 import JsonLd from "@/components/seo/JsonLd";
+import ByLocale from "@/components/i18n/ByLocale";
 import { SITE_NAME, organizationJsonLd, pageMetadata, websiteJsonLd } from "@/lib/seo";
 
 const HOME_TITLE = `${SITE_NAME} — AI Stylist & Outfit Builder`;
@@ -139,24 +140,24 @@ export default async function HomePage() {
           <div className="max-w-[1280px] mx-auto px-4 md:px-12">
             <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-3 md:gap-4 max-md:flex-row max-md:items-end max-md:mb-3.5">
               <div className="max-md:max-w-[250px]">
-                <Kicker>Outfit examples</Kicker>
-                <SectionH2>Explore ready-made outfit ideas.</SectionH2>
+                <Kicker><ByLocale en="Outfit examples" uk="Приклади образів" /></Kicker>
+                <SectionH2><ByLocale en="Explore ready-made outfit ideas." uk="Перегляньте готові ідеї образів." /></SectionH2>
               </div>
               <Link
                 href="/browse"
                 className="self-end md:self-auto text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0 max-md:h-11 max-md:flex max-md:items-center max-md:text-[14px] max-md:text-[var(--foreground)] max-md:no-underline"
               >
-                <span className="md:hidden">All outfits</span>
-                <span className="hidden md:inline">Browse all outfits</span>
+                <span className="md:hidden"><ByLocale en="All outfits" uk="Усі образи" /></span>
+                <span className="hidden md:inline"><ByLocale en="Browse all outfits" uk="Переглянути всі образи" /></span>
               </Link>
             </FadeInView>
             {carouselOutfits.length > 0 ? (
               <OutfitExamplesCarousel outfits={carouselOutfits} />
             ) : (
               <div className="py-20 text-center text-[var(--foreground-muted)] text-sm">
-                No outfits yet —{" "}
+                <ByLocale en="No outfits yet —" uk="Образів ще немає —" />{" "}
                 <Link href="/builder" className="underline">
-                  be the first to build one.
+                  <ByLocale en="be the first to build one." uk="створіть перший." />
                 </Link>
               </div>
             )}

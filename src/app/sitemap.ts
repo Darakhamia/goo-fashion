@@ -14,7 +14,7 @@ export const revalidate = 3600;
 const LEGAL_UPDATED: Record<string, string> = {
   "/privacy": "2026-09-26",
   "/terms": "2026-08-10",
-  "/cookie": "2026-09-26",
+  "/cookie": "2026-10-14",
   "/refund": "2026-08-10",
 };
 

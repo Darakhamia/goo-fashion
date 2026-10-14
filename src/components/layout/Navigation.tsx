@@ -12,6 +12,8 @@ import { useTheme } from "@/lib/context/theme-context";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { BagCheckout, BagEmpty, BagRow, CartRow, CloseIcon, OpenAllPanel, useCartStores } from "@/components/cart/CartPanel";
+import { defineDict, pluralUk } from "@/lib/i18n/locale";
+import { useDict } from "@/lib/context/locale-context";
 
 /** The outline figure the profile button has always shown. */
 function PersonIcon({ size = 15 }: { size?: number }) {
@@ -67,14 +69,81 @@ function backFallback(pathname: string): string | null {
   return null;
 }
 
-const navLinks = [
-  { href: "/browse", label: "Browse" },
-  { href: "/builder", label: "Builder" },
-  { href: "/blog", label: "Journal" },
-  { href: "/plans", label: "Plans" },
-];
+const DICT = defineDict({
+  en: {
+    browse: "Browse", builder: "Builder", journal: "Journal", plans: "Plans",
+    back: "Back",
+    openStylist: "Open AI Stylist",
+    dismiss: "Dismiss",
+    stylistTitle: "AI Stylist",
+    stylistHint: "Personal outfit picks and ideas powered by AI",
+    openBag: "Open bag",
+    openLikes: "Open your likes",
+    profileMenu: "Profile menu",
+    currency: "Currency",
+    myProfile: "My profile",
+    theme: "Theme",
+    themeName: (theme: string) => theme,
+    settings: "Settings",
+    logOut: "Log out",
+    signIn: "Sign in",
+    signUp: "Sign up",
+    bag: "Bag",
+    closeBag: "Close bag",
+    empty: "Empty",
+    items: (n: number) => `${n} ${n === 1 ? "item" : "items"}`,
+    pieces: (n: number) => `${n} ${n === 1 ? "piece" : "pieces"}`,
+    bagEmpty: "Your bag is empty",
+    bagEmptyHint: "Build an outfit in the builder and click\u00a0“Shop the Look” to add items here.",
+    total: (n: number) => `Total (${n} ${n === 1 ? "item" : "items"})`,
+    viewBag: "View full bag",
+    signOutTitle: "Sign out?",
+    signOutText: "Are you sure you want to sign out of your account?",
+    cancel: "Cancel",
+    signOut: "Sign out",
+  },
+  uk: {
+    browse: "Каталог", builder: "Конструктор", journal: "Журнал", plans: "Тарифи",
+    back: "Назад",
+    openStylist: "Відкрити AI-стиліста",
+    dismiss: "Закрити",
+    stylistTitle: "AI-стиліст",
+    stylistHint: "Персональні добірки та ідеї образів від AI",
+    openBag: "Відкрити кошик",
+    openLikes: "Відкрити вподобане",
+    profileMenu: "Меню профілю",
+    currency: "Валюта",
+    myProfile: "Мій профіль",
+    theme: "Тема",
+    themeName: (theme: string) => (theme === "dark" ? "темна" : theme === "light" ? "світла" : theme),
+    settings: "Налаштування",
+    logOut: "Вийти",
+    signIn: "Увійти",
+    signUp: "Реєстрація",
+    bag: "Кошик",
+    closeBag: "Закрити кошик",
+    empty: "Порожньо",
+    items: (n: number) => `${n} ${pluralUk(n, "товар", "товари", "товарів")}`,
+    pieces: (n: number) => `${n} ${pluralUk(n, "річ", "речі", "речей")}`,
+    bagEmpty: "Кошик порожній",
+    bagEmptyHint: "Зберіть образ у конструкторі й натисніть\u00a0«Shop the Look», щоб додати речі сюди.",
+    total: (n: number) => `Разом (${n} ${pluralUk(n, "товар", "товари", "товарів")})`,
+    viewBag: "Відкрити кошик повністю",
+    signOutTitle: "Вийти?",
+    signOutText: "Ви впевнені, що хочете вийти з акаунта?",
+    cancel: "Скасувати",
+    signOut: "Вийти",
+  },
+});
 
 export default function Navigation() {
+  const t = useDict(DICT);
+  const navLinks = [
+    { href: "/browse", label: t.browse },
+    { href: "/builder", label: t.builder },
+    { href: "/blog", label: t.journal },
+    { href: "/plans", label: t.plans },
+  ];
   const pathname = usePathname();
   const router = useRouter();
   const backHref = backFallback(pathname);
@@ -206,7 +275,7 @@ export default function Navigation() {
           <button
             type="button"
             onClick={goBack}
-            aria-label="Back"
+            aria-label={t.back}
             className="md:hidden shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -259,7 +328,7 @@ export default function Navigation() {
               onClick={() => { toggleStylist(); dismissAiTooltip(); }}
               onMouseEnter={() => setAiHover(true)}
               onMouseLeave={() => setAiHover(false)}
-              aria-label="Open AI Stylist"
+              aria-label={t.openStylist}
               className={`flex items-center justify-center transition-colors duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
               style={{
                 width: 38, height: 38, borderRadius: "50%",
@@ -287,7 +356,7 @@ export default function Navigation() {
               >
                 <button
                   onClick={dismissAiTooltip}
-                  aria-label="Dismiss"
+                  aria-label={t.dismiss}
                   style={{
                     position: "absolute", top: 8, right: 8,
                     width: 18, height: 18,
@@ -301,10 +370,10 @@ export default function Navigation() {
                   ✕
                 </button>
                 <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 4, paddingRight: 18 }}>
-                  AI Stylist
+                  {t.stylistTitle}
                 </p>
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.45, margin: 0 }}>
-                  Personal outfit picks and ideas powered by AI
+                  {t.stylistHint}
                 </p>
               </div>
             )}
@@ -319,7 +388,7 @@ export default function Navigation() {
               onClick={() => setCartOpen(true)}
               onMouseEnter={() => setCartHover(true)}
               onMouseLeave={() => setCartHover(false)}
-              aria-label="Open bag"
+              aria-label={t.openBag}
               className="flex items-center justify-center transition-colors duration-200"
               style={{
                 width: 38, height: 38, borderRadius: "50%",
@@ -363,7 +432,7 @@ export default function Navigation() {
                 href="/saved"
                 onMouseEnter={() => setLikesHover(true)}
                 onMouseLeave={() => setLikesHover(false)}
-                aria-label="Open your likes"
+                aria-label={t.openLikes}
                 aria-current={isLikes ? "page" : undefined}
                 className="flex items-center justify-center transition-colors duration-200"
                 style={{
@@ -409,7 +478,7 @@ export default function Navigation() {
                 onClick={() => { setProfileOpen(v => !v); setCurrencySubmenu(false); }}
                 onMouseEnter={() => setProfileHover(true)}
                 onMouseLeave={() => setProfileHover(false)}
-                aria-label="Profile menu"
+                aria-label={t.profileMenu}
                 className="flex items-center justify-center transition-colors duration-200"
                 style={{
                   width: 38, height: 38, borderRadius: "50%",
@@ -430,7 +499,7 @@ export default function Navigation() {
                     <div className="absolute inset-0 rounded-2xl bg-[var(--background)] z-10 overflow-hidden flex flex-col"
                       style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}>
                       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] shrink-0">
-                        <span className="text-[11px] tracking-[0.14em] uppercase font-black text-[var(--foreground)]">Currency</span>
+                        <span className="text-[11px] tracking-[0.14em] uppercase font-black text-[var(--foreground)]">{t.currency}</span>
                         <button onClick={() => setCurrencySubmenu(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                           <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                             <path d="M1.5 1.5L10.5 10.5M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -458,7 +527,7 @@ export default function Navigation() {
                         <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
                         <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                       </svg>
-                      My profile
+                      {t.myProfile}
                     </Link>
                   </div>
 
@@ -472,7 +541,7 @@ export default function Navigation() {
                           <path d="M10 6.1c-.4-.8-1.1-1.2-2-1.2-1.1 0-2 .6-2 1.5 0 .9.9 1.2 2 1.4 1.1.2 2 .6 2 1.5 0 .9-.9 1.5-2 1.5-.9 0-1.6-.4-2-1.2" />
                           <path d="M8 3.8v8.4" />
                         </svg>
-                        Currency
+                        {t.currency}
                       </span>
                       <span className="flex items-center gap-1 text-[var(--foreground-muted)] text-[11px]">
                         {currency}
@@ -507,9 +576,9 @@ export default function Navigation() {
                             <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" />
                           </svg>
                         )}
-                        Theme
+                        {t.theme}
                       </span>
-                      <span className="text-[var(--foreground-muted)] text-[11px] capitalize">{theme}</span>
+                      <span className="text-[var(--foreground-muted)] text-[11px] capitalize">{t.themeName(theme)}</span>
                     </button>
                   </div>
 
@@ -520,14 +589,14 @@ export default function Navigation() {
                         <circle cx="12" cy="12" r="3" />
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                       </svg>
-                      Settings
+                      {t.settings}
                     </Link>
                     <button onClick={() => { setProfileOpen(false); setLogoutConfirmOpen(true); }}
                       className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-[color,background-color,border-color,opacity] w-full text-left">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M11 11l3-3-3-3M14 8H6" />
                       </svg>
-                      Log out
+                      {t.logOut}
                     </button>
                   </div>
                 </div>
@@ -537,7 +606,7 @@ export default function Navigation() {
           <SignedOut>
             <Link href="/login"
               className={`text-[11px] tracking-[0.12em] uppercase font-medium transition-colors ${isDark ? "text-white/50 hover:text-white" : "text-black/50 hover:text-black"}`}>
-              Sign in
+              {t.signIn}
             </Link>
             {/* Registering is its own door, not a link buried inside the sign-in
                 card — /register is where ads and bookmarks land. */}
@@ -545,21 +614,21 @@ export default function Navigation() {
                 the icon circles it sits next to. */}
             <Link href="/register"
               className={`ml-3 inline-flex items-center justify-center h-[38px] px-5 rounded-full text-[11px] tracking-[0.12em] uppercase font-medium leading-none transition-opacity hover:opacity-80 ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>
-              Sign up
+              {t.signUp}
             </Link>
           </SignedOut>
         </div>
 
         {/* Mobile: AI and bag, 44px targets with no rings or dividers (DESIGN_SYSTEM.md §12.3) */}
         <div className="md:hidden flex items-center">
-          <button onClick={toggleStylist} aria-label="Open AI Stylist" aria-pressed={stylistOpen}
+          <button onClick={toggleStylist} aria-label={t.openStylist} aria-pressed={stylistOpen}
             className={`w-11 h-11 rounded-full flex items-center justify-center text-[13px] font-semibold text-[var(--foreground)] transition-colors duration-200 ${
               stylistOpen ? "bg-[var(--fg-overlay-08)]" : "hover:bg-[var(--fg-overlay-05)]"
             }`}>
             AI
           </button>
           {/* Bag — mobile (the desktop button lives in the md:flex block above) */}
-          <button onClick={() => setCartOpen(true)} aria-label="Open bag"
+          <button onClick={() => setCartOpen(true)} aria-label={t.openBag}
             className="relative w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200">
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M6 8h12l-1 12H7L6 8Z" />
@@ -576,11 +645,11 @@ export default function Navigation() {
           <SignedOut>
             <Link href="/login"
               className="h-11 px-2 flex items-center text-[13px] whitespace-nowrap text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
-              Sign in
+              {t.signIn}
             </Link>
             <Link href="/register"
               className="ml-0.5 inline-flex items-center justify-center h-9 px-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[13px] font-semibold leading-none whitespace-nowrap transition-opacity hover:opacity-80">
-              Sign up
+              {t.signUp}
             </Link>
           </SignedOut>
         </div>
@@ -592,17 +661,17 @@ export default function Navigation() {
       {cartOpen && (
         <>
           <div className="hidden md:block fixed inset-0 z-40 bg-black/20" onClick={() => setCartOpen(false)} aria-hidden="true" />
-          <div ref={cartDrawerRef} role="dialog" aria-modal="true" aria-label="Bag"
+          <div ref={cartDrawerRef} role="dialog" aria-modal="true" aria-label={t.bag}
             className="fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[400px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] hidden md:flex flex-col animate-slide-in-right overflow-hidden"
             style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
             <div className="px-5 pt-5 pb-4 flex items-start justify-between shrink-0">
               <div>
-                <p className="text-[20px] font-bold text-[var(--foreground)] leading-none">Bag</p>
+                <p className="text-[20px] font-bold text-[var(--foreground)] leading-none">{t.bag}</p>
                 <p className="text-[12px] text-[var(--foreground-muted)] mt-1.5">
-                  {cartCount === 0 ? "Empty" : `${cartCount} ${cartCount === 1 ? "item" : "items"}`}
+                  {cartCount === 0 ? t.empty : t.items(cartCount)}
                 </p>
               </div>
-              <button onClick={() => setCartOpen(false)} aria-label="Close bag"
+              <button onClick={() => setCartOpen(false)} aria-label={t.closeBag}
                 className="-mr-1 w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors">
                 <CloseIcon size={13} />
               </button>
@@ -615,8 +684,8 @@ export default function Navigation() {
                     <circle cx="13" cy="27" r="2" />
                     <circle cx="23" cy="27" r="2" />
                   </svg>
-                  <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Your bag is empty</p>
-                  <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">Build an outfit in the builder and click&nbsp;&ldquo;Shop the Look&rdquo; to add items here.</p>
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">{t.bagEmpty}</p>
+                  <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">{t.bagEmptyHint}</p>
                 </div>
               ) : (
                 <>
@@ -635,13 +704,13 @@ export default function Navigation() {
               <div className="shrink-0 border-t border-[var(--border)] px-5 py-4">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-                    Total ({cartCount} {cartCount === 1 ? "item" : "items"})
+                    {t.total(cartCount)}
                   </p>
                   <p className="text-[22px] font-bold text-[var(--foreground)]">{formatPrice(cartTotalUsd)}</p>
                 </div>
                 <Link href="/cart" onClick={() => setCartOpen(false)}
                   className="relative mt-3.5 pt-3.5 border-t border-[var(--border)] flex items-center justify-center text-[12px] font-medium text-[var(--foreground)] hover:opacity-70 transition-opacity">
-                  View full bag
+                  {t.viewBag}
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="absolute right-0" aria-hidden="true">
                     <path d="M2.5 8h11M9.5 4l4 4-4 4" />
                   </svg>
@@ -667,12 +736,12 @@ export default function Navigation() {
             <div aria-hidden="true" className="mx-auto mt-2 w-9 h-1 shrink-0 rounded-full bg-[var(--border-strong)]" />
             <div className="flex items-center pl-4 pr-1.5 py-1.5 shrink-0">
               <h2 id="bag-sheet-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">
-                Bag
+                {t.bag}
                 {cartCount > 0 && (
-                  <span className="font-normal text-[var(--foreground-muted)]"> · {cartCount} {cartCount === 1 ? "piece" : "pieces"}</span>
+                  <span className="font-normal text-[var(--foreground-muted)]"> · {t.pieces(cartCount)}</span>
                 )}
               </h2>
-              <button ref={bagCloseRef} onClick={() => setCartOpen(false)} aria-label="Close bag"
+              <button ref={bagCloseRef} onClick={() => setCartOpen(false)} aria-label={t.closeBag}
                 className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
                   <path d="M6 6l12 12M18 6L6 18" />
@@ -719,10 +788,10 @@ export default function Navigation() {
             }}
           >
             <p style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 8 }}>
-              Sign out?
+              {t.signOutTitle}
             </p>
             <p style={{ fontSize: 13, color: "var(--foreground-muted)", marginBottom: 24, lineHeight: 1.5 }}>
-              Are you sure you want to sign out of your account?
+              {t.signOutText}
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <button
@@ -736,7 +805,7 @@ export default function Navigation() {
                   transition: "opacity 0.15s",
                 }}
               >
-                Cancel
+                {t.cancel}
               </button>
               <button
                 onClick={() => { setLogoutConfirmOpen(false); signOut({ redirectUrl: "/" }); }}
@@ -749,7 +818,7 @@ export default function Navigation() {
                   transition: "opacity 0.15s",
                 }}
               >
-                Sign out
+                {t.signOut}
               </button>
             </div>
           </div>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import ByLocale from "@/components/i18n/ByLocale";
+import type { LegalSection } from "@/lib/i18n/legal";
+import { STRINGS_UK, SECTIONS_UK, type TermsStrings } from "./uk";
 
 export const metadata: Metadata = pageMetadata({
   title: "Terms & Conditions",
@@ -21,7 +24,26 @@ function Bullet({ items }: { items: string[] }) {
   );
 }
 
-const SECTIONS = [
+const STRINGS_EN: TermsStrings = {
+  kicker: "Legal",
+  title: "Terms & Conditions",
+  // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
+  lastUpdated: "Last updated: August 10, 2026",
+  intro:
+    "These Terms & Conditions govern your access to and use of Goo Fashion, including our website, digital tools, AI styling features, outfit builder, saved looks, product discovery features, affiliate links, and related services. By using Goo Fashion, you agree to these Terms. If you do not agree, please do not use the website or services.",
+  operatorLabel: "Operator",
+  operatorValue: "David Arakhamia, Sole Trader",
+  websiteLabel: "Website",
+  websiteValue: "goo-fashion.com",
+  contactLabel: "Contact",
+  contactValue: "anything@goo-fashion.com",
+  navPrivacy: "Privacy Policy",
+  navCookie: "Cookie Policy",
+  navRefund: "Refund Policy",
+  navHome: "Back to GOO",
+};
+
+const SECTIONS: LegalSection[] = [
   {
     number: "1",
     title: "About Goo Fashion",
@@ -424,7 +446,7 @@ const SECTIONS = [
   },
 ];
 
-export default function TermsPage() {
+function TermsDoc({ t, sections }: { t: TermsStrings; sections: LegalSection[] }) {
   return (
     <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto px-5 md:px-12">
@@ -433,33 +455,33 @@ export default function TermsPage() {
           {/* Header */}
           <div className="mb-8 md:mb-16 animate-fade-up">
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 max-md:hidden">
-              Legal
+              {t.kicker}
             </p>
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
-              Terms &amp; Conditions
+              {t.title}
             </h1>
             {/* The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step. */}
-            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">Last updated: August 10, 2026</p>
+            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">{t.lastUpdated}</p>
           </div>
 
           {/* Intro */}
           <div className="mb-8 pb-8 md:mb-16 md:pb-16 border-b border-[var(--border)]">
             <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-              These Terms &amp; Conditions govern your access to and use of Goo Fashion, including our website, digital tools, AI styling features, outfit builder, saved looks, product discovery features, affiliate links, and related services. By using Goo Fashion, you agree to these Terms. If you do not agree, please do not use the website or services.
+              {t.intro}
             </p>
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-[var(--border)]">
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Operator</p>
-                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">David Arakhamia, Sole Trader</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.operatorLabel}</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">{t.operatorValue}</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Website</p>
-                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">goo-fashion.com</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.websiteLabel}</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">{t.websiteValue}</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Contact</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.contactLabel}</p>
                 <a href="mailto:anything@goo-fashion.com" className="text-sm text-[var(--foreground-muted)] link-underline hover:text-[var(--foreground)] transition-colors max-md:text-base">
-                  anything@goo-fashion.com
+                  {t.contactValue}
                 </a>
               </div>
             </div>
@@ -467,7 +489,7 @@ export default function TermsPage() {
 
           {/* Sections */}
           <div className="space-y-8 md:space-y-12">
-            {SECTIONS.map((section) => (
+            {sections.map((section) => (
               <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6 max-md:block">
                 <div className="pt-0.5 max-md:hidden">
                   <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
@@ -488,16 +510,16 @@ export default function TermsPage() {
           {/* Footer nav */}
           <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6 max-md:mt-12 max-md:pt-4 max-md:gap-x-5 max-md:gap-y-0">
             <Link href="/privacy" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Privacy Policy
+              {t.navPrivacy}
             </Link>
             <Link href="/cookie" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Cookie Policy
+              {t.navCookie}
             </Link>
             <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Refund Policy
+              {t.navRefund}
             </Link>
             <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Back to GOO
+              {t.navHome}
             </Link>
           </div>
 
@@ -505,4 +527,8 @@ export default function TermsPage() {
       </div>
     </div>
   );
+}
+
+export default function TermsPage() {
+  return <ByLocale en={<TermsDoc t={STRINGS_EN} sections={SECTIONS} />} uk={<TermsDoc t={STRINGS_UK} sections={SECTIONS_UK} />} />;
 }

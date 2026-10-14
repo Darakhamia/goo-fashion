@@ -2,7 +2,9 @@ import Link from "next/link";
 import Image from "@/components/ui/Image";
 import FadeInView from "@/components/ui/FadeInView";
 import FloatLoop from "@/components/ui/FloatLoop";
+import ByLocale from "@/components/i18n/ByLocale";
 import type { HomepageShowcase, ShowcaseItem } from "@/lib/data/db";
+import { defineDict } from "@/lib/i18n/locale";
 
 // ── PRODUCT CUTOUTS ──────────────────────────────────────────────────────────
 const HOODIE = "/cs/hoodie-card-black.png";
@@ -119,6 +121,26 @@ function CartMark({ className = "" }: { className?: string }) {
 
 // ── SCENES ───────────────────────────────────────────────────────────────────
 
+// Alt texts of the scene artwork. An alt has to be a string, so each scene is
+// rendered once per language and ByLocale picks one (this file is a server
+// component — no hooks).
+const SCENE_ALT = defineDict({
+  en: {
+    selected: "Selected item",
+    look: (n: number) => `Look item ${n}`,
+    preview: "Generated look preview",
+    box: (n: number) => `Box item ${n}`,
+  },
+  uk: {
+    selected: "Обрана річ",
+    look: (n: number) => `Річ образу ${n}`,
+    preview: "Згенероване прев’ю образу",
+    box: (n: number) => `Річ у коробці ${n}`,
+  },
+});
+
+type SceneAlt = typeof SCENE_ALT.en;
+
 // Shared reference frame — every scene fills exactly this box. Its width is
 // tied to the text column (description max-w-[210px]), so each block runs from
 // the left edge of the title to the end of the description and no further.
@@ -127,10 +149,10 @@ function CartMark({ className = "" }: { className?: string }) {
 
 // 01 — one large product card with a wishlist heart and a cursor on it.
 // This card is the size reference for every other step.
-function ChooseScene({ src }: { src: string }) {
+function ChooseScene({ src, alt }: { src: string; alt: SceneAlt }) {
   return (
     <div className="relative w-[210px] h-[280px]">
-      <PCard src={src} alt="Selected item" pad="p-4" radius="rounded-2xl" className="z-10 inset-0" />
+      <PCard src={src} alt={alt.selected} pad="p-4" radius="rounded-2xl" className="z-10 inset-0" />
       <HeartButton className="top-[14px] right-[14px]" />
       <HandCursor className="top-[38px] right-[6px] -rotate-[18deg]" />
     </div>
@@ -139,24 +161,24 @@ function ChooseScene({ src }: { src: string }) {
 
 // 02 — three draggable cards scattered to fill the same area as Step 01/03.
 // Cards stay fully inside the reference frame (rotation included, no overflow).
-function BuildScene({ srcs }: { srcs: [string, string, string] }) {
+function BuildScene({ srcs, alt }: { srcs: [string, string, string]; alt: SceneAlt }) {
   return (
     <div className="relative w-[210px] h-[280px]">
       <div className="absolute inset-0 rounded-2xl border border-dashed border-white/12" />
-      <PCard src={srcs[0]} alt="Look item 1" className="z-10 left-[14px] top-[42px] w-[104px] h-[140px] -rotate-[8deg]" />
-      <PCard src={srcs[1]} alt="Look item 2" className="z-10 left-[95px] top-[42px] w-[94px] h-[140px] rotate-[6deg]" />
-      <PCard src={srcs[2]} alt="Look item 3" className="z-20 left-[43px] top-[190px] w-[124px] h-[84px] -rotate-[4deg]" />
+      <PCard src={srcs[0]} alt={alt.look(1)} className="z-10 left-[14px] top-[42px] w-[104px] h-[140px] -rotate-[8deg]" />
+      <PCard src={srcs[1]} alt={alt.look(2)} className="z-10 left-[95px] top-[42px] w-[94px] h-[140px] rotate-[6deg]" />
+      <PCard src={srcs[2]} alt={alt.look(3)} className="z-20 left-[43px] top-[190px] w-[124px] h-[84px] -rotate-[4deg]" />
       <HandCursor className="top-[232px] right-[36px] rotate-[14deg]" />
     </div>
   );
 }
 
 // 03 — the hero: AI-generated full-body look on one clean card (reference size).
-function PreviewScene({ src }: { src: string }) {
+function PreviewScene({ src, alt }: { src: string; alt: SceneAlt }) {
   return (
     <div className="relative w-[210px] h-[280px]">
       <div className="absolute inset-0 rounded-2xl bg-white shadow-[0_28px_56px_-20px_rgba(0,0,0,0.8)] ring-1 ring-black/5">
-        <Image src={src} alt="Generated look preview" fill sizes="220px" className="object-contain p-4" />
+        <Image src={src} alt={alt.preview} fill sizes="220px" className="object-contain p-4" />
       </div>
     </div>
   );
@@ -164,7 +186,7 @@ function PreviewScene({ src }: { src: string }) {
 
 // 04 — three product cards standing inside an open matte-black box, with a cart
 // mark on the front face. Recreates the reference packshot one-to-one.
-function ShopScene({ srcs }: { srcs: [string, string, string] }) {
+function ShopScene({ srcs, alt }: { srcs: [string, string, string]; alt: SceneAlt }) {
   return (
     <div className="relative w-[210px] h-[280px]">
       {/* Raised back wall / opened lid, sitting behind the cards. */}
@@ -173,9 +195,9 @@ function ShopScene({ srcs }: { srcs: [string, string, string] }) {
       </div>
 
       {/* Product cards standing upright in the box (bottoms tucked behind front). */}
-      <PCard src={srcs[0]} alt="Box item 1" radius="rounded-[10px]" pad="p-2" className="z-20 left-[24px] top-[58px] w-[66px] h-[152px] -rotate-[3deg]" />
-      <PCard src={srcs[1]} alt="Box item 2" radius="rounded-[10px]" pad="p-2" className="z-10 left-1/2 -translate-x-1/2 top-[64px] w-[66px] h-[152px]" />
-      <PCard src={srcs[2]} alt="Box item 3" radius="rounded-[10px]" pad="p-2" className="z-20 right-[24px] top-[58px] w-[66px] h-[152px] rotate-[3deg]" />
+      <PCard src={srcs[0]} alt={alt.box(1)} radius="rounded-[10px]" pad="p-2" className="z-20 left-[24px] top-[58px] w-[66px] h-[152px] -rotate-[3deg]" />
+      <PCard src={srcs[1]} alt={alt.box(2)} radius="rounded-[10px]" pad="p-2" className="z-10 left-1/2 -translate-x-1/2 top-[64px] w-[66px] h-[152px]" />
+      <PCard src={srcs[2]} alt={alt.box(3)} radius="rounded-[10px]" pad="p-2" className="z-20 right-[24px] top-[58px] w-[66px] h-[152px] rotate-[3deg]" />
 
       {/* Front face of the box, covering the lower part of the cards. */}
       <div className="absolute z-30 bottom-0 left-1/2 -translate-x-1/2 w-[198px] h-[118px] rounded-[9px] bg-[#070707] shadow-[0_26px_52px_-18px_rgba(0,0,0,0.9)]">
@@ -207,10 +229,30 @@ function buildSteps(showcase?: HomepageShowcase) {
   ];
 
   return [
-    { n: "01", title: "Choose items", body: "Pick your favorite pieces from top brands.", scene: <ChooseScene src={step1} /> },
-    { n: "02", title: "Build your look", body: "Drag and drop to create the perfect outfit.", scene: <BuildScene srcs={step2} /> },
-    { n: "03", title: "Generate preview", body: "See your look come to life with AI visualization.", scene: <PreviewScene src={step3} /> },
-    { n: "04", title: "Shop the look", body: "Buy each item directly from the original store.", scene: <ShopScene srcs={step4} /> },
+    {
+      n: "01",
+      title: <ByLocale en="Choose items" uk="Оберіть речі" />,
+      body: <ByLocale en="Pick your favorite pieces from top brands." uk="Обирайте улюблені речі від топових брендів." />,
+      scene: <ByLocale en={<ChooseScene src={step1} alt={SCENE_ALT.en} />} uk={<ChooseScene src={step1} alt={SCENE_ALT.uk} />} />,
+    },
+    {
+      n: "02",
+      title: <ByLocale en="Build your look" uk="Зберіть образ" />,
+      body: <ByLocale en="Drag and drop to create the perfect outfit." uk="Перетягуйте речі, щоб скласти ідеальний образ." />,
+      scene: <ByLocale en={<BuildScene srcs={step2} alt={SCENE_ALT.en} />} uk={<BuildScene srcs={step2} alt={SCENE_ALT.uk} />} />,
+    },
+    {
+      n: "03",
+      title: <ByLocale en="Generate preview" uk="Згенеруйте прев’ю" />,
+      body: <ByLocale en="See your look come to life with AI visualization." uk="Побачте, як образ оживає завдяки AI-візуалізації." />,
+      scene: <ByLocale en={<PreviewScene src={step3} alt={SCENE_ALT.en} />} uk={<PreviewScene src={step3} alt={SCENE_ALT.uk} />} />,
+    },
+    {
+      n: "04",
+      title: <ByLocale en="Shop the look" uk="Купуйте образ" />,
+      body: <ByLocale en="Buy each item directly from the original store." uk="Кожну річ — напряму в оригінальному магазині." />,
+      scene: <ByLocale en={<ShopScene srcs={step4} alt={SCENE_ALT.en} />} uk={<ShopScene srcs={step4} alt={SCENE_ALT.uk} />} />,
+    },
   ];
 }
 
@@ -225,11 +267,11 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
             from md it keeps its dark stage with white type. */}
         <FadeInView className="text-left md:text-center mb-4 lg:mb-10 max-md:mb-5">
           <h2 className="text-[26px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white max-md:text-[26px] max-md:font-semibold max-md:tracking-[-0.02em] max-md:leading-[1.15] max-md:text-[var(--foreground)]">
-            Everything you need
-            <br className="hidden sm:block" /> to create better outfits.
+            <ByLocale en="Everything you need" uk="Усе необхідне" />
+            <br className="hidden sm:block" /> <ByLocale en="to create better outfits." uk="для кращих образів." />
           </h2>
           <p className="mt-2 lg:mt-5 text-[13px] sm:text-lg md:text-xl text-white/45 max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
-            Visualize. Get inspired. Shop the look.
+            <ByLocale en="Visualize. Get inspired. Shop the look." uk="Візуалізуйте. Надихайтеся. Купуйте образ." />
           </p>
         </FadeInView>
 
@@ -287,7 +329,7 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
             href="/builder"
             className="group inline-flex items-center gap-3 text-[15px] font-semibold text-white border-b border-white/20 pb-1.5 hover:gap-4 hover:border-white/50 transition-colors duration-300"
           >
-            Try the builder
+            <ByLocale en="Try the builder" uk="Спробуйте конструктор" />
             <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
               <path d="M1 6H17M17 6L12 1M17 6L12 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

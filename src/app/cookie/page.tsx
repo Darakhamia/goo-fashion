@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import CookieSettings from "@/components/consent/CookieSettings";
+import ByLocale from "@/components/i18n/ByLocale";
+import type { LegalSection } from "@/lib/i18n/legal";
+import { STRINGS_UK, SECTIONS_UK, type CookieStrings } from "./uk";
 
 export const metadata: Metadata = pageMetadata({
   title: "Cookie Policy",
@@ -34,7 +37,7 @@ function StorageKey({ name, purpose }: { name: string; purpose: string }) {
   );
 }
 
-const SECTIONS = [
+const SECTIONS: LegalSection[] = [
   {
     number: "1",
     title: "Cookies and Similar Technologies",
@@ -107,6 +110,7 @@ const SECTIONS = [
             <StorageKey name="goo-theme" purpose="light or dark theme" />
             <StorageKey name="goo-cookie-consent" purpose="your analytics-cookie choice from the consent banner" />
             <StorageKey name="goo-currency" purpose="your display currency" />
+            <StorageKey name="goo-lang" purpose="your site language (English or Ukrainian)" />
             <StorageKey name="goo-exchange-rates" purpose="cached exchange rates (1 hour)" />
             <StorageKey name="ai-tooltip-dismissed" purpose="remembers a dismissed hint" />
           </ul>
@@ -208,7 +212,28 @@ const SECTIONS = [
   },
 ];
 
-export default function CookiePage() {
+const STRINGS_EN: CookieStrings = {
+  kicker: "Legal",
+  title: "Cookie Policy",
+  // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
+  lastUpdated: "Last updated: October 14, 2026",
+  introBeforeLink:
+    "This Cookie Policy lists every cookie and browser-storage key Goo Fashion actually uses, what each one is for, and how you can control them. It supplements our",
+  introLink: "Privacy Policy",
+  introAfterLink: ".",
+  operatorLabel: "Operator",
+  operator: "David Arakhamia, Sole Trader",
+  websiteLabel: "Website",
+  website: "goo-fashion.com",
+  contactLabel: "Contact",
+  contactEmail: "anything@goo-fashion.com",
+  navPrivacy: "Privacy Policy",
+  navTerms: "Terms & Conditions",
+  navRefund: "Refund Policy",
+  navHome: "Back to GOO",
+};
+
+function CookieDoc({ t, sections }: { t: CookieStrings; sections: LegalSection[] }) {
   return (
     <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto px-5 md:px-12">
@@ -217,35 +242,34 @@ export default function CookiePage() {
           {/* Header */}
           <div className="mb-8 md:mb-16 animate-fade-up">
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 max-md:hidden">
-              Legal
+              {t.kicker}
             </p>
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
-              Cookie Policy
+              {t.title}
             </h1>
             {/* The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step. */}
-            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">Last updated: September 26, 2026</p>
+            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">{t.lastUpdated}</p>
           </div>
 
           {/* Intro */}
           <div className="mb-8 pb-8 md:mb-16 md:pb-16 border-b border-[var(--border)]">
             <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-              This Cookie Policy lists every cookie and browser-storage key Goo Fashion actually uses, what
-              each one is for, and how you can control them. It supplements our{" "}
-              <Link href="/privacy" className="text-[var(--foreground)] link-underline">Privacy Policy</Link>.
+              {t.introBeforeLink}{" "}
+              <Link href="/privacy" className="text-[var(--foreground)] link-underline">{t.introLink}</Link>{t.introAfterLink}
             </p>
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-[var(--border)]">
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Operator</p>
-                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">David Arakhamia, Sole Trader</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.operatorLabel}</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">{t.operator}</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Website</p>
-                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">goo-fashion.com</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.websiteLabel}</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">{t.website}</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Contact</p>
-                <a href="mailto:anything@goo-fashion.com" className="text-sm text-[var(--foreground-muted)] link-underline hover:text-[var(--foreground)] transition-colors max-md:text-base">
-                  anything@goo-fashion.com
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.contactLabel}</p>
+                <a href={`mailto:${t.contactEmail}`} className="text-sm text-[var(--foreground-muted)] link-underline hover:text-[var(--foreground)] transition-colors max-md:text-base">
+                  {t.contactEmail}
                 </a>
               </div>
             </div>
@@ -253,7 +277,7 @@ export default function CookiePage() {
 
           {/* Sections */}
           <div className="space-y-8 md:space-y-12">
-            {SECTIONS.map((section) => (
+            {sections.map((section) => (
               <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6 max-md:block">
                 <div className="pt-0.5 max-md:hidden">
                   <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
@@ -274,16 +298,16 @@ export default function CookiePage() {
           {/* Footer nav */}
           <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6 max-md:mt-12 max-md:pt-4 max-md:gap-x-5 max-md:gap-y-0">
             <Link href="/privacy" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Privacy Policy
+              {t.navPrivacy}
             </Link>
             <Link href="/terms" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Terms &amp; Conditions
+              {t.navTerms}
             </Link>
             <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Refund Policy
+              {t.navRefund}
             </Link>
             <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Back to GOO
+              {t.navHome}
             </Link>
           </div>
 
@@ -291,4 +315,8 @@ export default function CookiePage() {
       </div>
     </div>
   );
+}
+
+export default function CookiePage() {
+  return <ByLocale en={<CookieDoc t={STRINGS_EN} sections={SECTIONS} />} uk={<CookieDoc t={STRINGS_UK} sections={SECTIONS_UK} />} />;
 }

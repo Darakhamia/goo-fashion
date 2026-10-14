@@ -10,6 +10,8 @@ import { useUser } from "@clerk/nextjs";
 import { useAuth } from "@/lib/context/auth-context";
 import { useTheme, type ThemePreference } from "@/lib/context/theme-context";
 import { useCurrency, CURRENCIES, type CurrencyCode } from "@/lib/context/currency-context";
+import { useDict, useLocale } from "@/lib/context/locale-context";
+import { defineDict, type Locale } from "@/lib/i18n/locale";
 import Link from "next/link";
 import { PLANS, PLAN_ORDER, planPriceDual, type PlanId } from "@/lib/plans";
 import { StylistPersonalizationModal, LIFESTYLE_OPTIONS as LIFESTYLE_OPTIONS_IMPORT, type StylistPersonalization } from "@/components/stylist/StylistPersonalizationModal";
@@ -341,6 +343,14 @@ const THEME_OPTIONS: { id: ThemePreference; label: string; icon: React.ReactNode
   },
 ];
 
+// The language row: the profile itself is still English, but the choice made
+// here switches the main pages and the site chrome (lib/i18n/locale.ts).
+const LANGUAGE_OPTIONS: { id: Locale; label: string; name: string }[] = [
+  { id: "en", label: "EN", name: "English" },
+  { id: "uk", label: "UA", name: "Українська" },
+];
+const LANGUAGE_LABEL = defineDict({ en: { title: "Language" }, uk: { title: "Мова" } });
+
 function AccountTab({
   user,
   clerkUser,
@@ -351,6 +361,8 @@ function AccountTab({
   const { logout } = useAuth();
   const { preference, setPreference } = useTheme();
   const { currency, setCurrency, formatPrice } = useCurrency();
+  const { locale, setLocale } = useLocale();
+  const languageLabel = useDict(LANGUAGE_LABEL).title;
   const plan = user?.plan ?? "free";
   const currencyInfo = CURRENCIES.find((c) => c.code === currency);
 
@@ -378,6 +390,29 @@ function AccountTab({
                   role="radio"
                   aria-checked={active}
                   onClick={() => setPreference(opt.id)}
+                  className={`relative h-[34px] px-3.5 rounded-[9px] text-[13px] after:absolute after:inset-x-0 after:-inset-y-[5px] transition-colors duration-200 ${
+                    active ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "text-[var(--foreground-muted)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="h-14 flex items-center gap-2.5 pl-4 pr-2.5 shadow-[inset_0_1px_0_var(--border)]">
+          <span className="flex-1 text-[15px] text-[var(--foreground)]">{languageLabel}</span>
+          <div role="radiogroup" aria-label={languageLabel} className="flex p-[3px] rounded-xl bg-[var(--fg-overlay-08)]">
+            {LANGUAGE_OPTIONS.map((opt) => {
+              const active = locale === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={opt.name}
+                  lang={opt.id}
+                  onClick={() => setLocale(opt.id)}
                   className={`relative h-[34px] px-3.5 rounded-[9px] text-[13px] after:absolute after:inset-x-0 after:-inset-y-[5px] transition-colors duration-200 ${
                     active ? "bg-[var(--foreground)] text-[var(--background)] font-semibold" : "text-[var(--foreground-muted)]"
                   }`}
@@ -495,6 +530,44 @@ function AccountTab({
           })}
         </div>
 
+      </div>
+
+      {/* Language */}
+      <div>
+        <p className="px-1 text-[13px] text-[var(--foreground-muted)] md:px-0 md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium md:text-[var(--foreground-subtle)] mb-2 md:mb-4">
+          {languageLabel}
+        </p>
+        <div
+          role="radiogroup"
+          aria-label={languageLabel}
+          className="inline-flex bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]"
+        >
+          {LANGUAGE_OPTIONS.map((opt) => {
+            const active = locale === opt.id;
+            return (
+              <button
+                key={opt.id}
+                role="radio"
+                aria-checked={active}
+                lang={opt.id}
+                onClick={() => setLocale(opt.id)}
+                className={`relative flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] tracking-[0.14em] uppercase font-medium transition-colors duration-200 ${
+                  active ? "text-[var(--background)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="account-language-pill"
+                    className="absolute inset-0 rounded-full bg-[var(--foreground)]"
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                    style={{ zIndex: 0 }}
+                  />
+                )}
+                <span className="relative z-10">{opt.name}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Currency */}
