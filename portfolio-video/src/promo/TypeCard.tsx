@@ -5,6 +5,7 @@ import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, easeOut, ramp } from "../motion";
 import { INK, LIGHT } from "./kit";
+import { Sfx } from "./Sfx";
 
 export function TypeCard({
   lines,
@@ -30,6 +31,8 @@ export function TypeCard({
   const drift = 1 + 0.03 * ramp(f, 0, dur, (t) => t);
   return (
     <AbsoluteFill style={{ background: INK }}>
+      {/* Sound: one soft rush as the words rise. */}
+      <Sfx at={2} name="whoosh-soft" volume={0.3} />
       <div
         style={{
           position: "absolute",

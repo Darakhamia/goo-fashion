@@ -10,6 +10,7 @@ import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, easeOut, mix, ramp, settle } from "../../motion";
 import { M, PAPER, Shot, rand, type Format, SIZE } from "../kit";
 import { Phone } from "../Device";
+import { Sfx, type SfxName } from "../Sfx";
 
 const B = M.builder;
 const SCREEN = B.size; // 390 × 844 CSS px
@@ -20,6 +21,8 @@ export const LANDINGS = [32, 52, 72, 92, 112];
 const LAYOUT: Record<Format, { s: number; top: number }> = {
   "16x9": { s: 2.0, top: 44 },
   "1x1": { s: 1.96, top: 42 },
+  // Vertical: the whole phone, top bar to tab bar.
+  "9x16": { s: 2.1, top: 74 },
 };
 
 export function Builder({ format, dur }: { format: Format; dur: number }) {
@@ -46,6 +49,14 @@ export function Builder({ format, dur }: { format: Format; dur: number }) {
 
   return (
     <AbsoluteFill style={{ background: PAPER, overflow: "hidden" }}>
+      {/* Sound: each piece flies in, lands with a snap, and the total ticks up a tone. */}
+      {LANDINGS.map((L, i) => (
+        <React.Fragment key={i}>
+          <Sfx at={L - 16} name="whoosh" volume={0.24} />
+          <Sfx at={L} name="snap" volume={0.42} />
+          <Sfx at={L + 1} name={`pop-${i}` as SfxName} volume={0.26} />
+        </React.Fragment>
+      ))}
       <AbsoluteFill style={{ transform: `scale(${push})`, transformOrigin: `${ox}px ${oy}px` }}>
         <Phone
           w={sw}

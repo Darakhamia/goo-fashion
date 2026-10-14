@@ -11,6 +11,7 @@ import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, easeOut, mix, ramp } from "../../motion";
 import { M, PAPER, Shot, rand, type Format, SIZE } from "../kit";
 import { Phone } from "../Device";
+import { Sfx, type SfxName } from "../Sfx";
 
 const S = M.stylist;
 const SCREEN = S.size; // 390 × 844 CSS px
@@ -23,9 +24,11 @@ const REPLY = 98;
 /** Frame at which the i-th character appears: a quick, slightly uneven hand. */
 const charAt = (i: number) => TYPE_FROM + i * 1.2 + (rand(i + 101) - 0.5) * 0.8;
 
-const ZOOM: Record<Format, { z0: number; z1: number; z2: number }> = {
-  "16x9": { z0: 3.0, z1: 1.62, z2: 1.9 },
-  "1x1": { z0: 2.7, z1: 1.55, z2: 1.9 },
+const ZOOM: Record<Format, { z0: number; z1: number; z2: number; endY: number }> = {
+  // endY: the sheet's header to "Build this look"; vertical shows the whole sheet.
+  "16x9": { z0: 3.0, z1: 1.62, z2: 1.9, endY: 326 },
+  "1x1": { z0: 2.7, z1: 1.55, z2: 1.9, endY: 326 },
+  "9x16": { z0: 2.7, z1: 2.0, z2: 2.15, endY: 422 },
 };
 
 export function Stylist({ format, dur }: { format: Format; dur: number }) {
@@ -42,7 +45,7 @@ export function Stylist({ format, dur }: { format: Format; dur: number }) {
   let fy = mix(barC.y, 340, pull);
   let z = mix(Z.z0, Z.z1, pull);
   fx = mix(fx, 195, push);
-  fy = mix(fy, 326, push); // the sheet's header to "Build this look"
+  fy = mix(fy, Z.endY, push);
   z = mix(z, Z.z2, push);
   const enter = ramp(f, 0, 8, easeOut);
   z *= mix(0.94, 1, enter);
@@ -64,6 +67,18 @@ export function Stylist({ format, dur }: { format: Format; dur: number }) {
 
   return (
     <AbsoluteFill style={{ background: PAPER, overflow: "hidden" }}>
+      {/* Sound: a keystroke per character, the send, the pull-back, the answer
+          arriving with its pieces and the "Build this look" card. */}
+      {S.question.split("").map((ch, i) =>
+        ch === " " ? null : <Sfx key={`k${i}`} at={charAt(i)} name={`key-${i % 3}` as SfxName} volume={0.3} />,
+      )}
+      <Sfx at={SEND} name="pop" volume={0.38} />
+      <Sfx at={PULL[0]} name="whoosh-soft" volume={0.22} />
+      <Sfx at={REPLY} name="chime" volume={0.3} />
+      {S.cards.map((_, i) => (
+        <Sfx key={`c${i}`} at={REPLY + 6 + i * 3} name={(["tick", "tick-0", "tick-1", "tick-2"] as SfxName[])[i]} volume={0.14} />
+      ))}
+      <Sfx at={REPLY + 20} name="pop-2" volume={0.2} />
       <Phone w={SCREEN.w * z} h={SCREEN.h * z} s={z} style={{ left: ox - 11 * z, top: oy - 11 * z, opacity: enter }}>
         {/* Before the send: the open sheet, with the input as typed so far. */}
         {sent < 1 && (

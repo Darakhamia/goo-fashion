@@ -91,6 +91,33 @@ The type is re-set with its own line breaks: "Ask the / AI stylist." and "Find w
 | Browser | 1700 px wide; the camera ends framed on "Where to buy" | Smaller; the push-in ends tighter on the rows |
 | Hero | Covers the frame | Re-cropped to a square around GOO |
 
+### 9:16 cut, with sound (added 2026-10-14)
+
+The same film, recomposed for 1080×1920 and, unlike the two loops above, with sound.
+
+| Beat | 9:16 |
+|---|---|
+| Type cards | 196 px, one or two words a line: "Every / store. / One / wardrobe.", "Build / the look.", "Ask the / AI stylist.", "Find where / to buy / every piece." (168 px) |
+| Catalogue plane | The whole wall of 16 cards, four rows deep |
+| Builder | The whole phone, top bar to tab bar |
+| Stylist | Typed close on the input; pulls back to the whole sheet |
+| Browser | Ends on the info column (title, price, "Where to buy"), centred. The address sits next to the window buttons, so the close-up never cuts it in half. |
+| Hero | A square around GOO in the middle of the frame, fading into black above and below |
+
+**Sound.** Every sound is synthesised from noise and sine waves by `scripts/make-sfx.py`, with fixed seeds: no third-party samples, no licences. Each scene places its own cues next to the motion they belong to (`src/promo/Sfx.tsx`):
+
+| Beat | Sound |
+|---|---|
+| Type cards | One soft rush as the words rise |
+| Catalogue | Rushes as the photos fly in, a few ticks as they land, a soft snap as the grid settles |
+| Builder | Per piece: a rush in, a low snap on landing, and a blip that rises one tone each time the total changes |
+| Stylist | A keystroke per typed character, a pop on send, a rush on the pull-back, a two-note chime with the answer, faint ticks as the pieces arrive |
+| Product | A rush as the window arrives; the three store rows tick in, each a step higher; a low swell into the end card |
+| End card | A soft, deep landing as GOO rises; a chime with goo-fashion.com |
+| Under everything | A quiet, airy chord (Fmaj9), silent at both ends |
+
+The mix is quiet on purpose: −24 LUFS integrated, about 10 dB below what social platforms normalise to, with the true peak under −6 dBTP. Frame 0 and the last frame are silent, so the loop is seamless in sound too.
+
 ---
 
 ## 3. Output (`out/`, replacing the old files)
@@ -101,6 +128,9 @@ The type is re-set with its own line breaks: "Ask the / AI stylist." and "Find w
 | `goo-1x1.mp4` | 1080×1080, same settings |
 | `goo-16x9.webm`, `goo-1x1.webm` | VP9, two-pass |
 | `goo-poster.png` | 1920×1080, the builder frame |
+| `goo-9x16.mp4` | 1080×1920, 30 fps, H.264 High, yuv420p, CRF 18–20, `+faststart`, AAC 160 kb/s, ≤ 8 MB |
+| `goo-9x16.webm` | VP9 two-pass, Opus 128 kb/s |
+| `goo-9x16-poster.png` | 1080×1920, the builder frame |
 
 - Rendering is from a lossless master at full resolution, never from a preview.
 - Every file is checked with `ffprobe`, and its width, height and bitrate are reported.

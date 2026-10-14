@@ -4,6 +4,9 @@
 //                                       scripts/encode.sh makes the deliverables from these)
 //   node scripts/render.mjs card      → out/master/goo-card-master.mp4 (the portrait card's loop at
 //                                       900×1200; scripts/encode-card.sh makes the deliverables)
+//   node scripts/render.mjs vertical  → out/master/goo-9x16-master.mp4 (the vertical cut, with sound)
+//   node scripts/render.mjs audio     → out/master/goo-9x16-audio.wav (its sound mix, lossless;
+//                                       scripts/encode-vertical.sh makes the deliverables)
 import fs from "node:fs";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
@@ -16,16 +19,27 @@ const only = process.argv[3];
 const browserExecutable = process.env.REMOTION_BROWSER ?? "/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell";
 const serveUrl = await bundle({ entryPoint: path.resolve("src/index.ts"), webpackOverride: (c) => webpackOverride(enableTailwind(c)) });
 
-const jobs = mode === "card" ? [["Card", "card"]] : [["GOO-16x9", "16x9"], ["GOO-1x1", "1x1"]];
+const jobs =
+  mode === "card" ? [["Card", "card"]]
+  : mode === "vertical" || mode === "audio" ? [["GOO-9x16", "9x16"]]
+  : [["GOO-16x9", "16x9"], ["GOO-1x1", "1x1"]];
+const audioOnly = mode === "audio";
 for (const [id, name] of jobs) {
   if (only && only !== name) continue;
   const composition = await selectComposition({ serveUrl, id, browserExecutable });
   const preview = mode === "preview";
   const dir = path.resolve("out", preview ? "preview" : "master");
   fs.mkdirSync(dir, { recursive: true });
-  const outputLocation = path.join(dir, `goo-${name}-${preview ? "preview" : "master"}.mp4`);
+  const outputLocation = audioOnly
+    ? path.join(dir, `goo-${name}-audio.wav`)
+    : path.join(dir, `goo-${name}-${preview ? "preview" : "master"}.mp4`);
   const t0 = Date.now();
   let last = -1;
+  if (audioOnly) {
+    await renderMedia({ composition, serveUrl, outputLocation, codec: "wav", browserExecutable, chromiumOptions: { gl: "swangle" } });
+    console.log(`${outputLocation} in ${Math.round((Date.now() - t0) / 1000)} s`);
+    continue;
+  }
   await renderMedia({
     composition,
     serveUrl,

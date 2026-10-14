@@ -8,6 +8,7 @@ import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, easeOut, mix, ramp } from "../../motion";
 import { M, PAPER, Shot, type Format, SIZE, type Rect } from "../kit";
 import { Browser } from "../Device";
+import { Sfx, type SfxName } from "../Sfx";
 
 const P = M.product;
 const PAGE = { x: 0, y: 110, w: 1440, h: 790 }; // the capture below the site's nav
@@ -15,6 +16,7 @@ const PAGE = { x: 0, y: 110, w: 1440, h: 790 }; // the capture below the site's 
 const ZOOM: Record<Format, { fit: number; end: number }> = {
   "16x9": { fit: 1.18, end: 2.1 },
   "1x1": { fit: 0.69, end: 1.52 },
+  "9x16": { fit: 0.69, end: 1.6 },
 };
 
 export function Product({ format, dur }: { format: Format; dur: number }) {
@@ -24,7 +26,8 @@ export function Product({ format, dur }: { format: Format; dur: number }) {
   const wtb = P.whereToBuy;
   // End on "Where to buy" with the page's bottom edge near the frame's: the
   // block is the last thing in the captured viewport.
-  const end = { x: wtb.x + wtb.w / 2, y: PAGE.h - H / 2 / Z.end + 14 };
+  // Vertical frames the whole info column instead, centred.
+  const end = { x: wtb.x + wtb.w / 2, y: format === "9x16" ? 430 : PAGE.h - H / 2 / Z.end + 14 };
 
   const c = ramp(f, 22, dur - 6, easeInOut);
   const z = mix(Z.fit, Z.end, c) * mix(0.96, 1, ramp(f, 0, 18, easeOut));
@@ -43,11 +46,19 @@ export function Product({ format, dur }: { format: Format; dur: number }) {
 
   return (
     <AbsoluteFill style={{ background: PAPER, overflow: "hidden" }}>
+      {/* Sound: the window arrives, each store row ticks in a step higher, and
+          a low swell leads into the end card. */}
+      <Sfx at={0} name="whoosh-soft" volume={0.24} />
+      {[0, 1, 2].map((i) => (
+        <Sfx key={i} at={30 + i * 10} name={`tick-${i}` as SfxName} volume={0.3} />
+      ))}
+      <Sfx at={dur - 40} name="swell" volume={0.2} />
       <Browser
         w={PAGE.w * z}
         h={PAGE.h * z}
         s={z}
         url="goo-fashion.com"
+        compact={format === "9x16"}
         style={{
           left,
           top: top - bar,

@@ -6,10 +6,11 @@ import { Img, staticFile } from "remotion";
 import manifest from "../../public/captures/manifest.json";
 
 export type Rect = { x: number; y: number; w: number; h: number };
-export type Format = "16x9" | "1x1";
+export type Format = "16x9" | "1x1" | "9x16";
 export const SIZE: Record<Format, { W: number; H: number }> = {
   "16x9": { W: 1920, H: 1080 },
   "1x1": { W: 1080, H: 1080 },
+  "9x16": { W: 1080, H: 1920 },
 };
 
 export const M = manifest;

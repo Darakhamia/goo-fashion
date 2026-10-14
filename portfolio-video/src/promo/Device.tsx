@@ -26,8 +26,12 @@ export function Phone({ w, h, s, children, style }: { w: number; h: number; s: n
   );
 }
 
-/** A browser window whose page area is `w`×`h` px. Children are laid out in page px. */
-export function Browser({ w, h, s, url, children, style }: { w: number; h: number; s: number; url: string; children: React.ReactNode; style?: React.CSSProperties }) {
+/**
+ * A browser window whose page area is `w`×`h` px. Children are laid out in
+ * page px. `compact` puts the address next to the window buttons instead of
+ * centring it, so a close-up of the page's right side never cuts it in half.
+ */
+export function Browser({ w, h, s, url, compact = false, children, style }: { w: number; h: number; s: number; url: string; compact?: boolean; children: React.ReactNode; style?: React.CSSProperties }) {
   const bar = 38 * s;
   return (
     <div
@@ -49,11 +53,11 @@ export function Browser({ w, h, s, url, children, style }: { w: number; h: numbe
         <div
           style={{
             position: "absolute",
-            left: "50%",
+            left: compact ? 76 * s : "50%",
             top: 7 * s,
             height: bar - 14 * s,
-            width: 360 * s,
-            transform: "translateX(-50%)",
+            width: (compact ? 300 : 360) * s,
+            transform: compact ? undefined : "translateX(-50%)",
             borderRadius: 7 * s,
             background: "#f7f6f3",
             display: "flex",

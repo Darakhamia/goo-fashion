@@ -9,6 +9,7 @@ import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, mix, ramp, settle } from "../../motion";
 import { M, PAPER, Shot, rand, type Format, SIZE } from "../kit";
+import { Sfx } from "../Sfx";
 
 const C = M.catalogue;
 const SIZE_CSS = C.size; // 1440 × 2302 CSS px
@@ -16,6 +17,8 @@ const SIZE_CSS = C.size; // 1440 × 2302 CSS px
 const CAMERA: Record<Format, { rx: [number, number]; rz: [number, number]; s: [number, number]; cx: [number, number]; cy: [number, number]; persp: number }> = {
   "16x9": { rx: [30, 9], rz: [-12, -3], s: [0.86, 1.14], cx: [720, 720], cy: [930, 590], persp: 2400 },
   "1x1": { rx: [32, 11], rz: [-14, -4], s: [0.62, 0.86], cx: [720, 720], cy: [960, 600], persp: 2000 },
+  // Vertical: the whole wall of 16 cards, four rows deep.
+  "9x16": { rx: [30, 10], rz: [-12, -4], s: [0.7, 0.98], cx: [720, 720], cy: [1120, 900], persp: 2600 },
 };
 
 // The grid is laid out at the camera's largest scale and only ever scaled
@@ -44,6 +47,14 @@ export function Catalogue({ format, dur }: { format: Format; dur: number }) {
 
   return (
     <AbsoluteFill style={{ background: PAPER, perspective: cam.persp, perspectiveOrigin: "50% 50%", overflow: "hidden" }}>
+      {/* Sound: the photos rush in, a few of them land, the grid settles. */}
+      {[2, 8, 14, 20, 27].map((at, i) => (
+        <Sfx key={`w${i}`} at={at} name={i % 2 ? "whoosh-soft" : "whoosh"} volume={0.24} />
+      ))}
+      {order.slice(0, 16).filter((_, r) => r % 3 === 0).map((i) => (
+        <Sfx key={`t${i}`} at={2 + order.indexOf(i) * 2.2 + 15} name="tick" volume={0.12} />
+      ))}
+      <Sfx at={60} name="snap" volume={0.3} />
       <div
         style={{
           position: "absolute",
