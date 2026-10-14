@@ -218,7 +218,10 @@ export const SECTIONS_UK: LegalSection[] = [
           {OPERATOR.uk.name}
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-          {OPERATOR.uk.address}
+          {OPERATOR.uk.city}
+        </p>
+        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
+          {OPERATOR.uk.addressNote}
         </p>
         <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
           {OPERATOR.uk.taxId}

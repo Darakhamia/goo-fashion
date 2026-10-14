@@ -198,7 +198,10 @@ const SECTIONS: LegalSection[] = [
           {OPERATOR.en.name}
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-          {OPERATOR.en.address}
+          {OPERATOR.en.city}
+        </p>
+        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
+          {OPERATOR.en.addressNote}
         </p>
         <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
           {OPERATOR.en.taxId}

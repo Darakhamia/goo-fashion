@@ -81,7 +81,10 @@ export const SECTIONS_UK: LegalSection[] = [
         <div className="space-y-1">
           <p className="text-sm font-medium text-[var(--foreground)] max-md:text-base">{OPERATOR.uk.name}</p>
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-            {OPERATOR.uk.address}
+            {OPERATOR.uk.city}
+          </p>
+          <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
+            {OPERATOR.uk.addressNote}
           </p>
           <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
             {OPERATOR.uk.taxId}

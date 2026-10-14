@@ -432,9 +432,9 @@
     "semantic_hash": ""
   },
   "src/app/cookie/page.tsx": {
-    "mtime": 1792009651.0545402,
-    "seen": 1792010000.2571795,
-    "ast_hash": "e4d8835965d973565395b60c1afc4fb5",
+    "mtime": 1792020947.8820844,
+    "seen": 1792021088.5456817,
+    "ast_hash": "1ba5a2c93bd08331bd72cc18c1996de1",
     "semantic_hash": ""
   },
   "src/app/error.tsx": {
@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "src/app/privacy/page.tsx": {
-    "mtime": 1792009667.7117586,
-    "seen": 1792010000.2639098,
-    "ast_hash": "1a8bb36c088bd46c19d18630c5237c52",
+    "mtime": 1792020947.8780882,
+    "seen": 1792021088.548902,
+    "ast_hash": "b857ebae5d9c63ab9736478a185d0378",
     "semantic_hash": ""
   },
   "src/app/product/[id]/page.tsx": {
@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "src/app/terms/page.tsx": {
-    "mtime": 1792009667.7099934,
-    "seen": 1792010000.26437,
-    "ast_hash": "3cd7595847756237be6376ea1eae6dbb",
+    "mtime": 1792020947.8755724,
+    "seen": 1792021088.5491934,
+    "ast_hash": "3f3ee3063a6c20b93f8c12b80fd0f11d",
     "semantic_hash": ""
   },
   "src/components/admin/ImageCropEditor.tsx": {
@@ -1514,9 +1514,9 @@
     "semantic_hash": ""
   },
   "src/app/refund/page.tsx": {
-    "mtime": 1792009667.7109964,
-    "seen": 1792010000.2639925,
-    "ast_hash": "601bf7553ba35a055b15dbc5e7a2a336",
+    "mtime": 1792020947.8803008,
+    "seen": 1792021088.5489607,
+    "ast_hash": "d6e22165ea6b3f88d495dcb6350844f2",
     "semantic_hash": ""
   },
   "src/app/report/layout.tsx": {
@@ -3458,27 +3458,27 @@
     "semantic_hash": ""
   },
   "src/app/cookie/uk.tsx": {
-    "mtime": 1792009651.0597186,
-    "seen": 1792010000.2571833,
-    "ast_hash": "fdea4cdc805d55f2ead24eb65e0c8411",
+    "mtime": 1792020947.8829873,
+    "seen": 1792021088.5456836,
+    "ast_hash": "91ee998558c06789b059430ad8edcedf",
     "semantic_hash": ""
   },
   "src/app/privacy/uk.tsx": {
-    "mtime": 1792009667.714005,
-    "seen": 1792010000.2639153,
-    "ast_hash": "0d77ac74fd64815a09f73feb7e4e5c30",
+    "mtime": 1792020947.8791463,
+    "seen": 1792021088.5489042,
+    "ast_hash": "4b0026882fbd8b33443f4c4fa215b23d",
     "semantic_hash": ""
   },
   "src/app/refund/uk.tsx": {
-    "mtime": 1792009667.713189,
-    "seen": 1792010000.2639968,
-    "ast_hash": "3dca0dedd471ca864b39b46648d65fcc",
+    "mtime": 1792020947.8811932,
+    "seen": 1792021088.5489628,
+    "ast_hash": "80ed0b0e5885b1dc0531b9c416ac1fd8",
     "semantic_hash": ""
   },
   "src/app/terms/uk.tsx": {
-    "mtime": 1792009667.7125416,
-    "seen": 1792010000.2643738,
-    "ast_hash": "8ad5062f7ec993bf07a814c1d48fdfc2",
+    "mtime": 1792020947.877201,
+    "seen": 1792021088.5491958,
+    "ast_hash": "a043623b11840a3649c385f379345680",
     "semantic_hash": ""
   },
   "src/components/i18n/ByLocale.tsx": {
@@ -3512,9 +3512,9 @@
     "semantic_hash": ""
   },
   "src/app/contacts/ContactsContent.tsx": {
-    "mtime": 1792009690.8240857,
-    "seen": 1792010000.2571692,
-    "ast_hash": "206a3a9b7387516d8df4d3584d4473a6",
+    "mtime": 1792020947.8833854,
+    "seen": 1792021088.5456407,
+    "ast_hash": "fdfdbe36bf98754e19998a7b2377f5e4",
     "semantic_hash": ""
   },
   "src/app/contacts/page.tsx": {
@@ -3524,9 +3524,9 @@
     "semantic_hash": ""
   },
   "src/lib/legal-entity.ts": {
-    "mtime": 1792009716.9345315,
-    "seen": 1792010000.2704127,
-    "ast_hash": "7e3bb5ab7acd5e60d58b724efb2038ba",
+    "mtime": 1792020947.8730164,
+    "seen": 1792021088.5519698,
+    "ast_hash": "d9ef5c0cda7dd284b694dea6216a08fe",
     "semantic_hash": ""
   }
 }
