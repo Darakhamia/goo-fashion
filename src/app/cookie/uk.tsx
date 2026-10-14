@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CookieSettings from "@/components/consent/CookieSettings";
 import type { LegalSection } from "@/lib/i18n/legal";
+import { OPERATOR } from "@/lib/legal-entity";
 
 /**
  * Ukrainian version of the Cookie Policy (/cookie). The English text, the
@@ -41,7 +42,7 @@ export const STRINGS_UK: CookieStrings = {
   introLink: "Політику конфіденційності",
   introAfterLink: ".",
   operatorLabel: "Оператор",
-  operator: "ФОП David Arakhamia",
+  operator: OPERATOR.uk.name,
   websiteLabel: "Вебсайт",
   website: "goo-fashion.com",
   contactLabel: "Контакти",
@@ -242,13 +243,13 @@ export const SECTIONS_UK: LegalSection[] = [
     content: (
       <div className="space-y-1">
         <p className="text-sm font-medium text-[var(--foreground)] max-md:text-base">
-          ФОП David Arakhamia
+          {OPERATOR.uk.name}
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-          м. Миколаїв, Україна
+          {OPERATOR.uk.address}
         </p>
         <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
-          Адреса реєстрації надається на запит.
+          {OPERATOR.uk.taxId}
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1 max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline max-md:py-3">

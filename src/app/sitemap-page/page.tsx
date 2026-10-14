@@ -22,6 +22,7 @@ const SITE_SECTIONS = [
       { href: "/brands", label: "All Brands" },
       { href: "/plans", label: "Plans & Pricing" },
       { href: "/about", label: "About" },
+      { href: "/contacts", label: "Contacts" },
       { href: "/blog", label: "Journal" },
     ],
   },

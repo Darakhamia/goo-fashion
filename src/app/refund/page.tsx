@@ -4,6 +4,7 @@ import Link from "next/link";
 import ByLocale from "@/components/i18n/ByLocale";
 import type { LegalSection } from "@/lib/i18n/legal";
 import { STRINGS_UK, SECTIONS_UK, type RefundStrings } from "./uk";
+import { OPERATOR } from "@/lib/legal-entity";
 
 export const metadata: Metadata = pageMetadata({
   title: "Subscription & Refund Policy",
@@ -32,11 +33,11 @@ const STRINGS_EN: RefundStrings = {
   kicker: "Legal",
   title: "Subscription & Refund Policy",
   // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
-  lastUpdated: "Last updated: August 10, 2026",
+  lastUpdated: "Last updated: October 14, 2026",
   intro:
     "This policy explains how Goo Fashion subscriptions are billed and renewed, how to cancel, and when you are entitled to a refund. By purchasing a subscription you agree to this policy.",
   operatorLabel: "Operator",
-  operatorValue: "David Arakhamia, Sole Trader",
+  operatorValue: OPERATOR.en.name,
   websiteLabel: "Website",
   websiteValue: "goo-fashion.com",
   contactLabel: "Contact",
@@ -198,13 +199,13 @@ const SECTIONS: LegalSection[] = [
     content: (
       <div className="space-y-1">
         <p className="text-sm font-medium text-[var(--foreground)] max-md:text-base">
-          David Arakhamia, Sole Trader
+          {OPERATOR.en.name}
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-          Mykolaiv, Ukraine
+          {OPERATOR.en.address}
         </p>
         <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
-          Registered address available on request.
+          {OPERATOR.en.taxId}
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1 max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline max-md:py-3">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import ByLocale from "@/components/i18n/ByLocale";
 import type { LegalSection } from "@/lib/i18n/legal";
 import { STRINGS_UK, SECTIONS_UK, type PrivacyStrings } from "./uk";
+import { OPERATOR } from "@/lib/legal-entity";
 
 export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
@@ -57,12 +58,12 @@ const SECTIONS: LegalSection[] = [
           platform available at goo-fashion.com. The service is operated by:
         </P>
         <div className="space-y-1">
-          <p className="text-sm font-medium text-[var(--foreground)] max-md:text-base">David Arakhamia, Sole Trader</p>
+          <p className="text-sm font-medium text-[var(--foreground)] max-md:text-base">{OPERATOR.en.name}</p>
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-            Mykolaiv, Ukraine
+            {OPERATOR.en.address}
           </p>
           <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
-            Registered address available on request.
+            {OPERATOR.en.taxId}
           </p>
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1 max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
             <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline max-md:py-3">
@@ -374,7 +375,7 @@ const STRINGS_EN: PrivacyStrings = {
   kicker: "Legal",
   title: "Privacy Policy",
   // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
-  lastUpdated: "Last updated: September 26, 2026",
+  lastUpdated: "Last updated: October 14, 2026",
   intro:
     "Goo Fashion respects your privacy. This policy explains, in plain language, exactly what personal data we collect, why we collect it, which service providers it is shared with, and the rights you have over it.",
   navTerms: "Terms of Service",
