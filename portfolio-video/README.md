@@ -28,6 +28,19 @@ Checked with `ffprobe` (2026-10-13). All four are full resolution, 30 fps, 855 f
 | `goo-16x9.webm` | VP9 two-pass, CRF 30 | 3.19 MB | 0.89 Mb/s |
 | `goo-1x1.webm` | VP9 two-pass, CRF 30 | 2.79 MB | 0.78 Mb/s |
 
+### Vertical cut, with sound
+
+The same film at 1080×1920, with quiet sound effects and a soft pad (STORYBOARD.md, "9:16 cut"). The 16:9 and 1:1 loops above stay silent. Checked with `ffprobe` and EBU R128 (2026-10-14):
+
+| File | Video | Audio | Size | Bitrate | Loudness |
+|---|---|---|---|---|---|
+| `goo-9x16.mp4` | 1080×1920, H.264 High, CRF 18, yuv420p, faststart | AAC-LC 160 kb/s, 48 kHz stereo | 6.39 MB | 1.79 Mb/s (video 1.62) | −24.0 LUFS, true peak −8.1 dBTP |
+| `goo-9x16.webm` | 1080×1920, VP9 two-pass, CRF 30 | Opus 128 kb/s, 48 kHz stereo | 3.87 MB | 1.08 Mb/s | −24.0 LUFS, true peak −8.2 dBTP |
+| `goo-9x16-poster.png` | 1080×1920, the builder with the whole phone | | | | |
+
+- Both are 30 fps, 855 frames, 28.5 s.
+- Frame 0 and the last frame are identical and silent.
+
 The last frame equals the first (both are the type cards' black), so the loop is seamless:
 
 ```html
@@ -75,6 +88,13 @@ node scripts/stills.mjs out/stills 1 GOO-16x9:50,187,377,584,752,835   # key-bea
 node scripts/render.mjs master       # full-resolution near-lossless masters → out/master/
 scripts/encode.sh                    # deliverables → out/
 node scripts/stills.mjs out 1 GOO-16x9:377 && mv out/GOO-16x9-377.png out/goo-poster.png
+
+# The vertical cut, with sound
+python3 scripts/make-sfx.py          # the sound effects → public/audio/ (already committed)
+node scripts/render.mjs vertical     # master → out/master/goo-9x16-master.mp4
+node scripts/render.mjs audio        # lossless mix → out/master/goo-9x16-audio.wav
+scripts/encode-vertical.sh           # -24 LUFS, AAC / Opus → out/goo-9x16.mp4, .webm
+node scripts/stills.mjs out 1 GOO-9x16:377 && mv out/GOO-9x16-377.png out/goo-9x16-poster.png
 ```
 
 - Renders run offline from the committed captures.
