@@ -31,7 +31,7 @@ function mobileLinks(t: FooterStrings): { group: string; links: FooterLink[] }[]
       { label: t.browse, href: "/browse" }, { label: t.builder, href: "/builder" }, { label: t.saved, href: "/saved" },
       { label: t.plans, href: "/plans" }, { label: t.profile, href: "/profile" },
     ] },
-    { group: t.company, links: [{ label: t.journal, href: "/blog" }, { label: t.about, href: "/about" }] },
+    { group: t.company, links: [{ label: t.journal, href: "/blog" }, { label: t.about, href: "/about" }, { label: t.contacts, href: "/contacts" }] },
     { group: t.legal, links: [
       { label: t.privacyShort, href: "/privacy" }, { label: t.termsShort, href: "/terms" }, { label: t.cookiesShort, href: "/cookie" },
       { label: t.refundsShort, href: "/refund" }, { label: t.sitemap, href: "/sitemap-page" },
@@ -52,6 +52,7 @@ function footerLinks(t: FooterStrings): { group: string; links: FooterLink[] }[]
     { group: t.company, links: [
       { label: t.blog,  href: "/blog" },
       { label: t.about, href: "/about" },
+      { label: t.contacts, href: "/contacts" },
     ] },
     { group: t.legal, links: [
       { label: t.privacy, href: "/privacy" },
@@ -74,7 +75,7 @@ const DICT = defineDict({
     shop: "Shop", platform: "Platform", company: "Company", legal: "Legal",
     outerwear: "Outerwear", tops: "Tops", bottoms: "Bottoms", footwear: "Footwear", accessories: "Accessories", allBrands: "All brands",
     browse: "Browse", builder: "Builder", saved: "Saved", plans: "Plans", profile: "Profile",
-    blog: "Blog", journal: "Journal", about: "About",
+    blog: "Blog", journal: "Journal", about: "About", contacts: "Contacts",
     privacy: "Privacy Policy", terms: "Terms of Service", cookies: "Cookie Policy", refunds: "Refund Policy", sitemap: "Sitemap",
     privacyShort: "Privacy", termsShort: "Terms", cookiesShort: "Cookies", refundsShort: "Refunds",
   },
@@ -88,7 +89,7 @@ const DICT = defineDict({
     shop: "Одяг", platform: "Платформа", company: "Компанія", legal: "Правова інформація",
     outerwear: "Верхній одяг", tops: "Верх", bottoms: "Низ", footwear: "Взуття", accessories: "Аксесуари", allBrands: "Усі бренди",
     browse: "Каталог", builder: "Конструктор", saved: "Збережене", plans: "Тарифи", profile: "Профіль",
-    blog: "Журнал", journal: "Журнал", about: "Про нас",
+    blog: "Журнал", journal: "Журнал", about: "Про нас", contacts: "Контакти",
     privacy: "Політика конфіденційності", terms: "Умови використання", cookies: "Політика cookie", refunds: "Повернення коштів", sitemap: "Карта сайту",
     privacyShort: "Конфіденційність", termsShort: "Умови", cookiesShort: "Cookie", refundsShort: "Повернення",
   },

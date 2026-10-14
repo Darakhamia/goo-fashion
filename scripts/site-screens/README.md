@@ -51,7 +51,7 @@ NODE_PATH=/tmp/goo-site-screens/pw/node_modules \
 
 ## Имена
 
-- **Страницы:** `home`, `browse`, `product`, `outfit`, `builder`, `blog`, `article`, `saved`, `profile`, `plans`, `subscribe`, `cart`, `about`, `privacy`, `terms`, `cookie-policy`, `refund`, `sitemap`, `not-found`, `login`.
+- **Страницы:** `home`, `browse`, `product`, `outfit`, `builder`, `blog`, `article`, `saved`, `profile`, `plans`, `subscribe`, `cart`, `about`, `privacy`, `terms`, `cookie-policy`, `contacts`, `refund`, `sitemap`, `not-found`, `login`.
 - **Посадочные страницы** (`docs/SEO_PLAN.md`, SEO-17), на демо-каталоге: `brands` — указатель `/brands`, `brand` — `/brands/zara`, `category` — `/c/outerwear`, `subcategory` — `/c/tops/knitwear` (меньше 6 товаров, поэтому `noindex`).
 - **Состояния:**
   - `ai` — открыт AI-стилист;

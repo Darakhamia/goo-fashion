@@ -12,10 +12,10 @@ export const revalidate = 3600;
  * a lastmod that changes without the page is what teaches Google to ignore it.
  */
 const LEGAL_UPDATED: Record<string, string> = {
-  "/privacy": "2026-09-26",
-  "/terms": "2026-08-10",
+  "/privacy": "2026-10-14",
+  "/terms": "2026-10-14",
   "/cookie": "2026-10-14",
-  "/refund": "2026-08-10",
+  "/refund": "2026-10-14",
 };
 
 /** How many photos of a product the sitemap lists. */
@@ -122,6 +122,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/brands`, lastModified: newestProduct, changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE_URL}/plans`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/about`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE_URL}/contacts`, changeFrequency: "yearly", priority: 0.4 },
     { url: `${SITE_URL}/sitemap-page`, lastModified: latest([newestProduct, newestOutfit, newestPost]), changeFrequency: "weekly", priority: 0.3 },
     ...Object.entries(LEGAL_UPDATED).map(([path, date]) => ({
       url: `${SITE_URL}${path}`,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import ByLocale from "@/components/i18n/ByLocale";
 import type { LegalSection } from "@/lib/i18n/legal";
 import { STRINGS_UK, SECTIONS_UK, type TermsStrings } from "./uk";
+import { OPERATOR, OPERATOR_IBAN } from "@/lib/legal-entity";
 
 export const metadata: Metadata = pageMetadata({
   title: "Terms & Conditions",
@@ -28,11 +29,11 @@ const STRINGS_EN: TermsStrings = {
   kicker: "Legal",
   title: "Terms & Conditions",
   // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
-  lastUpdated: "Last updated: August 10, 2026",
+  lastUpdated: "Last updated: October 14, 2026",
   intro:
     "These Terms & Conditions govern your access to and use of Goo Fashion, including our website, digital tools, AI styling features, outfit builder, saved looks, product discovery features, affiliate links, and related services. By using Goo Fashion, you agree to these Terms. If you do not agree, please do not use the website or services.",
   operatorLabel: "Operator",
-  operatorValue: "David Arakhamia, Sole Trader",
+  operatorValue: OPERATOR.en.name,
   websiteLabel: "Website",
   websiteValue: "goo-fashion.com",
   contactLabel: "Contact",
@@ -428,13 +429,16 @@ const SECTIONS: LegalSection[] = [
     content: (
       <div className="space-y-1">
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed font-medium text-[var(--foreground)] max-md:text-base max-md:leading-[1.6]">
-          David Arakhamia, Sole Trader
+          {OPERATOR.en.name}
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-          Mykolaiv, Ukraine
+          {OPERATOR.en.address}
         </p>
         <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
-          Registered address available on request.
+          {OPERATOR.en.taxId}
+        </p>
+        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed max-md:text-[15px] max-md:text-[var(--foreground-muted)]">
+          IBAN {OPERATOR_IBAN}, {OPERATOR.en.bank}
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1 max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline max-md:py-3">

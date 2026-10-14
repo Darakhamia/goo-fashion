@@ -38,7 +38,7 @@ const PAGES = [
   ["home", "/"], ["browse", "/browse"], ["product", "/product/p-001"], ["outfit", "/outfit/o-001"],
   ["builder", "/builder"], ["blog", "/blog"], ["article", "/blog/how-ai-builds-your-outfit"],
   ["saved", "/saved"], ["profile", "/profile"], ["plans", "/plans"], ["subscribe", "/subscribe?plan=pro"],
-  ["cart", "/cart"], ["about", "/about"], ["privacy", "/privacy"], ["terms", "/terms"], ["cookie-policy", "/cookie"],
+  ["cart", "/cart"], ["about", "/about"], ["privacy", "/privacy"], ["terms", "/terms"], ["cookie-policy", "/cookie"], ["contacts", "/contacts"],
   ["refund", "/refund"], ["sitemap", "/sitemap-page"], ["not-found", "/no-such-page"], ["login", "/login"],
   // Landing pages (docs/SEO_PLAN.md, SEO-17), on the demo catalogue.
   ["brands", "/brands"], ["brand", "/brands/zara"], ["category", "/c/outerwear"], ["subcategory", "/c/tops/knitwear"],
