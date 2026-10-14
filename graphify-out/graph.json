@@ -11500,7 +11500,7 @@
       "file_type": "code",
       "norm_label": "privacydoc()",
       "source_file": "src/app/privacy/page.tsx",
-      "source_location": "L387"
+      "source_location": "L390"
     },
     {
       "id": "src_app_privacy_page_privacypage",
@@ -11512,7 +11512,7 @@
       "file_type": "code",
       "norm_label": "privacypage()",
       "source_file": "src/app/privacy/page.tsx",
-      "source_location": "L456"
+      "source_location": "L459"
     },
     {
       "id": "src_app_privacy_page_processor",
@@ -25084,7 +25084,7 @@
       "file_type": "code",
       "norm_label": "cookiedoc()",
       "source_file": "src/app/cookie/page.tsx",
-      "source_location": "L237"
+      "source_location": "L240"
     },
     {
       "id": "src_app_cookie_page_cookiepage",
@@ -25096,7 +25096,7 @@
       "file_type": "code",
       "norm_label": "cookiepage()",
       "source_file": "src/app/cookie/page.tsx",
-      "source_location": "L321"
+      "source_location": "L324"
     },
     {
       "id": "src_app_cookie_page_p",
@@ -26740,7 +26740,7 @@
       "file_type": "code",
       "norm_label": "refunddoc()",
       "source_file": "src/app/refund/page.tsx",
-      "source_location": "L220"
+      "source_location": "L223"
     },
     {
       "id": "src_app_refund_page_refundpage",
@@ -26752,7 +26752,7 @@
       "file_type": "code",
       "norm_label": "refundpage()",
       "source_file": "src/app/refund/page.tsx",
-      "source_location": "L303"
+      "source_location": "L306"
     },
     {
       "id": "src_app_refund_uk_bullet",
@@ -28384,7 +28384,7 @@
       "file_type": "code",
       "norm_label": "termsdoc()",
       "source_file": "src/app/terms/page.tsx",
-      "source_location": "L453"
+      "source_location": "L456"
     },
     {
       "id": "src_app_terms_page_termspage",
@@ -28396,7 +28396,7 @@
       "file_type": "code",
       "norm_label": "termspage()",
       "source_file": "src/app/terms/page.tsx",
-      "source_location": "L536"
+      "source_location": "L539"
     },
     {
       "id": "src_app_terms_uk_bullet",
@@ -30058,7 +30058,7 @@
       "file_type": "code",
       "norm_label": "operator",
       "source_file": "src/lib/legal-entity.ts",
-      "source_location": "L22"
+      "source_location": "L25"
     },
     {
       "id": "src_lib_legal_entity_operator_email",
@@ -33678,7 +33678,7 @@
       "file_type": "code",
       "norm_label": "strings_en",
       "source_file": "src/app/privacy/page.tsx",
-      "source_location": "L374"
+      "source_location": "L377"
     },
     {
       "id": "src_app_privacy_uk",
@@ -50753,7 +50753,7 @@
       "file_type": "code",
       "norm_label": "strings_en",
       "source_file": "src/app/cookie/page.tsx",
-      "source_location": "L216"
+      "source_location": "L219"
     },
     {
       "id": "src_app_cookie_uk",
@@ -67173,7 +67173,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/cookie/page.tsx",
-      "source_location": "L322",
+      "source_location": "L325",
       "weight": 1.0
     },
     {
@@ -67185,7 +67185,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/cookie/page.tsx",
-      "source_location": "L322",
+      "source_location": "L325",
       "weight": 1.0
     },
     {
@@ -75393,7 +75393,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/privacy/page.tsx",
-      "source_location": "L457",
+      "source_location": "L460",
       "weight": 1.0
     },
     {
@@ -75405,7 +75405,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/privacy/page.tsx",
-      "source_location": "L457",
+      "source_location": "L460",
       "weight": 1.0
     },
     {
@@ -75861,7 +75861,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/refund/page.tsx",
-      "source_location": "L304",
+      "source_location": "L307",
       "weight": 1.0
     },
     {
@@ -75873,7 +75873,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/refund/page.tsx",
-      "source_location": "L304",
+      "source_location": "L307",
       "weight": 1.0
     },
     {
@@ -76305,7 +76305,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/terms/page.tsx",
-      "source_location": "L537",
+      "source_location": "L540",
       "weight": 1.0
     },
     {
@@ -76317,7 +76317,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/terms/page.tsx",
-      "source_location": "L537",
+      "source_location": "L540",
       "weight": 1.0
     },
     {
@@ -164981,7 +164981,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/cookie/page.tsx",
-      "source_location": "L216",
+      "source_location": "L219",
       "weight": 1.0
     },
     {
@@ -164992,7 +164992,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/cookie/page.tsx",
-      "source_location": "L237",
+      "source_location": "L240",
       "weight": 1.0
     },
     {
@@ -165014,7 +165014,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/cookie/page.tsx",
-      "source_location": "L321",
+      "source_location": "L324",
       "weight": 1.0
     },
     {
@@ -171306,7 +171306,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/privacy/page.tsx",
-      "source_location": "L374",
+      "source_location": "L377",
       "weight": 1.0
     },
     {
@@ -171317,7 +171317,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/privacy/page.tsx",
-      "source_location": "L387",
+      "source_location": "L390",
       "weight": 1.0
     },
     {
@@ -171339,7 +171339,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/privacy/page.tsx",
-      "source_location": "L456",
+      "source_location": "L459",
       "weight": 1.0
     },
     {
@@ -171735,7 +171735,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/refund/page.tsx",
-      "source_location": "L220",
+      "source_location": "L223",
       "weight": 1.0
     },
     {
@@ -171757,7 +171757,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/refund/page.tsx",
-      "source_location": "L303",
+      "source_location": "L306",
       "weight": 1.0
     },
     {
@@ -172274,7 +172274,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/terms/page.tsx",
-      "source_location": "L453",
+      "source_location": "L456",
       "weight": 1.0
     },
     {
@@ -172296,7 +172296,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/terms/page.tsx",
-      "source_location": "L536",
+      "source_location": "L539",
       "weight": 1.0
     },
     {
@@ -178577,7 +178577,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/legal-entity.ts",
-      "source_location": "L22",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -198902,5 +198902,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a779f054f10d18de71afd1803bf480303cf4d02e"
+  "built_at_commit": "60639e0d94468e183323fb451710b3b0528273ea"
 }
