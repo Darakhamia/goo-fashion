@@ -176,6 +176,8 @@ export async function GET() {
     autoRenew: s.auto_renew,
     maskedPan: s.masked_pan,
     hasCardToken: !!s.card_token,
+    // Charged by monobank itself: no card of ours is expected.
+    bankSubscription: !!s.mono_subscription_id,
     failedCharges: s.failed_charges ?? 0,
     overdue: isOverdue(s),
     currentPeriodEnd: s.current_period_end,

@@ -50,6 +50,8 @@ interface SubItem {
   autoRenew: boolean;
   maskedPan: string | null;
   hasCardToken: boolean;
+  /** Charged by monobank's own subscription — no saved card of ours by design. */
+  bankSubscription?: boolean;
   failedCharges: number;
   overdue: boolean;
   currentPeriodEnd: string | null;
@@ -345,7 +347,9 @@ export default function SubscriptionsPage() {
       // that so a display-only gap doesn't read as broken. Only a subscription
       // still being billed is missing something without one.
       cell: (s) =>
-        s.hasCardToken ? (
+        s.bankSubscription ? (
+          <span className="text-[var(--foreground-muted)]">{t("subs.card.bank")}</span>
+        ) : s.hasCardToken ? (
           <span className="text-[var(--foreground-muted)]">{s.maskedPan ? `•• ${s.maskedPan.slice(-4)}` : t("subs.card.saved")}</span>
         ) : s.status === "active" || s.status === "past_due" ? (
           <span className="text-[var(--warn)]">{t("subs.card.none")}</span>

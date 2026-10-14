@@ -25,6 +25,8 @@ export interface SubscriptionRow {
   current_period_end: string | null;
   auto_renew: boolean;
   failed_charges: number;
+  /** The monobank subscription this plan runs on; null for invoice + saved card. Absent before migration 028. */
+  mono_subscription_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -114,6 +116,22 @@ export async function setClerkPlan(userId: string, plan: PlanId): Promise<void> 
   await cc.users.updateUserMetadata(userId, {
     publicMetadata: { ...meta, plan },
   });
+}
+
+/**
+ * Take a paid plan back to free when its billing ends — but only if Clerk
+ * still shows the plan that billing paid for. A plan an admin set by hand
+ * (Users → plan) is left alone. Returns whether Clerk was changed.
+ */
+export async function downgradeIfOnPlan(userId: string, paidPlan: PlanId): Promise<boolean> {
+  const cc = await clerkClient();
+  const user = await cc.users.getUser(userId);
+  const meta = (user.publicMetadata ?? {}) as Record<string, unknown>;
+  if (coercePlan(meta.plan) !== paidPlan) return false;
+  await cc.users.updateUserMetadata(userId, {
+    publicMetadata: { ...meta, plan: DEFAULT_PLAN },
+  });
+  return true;
 }
 
 /** Record an invoice we just created, before the customer has paid. */
@@ -266,17 +284,40 @@ export async function getSubscription(userId: string): Promise<SubscriptionRow |
   return (data as SubscriptionRow) ?? null;
 }
 
+/** Postgres / PostgREST: the column named in the query does not exist. */
+function isUnknownColumn(error: { code?: string; message?: string }): boolean {
+  return error.code === "42703" || error.code === "PGRST204";
+}
+
+/**
+ * Leave out plans that run on a monobank subscription: the bank charges those
+ * by itself, and the cron charging the saved card too would bill them twice.
+ * Before migration 028 the column does not exist and neither do such plans,
+ * so the query is retried without the filter.
+ */
+async function withoutBankSubscriptions(
+  query: (excludeBank: boolean) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
+): Promise<SubscriptionRow[]> {
+  const first = await query(true);
+  if (!first.error) return (first.data as SubscriptionRow[]) ?? [];
+  if (!isUnknownColumn(first.error)) throw new Error(first.error.message);
+  const retry = await query(false);
+  if (retry.error) throw new Error(retry.error.message);
+  return (retry.data as SubscriptionRow[]) ?? [];
+}
+
 /** Active subscriptions whose paid period has ended — candidates for renewal. */
 export async function getDueSubscriptions(now = new Date()): Promise<SubscriptionRow[]> {
-  const { data, error } = await db()
-    .from("subscriptions")
-    .select("*")
-    .eq("status", "active")
-    .eq("auto_renew", true)
-    .lte("current_period_end", now.toISOString())
-    .not("card_token", "is", null);
-  if (error) throw new Error(error.message);
-  return (data as SubscriptionRow[]) ?? [];
+  return withoutBankSubscriptions((excludeBank) => {
+    const q = db()
+      .from("subscriptions")
+      .select("*")
+      .eq("status", "active")
+      .eq("auto_renew", true)
+      .lte("current_period_end", now.toISOString())
+      .not("card_token", "is", null);
+    return excludeBank ? q.is("mono_subscription_id", null) : q;
+  });
 }
 
 /**
@@ -288,14 +329,16 @@ export async function getDueSubscriptions(now = new Date()): Promise<Subscriptio
  * paid for exactly once. Nothing surfaces them on its own — hence this query.
  */
 export async function getTokenlessSubscriptions(): Promise<SubscriptionRow[]> {
-  const { data, error } = await db()
-    .from("subscriptions")
-    .select("*")
-    .eq("status", "active")
-    .eq("auto_renew", true)
-    .is("card_token", null);
-  if (error) throw new Error(error.message);
-  return (data as SubscriptionRow[]) ?? [];
+  // A plan on a monobank subscription has no card of ours by design.
+  return withoutBankSubscriptions((excludeBank) => {
+    const q = db()
+      .from("subscriptions")
+      .select("*")
+      .eq("status", "active")
+      .eq("auto_renew", true)
+      .is("card_token", null);
+    return excludeBank ? q.is("mono_subscription_id", null) : q;
+  });
 }
 
 /**

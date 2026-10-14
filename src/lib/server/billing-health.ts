@@ -17,6 +17,8 @@ export interface SubRow {
   card_token: string | null;
   failed_charges: number;
   current_period_end: string | null;
+  /** Set when monobank charges the plan by itself (migration 028); such a row has no card of ours. */
+  mono_subscription_id?: string | null;
 }
 
 /** Supabase returns at most this many rows per request, so totals page through. */
@@ -24,6 +26,8 @@ export const PAGE = 1_000;
 
 const SUB_COLUMNS =
   "user_id,plan,status,amount,auto_renew,masked_pan,card_token,failed_charges,current_period_end";
+/** Read when migration 028 is in; without it the plain list is read instead. */
+const SUB_COLUMNS_028 = `${SUB_COLUMNS},mono_subscription_id`;
 
 /**
  * Every subscription, a page at a time. A single `.limit(n)` read stops at
@@ -35,16 +39,24 @@ const SUB_COLUMNS =
 export async function readAllSubscriptions(): Promise<{ data: SubRow[]; error: { message: string } | null }> {
   const data: SubRow[] = [];
   if (!supabase) return { data, error: { message: "Database not configured" } };
-  const seen = new Set<string>();
-  for (let from = 0; ; from += PAGE) {
-    const q = await supabase
+  const db = supabase;
+  const readPage = (columns: string, from: number) =>
+    db
       .from("subscriptions")
-      .select(SUB_COLUMNS)
+      .select(columns)
       .order("created_at", { ascending: false })
       .order("user_id", { ascending: true })
       .range(from, from + PAGE - 1);
+  const seen = new Set<string>();
+  let columns = SUB_COLUMNS_028;
+  for (let from = 0; ; from += PAGE) {
+    let q = await readPage(columns, from);
+    if (q.error && (q.error.code === "42703" || q.error.code === "PGRST204") && columns !== SUB_COLUMNS) {
+      columns = SUB_COLUMNS;
+      q = await readPage(columns, from);
+    }
     if (q.error) return { data, error: q.error };
-    const rows = (q.data ?? []) as SubRow[];
+    const rows = (q.data ?? []) as unknown as SubRow[];
     for (const row of rows) {
       if (seen.has(row.user_id)) continue;
       seen.add(row.user_id);
@@ -71,8 +83,9 @@ export function summarizeBilling(subs: SubRow[], now = Date.now()) {
     autoRenewOff: active.filter((s) => !s.auto_renew).length,
     // Active, auto-renew on, but no saved card: the renewal sweep filters these
     // out, so each one is a customer who paid once and is now using the plan
-    // for free. Should be zero.
-    activeWithoutCard: active.filter((s) => s.auto_renew && !s.card_token).length,
+    // for free. Should be zero. A plan on a monobank subscription is charged by
+    // the bank and has no card of ours, so it is not one of them.
+    activeWithoutCard: active.filter((s) => s.auto_renew && !s.card_token && !s.mono_subscription_id).length,
     // Active, paid period already ended, still not renewed. The cron should
     // clear these within a day, so a standing number means it is not working.
     overdue: active.filter((s) => isOverdue(s, now)).length,

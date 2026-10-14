@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { stopBankSubscriptions } from "@/lib/server/mono-subscriptions";
 import { cancelAutoRenew, getSubscription, logBillingEvent } from "@/lib/server/subscriptions";
 
 /**
  * Cancel auto-renewal. The user keeps their plan until the current period ends
- * (require-plan.ts reads Clerk metadata, which we leave intact); the cron sweep
- * simply won't charge again because auto_renew is now false.
+ * (require-plan.ts reads Clerk metadata, which we leave intact).
+ *
+ * A plan on a monobank subscription is cancelled at the bank first — the bank
+ * charges it, not us — and only counts as cancelled once the bank agrees. The
+ * plan then returns to free when the paid period ends (the hourly sync). On the
+ * invoice + saved-card road the cron simply won't charge again because
+ * auto_renew is now false.
  */
 export async function POST() {
   const { userId } = await auth();
@@ -18,12 +24,13 @@ export async function POST() {
     if (!sub) {
       return NextResponse.json({ error: "No active subscription." }, { status: 404 });
     }
+    const bankStopped = await stopBankSubscriptions(userId);
     await cancelAutoRenew(userId);
     await logBillingEvent({
       userId,
       eventType: "canceled",
       plan: sub.plan,
-      detail: "auto-renew disabled by user",
+      detail: bankStopped > 0 ? "monobank subscription cancelled by user" : "auto-renew disabled by user",
     });
     return NextResponse.json({ ok: true, currentPeriodEnd: sub.current_period_end });
   } catch (err) {
