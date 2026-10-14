@@ -15,6 +15,7 @@ import {
   recordRenewalFailure,
 } from "@/lib/server/subscriptions";
 import { sendBillingAlert } from "@/lib/server/billing-alerts";
+import { syncAllBankSubscriptions } from "@/lib/server/mono-subscriptions";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -30,9 +31,11 @@ export const maxDuration = 60;
  * Monthly auto-renewal sweep.
  *
  * Triggered once a day by a Coolify Scheduled Task — the only scheduler
- * production has (BILLING.md → "Renewal cron on Coolify"). For every
- * active subscription whose paid period has ended, charge the saved card via monobank's
- * merchant-initiated wallet payment. On success we extend the period (the
+ * production has (BILLING.md → "Renewal cron on Coolify"). For every active
+ * subscription on the invoice + saved-card road whose paid period has ended
+ * (plans on a monobank subscription are charged by the bank and skipped here),
+ * charge the saved card via monobank's merchant-initiated wallet payment. On
+ * success we extend the period (the
  * webhook also confirms, idempotently); on failure we record it and eventually
  * downgrade.
  *
@@ -72,6 +75,17 @@ export async function GET(req: Request) {
   const gapHours = lastRunAt ? Math.floor((Date.now() - lastRunAt.getTime()) / HOUR_MS) : null;
   if (!isMonobankConfigured) {
     return NextResponse.json({ error: "MONOBANK_TOKEN not configured." }, { status: 503 });
+  }
+
+  // ── Bank-side subscriptions ───────────────────────────────────────────────
+  // monobank charges these by itself; /api/billing/cron/sync reconciles them
+  // hourly. Done here as well so a missing hourly task still leaves a daily
+  // reconciliation. A failure here must not stop the saved-card renewals below.
+  let bankSync: Awaited<ReturnType<typeof syncAllBankSubscriptions>> | { error: string };
+  try {
+    bankSync = await syncAllBankSubscriptions();
+  } catch (err) {
+    bankSync = { error: err instanceof Error ? err.message : "bank subscription sync failed" };
   }
 
   // ── Recover card tokens before charging anything ──────────────────────────
@@ -296,5 +310,9 @@ export async function GET(req: Request) {
     gapHours,
     alerts,
     weekly,
+    bankSync:
+      "error" in bankSync
+        ? bankSync
+        : { synced: bankSync.synced.length, errors: bankSync.errors.length, lapsed: bankSync.lapsed.length },
   });
 }

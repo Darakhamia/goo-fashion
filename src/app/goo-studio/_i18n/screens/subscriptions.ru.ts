@@ -50,6 +50,7 @@ export const subscriptionsRu: Partial<Record<Key, Message>> = {
   "subs.status.pending": "Ждёт оплаты",
   "subs.card.saved": "Сохранена",
   "subs.card.none": "Нет карты",
+  "subs.card.bank": "Подписка monobank",
   "subs.next.overdue": "Просрочена с {date}",
   "subs.next.overdueHint": "Оплаченный период кончился, а продление не прошло",
   "subs.next.renews": "Продлится {date}",

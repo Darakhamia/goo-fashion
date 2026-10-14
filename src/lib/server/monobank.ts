@@ -5,11 +5,20 @@ import crypto from "node:crypto";
  *
  * Docs: https://monobank.ua/api-docs/acquiring
  *
- * Flow we use:
- *   1. createInvoice() with saveCardData → returns a hosted pageUrl we send the
- *      customer to. We pass walletId so monobank tokenizes their card.
- *   2. monobank POSTs to our webHookUrl on status change (signed with X-Sign).
- *   3. For renewals we charge the saved card with chargeWallet() (no UI needed).
+ * Three ways to take money, tried in this order (BILLING.md → "How it works"):
+ *   1. createSubscription() — monobank's own subscription ("Регулярні
+ *      платежі"). The bank charges the card every period by itself and knocks
+ *      on our chargeUrl / statusUrl; we then ask it what happened.
+ *   2. createInvoice() with saveCardData — a one-off invoice, when the bank
+ *      refuses a subscription to this merchant. monobank POSTs to webHookUrl on
+ *      status change (signed with X-Sign) and may tokenize the card.
+ *   3. chargeWallet() — the daily cron charges a card saved by road 2.
+ *
+ * Two tokens. MONOBANK_TOKEN runs invoices, saved cards and the webhook key.
+ * MONOBANK_SUB_TOKEN runs subscriptions, when the bank issued a separate
+ * terminal for them; without it MONOBANK_TOKEN is used for those too.
+ * Subscriptions and tokenization are off for a new merchant until monobank's
+ * support turns them on.
  *
  * All amounts are in minor units (kopiykas). All money is UAH (ccy 980) because
  * monobank acquiring does not support charging foreign currencies directly.
@@ -17,25 +26,31 @@ import crypto from "node:crypto";
 
 const API_BASE = (process.env.MONOBANK_API_BASE ?? "https://api.monobank.ua").replace(/\/$/, "");
 const TOKEN = process.env.MONOBANK_TOKEN ?? "";
+const SUB_TOKEN = process.env.MONOBANK_SUB_TOKEN || TOKEN;
 
 export const isMonobankConfigured = !!TOKEN;
 
 export class MonobankError extends Error {
-  constructor(message: string, readonly status?: number) {
+  constructor(
+    message: string,
+    readonly status?: number,
+    /** monobank's `errCode`, e.g. "1001" or "BAD_REQUEST". */
+    readonly code?: string,
+  ) {
     super(message);
     this.name = "MonobankError";
   }
 }
 
-async function call<T>(path: string, init: RequestInit): Promise<T> {
-  if (!TOKEN) {
+async function call<T>(path: string, init: RequestInit, token: string = TOKEN): Promise<T> {
+  if (!token) {
     throw new MonobankError("MONOBANK_TOKEN is not configured.");
   }
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "X-Token": TOKEN,
+      "X-Token": token,
       ...(init.headers ?? {}),
     },
     cache: "no-store",
@@ -50,11 +65,9 @@ async function call<T>(path: string, init: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    const msg =
-      body && typeof body === "object" && "errText" in body
-        ? String((body as { errText: unknown }).errText)
-        : `monobank ${path} failed (${res.status})`;
-    throw new MonobankError(msg, res.status);
+    const err = body && typeof body === "object" ? (body as { errText?: unknown; errCode?: unknown }) : {};
+    const msg = err.errText != null ? String(err.errText) : `monobank ${path} failed (${res.status})`;
+    throw new MonobankError(msg, res.status, err.errCode != null ? String(err.errCode) : undefined);
   }
   return body as T;
 }
@@ -192,27 +205,162 @@ export async function chargeWallet(params: ChargeWalletParams): Promise<ChargeWa
   });
 }
 
+// ── Bank-side subscriptions ("Регулярні платежі") ──────────────────────────────
+
+export interface CreateSubscriptionParams {
+  /** Amount per period, in kopiykas. */
+  amount: number;
+  ccy?: number;
+  /** "{number}{unit}": "1d", "2w", "1m", "1y". */
+  interval: string;
+  /** Where monobank returns the customer after paying (GET). */
+  redirectUrl: string;
+  /** monobank POSTs here after every charge. The body is not documented. */
+  chargeUrl: string;
+  /** monobank POSTs here when the subscription's state changes. */
+  statusUrl: string;
+  /** Seconds the payment page stays open. Defaults to monobank's 24h. */
+  validitySeconds?: number;
+}
+
+export interface CreateSubscriptionResult {
+  subscriptionId: string;
+  pageUrl: string;
+}
+
+/**
+ * Create a subscription the bank charges by itself every `interval`. There is
+ * no `reference` field: the caller tells its subscribers apart by a secret in
+ * chargeUrl / statusUrl.
+ */
+export async function createSubscription(params: CreateSubscriptionParams): Promise<CreateSubscriptionResult> {
+  const body: Record<string, unknown> = {
+    amount: params.amount,
+    ccy: params.ccy ?? 980,
+    interval: params.interval,
+    redirectUrl: params.redirectUrl,
+    webHookUrls: { chargeUrl: params.chargeUrl, statusUrl: params.statusUrl },
+  };
+  if (params.validitySeconds) body.validity = params.validitySeconds;
+  return call<CreateSubscriptionResult>(
+    "/api/merchant/subscription/create",
+    { method: "POST", body: JSON.stringify(body) },
+    SUB_TOKEN,
+  );
+}
+
+/**
+ * The bank would not open a subscription to this merchant: subscriptions (or
+ * host-to-host payments) are not switched on for it. The caller falls back to
+ * a one-off invoice. Any other failure is a real error, not a refusal.
+ */
+export function isSubscriptionRefused(err: unknown): boolean {
+  if (!(err instanceof MonobankError)) return false;
+  return err.code === "1001" || /h2h/i.test(err.message);
+}
+
+export interface SubscriptionStatusResult {
+  subscriptionId: string;
+  /** monobank documents two states. A subscription it cancelled after a failed charge reads "cancelled" too. */
+  status: "active" | "cancelled" | string;
+  amount: number;
+  ccy: number;
+  interval: string;
+  startDate?: string;
+  endDate?: string;
+  nextChargeDate?: string;
+  /** Why it was cancelled, when it was. */
+  cancellationDesc?: string;
+}
+
+export async function getSubscriptionStatus(subscriptionId: string): Promise<SubscriptionStatusResult> {
+  return call<SubscriptionStatusResult>(
+    `/api/merchant/subscription/status?subscriptionId=${encodeURIComponent(subscriptionId)}`,
+    { method: "GET" },
+    SUB_TOKEN,
+  );
+}
+
+export interface SubscriptionPayment {
+  amount: number;
+  ccy: number;
+  /** "success" is the only state documented with an example. */
+  status: string;
+  /** When the bank charged. A charge has no id of its own — this is its identity. */
+  chargedAt: string;
+}
+
+/** Every charge of a subscription since `dateFrom`, all pages. */
+export async function listSubscriptionPayments(subscriptionId: string, dateFrom: Date): Promise<SubscriptionPayment[]> {
+  const out: SubscriptionPayment[] = [];
+  const PAGE_SIZE = 100;
+  // A monthly subscription has a handful of charges; the cap only stops a
+  // misbehaving pagination from looping.
+  for (let page = 1; page <= 20; page++) {
+    const qs = new URLSearchParams({
+      subscriptionId,
+      dateFrom: dateFrom.toISOString(),
+      limit: String(PAGE_SIZE),
+      page: String(page),
+    });
+    const res = await call<{ payments?: SubscriptionPayment[]; pagination?: { totalPages?: number } }>(
+      `/api/merchant/subscription/payments?${qs}`,
+      { method: "GET" },
+      SUB_TOKEN,
+    );
+    out.push(...(res.payments ?? []));
+    const totalPages = res.pagination?.totalPages ?? 1;
+    if (page >= totalPages || (res.payments ?? []).length === 0) break;
+  }
+  return out;
+}
+
+/**
+ * Stop future charges. Deliberately never sends `refundAmount`: with it, the
+ * same call also refunds money, and cancelling must not do that.
+ */
+export async function cancelSubscription(subscriptionId: string): Promise<void> {
+  await call<unknown>(
+    "/api/merchant/subscription/edit",
+    { method: "POST", body: JSON.stringify({ subscriptionId, action: "cancel" }) },
+    SUB_TOKEN,
+  );
+}
+
+/** Invalidate a subscription — for one the customer never paid, or one we failed to record. */
+export async function removeSubscription(subscriptionId: string): Promise<void> {
+  await call<unknown>(
+    "/api/merchant/subscription/remove",
+    { method: "POST", body: JSON.stringify({ subscriptionId }) },
+    SUB_TOKEN,
+  );
+}
+
 // ── Health probe ─────────────────────────────────────────────────────────────
 
 /**
  * Whether monobank accepts the token, and how fast it answers: the cheapest
  * authenticated request there is, the merchant's public key (GS1-1, the
  * dashboard's service row). A present token is not a working one — a revoked
- * key still reads as "configured".
+ * key still reads as "configured". With a separate subscription token, both
+ * are asked: either one revoked stops payments.
  */
 export async function pingMonobank(
   timeoutMs: number,
 ): Promise<{ ok: true; ms: number } | { ok: false; status?: number; message: string }> {
   if (!TOKEN) return { ok: false, message: "MONOBANK_TOKEN is not configured." };
   const started = Date.now();
+  const tokens = SUB_TOKEN === TOKEN ? [["MONOBANK_TOKEN", TOKEN]] : [["MONOBANK_TOKEN", TOKEN], ["MONOBANK_SUB_TOKEN", SUB_TOKEN]];
   try {
-    const res = await fetch(`${API_BASE}/api/merchant/pubkey`, {
-      headers: { "X-Token": TOKEN },
-      cache: "no-store",
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (res.ok) return { ok: true, ms: Date.now() - started };
-    return { ok: false, status: res.status, message: `monobank answered ${res.status}` };
+    for (const [name, token] of tokens) {
+      const res = await fetch(`${API_BASE}/api/merchant/pubkey`, {
+        headers: { "X-Token": token },
+        cache: "no-store",
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) return { ok: false, status: res.status, message: `monobank answered ${res.status} to ${name}` };
+    }
+    return { ok: true, ms: Date.now() - started };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "monobank did not answer" };
   }

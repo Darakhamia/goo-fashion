@@ -3,6 +3,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin, isSuperAdminId } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { cancelAutoRenew, getSubscription, logBillingEvent, type SubscriptionRow } from "@/lib/server/subscriptions";
+import { stopBankSubscriptions } from "@/lib/server/mono-subscriptions";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { isMissingTable } from "@/lib/server/db-errors";
 import { envAdminIds } from "../user-list";
@@ -279,11 +280,12 @@ export async function DELETE(
       targetEmail = target.emailAddresses[0]?.emailAddress;
     } catch { /* non-critical */ }
 
-    // The renewal cron charges off the subscriptions row, not the Clerk
-    // account, so deleting the account alone would keep billing the saved card.
-    // Turn auto-renew off first; if that fails, do not delete. A database whose
-    // subscriptions migration never ran has nothing to charge, so a missing
-    // table reads as "no subscription" rather than blocking the delete.
+    // The renewal cron charges off the subscriptions row and monobank charges
+    // its own subscriptions, neither off the Clerk account, so deleting the
+    // account alone would keep billing the card. Stop both first; if that
+    // fails, do not delete. A database whose subscriptions migration never ran
+    // has nothing to charge, so a missing table reads as "no subscription"
+    // rather than blocking the delete.
     let autoRenewDisabled = false;
     let subscriptionPlan: string | null = null;
     if (isSupabaseConfigured && supabase) {
@@ -294,10 +296,13 @@ export async function DELETE(
           .eq("user_id", id)
           .maybeSingle<Pick<SubscriptionRow, "plan" | "auto_renew">>();
         if (subError && !isMissingTable(subError)) throw new Error(subError.message);
+        // Read before this: cancelling at the bank also turns auto_renew off.
+        const bankStopped = await stopBankSubscriptions(id);
+        if (bankStopped > 0) autoRenewDisabled = true;
         if (sub) {
           await cancelAutoRenew(id);
           subscriptionPlan = sub.plan;
-          if (sub.auto_renew) {
+          if (sub.auto_renew || bankStopped > 0) {
             autoRenewDisabled = true;
             await logBillingEvent({
               userId: id,

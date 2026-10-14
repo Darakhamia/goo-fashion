@@ -115,6 +115,13 @@ const OTHER_CHECKS: readonly Check[] = [
     migration: "025_catalogue_check.sql",
     breaks: "The AI check's spend is not recorded, and its monthly cap cannot be enforced.",
   },
+  {
+    table: "mono_subscriptions",
+    column: "hook_hash",
+    migration: "028_monobank_subscriptions.sql",
+    breaks:
+      "Checkout cannot open a monobank subscription and falls back to one-off invoices, which renew only if the bank saved the card.",
+  },
 ];
 
 /**

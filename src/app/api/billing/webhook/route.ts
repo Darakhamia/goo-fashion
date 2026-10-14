@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
+import { verifyWebhookSignature, type WebhookPayload } from "@/lib/server/monobank";
+import { applyInvoicePaid } from "@/lib/server/invoice-payments";
 import {
-  listWalletCards,
-  verifyWebhookSignature,
-  type WebhookPayload,
-} from "@/lib/server/monobank";
-import {
-  activateSubscription,
   getSubscription,
   logBillingEvent,
   parseReference,
@@ -14,7 +10,9 @@ import {
 import { sendBillingAlert } from "@/lib/server/billing-alerts";
 
 /**
- * monobank acquiring webhook.
+ * monobank acquiring webhook — for invoices (road 2) and saved-card renewal
+ * charges (road 3). Bank-side subscriptions knock on their own URL instead:
+ * api/billing/subscription/[secret]/[event].
  *
  * monobank POSTs here whenever an invoice changes status, signing the raw body
  * with ECDSA (X-Sign header). We verify the signature, then act on terminal
@@ -54,64 +52,10 @@ export async function POST(req: Request) {
 
   try {
     if (payload.status === "success") {
-      // Idempotency: ignore duplicate success callbacks for the same invoice.
-      const existing = await getSubscription(userId);
-      if (
-        existing &&
-        existing.status === "active" &&
-        existing.last_invoice_id === payload.invoiceId
-      ) {
-        return NextResponse.json({ ok: true, duplicate: true });
-      }
-
-      // Grab the freshly tokenized card so we can auto-renew next month.
-      // Failing to get one is non-fatal — the customer has paid and must get
-      // their plan — but it must not pass silently: getDueSubscriptions() skips
-      // rows without a token, so this subscription would stay active and never
-      // be charged again. The daily cron retries the lookup; this records why
-      // it needs to.
-      let cardToken: string | null = null;
-      let maskedPan: string | null = null;
-      let tokenProblem: string | null = null;
-      try {
-        const cards = await listWalletCards(userId);
-        cardToken = cards[0]?.cardToken ?? null;
-        maskedPan = cards[0]?.maskedPan ?? null;
-        if (!cardToken) tokenProblem = "monobank returned no saved card for this wallet";
-      } catch (err) {
-        tokenProblem = err instanceof Error ? err.message : "wallet lookup failed";
-      }
-
-      // If the user was already active, this webhook reflects a renewal that
-      // the cron sweep didn't resolve synchronously; otherwise it's the first payment.
-      const kind = existing && existing.status === "active" ? "renewal" : "initial";
-
-      if (tokenProblem) {
-        // Recorded before activation on purpose. If activation fails later,
-        // monobank retries — and by then the duplicate check above may short
-        // circuit, so a warning logged after activation would be lost exactly
-        // in the case that needs it most.
-        console.warn(`[billing] no card token for ${userId} on invoice ${payload.invoiceId}: ${tokenProblem}`);
-        await logBillingEvent({
-          userId,
-          eventType: "card_token_missing",
-          kind,
-          plan,
-          invoiceId: payload.invoiceId,
-          status: "warning",
-          detail: tokenProblem,
-        });
-      }
-
-      await activateSubscription({
-        userId,
-        plan,
-        invoiceId: payload.invoiceId,
-        cardToken,
-        maskedPan,
-        kind,
-      });
-      return NextResponse.json({ ok: true, cardToken: !!cardToken });
+      const applied = await applyInvoicePaid({ userId, plan, invoiceId: payload.invoiceId });
+      return applied.duplicate
+        ? NextResponse.json({ ok: true, duplicate: true })
+        : NextResponse.json({ ok: true, cardToken: applied.cardToken });
     }
 
     if (

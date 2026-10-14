@@ -111,7 +111,11 @@ function SubscribeInner() {
     if (!isReturn || !isLoaded || !user || pollStarted.current) return;
     pollStarted.current = true;
     const unlocked = () => (user.publicMetadata as { plan?: string })?.plan === planId;
+    // Ask the server to check with monobank now: its notification can be late
+    // or lost. The server limits how often it really asks the bank.
+    const syncWithBank = () => fetch("/api/billing/sync", { method: "POST" }).catch(() => null);
     const runReturnFlow = async () => {
+      await syncWithBank();
       // Refresh once up front; this keeps every setState below off the synchronous
       // effect path and reflects a webhook that may have already landed.
       await user.reload();
@@ -122,8 +126,9 @@ function SubscribeInner() {
       }
       setVerifying(true);
       const deadline = Date.now() + 45_000; // ~45s
-      while (Date.now() < deadline) {
+      for (let tick = 1; Date.now() < deadline; tick++) {
         await new Promise((r) => setTimeout(r, 2500));
+        if (tick % 6 === 0) await syncWithBank();
         await user.reload();
         if (unlocked()) {
           setVerifying(false);

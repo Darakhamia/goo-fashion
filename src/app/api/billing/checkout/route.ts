@@ -9,15 +9,18 @@ import {
 } from "@/lib/plans";
 import { SITE_URL } from "@/lib/seo";
 import { createInvoice, isMonobankConfigured, MonobankError } from "@/lib/server/monobank";
-import { buildReference, logBillingEvent, upsertPendingSubscription } from "@/lib/server/subscriptions";
+import { startBankSubscription } from "@/lib/server/mono-subscriptions";
+import { buildReference, getSubscription, logBillingEvent, upsertPendingSubscription } from "@/lib/server/subscriptions";
 
 /**
  * Start a real monobank checkout for the requested plan.
  *
- * Creates a monobank invoice (tokenizing the card via walletId so we can
- * auto-renew monthly), stores a pending subscription, and returns the hosted
- * `pageUrl` for the client to redirect to. The plan is only unlocked once
- * monobank confirms payment via the webhook.
+ * Every click first asks monobank for a subscription the bank charges by
+ * itself each month. Only if the bank refuses one to this merchant (or
+ * migration 028 is missing) does it fall back to a one-off invoice that
+ * tokenizes the card for the renewal cron, as before. Either way the client
+ * gets a hosted `pageUrl` to redirect to, and the plan is only unlocked once
+ * monobank reports the payment (BILLING.md → "How it works").
  */
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -44,6 +47,25 @@ export async function POST(req: Request) {
   const amount = planPriceMinor(plan);
 
   try {
+    // Paying again for the plan that is already running would only stack a
+    // second monthly charge on the first.
+    const current = await getSubscription(userId).catch(() => null);
+    if (
+      current?.status === "active" &&
+      current.plan === plan &&
+      current.auto_renew &&
+      current.current_period_end &&
+      new Date(current.current_period_end) > new Date()
+    ) {
+      return NextResponse.json({ error: "You are already subscribed to this plan." }, { status: 409 });
+    }
+
+    const bank = await startBankSubscription({ userId, plan, amount });
+    if (bank.kind === "started") {
+      return NextResponse.json({ pageUrl: bank.pageUrl, subscriptionId: bank.subscriptionId });
+    }
+    console.warn(`[billing] monobank subscription unavailable (${bank.kind}: ${bank.reason}); falling back to an invoice`);
+
     const invoice = await createInvoice({
       amount,
       ccy: BILLING_CCY,

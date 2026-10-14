@@ -45,6 +45,7 @@ export const subscriptionsEn = {
   "subs.status.pending": "Pending",
   "subs.card.saved": "Saved",
   "subs.card.none": "No card",
+  "subs.card.bank": "monobank subscription",
   "subs.next.overdue": "Overdue since {date}",
   "subs.next.overdueHint": "The paid period ended and the renewal has not gone through",
   "subs.next.renews": "Renews {date}",
