@@ -14,7 +14,7 @@ const DICT = defineDict({
     details: "Operator details",
     operator: "Operator",
     taxId: "Tax ID (RNOKPP)",
-    address: "Registered address",
+    city: "City",
     bank: "Bank",
     website: "Website",
     terms: "Terms & Conditions",
@@ -31,7 +31,7 @@ const DICT = defineDict({
     details: "Реквізити",
     operator: "Виконавець",
     taxId: "РНОКПП",
-    address: "Адреса реєстрації",
+    city: "Місто",
     bank: "Банк",
     website: "Вебсайт",
     terms: "Умови використання",
@@ -98,7 +98,10 @@ export default function ContactsContent() {
           <dl className="border-b border-[var(--border)]">
             <Row label={t.operator}>{t.op.name}</Row>
             <Row label={t.taxId}>{OPERATOR_TAX_ID}</Row>
-            <Row label={t.address}>{t.op.address}</Row>
+            <Row label={t.city}>
+              {t.op.city}
+              <span className="block text-[var(--foreground-muted)]">{t.op.addressNote}</span>
+            </Row>
             <Row label="IBAN">{OPERATOR_IBAN}</Row>
             <Row label={t.bank}>{t.op.bank}</Row>
             <Row label={t.website}>goo-fashion.com</Row>

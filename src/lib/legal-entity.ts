@@ -13,7 +13,10 @@ export const OPERATOR_IBAN = "UA793220010000026008350074987";
 
 interface OperatorDetails {
   name: string;
-  address: string;
+  /** City only: the street address stays off the site (CEO, 2026-10-14). */
+  city: string;
+  /** The line that says the full registered address is given on request. */
+  addressNote: string;
   /** "Tax ID (RNOKPP): …" — the label and the number, for running text. */
   taxId: string;
   bank: string;
@@ -22,13 +25,15 @@ interface OperatorDetails {
 export const OPERATOR: Record<"en" | "uk", OperatorDetails> = {
   en: {
     name: "David Arakhamia, Sole Trader",
-    address: "62 Vadyma Blahovisnoho St, Mykolaiv, Ukraine",
+    city: "Mykolaiv, Ukraine",
+    addressNote: "Registered address available on request.",
     taxId: `Tax ID (RNOKPP): ${OPERATOR_TAX_ID}`,
     bank: "JSC UNIVERSAL BANK, bank code (MFO) 322001",
   },
   uk: {
     name: "ФОП Арахамія Давід Давидович",
-    address: "м. Миколаїв, вул. Вадима Благовісного, 62",
+    city: "м. Миколаїв, Україна",
+    addressNote: "Адреса реєстрації — на запит.",
     taxId: `РНОКПП: ${OPERATOR_TAX_ID}`,
     bank: "АТ «УНІВЕРСАЛ БАНК», МФО 322001",
   },
