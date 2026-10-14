@@ -3,102 +3,159 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { planPriceLabel, PLAN_PRICE_UAH, type PlanId } from "@/lib/plans";
+import { planPriceLabel, PLAN_PRICE_UAH } from "@/lib/plans";
+import { defineDict } from "@/lib/i18n/locale";
+import { useDict } from "@/lib/context/locale-context";
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
 
 const PLANS = [
-  {
-    id: "basic",
-    name: "Basic",
-    price: 10,
-    cta: "Start Basic",
-    highlighted: false,
-    badge: null as string | null,
-    images: "50",
-    messages: "~300",
-    features: [
-      "50 image generations / mo",
-      "~300 AI messages / mo",
-      "Outfit builder",
-      "Basic AI stylist",
-      "Standard speed",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 25,
-    cta: "Choose Pro",
-    highlighted: true,
-    badge: "Most popular" as string | null,
-    images: "180",
-    messages: "~1,000",
-    features: [
-      "180 image generations / mo",
-      "~1,000 AI messages / mo",
-      "Priority generation",
-      "Better AI stylist",
-      "Save outfits",
-      "Higher image quality",
-    ],
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    price: 45,
-    cta: "Go Premium",
-    highlighted: false,
-    badge: null as string | null,
-    images: "450",
-    messages: "~3,000",
-    features: [
-      "450 image generations / mo",
-      "~3,000 AI messages / mo",
-      "Very fast generation",
-      "Near-unlimited AI usage",
-      "Stylist memory",
-      "Exclusive styles",
-    ],
-  },
-];
+  { id: "basic", name: "Basic", price: 10, highlighted: false },
+  { id: "pro", name: "Pro", price: 25, highlighted: true },
+  { id: "premium", name: "Premium", price: 45, highlighted: false },
+] as const;
+type PaidPlan = (typeof PLANS)[number]["id"];
+type PlanPrice = { id: PaidPlan; name: string; usd: number };
 
-// ── Comparison rows ───────────────────────────────────────────────────────────
+// ── Copy (EN default, UA by the visitor's choice) ─────────────────────────────
 
 type Cell = string | boolean;
+type ComparisonRow = { key: string; label: string; basic: Cell; pro: Cell; premium: Cell };
 
-const COMPARISON: { label: string; basic: Cell; pro: Cell; premium: Cell }[] = [
-  { label: "Price",               basic: `$10 (${PLAN_PRICE_UAH.basic} ₴)`, pro: `$25 (${PLAN_PRICE_UAH.pro} ₴)`, premium: `$45 (${PLAN_PRICE_UAH.premium} ₴)` },
-  { label: "Image generations",   basic: "50",          pro: "180",        premium: "450"        },
-  { label: "AI messages",         basic: "~300",        pro: "~1,000",     premium: "~3,000"     },
-  { label: "Generation speed",    basic: "Standard",    pro: "Priority",   premium: "Very fast"  },
-  { label: "Image quality",       basic: "Standard",    pro: "High",       premium: "High"       },
-  { label: "Outfit builder",      basic: true,          pro: true,         premium: true         },
-  { label: "Save outfits",        basic: false,         pro: true,         premium: true         },
-  { label: "Stylist memory",      basic: false,         pro: false,        premium: true         },
-  { label: "Exclusive styles",    basic: false,         pro: false,        premium: true         },
-];
-
-// ── FAQ ───────────────────────────────────────────────────────────────────────
-
-const FAQ_ITEMS = [
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes — no contracts, no cancellation fees. Cancel in one click from your account settings. You keep access until the end of the current billing period.",
+const DICT = defineDict({
+  en: {
+    pricing: "Pricing",
+    title: "Choose your plan",
+    subtitle: "All plans include the full GOO catalog, the outfit builder, and the AI stylist.",
+    // The headline price, its unit, and the line under it.
+    bigPrice: (p: PlanPrice) => `$${p.usd}`,
+    unit: "/ mo",
+    subPrice: (p: PlanPrice) => `charged as ${planPriceLabel(p.id)} / mo`,
+    plans: {
+      basic: {
+        cta: "Start Basic",
+        badge: null as string | null,
+        features: ["50 image generations / mo", "~300 AI messages / mo", "Outfit builder", "Basic AI stylist", "Standard speed"],
+      },
+      pro: {
+        cta: "Choose Pro",
+        badge: "Most popular" as string | null,
+        features: ["180 image generations / mo", "~1,000 AI messages / mo", "Priority generation", "Better AI stylist", "Save outfits", "Higher image quality"],
+      },
+      premium: {
+        cta: "Go Premium",
+        badge: null as string | null,
+        features: ["450 image generations / mo", "~3,000 AI messages / mo", "Very fast generation", "Near-unlimited AI usage", "Stylist memory", "Exclusive styles"],
+      },
+    },
+    compare: "Compare",
+    included: "What’s included",
+    yes: "Included",
+    no: "Not included",
+    comparison: [
+      { key: "price",    label: "Price",             basic: `$10 (${PLAN_PRICE_UAH.basic} ₴)`, pro: `$25 (${PLAN_PRICE_UAH.pro} ₴)`, premium: `$45 (${PLAN_PRICE_UAH.premium} ₴)` },
+      { key: "images",   label: "Image generations", basic: "50",       pro: "180",      premium: "450" },
+      { key: "messages", label: "AI messages",       basic: "~300",     pro: "~1,000",   premium: "~3,000" },
+      { key: "speed",    label: "Generation speed",  basic: "Standard", pro: "Priority", premium: "Very fast" },
+      { key: "quality",  label: "Image quality",     basic: "Standard", pro: "High",     premium: "High" },
+      { key: "builder",  label: "Outfit builder",    basic: true,       pro: true,       premium: true },
+      { key: "save",     label: "Save outfits",      basic: false,      pro: true,       premium: true },
+      { key: "memory",   label: "Stylist memory",    basic: false,      pro: false,      premium: true },
+      { key: "styles",   label: "Exclusive styles",  basic: false,      pro: false,      premium: true },
+    ] as ComparisonRow[],
+    pricesLine: (parts: string[]) => `Prices: ${parts.join(", ")} a month.`,
+    pricePart: (p: PlanPrice) => `${p.name} $${p.usd} (${planPriceLabel(p.id)})`,
+    questions: "Questions",
+    goodToKnow: "Good to know",
+    faq: [
+      {
+        q: "Can I cancel anytime?",
+        a: "Yes — no contracts, no cancellation fees. Cancel in one click from your account settings. You keep access until the end of the current billing period.",
+      },
+      {
+        q: "What happens if I run out of images?",
+        a: "Image generation pauses until your next billing cycle. You can still use the AI stylist for advice and browse the full catalog. Upgrading instantly unlocks more.",
+      },
+      {
+        q: "Is there a free plan?",
+        a: `Not at the moment. Plans start at $10 (${PLAN_PRICE_UAH.basic} ₴)/month. We're keeping things simple during early access — a free tier may come later.`,
+      },
+      {
+        q: "Do unused credits roll over?",
+        a: "No — generations and AI messages reset each month. This keeps performance consistent for everyone on the platform.",
+      },
+    ],
+    notSure: "Not sure which plan?",
+    notSureText: "Start with Basic and upgrade anytime — no friction.",
+    startBasic: "Start Basic →",
   },
-  {
-    q: "What happens if I run out of images?",
-    a: "Image generation pauses until your next billing cycle. You can still use the AI stylist for advice and browse the full catalog. Upgrading instantly unlocks more.",
+  uk: {
+    pricing: "Тарифи",
+    title: "Оберіть тариф",
+    subtitle: "Усі тарифи включають повний каталог GOO, конструктор образів і AI-стиліста.",
+    // Charged in hryvnia, so hryvnia leads; dollars stay as a reference.
+    bigPrice: (p: PlanPrice) => String(PLAN_PRICE_UAH[p.id]),
+    unit: "₴ / міс",
+    subPrice: (p: PlanPrice) => `≈ $${p.usd} / міс`,
+    plans: {
+      basic: {
+        cta: "Почати з Basic",
+        badge: null as string | null,
+        features: ["50 генерацій зображень / міс", "~300 повідомлень AI / міс", "Конструктор образів", "Базовий AI-стиліст", "Стандартна швидкість"],
+      },
+      pro: {
+        cta: "Обрати Pro",
+        badge: "Найпопулярніший" as string | null,
+        features: ["180 генерацій зображень / міс", "~1 000 повідомлень AI / міс", "Пріоритетна генерація", "Кращий AI-стиліст", "Збереження образів", "Вища якість зображень"],
+      },
+      premium: {
+        cta: "Перейти на Premium",
+        badge: null as string | null,
+        features: ["450 генерацій зображень / міс", "~3 000 повідомлень AI / міс", "Дуже швидка генерація", "Майже безлімітний AI", "Пам’ять стиліста", "Ексклюзивні стилі"],
+      },
+    },
+    compare: "Порівняння",
+    included: "Що входить",
+    yes: "Входить",
+    no: "Не входить",
+    comparison: [
+      { key: "price",    label: "Ціна",                basic: `${planPriceLabel("basic")} (≈ $10)`, pro: `${planPriceLabel("pro")} (≈ $25)`, premium: `${planPriceLabel("premium")} (≈ $45)` },
+      { key: "images",   label: "Генерації зображень", basic: "50",          pro: "180",          premium: "450" },
+      { key: "messages", label: "Повідомлення AI",     basic: "~300",        pro: "~1 000",       premium: "~3 000" },
+      { key: "speed",    label: "Швидкість генерації", basic: "Стандартна",  pro: "Пріоритетна",  premium: "Дуже швидка" },
+      { key: "quality",  label: "Якість зображень",    basic: "Стандартна",  pro: "Висока",       premium: "Висока" },
+      { key: "builder",  label: "Конструктор образів", basic: true,          pro: true,           premium: true },
+      { key: "save",     label: "Збереження образів",  basic: false,         pro: true,           premium: true },
+      { key: "memory",   label: "Пам’ять стиліста",   basic: false,         pro: false,          premium: true },
+      { key: "styles",   label: "Ексклюзивні стилі",   basic: false,         pro: false,          premium: true },
+    ] as ComparisonRow[],
+    pricesLine: (parts: string[]) => `Ціни: ${parts.join(", ")} на місяць.`,
+    pricePart: (p: PlanPrice) => `${p.name} ${planPriceLabel(p.id)}`,
+    questions: "Питання",
+    goodToKnow: "Варто знати",
+    faq: [
+      {
+        q: "Чи можна скасувати будь-коли?",
+        a: "Так — без контрактів і плати за скасування. Скасувати можна в один клік у налаштуваннях акаунта. Доступ зберігається до кінця поточного оплаченого періоду.",
+      },
+      {
+        q: "Що буде, коли закінчаться генерації зображень?",
+        a: "Генерація зображень призупиняється до наступного розрахункового періоду. AI-стиліст і весь каталог залишаються доступними. Перехід на вищий тариф одразу відкриває більше генерацій.",
+      },
+      {
+        q: "Чи є безкоштовний тариф?",
+        a: `Поки що ні. Тарифи — від ${planPriceLabel("basic")} на місяць. Поки триває ранній доступ, ми тримаємо все простим — безкоштовний тариф може з’явитися згодом.`,
+      },
+      {
+        q: "Чи переносяться невикористані ліміти?",
+        a: "Ні — генерації та повідомлення AI оновлюються щомісяця. Так платформа працює однаково швидко для всіх.",
+      },
+    ],
+    notSure: "Не знаєте, який тариф обрати?",
+    notSureText: "Почніть з Basic і переходьте на вищий будь-коли — без зайвих кроків.",
+    startBasic: "Почати з Basic →",
   },
-  {
-    q: "Is there a free plan?",
-    a: `Not at the moment. Plans start at $10 (${PLAN_PRICE_UAH.basic} ₴)/month. We're keeping things simple during early access — a free tier may come later.`,
-  },
-  {
-    q: "Do unused credits roll over?",
-    a: "No — generations and AI messages reset each month. This keeps performance consistent for everyone on the platform.",
-  },
-];
+});
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -157,7 +214,8 @@ const DEFAULT_HIGHLIGHT = PLANS.find((p) => p.highlighted)?.id ?? "pro";
 
 function PlansContent({ highlightId }: { highlightId: string }) {
   const router = useRouter();
-  const plans = PLANS.map((p) => ({ ...p, highlighted: p.id === highlightId }));
+  const t = useDict(DICT);
+  const plans = PLANS.map((p) => ({ ...p, ...t.plans[p.id], highlighted: p.id === highlightId }));
 
   function handleSelectPlan(planId: string) {
     router.push(`/subscribe?plan=${planId}`);
@@ -170,14 +228,14 @@ function PlansContent({ highlightId }: { highlightId: string }) {
         {/* ── Header ── Phones: a calm left-aligned title (DESIGN_SYSTEM.md §12.1). */}
         <div className="px-1 pt-5 mb-5 md:px-0 md:pt-24 md:mb-16 md:text-center animate-fade-up">
           <p className="hidden md:block font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-4">
-            Pricing
+            {t.pricing}
           </p>
           {/* Desktop keeps the -0.022em the size rule gave text-5xl (§12.13, tracking trap). */}
           <h1 className="text-[28px] leading-[1.15] font-semibold tracking-[-0.02em] md:text-6xl md:leading-[1.05] md:font-black md:uppercase md:tracking-[-0.022em] text-[var(--foreground)] mb-2 md:mb-5">
-            Choose your plan
+            {t.title}
           </h1>
           <p className="text-[15px] leading-[1.45] md:text-sm md:leading-relaxed text-[var(--foreground-muted)] max-w-sm md:mx-auto">
-            All plans include the full GOO catalog, the outfit builder, and the AI stylist.
+            {t.subtitle}
           </p>
         </div>
 
@@ -227,18 +285,18 @@ function PlansContent({ highlightId }: { highlightId: string }) {
                   <span className={`text-[38px] font-bold tracking-[-0.03em] md:text-6xl md:font-black md:tracking-[-0.022em] leading-none ${
                     plan.highlighted ? "text-[var(--foreground)] md:text-[var(--background)]" : "text-[var(--foreground)]"
                   }`}>
-                    ${plan.price}
+                    {t.bigPrice({ id: plan.id, name: plan.name, usd: plan.price })}
                   </span>
                   <span className={`text-[15px] md:text-sm md:mb-1 ${
                     plan.highlighted ? "text-[var(--foreground-muted)] md:text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"
                   }`}>
-                    / mo
+                    {t.unit}
                   </span>
                 </div>
                 <p className={`text-[13px] mt-1 md:text-xs md:mt-2 ${
                   plan.highlighted ? "text-[var(--foreground-muted)] md:text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"
                 }`}>
-                  charged as {planPriceLabel(plan.id as PlanId)} / mo
+                  {t.subPrice({ id: plan.id, name: plan.name, usd: plan.price })}
                 </p>
               </div>
 
@@ -278,11 +336,11 @@ function PlansContent({ highlightId }: { highlightId: string }) {
         <div className="mb-9 md:mb-24">
           <div className="px-1 mb-3 md:px-0 md:text-center md:mb-10">
             <p className="hidden md:block font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-3">
-              Compare
+              {t.compare}
             </p>
             {/* Desktop keeps the -0.015em the size rule gave text-3xl (§12.13). */}
             <h2 className="text-[20px] font-semibold tracking-[-0.01em] md:text-4xl md:font-bold md:uppercase md:tracking-[-0.015em] text-[var(--foreground)]">
-              What&apos;s included
+              {t.included}
             </h2>
           </div>
 
@@ -295,15 +353,15 @@ function PlansContent({ highlightId }: { highlightId: string }) {
                 <span key={plan.id} className={`text-center ${plan.highlighted ? "text-[var(--foreground)] font-semibold" : ""}`}>{plan.name}</span>
               ))}
             </div>
-            {COMPARISON.filter((row) => row.label !== "Price").map((row) => (
-              <div key={row.label} className="min-h-11 py-1.5 grid grid-cols-[1.6fr_1fr_1fr_1fr] items-center gap-x-1 px-3 shadow-[inset_0_1px_0_var(--border)] text-[13px]">
+            {t.comparison.filter((row) => row.key !== "price").map((row) => (
+              <div key={row.key} className="min-h-11 py-1.5 grid grid-cols-[1.6fr_1fr_1fr_1fr] items-center gap-x-1 px-3 shadow-[inset_0_1px_0_var(--border)] text-[13px]">
                 <span className="text-[var(--foreground-muted)] leading-tight">{row.label}</span>
                 {(["basic", "pro", "premium"] as const).map((planId) => {
                   const val = row[planId];
                   return (
                     <span key={planId} className={`text-center leading-tight text-[var(--foreground)] ${planId === highlightId ? "font-semibold" : ""}`}>
                       {typeof val === "boolean" ? (
-                        val ? <span aria-label="Included">✓</span> : <span aria-label="Not included" className="text-[var(--foreground-muted)]">—</span>
+                        val ? <span aria-label={t.yes}>✓</span> : <span aria-label={t.no} className="text-[var(--foreground-muted)]">—</span>
                       ) : val}
                     </span>
                   );
@@ -312,7 +370,7 @@ function PlansContent({ highlightId }: { highlightId: string }) {
             ))}
           </div>
           <p className="md:hidden mt-2 px-1 text-[12px] leading-relaxed text-[var(--foreground-muted)]">
-            Prices: {plans.map((plan) => `${plan.name} $${plan.price} (${planPriceLabel(plan.id as PlanId)})`).join(", ")} a month.
+            {t.pricesLine(plans.map((plan) => t.pricePart({ id: plan.id, name: plan.name, usd: plan.price })))}
           </p>
 
           {/* Scrollable on mobile */}
@@ -337,10 +395,10 @@ function PlansContent({ highlightId }: { highlightId: string }) {
               </div>
 
               {/* Rows */}
-              {COMPARISON.map((row, idx) => (
+              {t.comparison.map((row, idx) => (
                 <div
-                  key={row.label}
-                  className={`grid ${idx < COMPARISON.length - 1 ? "border-b border-[var(--border)]" : ""}`}
+                  key={row.key}
+                  className={`grid ${idx < t.comparison.length - 1 ? "border-b border-[var(--border)]" : ""}`}
                   style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}
                 >
                   {/* Label */}
@@ -382,16 +440,16 @@ function PlansContent({ highlightId }: { highlightId: string }) {
         <div className="mb-7 md:mb-24 max-w-2xl mx-auto">
           <div className="px-1 mb-3 md:px-0 md:text-center md:mb-10">
             <p className="hidden md:block font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-3">
-              Questions
+              {t.questions}
             </p>
             <h2 className="text-[20px] font-semibold tracking-[-0.01em] md:text-4xl md:font-bold md:uppercase md:tracking-[-0.015em] text-[var(--foreground)]">
-              Good to know
+              {t.goodToKnow}
             </h2>
           </div>
 
           {/* Phones: an accordion of rows on one plaque (§12.11). */}
           <div className="rounded-2xl bg-[var(--surface)] md:bg-transparent md:border md:border-[var(--border)] overflow-hidden divide-y divide-[var(--border)]">
-            {FAQ_ITEMS.map((item) => (
+            {t.faq.map((item) => (
               <div key={item.q} className="px-4 md:px-6">
                 <FaqItem q={item.q} a={item.a} />
               </div>
@@ -403,16 +461,16 @@ function PlansContent({ highlightId }: { highlightId: string }) {
         {/* Phones: a closing plaque (mockup v2 «Б · Тарифы»). */}
         <div className="mb-8 md:mb-20 text-center rounded-[20px] bg-[var(--surface)] px-[18px] py-[22px] md:rounded-none md:bg-transparent md:p-0">
           <p className="text-[18px] font-semibold mb-1.5 md:text-3xl md:font-bold md:mb-3 text-[var(--foreground)]">
-            Not sure which plan?
+            {t.notSure}
           </p>
           <p className="text-[14px] md:text-sm text-[var(--foreground-muted)] mb-4 md:mb-8">
-            Start with Basic and upgrade anytime — no friction.
+            {t.notSureText}
           </p>
           <button
             onClick={() => handleSelectPlan("basic")}
             className="h-[46px] px-[22px] rounded-full text-[15px] font-semibold md:h-auto md:px-8 md:py-4 md:rounded-xl md:font-mono md:text-[10px] md:tracking-[0.14em] md:uppercase md:font-medium text-[var(--background)] bg-[var(--foreground)] hover:opacity-80 transition-opacity duration-200 cursor-pointer"
           >
-            Start Basic →
+            {t.startBasic}
           </button>
         </div>
 
@@ -423,7 +481,7 @@ function PlansContent({ highlightId }: { highlightId: string }) {
 
 function PlansWithHighlight() {
   const highlight = useSearchParams().get("highlight");
-  const highlightId = PLANS.find((p) => p.id === highlight)?.id ?? DEFAULT_HIGHLIGHT;
+  const highlightId: string = PLANS.find((p) => p.id === highlight)?.id ?? DEFAULT_HIGHLIGHT;
   return <PlansContent highlightId={highlightId} />;
 }
 

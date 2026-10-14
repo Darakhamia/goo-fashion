@@ -6,6 +6,13 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
+import { defineDict } from "@/lib/i18n/locale";
+import { useDict } from "@/lib/context/locale-context";
+
+const LABELS = defineDict({
+  en: { "/browse": "Browse", "/builder": "Builder", "/blog": "Journal", "/saved": "My likes", "/profile": "Profile", main: "Main" },
+  uk: { "/browse": "Каталог", "/builder": "Конструктор", "/blog": "Журнал", "/saved": "Вподобане", "/profile": "Профіль", main: "Головне меню" },
+});
 
 const TABS = [
   { href: "/browse", label: "Browse", d: "M17.5 11a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0 M16 16l4 4" },
@@ -31,6 +38,7 @@ export const hasBuyBar = (pathname: string) =>
  */
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const labels = useDict(LABELS);
   const { unseenCount } = useLikes();
   // The Profile tab wears the account's photo (CEO, 2026-10-08). Only a real
   // one — uploaded or brought from Google: Clerk's generated initials image
@@ -45,10 +53,11 @@ export default function MobileBottomNav() {
   return (
     <div className="md:hidden fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6px)] z-40">
       <nav
-        aria-label="Main"
+        aria-label={labels.main}
         className="h-[50px] px-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-overlay-92)] backdrop-blur-md flex items-center justify-between"
       >
-        {TABS.map(({ href, label, d }) => {
+        {TABS.map(({ href, d }) => {
+          const label = labels[href as keyof typeof labels];
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link

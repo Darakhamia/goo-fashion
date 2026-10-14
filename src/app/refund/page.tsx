@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import ByLocale from "@/components/i18n/ByLocale";
+import type { LegalSection } from "@/lib/i18n/legal";
+import { STRINGS_UK, SECTIONS_UK, type RefundStrings } from "./uk";
 
 export const metadata: Metadata = pageMetadata({
   title: "Subscription & Refund Policy",
@@ -25,7 +28,26 @@ function P({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-base max-md:leading-[1.6] max-md:text-[var(--foreground)]">{children}</p>;
 }
 
-const SECTIONS = [
+const STRINGS_EN: RefundStrings = {
+  kicker: "Legal",
+  title: "Subscription & Refund Policy",
+  // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
+  lastUpdated: "Last updated: August 10, 2026",
+  intro:
+    "This policy explains how Goo Fashion subscriptions are billed and renewed, how to cancel, and when you are entitled to a refund. By purchasing a subscription you agree to this policy.",
+  operatorLabel: "Operator",
+  operatorValue: "David Arakhamia, Sole Trader",
+  websiteLabel: "Website",
+  websiteValue: "goo-fashion.com",
+  contactLabel: "Contact",
+  contactValue: "anything@goo-fashion.com",
+  navTerms: "Terms & Conditions",
+  navPrivacy: "Privacy Policy",
+  navCookie: "Cookie Policy",
+  navHome: "Back to GOO",
+};
+
+const SECTIONS: LegalSection[] = [
   {
     number: "1",
     title: "What This Policy Covers",
@@ -194,7 +216,7 @@ const SECTIONS = [
   },
 ];
 
-export default function RefundPage() {
+function RefundDoc({ t, sections }: { t: RefundStrings; sections: LegalSection[] }) {
   return (
     <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto px-5 md:px-12">
@@ -203,34 +225,33 @@ export default function RefundPage() {
           {/* Header */}
           <div className="mb-8 md:mb-16 animate-fade-up">
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 max-md:hidden">
-              Legal
+              {t.kicker}
             </p>
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4 max-md:text-[28px] max-md:leading-[1.15] max-md:font-semibold max-md:normal-case max-md:mb-1.5">
-              Subscription &amp; Refund Policy
+              {t.title}
             </h1>
             {/* The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step. */}
-            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">Last updated: August 10, 2026</p>
+            <p className="text-sm text-[var(--foreground-subtle)] max-md:text-[13px] max-md:text-[var(--foreground-muted)]">{t.lastUpdated}</p>
           </div>
 
           {/* Intro */}
           <div className="mb-8 pb-8 md:mb-16 md:pb-16 border-b border-[var(--border)]">
             <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-md:leading-[1.6] max-md:text-[var(--foreground)]">
-              This policy explains how Goo Fashion subscriptions are billed and renewed, how to cancel, and
-              when you are entitled to a refund. By purchasing a subscription you agree to this policy.
+              {t.intro}
             </p>
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-[var(--border)]">
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Operator</p>
-                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">David Arakhamia, Sole Trader</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.operatorLabel}</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">{t.operatorValue}</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Website</p>
-                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">goo-fashion.com</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.websiteLabel}</p>
+                <p className="text-sm text-[var(--foreground-muted)] max-md:text-base max-md:text-[var(--foreground)]">{t.websiteValue}</p>
               </div>
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">Contact</p>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1 max-md:text-[13px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground-muted)]">{t.contactLabel}</p>
                 <a href="mailto:anything@goo-fashion.com" className="text-sm text-[var(--foreground-muted)] link-underline hover:text-[var(--foreground)] transition-colors max-md:text-base">
-                  anything@goo-fashion.com
+                  {t.contactValue}
                 </a>
               </div>
             </div>
@@ -238,7 +259,7 @@ export default function RefundPage() {
 
           {/* Sections */}
           <div className="space-y-8 md:space-y-12">
-            {SECTIONS.map((section) => (
+            {sections.map((section) => (
               <div key={section.number} className="grid grid-cols-[40px_1fr] gap-6 max-md:block">
                 <div className="pt-0.5 max-md:hidden">
                   <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
@@ -259,16 +280,16 @@ export default function RefundPage() {
           {/* Footer nav */}
           <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6 max-md:mt-12 max-md:pt-4 max-md:gap-x-5 max-md:gap-y-0">
             <Link href="/terms" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Terms &amp; Conditions
+              {t.navTerms}
             </Link>
             <Link href="/privacy" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Privacy Policy
+              {t.navPrivacy}
             </Link>
             <Link href="/cookie" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Cookie Policy
+              {t.navCookie}
             </Link>
             <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:py-3">
-              Back to GOO
+              {t.navHome}
             </Link>
           </div>
 
@@ -276,4 +297,8 @@ export default function RefundPage() {
       </div>
     </div>
   );
+}
+
+export default function RefundPage() {
+  return <ByLocale en={<RefundDoc t={STRINGS_EN} sections={SECTIONS} />} uk={<RefundDoc t={STRINGS_UK} sections={SECTIONS_UK} />} />;
 }

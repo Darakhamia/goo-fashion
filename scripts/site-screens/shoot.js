@@ -1,9 +1,10 @@
 // Screenshots and checks of the public site at phone and desktop widths, for the mobile
 // track (docs/MOBILE_ROADMAP.md). Run setup.sh first (it starts the site on :3200), then:
 //   NODE_PATH=<work>/pw/node_modules node shoot.js [--only=browse,product] [--theme=dark|light|both]
-//     [--vp=phone|small|desktop|mobile|all] [--full] [--out=DIR] [--metrics] [--overflow]
+//     [--vp=phone|small|desktop|mobile|all] [--full] [--out=DIR] [--metrics] [--overflow] [--lang=en|uk]
 // --full scrolls the page through (so in-view animations play) and shoots it whole.
 // --metrics prints the numbers docs/MOBILE_PLAN.md measures; --overflow what scrolls sideways.
+// --lang=uk shoots the Ukrainian version (the visitor's saved choice, src/lib/i18n/locale.ts).
 // See README.md.
 const fs = require("fs");
 const os = require("os");
@@ -147,17 +148,18 @@ function overflow() {
         hasTouch: V.mobile,
         ...(pg.clientFetch ? { extraHTTPHeaders: { "x-stand-client-fetch": "1" } } : {}),
       });
-      await ctx.addInitScript(([t, consent]) => {
+      await ctx.addInitScript(([t, consent, lang]) => {
         try {
           if (consent) localStorage.setItem("goo-cookie-consent", "declined");
           localStorage.setItem("goo-theme", t);
+          if (lang) localStorage.setItem("goo-lang", lang);
         } catch {}
         document.addEventListener("DOMContentLoaded", () => {
           const st = document.createElement("style");
           st.textContent = "nextjs-portal{display:none!important}";
           document.head.appendChild(st);
         });
-      }, [theme, pg.consent !== false]);
+      }, [theme, pg.consent !== false, args.lang || null]);
       let n = 0;
       await ctx.route(/^https?:\/\/(?!localhost)/, (r) => r.request().resourceType() === "image"
         ? r.fulfill({ contentType: "image/svg+xml", body: placeholder(n++) })

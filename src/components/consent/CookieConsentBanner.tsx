@@ -6,6 +6,27 @@ import { usePathname } from "next/navigation";
 import { getStoredConsent, setStoredConsent, type CookieConsent } from "@/lib/consent";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { hasBuyBar } from "@/components/layout/MobileBottomNav";
+import { defineDict } from "@/lib/i18n/locale";
+import { useDict } from "@/lib/context/locale-context";
+
+const DICT = defineDict({
+  en: {
+    region: "Cookie consent",
+    title: "Cookies",
+    text: "We’d like to set one optional analytics cookie (PostHog, EU-hosted) to understand how GOO is used. Essential sign-in cookies are always on. Details in our ",
+    policy: "Cookie Policy",
+    accept: "Accept",
+    decline: "Decline",
+  },
+  uk: {
+    region: "Згода на файли cookie",
+    title: "Файли cookie",
+    text: "Ми хотіли б встановити один необов’язковий аналітичний файл cookie (PostHog, сервери в ЄС), щоб розуміти, як користуються GOO. Необхідні файли cookie для входу працюють завжди. Докладніше — у ",
+    policy: "Політиці щодо файлів cookie",
+    accept: "Прийняти",
+    decline: "Відхилити",
+  },
+});
 
 /**
  * Consent banner for the only optional cookie on the site (PostHog analytics).
@@ -15,6 +36,7 @@ import { hasBuyBar } from "@/components/layout/MobileBottomNav";
 const POSTHOG_ENABLED = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY);
 
 export default function CookieConsentBanner() {
+  const t = useDict(DICT);
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
 
@@ -42,31 +64,30 @@ export default function CookieConsentBanner() {
   return (
     <div
       role="region"
-      aria-label="Cookie consent"
+      aria-label={t.region}
       onTransitionEnd={ov.onTransitionEnd}
       className={ov.cls(`fixed left-3 right-3 ${above} md:left-6 md:right-auto md:bottom-6 md:w-[360px] z-[60] rounded-3xl md:rounded-2xl border border-[var(--border)] bg-[var(--surface)] md:bg-[var(--background)] overflow-hidden p-4 md:p-5 max-md:shadow-none! ov-rise`)}
       style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}
     >
       <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2 max-md:text-[15px] max-md:font-semibold max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground)] max-md:mb-1.5">
-        Cookies
+        {t.title}
       </p>
       <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-md:text-[13px] max-md:leading-[1.5]">
-        We&rsquo;d like to set one optional analytics cookie (PostHog, EU-hosted) to understand how GOO is
-        used. Essential sign-in cookies are always on. Details in our{" "}
-        <Link href="/cookie" className="text-[var(--foreground)] link-underline">Cookie Policy</Link>.
+        {t.text}
+        <Link href="/cookie" className="text-[var(--foreground)] link-underline">{t.policy}</Link>.
       </p>
       <div className="flex gap-2 mt-4 max-md:mt-3.5">
         <button
           onClick={() => choose("accepted")}
           className="flex-1 h-11 md:h-10 rounded-xl flex items-center justify-center text-[11px] tracking-[0.1em] uppercase font-semibold bg-[var(--foreground)] text-[var(--background)] hover:opacity-90 transition-opacity max-md:rounded-full max-md:text-[15px] max-md:normal-case max-md:tracking-normal"
         >
-          Accept
+          {t.accept}
         </button>
         <button
           onClick={() => choose("declined")}
           className="flex-1 h-11 md:h-10 rounded-xl border border-[var(--border)] flex items-center justify-center text-[11px] tracking-[0.1em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors max-md:order-first max-md:rounded-full max-md:border-0 max-md:bg-[var(--fg-overlay-08)] max-md:text-[15px] max-md:normal-case max-md:tracking-normal max-md:text-[var(--foreground)]"
         >
-          Decline
+          {t.decline}
         </button>
       </div>
     </div>

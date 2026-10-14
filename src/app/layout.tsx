@@ -8,6 +8,7 @@ import { AuthProvider } from "@/lib/context/auth-context";
 import { ThemeProvider } from "@/lib/context/theme-context";
 import { CartProvider } from "@/lib/context/cart-context";
 import { CurrencyProvider } from "@/lib/context/currency-context";
+import { LocaleProvider } from "@/lib/context/locale-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 import PostHogTracker from "@/components/analytics/PostHogTracker";
@@ -97,26 +98,34 @@ export default function RootLayout({
               __html: `(function(){try{var t=localStorage.getItem('goo-theme');var dark=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches)||(t!=='light'&&t!=='system');if(dark){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`,
             }}
           />
+          {/* The chosen language for <html lang> before hydration (text switches after mount — lib/i18n/locale.ts) */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var l=localStorage.getItem('goo-lang');if(l==='en'||l==='uk')document.documentElement.lang=l}catch(e){}})()`,
+            }}
+          />
         </head>
         <body className="antialiased">
-          <ThemeProvider>
-            <AuthProvider>
-              <LikesProvider>
-                <CartProvider>
-                  <CurrencyProvider>
-                    <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
-                    <AnalyticsTracker />
-                    {/* useSearchParams requires a Suspense boundary */}
-                    <Suspense fallback={null}>
-                      <PostHogTracker />
-                    </Suspense>
-                    <BugReportButton />
-                    <CookieConsentBanner />
-                  </CurrencyProvider>
-                </CartProvider>
-              </LikesProvider>
-            </AuthProvider>
-          </ThemeProvider>
+          <LocaleProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <LikesProvider>
+                  <CartProvider>
+                    <CurrencyProvider>
+                      <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
+                      <AnalyticsTracker />
+                      {/* useSearchParams requires a Suspense boundary */}
+                      <Suspense fallback={null}>
+                        <PostHogTracker />
+                      </Suspense>
+                      <BugReportButton />
+                      <CookieConsentBanner />
+                    </CurrencyProvider>
+                  </CartProvider>
+                </LikesProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </LocaleProvider>
         </body>
       </html>
     </ClerkProvider>

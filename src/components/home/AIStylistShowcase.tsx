@@ -8,6 +8,8 @@ import type { StylistChatLook, ShowcaseStore } from "@/lib/data/db";
 import { useStylist } from "@/lib/context/stylist-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { RETAILER_LINK_REL } from "@/lib/stores";
+import { defineDict, pluralUk } from "@/lib/i18n/locale";
+import { useDict } from "@/lib/context/locale-context";
 
 interface AIStylistShowcaseProps {
   chatLooks: StylistChatLook[];
@@ -18,12 +20,80 @@ interface AIStylistShowcaseProps {
   showcaseStores?: ShowcaseStore[];
 }
 
+// ── Strings ──────────────────────────────────────────────────────────────────
+
+const DICT = defineDict({
+  en: {
+    kicker: "AI stylist",
+    headlineTop: "Your style.",
+    headlineBottom: "Found by AI.",
+    intro: "AI looks at what's trending and creates outfit ideas just for you.",
+    features: {
+      chat: { title: "Smart chat", sub: "Ask anything" },
+      picks: { title: "AI picks", sub: "Personalized looks" },
+      stores: { title: "Top stores", sub: "Find and buy" },
+    },
+    stylist: "AI Stylist",
+    online: "Online",
+    openStylist: "Open the AI Stylist",
+    userMessage: "What's trending right now? I need something for a summer evening.",
+    justNow: "Just now",
+    botMessage: "Here are a couple of looks that are trending right now.",
+    askLabel: "Ask your stylist",
+    askPlaceholder: "Ask your stylist…",
+    best: "Best",
+    officialStore: "Official Store",
+    soldOut: "Sold out",
+    lowStock: "Low stock",
+    inStock: "In stock",
+    viewOnStore: "View on Store",
+    removeFavorite: "Remove from favorites",
+    addFavorite: "Add to favorites",
+    showPhoto: (n: number, total: number) => `Show photo ${n} of ${total}`,
+    whereToBuy: "Where to buy",
+    stores: (n: number): string => (n === 1 ? "store" : "stores"),
+    noStores: "No stores listed yet for this item.",
+    disclaimer: "Prices updated regularly. GOO is not responsible for pricing changes.",
+  },
+  uk: {
+    kicker: "AI-стиліст",
+    headlineTop: "Ваш стиль.",
+    headlineBottom: "Підібраний AI.",
+    intro: "AI стежить за трендами й створює ідеї образів саме для вас.",
+    features: {
+      chat: { title: "Розумний чат", sub: "Питайте будь-що" },
+      picks: { title: "AI-добірки", sub: "Образи для вас" },
+      stores: { title: "Топ-магазини", sub: "Знайти й купити" },
+    },
+    stylist: "AI-стиліст",
+    online: "Онлайн",
+    openStylist: "Відкрити AI-стиліста",
+    userMessage: "Що зараз у тренді? Потрібне щось на літній вечір.",
+    justNow: "Щойно",
+    botMessage: "Ось кілька образів, які зараз у тренді.",
+    askLabel: "Запитати стиліста",
+    askPlaceholder: "Запитайте стиліста…",
+    best: "Найкраща ціна",
+    officialStore: "Офіційний магазин",
+    soldOut: "Немає в наявності",
+    lowStock: "Закінчується",
+    inStock: "В наявності",
+    viewOnStore: "У магазині",
+    removeFavorite: "Прибрати з обраного",
+    addFavorite: "Додати в обране",
+    showPhoto: (n: number, total: number) => `Показати фото ${n} з ${total}`,
+    whereToBuy: "Де купити",
+    stores: (n: number) => pluralUk(n, "магазин", "магазини", "магазинів"),
+    noStores: "Для цієї речі ще немає магазинів.",
+    disclaimer: "Ціни регулярно оновлюються. GOO не відповідає за зміну цін.",
+  },
+});
+
 // ── Left intro: headline + feature tiles ─────────────────────────────────────
 
 const FEATURES = [
   {
-    title: "Smart chat",
-    sub: "Ask anything",
+    id: "chat",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path
@@ -36,8 +106,7 @@ const FEATURES = [
     ),
   },
   {
-    title: "AI picks",
-    sub: "Personalized looks",
+    id: "picks",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path
@@ -50,8 +119,7 @@ const FEATURES = [
     ),
   },
   {
-    title: "Top stores",
-    sub: "Find and buy",
+    id: "stores",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path
@@ -64,38 +132,39 @@ const FEATURES = [
       </svg>
     ),
   },
-];
+] as const;
 
 function Intro() {
+  const t = useDict(DICT);
   return (
     // On phones the intro sits straight on the page background — the chat below
     // is the only thing that needs a card of its own.
     <div className="flex flex-col justify-center p-0 lg:p-7">
       <p className="flex items-center gap-2 text-[11px] tracking-[0.22em] uppercase font-medium text-white/40 mb-2 lg:mb-3 max-md:text-[13px] max-md:tracking-normal max-md:normal-case max-md:font-normal max-md:text-[var(--foreground-muted)] max-md:mb-1.5">
-        <span className="text-white/70 max-md:hidden">✦</span> AI stylist
+        <span className="text-white/70 max-md:hidden">✦</span> {t.kicker}
       </p>
       <h2 className="text-[26px] sm:text-3xl md:text-4xl lg:text-[38px] font-bold tracking-[-0.04em] leading-[1.02] text-white max-md:text-[26px] max-md:font-semibold max-md:tracking-[-0.02em] max-md:leading-[1.15] max-md:text-[var(--foreground)]">
-        Your style.
+        {t.headlineTop}
         <br className="max-md:hidden" />
         <span className="md:hidden"> </span>
-        Found by AI.
+        {t.headlineBottom}
       </h2>
       <p className="text-[13px] lg:text-[14px] text-white/55 leading-snug lg:leading-relaxed mt-2 lg:mt-3 max-w-sm max-md:text-[15px] max-md:leading-[1.45] max-md:text-[var(--foreground-muted)]">
-        AI looks at what&apos;s trending and creates outfit ideas just for you.
+        {t.intro}
       </p>
 
       <div className="grid grid-cols-3 gap-2 lg:gap-2.5 mt-4 lg:mt-5 max-w-md">
         {FEATURES.map((f) => (
           <div
-            key={f.title}
+            key={f.id}
             className="rounded-2xl border border-white/10 bg-white/[0.03] p-2 lg:p-2.5 flex flex-col gap-1.5 lg:gap-2 max-md:rounded-[14px] max-md:border-0 max-md:bg-[var(--surface)] max-md:p-3"
           >
             <span className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white max-md:hidden">
               {f.icon}
             </span>
             <div>
-              <p className="text-[13px] font-semibold text-white leading-tight max-md:text-[14px] max-md:text-[var(--foreground)]">{f.title}</p>
-              <p className="text-[11px] text-white/45 mt-0.5 max-md:text-[12px] max-md:text-[var(--foreground-muted)]">{f.sub}</p>
+              <p className="text-[13px] font-semibold text-white leading-tight max-md:text-[14px] max-md:text-[var(--foreground)]">{t.features[f.id].title}</p>
+              <p className="text-[11px] text-white/45 mt-0.5 max-md:text-[12px] max-md:text-[var(--foreground-muted)]">{t.features[f.id].sub}</p>
             </div>
           </div>
         ))}
@@ -141,6 +210,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
 }
 
 function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
+  const t = useDict(DICT);
   const { open } = useStylist();
   return (
     <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden mt-4 lg:m-2.5 min-h-[280px] max-md:mt-3 max-md:rounded-[18px] max-md:border-0 max-md:bg-[var(--surface)] max-md:min-h-0 max-md:p-3.5">
@@ -150,16 +220,16 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
           {/* Phones: the stylist's avatar, as in the stylist sheet (R-16). */}
           <span aria-hidden="true" className="md:hidden w-8 h-8 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[13px] font-bold">G</span>
           <span className="text-white/80 max-md:hidden">✦</span>
-          <span className="text-[14px] font-semibold text-white max-md:text-[var(--foreground)]">AI Stylist</span>
+          <span className="text-[14px] font-semibold text-white max-md:text-[var(--foreground)]">{t.stylist}</span>
           <span className="flex items-center gap-1.5 ml-1 text-[11px] text-white/45 max-md:ml-0 max-md:text-[12px] max-md:text-[var(--foreground-muted)]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            Online
+            {t.online}
           </span>
         </div>
         <button
           type="button"
           onClick={open}
-          aria-label="Open the AI Stylist"
+          aria-label={t.openStylist}
           className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/5 transition-colors max-md:hidden"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -174,17 +244,17 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
         <div className="flex justify-end items-end gap-2">
           <div className="max-w-[78%] rounded-2xl rounded-br-md bg-white/[0.09] px-4 py-2.5 max-md:max-w-[250px] max-md:rounded-[16px] max-md:rounded-br-[4px] max-md:bg-[var(--foreground)] max-md:px-3">
             <p className="text-[13px] text-white leading-snug max-md:text-[14px] max-md:leading-[1.4] max-md:text-[var(--background)]">
-              What&apos;s trending right now? I need something for a summer evening.
+              {t.userMessage}
             </p>
           </div>
         </div>
-        <p className="text-[10px] text-white/30 text-right -mt-2 max-md:hidden">Just now</p>
+        <p className="text-[10px] text-white/30 text-right -mt-2 max-md:hidden">{t.justNow}</p>
 
         {/* Bot bubble */}
         <div className="flex">
           <div className="max-w-[78%] rounded-2xl rounded-bl-md bg-white/[0.05] border border-white/10 px-4 py-2.5 max-md:max-w-[260px] max-md:rounded-[16px] max-md:rounded-bl-[4px] max-md:bg-[var(--fg-overlay-08)] max-md:border-0 max-md:px-3">
             <p className="text-[13px] text-white/85 leading-snug max-md:text-[14px] max-md:leading-[1.4] max-md:text-[var(--foreground)]">
-              Here are a couple of looks that are trending right now.
+              {t.botMessage}
             </p>
           </div>
         </div>
@@ -204,10 +274,10 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
         <button
           type="button"
           onClick={open}
-          aria-label="Ask your stylist"
+          aria-label={t.askLabel}
           className="group w-full h-11 lg:h-12 rounded-2xl border border-white/10 bg-white/[0.04] pl-4 pr-1.5 flex items-center text-left hover:border-white/20 transition-colors max-md:rounded-full max-md:border-0 max-md:bg-[var(--fg-overlay-08)]"
         >
-          <span className="flex-1 text-[13px] text-white/40 max-md:text-[14px] max-md:text-[var(--foreground-muted)]">Ask your stylist…</span>
+          <span className="flex-1 text-[13px] text-white/40 max-md:text-[14px] max-md:text-[var(--foreground-muted)]">{t.askPlaceholder}</span>
           <span className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-white text-black flex items-center justify-center group-hover:opacity-90 transition-opacity max-md:bg-[var(--foreground)] max-md:text-[var(--background)]">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -239,6 +309,7 @@ interface BuyRowData {
  * arrow. Rows without a URL fall back to opening the stylist.
  */
 function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: () => void }) {
+  const t = useDict(DICT);
   const { formatPrice } = useCurrency();
   const { name, logoUrl, price, currency, availability, isOfficial, url, isBest } = row;
   // Domain → favicon fallback, exactly like the product page "Where to buy" rows.
@@ -304,11 +375,11 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
             <span className="text-[14px] text-white truncate max-md:text-[var(--foreground)]">{name}</span>
             {isBest && (
               <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-white bg-white/10 rounded-full px-2 py-0.5 shrink-0 max-md:text-[11px] max-md:tracking-normal max-md:normal-case max-md:font-semibold max-md:text-[var(--foreground)] max-md:bg-[var(--fg-overlay-08)]">
-                Best
+                {t.best}
               </span>
             )}
           </span>
-          {isOfficial && <p className="text-[11px] text-white/40 mt-0.5 max-md:text-[12px] max-md:text-[var(--foreground-muted)]">Official Store</p>}
+          {isOfficial && <p className="text-[11px] text-white/40 mt-0.5 max-md:text-[12px] max-md:text-[var(--foreground-muted)]">{t.officialStore}</p>}
         </div>
       </div>
 
@@ -324,10 +395,10 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
               }`}
             >
               {availability === "sold out"
-                ? "Sold out"
+                ? t.soldOut
                 : availability === "low stock"
-                  ? "Low stock"
-                  : "In stock"}
+                  ? t.lowStock
+                  : t.inStock}
             </span>
             <span
               className={`w-1 h-1 rounded-full shrink-0 ${
@@ -345,7 +416,7 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
         </div>
 
         <span className="shrink-0 hidden md:flex items-center gap-1.5 rounded-full border border-white/20 text-white/60 text-xs px-3 py-1.5 group-hover:border-white group-hover:text-white transition-colors">
-          View on Store
+          {t.viewOnStore}
           <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden>
             <path d="M4 10L10 4M10 4H5M10 4V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -372,6 +443,7 @@ function FeaturedProduct({
   retailerLogos?: Record<string, string>;
   showcaseStores?: ShowcaseStore[];
 }) {
+  const t = useDict(DICT);
   const { open } = useStylist();
   const { formatPrice } = useCurrency();
   const [liked, setLiked] = useState(false);
@@ -439,7 +511,7 @@ function FeaturedProduct({
           <button
             type="button"
             onClick={() => setLiked((v) => !v)}
-            aria-label={liked ? "Remove from favorites" : "Add to favorites"}
+            aria-label={liked ? t.removeFavorite : t.addFavorite}
             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-black/70 hover:bg-black/10 transition-colors max-md:w-11 max-md:h-11 max-md:top-3 max-md:right-3"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill={liked ? "currentColor" : "none"}>
@@ -460,7 +532,7 @@ function FeaturedProduct({
                 key={`${src}-${i}`}
                 type="button"
                 onClick={() => setShot(i)}
-                aria-label={`Show photo ${i + 1} of ${gallery.length}`}
+                aria-label={t.showPhoto(i + 1, gallery.length)}
                 aria-current={i === shot ? "true" : undefined}
                 className="rounded-full bg-white max-md:bg-[var(--foreground)] transition-[width,opacity]"
                 style={{ width: i === shot ? 18 : 6, height: 6, opacity: i === shot ? 0.9 : 0.25 }}
@@ -484,10 +556,10 @@ function FeaturedProduct({
         <p className="text-lg text-white mt-1.5 max-md:text-[var(--foreground)]">{formatPrice(product.priceMin, product.currency)}</p>
 
         <div className="flex items-baseline justify-between mt-3 lg:mt-4 mb-2">
-          <p className="text-[11px] tracking-[0.18em] uppercase text-white/40 max-md:text-[13px] max-md:tracking-normal max-md:normal-case max-md:text-[var(--foreground-muted)]">Where to buy</p>
+          <p className="text-[11px] tracking-[0.18em] uppercase text-white/40 max-md:text-[13px] max-md:tracking-normal max-md:normal-case max-md:text-[var(--foreground-muted)]">{t.whereToBuy}</p>
           {rows.length > 0 && (
             <p className="text-[11px] text-white/35 max-md:text-[12px] max-md:text-[var(--foreground-muted)]">
-              {rows.length} {rows.length === 1 ? "store" : "stores"}
+              {rows.length} {t.stores(rows.length)}
             </p>
           )}
         </div>
@@ -500,12 +572,12 @@ function FeaturedProduct({
           </div>
         ) : (
           <p className="text-[13px] text-white/40 py-6 max-md:text-[var(--foreground-muted)]">
-            No stores listed yet for this item.
+            {t.noStores}
           </p>
         )}
 
         <p className="text-[11px] text-white/30 mt-2 max-md:text-[12px] max-md:text-[var(--foreground-muted)]">
-          Prices updated regularly. GOO is not responsible for pricing changes.
+          {t.disclaimer}
         </p>
       </div>
     </div>

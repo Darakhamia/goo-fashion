@@ -4,15 +4,31 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import type { Outfit } from "@/lib/types";
+import { defineDict } from "@/lib/i18n/locale";
+import { useDict } from "@/lib/context/locale-context";
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
 const PER_PAGE = 3;
+
+const DICT = defineDict({
+  en: {
+    goToPage: (n: number, total: number) => `Go to page ${n} of ${total}`,
+    previous: "Previous outfits",
+    next: "Next outfits",
+  },
+  uk: {
+    goToPage: (n: number, total: number) => `Перейти на сторінку ${n} з ${total}`,
+    previous: "Попередні образи",
+    next: "Наступні образи",
+  },
+});
 
 interface Props {
   outfits: Outfit[];
 }
 
 export default function OutfitExamplesCarousel({ outfits }: Props) {
+  const t = useDict(DICT);
   const [page, setPage] = useState(0);
   // The rail is swipeable on phones, and a page that turns itself under the
   // finger is worse than one that never turned at all — so the moment the
@@ -22,8 +38,8 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
 
   useEffect(() => {
     if (total <= 1 || taken) return;
-    const t = setInterval(() => setPage((p) => (p + 1) % total), 5000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setPage((p) => (p + 1) % total), 5000);
+    return () => clearInterval(timer);
   }, [total, taken]);
 
   const goTo = (next: number) => {
@@ -74,7 +90,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
               <button
                 key={i}
                 onClick={() => goTo(i)}
-                aria-label={`Go to page ${i + 1} of ${total}`}
+                aria-label={t.goToPage(i + 1, total)}
                 // Phones: `after:` gives the 8px dot a 44px-tall target.
                 className="relative rounded-full bg-[var(--foreground)] transition-[width,opacity] max-md:after:absolute max-md:after:-inset-x-1 max-md:after:-inset-y-[18px]"
                 style={{
@@ -92,7 +108,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
           <div className="order-2 hidden md:contents">
             <button
               onClick={() => goTo((page - 1 + total) % total)}
-              aria-label="Previous outfits"
+              aria-label={t.previous}
               className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors md:order-1"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -102,7 +118,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
 
             <button
               onClick={() => goTo((page + 1) % total)}
-              aria-label="Next outfits"
+              aria-label={t.next}
               className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors md:order-3"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
