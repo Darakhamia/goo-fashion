@@ -41,6 +41,25 @@ The same film at 1080×1920, with quiet sound effects and a soft pad (STORYBOARD
 - Both are 30 fps, 855 frames, 28.5 s.
 - Frame 0 and the last frame are identical and silent.
 
+### Shorts: Night, Ask, Pocket (MP4 only)
+
+Three 15–16 s vertical films in the same style, each built around one idea, with the same quiet sound (STORYBOARD.md, "Shorts"):
+- **Night:** the dark theme.
+- **Ask:** the AI stylist fills the builder.
+- **Pocket:** the phone site, from results to the stores and the bag.
+
+Checked with `ffprobe` and EBU R128 (2026-10-16):
+
+| File | Length | Video | Size | Bitrate | Loudness |
+|---|---|---|---|---|---|
+| `goo-night.mp4` | 15.5 s, 465 frames | 1080×1920, H.264 High, CRF 18 | 5.30 MB | 2.74 Mb/s (video 2.57) | −24.0 LUFS, true peak −8.0 dBTP |
+| `goo-ask.mp4` | 16.07 s, 482 frames | 1080×1920, H.264 High, CRF 18 | 2.99 MB | 1.49 Mb/s (video 1.32) | −24.0 LUFS, true peak −9.1 dBTP |
+| `goo-pocket.mp4` | 15.1 s, 453 frames | 1080×1920, H.264 High, CRF 18 | 3.66 MB | 1.94 Mb/s (video 1.77) | −24.0 LUFS, true peak −8.8 dBTP |
+
+- All three are 30 fps, yuv420p, with AAC-LC audio at 160 kb/s, 48 kHz stereo.
+- `moov` comes before `mdat` (faststart).
+- Each one's last frame equals its first. Its sound is silent at both ends (below −50 dBFS), so each loops seamlessly.
+
 The last frame equals the first (both are the type cards' black), so the loop is seamless:
 
 ```html
