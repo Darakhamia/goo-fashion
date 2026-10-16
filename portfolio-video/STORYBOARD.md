@@ -118,6 +118,68 @@ The same film, recomposed for 1080×1920 and, unlike the two loops above, with s
 
 The mix is quiet on purpose: −24 LUFS integrated, about 10 dB below what social platforms normalise to, with the true peak under −6 dBTP. Frame 0 and the last frame are silent, so the loop is seamless in sound too.
 
+### Shorts: Night, Ask, Pocket (added 2026-10-16)
+
+Three short films in the same style, each built around one idea. They are delivered as MP4 only (no WebM, no posters).
+
+- **Format:** vertical 1080×1920, 30 fps, 15–16 s, with the same quiet sound as the 9:16 cut.
+- **Loudness:** −24 LUFS integrated, true peak under −6 dBTP.
+- **Source:** the same captures and scenes as the promo, plus new captures of the same local app (§1). Each short is a seamless loop.
+- **Type cards:** 196 px, in tone with the film: light type on black for Night, black type on the site's light page colour for Ask and Pocket.
+- **End card:** the site's real hero in the film's theme.
+
+**Night** (dark theme, 15.5 s, 465 frames). Everything is the site's dark theme.
+
+| Time | Beat | On screen |
+|---|---|---|
+| 0.0–2.0 | **"Dress for / tonight."** | Type card |
+| 2.0–6.0 | **The outerwear wall** | The real browse grid filtered to outerwear, dark theme, first 16 cards. The photos fly in as in beat 2. |
+| 6.0–7.8 | **"Snap it / together."** | Type card |
+| 7.8–12.3 | **The builder, dark** | Five pieces snap on one by one. The total counts $990 → $1,165 → $1,440 → $1,599 → **$1,779 · 5 pieces**. |
+| 12.3–15.5 | **End card** | The dark hero, as in the promo |
+
+Night's five pieces are a leather mix jacket, a wide long sleeve, tapered jeans, Air Jordan 3 "True Blue" and sunglasses.
+
+**Ask** (light, 16.1 s, 482 frames)
+
+| Time | Beat | On screen |
+|---|---|---|
+| 0.0–2.2 | **"Not sure / what to / wear?"** | Type card |
+| 2.2–7.3 | **The stylist** | "Smart casual for a dinner date" is typed into the real input. The scripted reply rises in with four real pieces: twill jacket, tee, black trousers, Nike SB Air Force 1 Low. Then a finger taps "Build this look · 4 pieces". |
+| 7.3–11.1 | **The builder fills** | The sheet slides away, and the app's scrim clears over the empty builder. The four pieces rise onto the board from below, and the total counts $495 → $645 → $990 → **$1,126 · 4 pieces**. |
+| 11.1–12.9 | **"Ask. / Build. / Wear."** | Type card |
+| 12.9–16.1 | **End card** | The light hero |
+
+- The capture taps "Build this look" in the real app and records the builder address it opens. It is the same look the builder states show.
+- The stylist's last frame and the builder's first are the same picture, so the cut is invisible.
+
+**Pocket** (light, 15.1 s, 453 frames)
+
+| Time | Beat | On screen |
+|---|---|---|
+| 0.0–2.4 | **"Every / store. / In your / pocket."** | Type card |
+| 2.4–9.9 | **The phone** | See the steps below the table. |
+| 9.9–11.9 | **"Best price. / One tap."** | Type card |
+| 11.9–15.1 | **End card** | The light hero |
+
+On the phone:
+1. The real results for "Jordan 1" (14 cards) are flicked down twice.
+2. A finger taps the Air Jordan 1 "Royal" ("$155 · 3 stores"), and its page pushes in.
+3. It taps "Where to buy" in the buy bar. The page scrolls to the stores: Goat $155 "Best price" (real), StockX $162 and Farfetch $185 (illustrative, D2). The scroll ends exactly where the app's own scroll does (698 px, measured).
+4. It taps the bag. The bag button gets its check, and the header's bag shows **1**.
+
+How the phone is captured:
+- A scrolling page is captured in layers, the way the phone composes it:
+  - the whole page as one tall image, with the fixed bars hidden;
+  - each fixed bar on its own, over a transparent background: the header, the tab bar, and the buy bar before and after the tap.
+- The video scrolls the page under the bars. Under the translucent bars it applies the app's own backdrop blur (`backdrop-blur-md`).
+- Viewport shots of the real page after each tap sit next to the layers, for checking the composite (`pocket-product-stores.png`, `pocket-product-bagged.png`).
+
+**Sound.** The same library and placement rules as the 9:16 cut, plus:
+- **Pocket:** soft rushes for the flicks, a pop per tap, a rush as the page opens, the three store rows ticking in a step higher each, and a snap and blip for the bag.
+- **Ask:** the stylist's cues and a pop on "Build this look".
+- **Pads:** each film has a pad of its own length, chord and seed: Dm9 for Night (low and dark), Gmaj9 for Ask, Cmaj9 for Pocket (brighter). The promo's files are untouched.
+
 ---
 
 ## 3. Output (`out/`, replacing the old files)
@@ -131,6 +193,7 @@ The mix is quiet on purpose: −24 LUFS integrated, about 10 dB below what socia
 | `goo-9x16.mp4` | 1080×1920, 30 fps, H.264 High, yuv420p, CRF 18–20, `+faststart`, AAC 160 kb/s, ≤ 8 MB |
 | `goo-9x16.webm` | VP9 two-pass, Opus 128 kb/s |
 | `goo-9x16-poster.png` | 1080×1920, the builder frame |
+| `goo-night.mp4`, `goo-ask.mp4`, `goo-pocket.mp4` | The shorts: 1080×1920, 30 fps, H.264 High, yuv420p, CRF 18–20, `+faststart`, AAC 160 kb/s, ≤ 8 MB. MP4 only. |
 
 - Rendering is from a lossless master at full resolution, never from a preview.
 - Every file is checked with `ffprobe`, and its width, height and bitrate are reported.
@@ -146,6 +209,7 @@ The mix is quiet on purpose: −24 LUFS integrated, about 10 dB below what socia
 - **D3 (cursor).** None this time: the motion is the camera's and the pieces'.
 - **D4 (end card).** The site's real dark hero with the big GOO.
 - **D5 (branch).** Everything is committed to `portfolio-video`. No PR to `main`.
+- **D6 (touch marks, shorts only).** Ask and Pocket show where a finger taps: a soft disc and a spreading ring, drawn over the capture like the phone bezel. They are presentation, not interface. The promo itself keeps D3: no cursor.
 
 ---
 

@@ -3,13 +3,15 @@
 // rising in over the same frame captured without them (hero-dark-bg.png).
 // goo-fashion.com sets underneath, then everything fades to the type cards'
 // black: frame 0 of the loop.
+//
+// The light shorts ("Ask", "Pocket") end on the site's light hero instead
+// (hero-light.png, the same layout), fading to the light type cards' ground.
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, easeOut, mix, ramp } from "../../motion";
-import { INK, LIGHT, M, Shot, type Format, SIZE, type Rect } from "../kit";
+import { INK, LIGHT, M, PAPER, Shot, type Format, SIZE, type Rect } from "../kit";
 import { Sfx } from "../Sfx";
 
-const HERO = M.hero.dark;
 
 const CROP: Record<Format, Rect> = {
   "16x9": { x: 136, y: 95, w: 1172, h: 660 },
@@ -26,8 +28,11 @@ const PARTS: { rect: Rect; at: number }[] = [
   { rect: { x: 616, y: 557, w: 208, h: 68 }, at: 24 }, // Build your look ↗
 ];
 
-export function End({ format, dur }: { format: Format; dur: number }) {
+export function End({ format, dur, theme = "dark" }: { format: Format; dur: number; theme?: "dark" | "light" }) {
   const f = useCurrentFrame();
+  const HERO = M.hero[theme];
+  const dark = theme === "dark";
+  const ground = dark ? INK : PAPER;
   const { W, H } = SIZE[format];
   const crop = CROP[format];
   const s = W / crop.w;
@@ -39,7 +44,7 @@ export function End({ format, dur }: { format: Format; dur: number }) {
   const url = ramp(f, 34, 50, easeOut);
 
   return (
-    <AbsoluteFill style={{ background: INK, overflow: "hidden" }}>
+    <AbsoluteFill style={{ background: ground, overflow: "hidden" }}>
       {/* Sound: a soft, deep landing as GOO rises, a chime with the address. */}
       <Sfx at={6} name="impact" volume={0.42} />
       <Sfx at={34} name="chime" volume={0.24} />
@@ -47,8 +52,8 @@ export function End({ format, dur }: { format: Format; dur: number }) {
         <Shot src={HERO.background} size={HERO.size} crop={crop} scale={s} style={{ left: 0, top: dy }} />
         {dy > 0 && (
           <>
-            <div style={{ position: "absolute", left: 0, top: dy - 2, width: W, height: FADE, background: `linear-gradient(${INK}, transparent)` }} />
-            <div style={{ position: "absolute", left: 0, top: dy + crop.h * s - FADE + 2, width: W, height: FADE, background: `linear-gradient(transparent, ${INK})` }} />
+            <div style={{ position: "absolute", left: 0, top: dy - 2, width: W, height: FADE, background: `linear-gradient(${ground}, transparent)` }} />
+            <div style={{ position: "absolute", left: 0, top: dy + crop.h * s - FADE + 2, width: W, height: FADE, background: `linear-gradient(transparent, ${ground})` }} />
           </>
         )}
         {PARTS.map(({ rect, at }, i) => {
@@ -66,8 +71,9 @@ export function End({ format, dur }: { format: Format; dur: number }) {
                 opacity: t,
                 transform: `translateY(${(1 - t) * 34 * s}px)`,
                 // The crop carries a little of the hero's background; lighten
-                // keeps only what is brighter than what's under it.
-                mixBlendMode: "lighten",
+                // keeps only what is brighter than what's under it (darken, on
+                // the light hero, what is darker).
+                mixBlendMode: dark ? "lighten" : "darken",
               }}
             />
           );
@@ -83,7 +89,7 @@ export function End({ format, dur }: { format: Format; dur: number }) {
             fontWeight: 600,
             fontSize: 64,
             letterSpacing: "-0.01em",
-            color: LIGHT,
+            color: dark ? LIGHT : INK,
             opacity: url * 0.9,
             transform: `translateY(${(1 - url) * 30}px)`,
           }}
@@ -91,7 +97,7 @@ export function End({ format, dur }: { format: Format; dur: number }) {
           goo-fashion.com
         </div>
       </AbsoluteFill>
-      <AbsoluteFill style={{ background: INK, opacity: toBlack }} />
+      <AbsoluteFill style={{ background: ground, opacity: toBlack }} />
     </AbsoluteFill>
   );
 }

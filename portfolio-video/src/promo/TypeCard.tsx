@@ -1,10 +1,11 @@
-// Kinetic type: short lines in the site's face, Inter Tight 800, on near-black.
-// Words rise in from behind each line's mask, one after another, hold, then
-// leave upward the same way.
+// Kinetic type: short lines in the site's face, Inter Tight 800, on near-black
+// (or, `tone="light"`, near-black on the site's light page colour). Words rise
+// in from behind each line's mask, one after another, hold, then leave upward
+// the same way.
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, easeOut, ramp } from "../motion";
-import { INK, LIGHT } from "./kit";
+import { INK, LIGHT, PAPER } from "./kit";
 import { Sfx } from "./Sfx";
 
 export function TypeCard({
@@ -13,12 +14,14 @@ export function TypeCard({
   size,
   x,
   exit = true,
+  tone = "dark",
 }: {
   lines: string[];
   dur: number;
   size: number;
   x: number;
   exit?: boolean;
+  tone?: "dark" | "light";
 }) {
   const f = useCurrentFrame();
   const IN = 13; // frames for one word to rise
@@ -30,7 +33,7 @@ export function TypeCard({
   // A slow drift keeps the card alive while it holds.
   const drift = 1 + 0.03 * ramp(f, 0, dur, (t) => t);
   return (
-    <AbsoluteFill style={{ background: INK }}>
+    <AbsoluteFill style={{ background: tone === "dark" ? INK : PAPER }}>
       {/* Sound: one soft rush as the words rise. */}
       <Sfx at={2} name="whoosh-soft" volume={0.3} />
       <div
@@ -45,7 +48,7 @@ export function TypeCard({
           fontSize: size,
           lineHeight: 1.0,
           letterSpacing: "-0.04em",
-          color: LIGHT,
+          color: tone === "dark" ? LIGHT : INK,
         }}
       >
         {lines.map((line, li) => (

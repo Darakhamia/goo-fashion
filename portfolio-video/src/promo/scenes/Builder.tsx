@@ -5,6 +5,10 @@
 // that state, so the board reflows the way the app laid it out, and the real
 // total pill counts up to $1,945 · 5 pieces. The lower half of the phone, with
 // the catalogue strip, runs out of frame.
+//
+// The shorts reuse it with their own looks (`data`, `landings`): "Night" on the
+// dark theme, "Ask" with the stylist's four pieces arriving from below, where
+// the stylist's sheet has just gone (`overlay` draws that sheet leaving).
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, easeOut, mix, ramp, settle } from "../../motion";
@@ -12,8 +16,7 @@ import { M, PAPER, Shot, rand, type Format, SIZE } from "../kit";
 import { Phone } from "../Device";
 import { Sfx, type SfxName } from "../Sfx";
 
-const B = M.builder;
-const SCREEN = B.size; // 390 × 844 CSS px
+type BuilderData = typeof M.builder;
 
 /** Landing frame of each piece (local frames). */
 export const LANDINGS = [32, 52, 72, 92, 112];
@@ -25,8 +28,37 @@ const LAYOUT: Record<Format, { s: number; top: number }> = {
   "9x16": { s: 2.1, top: 74 },
 };
 
-export function Builder({ format, dur }: { format: Format; dur: number }) {
+export function Builder({
+  format,
+  dur,
+  data = M.builder,
+  landings = LANDINGS,
+  bg = PAPER,
+  ground = "light",
+  rise = true,
+  fly = "sides",
+  camera = [0.96, 1.02],
+  overlay,
+}: {
+  format: Format;
+  dur: number;
+  data?: BuilderData;
+  landings?: number[];
+  bg?: string;
+  ground?: "light" | "dark";
+  /** The phone rises into the frame; off when it is already there (after the stylist). */
+  rise?: boolean;
+  /** Where the pieces fly in from. */
+  fly?: "sides" | "below";
+  /** The slow push-in on the board, start and end scale. */
+  camera?: [number, number];
+  /** Drawn on the phone's screen above the board, in screen px × `s`. */
+  overlay?: (f: number, s: number) => React.ReactNode;
+}) {
   const f = useCurrentFrame();
+  const B = data;
+  const SCREEN = B.size; // 390 × 844 CSS px
+  const LANDINGS = landings;
   const { W, H } = SIZE[format];
   const { s, top } = LAYOUT[format];
   const sw = SCREEN.w * s;
@@ -41,14 +73,14 @@ export function Builder({ format, dur }: { format: Format; dur: number }) {
     return Math.min(inK, 1 - outK);
   };
 
-  const enter = ramp(f, 0, 18, easeOut);
-  const board = B.states[5].canvas;
-  const push = mix(0.96, 1.02, ramp(f, 0, dur, easeInOut));
+  const enter = rise ? ramp(f, 0, 18, easeOut) : 1;
+  const board = B.states[B.states.length - 1].canvas;
+  const push = mix(camera[0], camera[1], ramp(f, 0, dur, easeInOut));
   const ox = left + (board.x + board.w / 2) * s;
   const oy = top + (board.y + board.h / 2) * s;
 
   return (
-    <AbsoluteFill style={{ background: PAPER, overflow: "hidden" }}>
+    <AbsoluteFill style={{ background: bg, overflow: "hidden" }}>
       {/* Sound: each piece flies in, lands with a snap, and the total ticks up a tone. */}
       {LANDINGS.map((L, i) => (
         <React.Fragment key={i}>
@@ -62,6 +94,7 @@ export function Builder({ format, dur }: { format: Format; dur: number }) {
           w={sw}
           h={sh}
           s={s}
+          ground={ground}
           style={{
             left: left - 11 * s,
             top: top - 11 * s,
@@ -91,6 +124,7 @@ export function Builder({ format, dur }: { format: Format; dur: number }) {
               />
             );
           })}
+          {overlay?.(f, s)}
         </Phone>
         {/* The pieces in flight, in screen coordinates of the phone. */}
         <div style={{ position: "absolute", left, top, width: sw, height: sh, transform: `translateY(${(1 - enter) * 160}px)` }}>
@@ -102,9 +136,9 @@ export function Builder({ format, dur }: { format: Format; dur: number }) {
             const t = settle(f, start, { damping: 14, stiffness: 150, mass: 0.8 });
             const k = 1 - t;
             const fromLeft = i % 2 === 0;
-            const dx = (fromLeft ? -1 : 1) * (W * 0.62 + rand(i + 5) * 120);
-            const dy = (rand(i + 9) - 0.5) * 360;
-            const rot = (fromLeft ? -1 : 1) * (14 + rand(i + 2) * 10);
+            const dx = fly === "sides" ? (fromLeft ? -1 : 1) * (W * 0.62 + rand(i + 5) * 120) : (rand(i + 5) - 0.5) * 240;
+            const dy = fly === "sides" ? (rand(i + 9) - 0.5) * 360 : H * 0.62 + rand(i + 9) * 160;
+            const rot = (fromLeft ? -1 : 1) * (fly === "sides" ? 14 + rand(i + 2) * 10 : 6 + rand(i + 2) * 8);
             const fade = 1 - ramp(f, L + 4, L + 7, (x) => x);
             const isFull = i === 0;
             return (

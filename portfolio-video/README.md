@@ -1,6 +1,6 @@
 # GOO Fashion: portfolio video
 
-A 28.5-second silent promo for GOO Fashion, made with [Remotion](https://www.remotion.dev/) from captures of the real app.
+A 28.5-second silent promo for GOO Fashion, a vertical cut of it with quiet sound, and three 15–16 s vertical shorts. All are made with [Remotion](https://www.remotion.dev/) from captures of the real app.
 - **Ad-style:** kinetic type cards alternate with product moments shown big.
 - **Self-contained:** it has its own `package.json`, and nothing in the app changed.
 
@@ -67,7 +67,8 @@ npx next build && npx next start -p 3100 &
 # Back here: fixtures, the stand-in database, the captures.
 node capture/build-fixtures.mjs
 COPY_MISSING=1 node capture/mock-supabase.mjs &            # first run copies the photos once
-NODE_PATH=/opt/node-tools/node_modules node capture/shoot.cjs       # → public/captures/
+NODE_PATH=/opt/node-tools/node_modules node capture/shoot.cjs       # → public/captures/ (the promo)
+NODE_PATH=/opt/node-tools/node_modules node capture/shoot.cjs night ask pocket hero-light   # the shorts
 NODE_PATH=/opt/node-tools/node_modules node capture/compare.cjs /tmp/compare   # live vs local
 ```
 
@@ -90,11 +91,16 @@ scripts/encode.sh                    # deliverables → out/
 node scripts/stills.mjs out 1 GOO-16x9:377 && mv out/GOO-16x9-377.png out/goo-poster.png
 
 # The vertical cut, with sound
-python3 scripts/make-sfx.py          # the sound effects → public/audio/ (already committed)
+python3 scripts/make-sfx.py          # the sound effects and pads → public/audio/ (already committed)
 node scripts/render.mjs vertical     # master → out/master/goo-9x16-master.mp4
 node scripts/render.mjs audio        # lossless mix → out/master/goo-9x16-audio.wav
 scripts/encode-vertical.sh           # -24 LUFS, AAC / Opus → out/goo-9x16.mp4, .webm
 node scripts/stills.mjs out 1 GOO-9x16:377 && mv out/GOO-9x16-377.png out/goo-9x16-poster.png
+
+# The shorts (MP4 only)
+node scripts/render.mjs shorts       # masters → out/master/goo-{night,ask,pocket}-master.mp4
+node scripts/render.mjs shorts-audio # lossless mixes → out/master/goo-{night,ask,pocket}-audio.wav
+scripts/encode-shorts.sh             # -24 LUFS, H.264 + AAC → out/goo-{night,ask,pocket}.mp4
 ```
 
 - Renders run offline from the committed captures.

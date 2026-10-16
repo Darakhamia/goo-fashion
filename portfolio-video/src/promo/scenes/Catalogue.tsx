@@ -5,14 +5,16 @@
 // and prices (catalogue-frames.png, the same grid with its photos hidden) fade
 // in around them, and the grid is the capture itself. The plane straightens as
 // the camera pushes in.
+//
+// `data` is any catalogue capture of the same shape (the short "Night" uses the
+// dark theme's outerwear grid), `bg` the ground behind the plane.
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { easeInOut, mix, ramp, settle } from "../../motion";
 import { M, PAPER, Shot, rand, type Format, SIZE } from "../kit";
 import { Sfx } from "../Sfx";
 
-const C = M.catalogue;
-const SIZE_CSS = C.size; // 1440 × 2302 CSS px
+type CatalogueData = typeof M.catalogue;
 
 const CAMERA: Record<Format, { rx: [number, number]; rz: [number, number]; s: [number, number]; cx: [number, number]; cy: [number, number]; persp: number }> = {
   "16x9": { rx: [30, 9], rz: [-12, -3], s: [0.86, 1.14], cx: [720, 720], cy: [930, 590], persp: 2400 },
@@ -25,8 +27,10 @@ const CAMERA: Record<Format, { rx: [number, number]; rz: [number, number]; s: [n
 // down, so Chrome rasterises the 2x captures at full resolution.
 const K = 1.4;
 
-export function Catalogue({ format, dur }: { format: Format; dur: number }) {
+export function Catalogue({ format, dur, data = M.catalogue, bg = PAPER }: { format: Format; dur: number; data?: CatalogueData; bg?: string }) {
   const f = useCurrentFrame();
+  const C = data;
+  const SIZE_CSS = C.size; // 1440 × 2302 CSS px
   const { W, H } = SIZE[format];
   const cam = CAMERA[format];
   const c = ramp(f, 0, dur, easeInOut);
@@ -46,7 +50,7 @@ export function Catalogue({ format, dur }: { format: Format; dur: number }) {
   const exact = ramp(f, 62, 68);
 
   return (
-    <AbsoluteFill style={{ background: PAPER, perspective: cam.persp, perspectiveOrigin: "50% 50%", overflow: "hidden" }}>
+    <AbsoluteFill style={{ background: bg, perspective: cam.persp, perspectiveOrigin: "50% 50%", overflow: "hidden" }}>
       {/* Sound: the photos rush in, a few of them land, the grid settles. */}
       {[2, 8, 14, 20, 27].map((at, i) => (
         <Sfx key={`w${i}`} at={at} name={i % 2 ? "whoosh-soft" : "whoosh"} volume={0.24} />

@@ -185,3 +185,24 @@ for k in range(3):
     r = np.random.default_rng(300 + k)
     x = np.sin(2 * np.pi * f * t(0.08)) * decay(n, 0.008) + 0.2 * r.standard_normal(n) * decay(n, 0.002)
     write(f"tick-{k}", svf(x, f * 1.2, q=0.9))
+
+# Pads for the shorts (src/promo/Shorts.tsx), one chord each, as long as the
+# short itself: frames / 30. Built like the promo's pad above, each from its
+# own seed, so adding them changes none of the files above.
+def pad(name, frames, notes, cutoff, seed):
+    seconds = frames / 30
+    n = int(SR * seconds)
+    tt = t(seconds)
+    r = np.random.default_rng(seed)
+    x = np.zeros(n)
+    for i, f in enumerate(notes):
+        for det in (-0.12, 0.12):
+            ph = r.uniform(0, 2 * np.pi)
+            lfo = 0.75 + 0.25 * np.sin(2 * np.pi * (0.06 + 0.017 * i) * tt + ph)
+            x += np.sin(2 * np.pi * (f + det) * tt + ph) * lfo / (1 + 0.35 * i)
+    x = onepole_lp(x, cutoff)
+    write(name, x * env(n, 1.6 * SR, 1.8 * SR, 1.5))
+
+pad("pad-night", 465, [73.42, 110.00, 174.61, 261.63, 329.63], 1100, 401)  # D2 A2 F3 C4 E4: Dm9, low and dark
+pad("pad-ask", 482, [98.00, 146.83, 185.00, 220.00, 246.94, 293.66], 1500, 402)  # G2 D3 F#3 A3 B3 D4: Gmaj9
+pad("pad-pocket", 453, [130.81, 196.00, 246.94, 293.66, 329.63], 1800, 403)  # C3 G3 B3 D4 E4: Cmaj9, brighter

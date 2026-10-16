@@ -315,7 +315,7 @@
      "w": 114.31,
      "h": 32
     },
-    "pillText": "$1,295 \u00b7 1 piece"
+    "pillText": "$1,295 · 1 piece"
    },
    {
     "image": "captures/builder-2.png",
@@ -363,7 +363,7 @@
      "w": 123.81,
      "h": 32
     },
-    "pillText": "$1,390 \u00b7 2 pieces"
+    "pillText": "$1,390 · 2 pieces"
    },
    {
     "image": "captures/builder-3.png",
@@ -426,7 +426,7 @@
      "w": 124.16,
      "h": 32
     },
-    "pillText": "$1,590 \u00b7 3 pieces"
+    "pillText": "$1,590 · 3 pieces"
    },
    {
     "image": "captures/builder-4.png",
@@ -504,7 +504,7 @@
      "w": 122.36,
      "h": 32
     },
-    "pillText": "$1,745 \u00b7 4 pieces"
+    "pillText": "$1,745 · 4 pieces"
    },
    {
     "image": "captures/builder-5.png",
@@ -597,7 +597,7 @@
      "w": 123.67,
      "h": 32
     },
-    "pillText": "$1,945 \u00b7 5 pieces"
+    "pillText": "$1,945 · 5 pieces"
    }
   ]
  },
@@ -1133,6 +1133,1467 @@
     "w": 190.17,
     "h": 52
    }
+  },
+  "light": {
+   "image": "captures/hero-light.png",
+   "background": "captures/hero-light-bg.png",
+   "size": {
+    "w": 1440,
+    "h": 900
+   },
+   "word": {
+    "x": 585.2,
+    "y": 345.5,
+    "w": 270.82,
+    "h": 155
+   },
+   "svg": {
+    "x": 624.91,
+    "y": 349,
+    "w": 190.17,
+    "h": 148
+   },
+   "line": {
+    "x": 671.3,
+    "y": 509,
+    "w": 97.38,
+    "h": 24
+   },
+   "button": {
+    "x": 624.91,
+    "y": 565,
+    "w": 190.17,
+    "h": 52
+   }
+  }
+ },
+ "pocket": {
+  "size": {
+   "w": 390,
+   "h": 844
+  },
+  "browse": {
+   "url": "/browse?search=Jordan%201",
+   "image": "captures/pocket-browse.png",
+   "size": {
+    "w": 390,
+    "h": 3162
+   },
+   "card": {
+    "x": 200,
+    "y": 2153.5,
+    "w": 178,
+    "h": 342.38
+   },
+   "photo": {
+    "x": 200,
+    "y": 2153.5,
+    "w": 178,
+    "h": 237.33
+   },
+   "cards": 14,
+   "nav": {
+    "image": "captures/pocket-browse-nav.png",
+    "rect": {
+     "x": 0,
+     "y": 0,
+     "w": 390,
+     "h": 64
+    }
+   },
+   "tabs": {
+    "image": "captures/pocket-browse-tabs.png",
+    "rect": {
+     "x": 8,
+     "y": 784,
+     "w": 374,
+     "h": 58
+    }
+   }
+  },
+  "product": {
+   "url": "/product/6575d398-1a28-4a7a-a1fd-91fad620ef92",
+   "image": "captures/pocket-product.png",
+   "size": {
+    "w": 390,
+    "h": 2791
+   },
+   "check": {
+    "stores": "captures/pocket-product-stores.png",
+    "bagged": "captures/pocket-product-bagged.png"
+   },
+   "whereToBuy": {
+    "x": 16,
+    "y": 778.19,
+    "w": 358,
+    "h": 297.8
+   },
+   "rows": [
+    {
+     "x": 16,
+     "y": 816.98,
+     "w": 358,
+     "h": 70
+    },
+    {
+     "x": 16,
+     "y": 886.98,
+     "w": 358,
+     "h": 70
+    },
+    {
+     "x": 16,
+     "y": 956.98,
+     "w": 358,
+     "h": 70
+    }
+   ],
+   "bag": {
+    "x": 183.05,
+    "y": 784,
+    "w": 44,
+    "h": 44
+   },
+   "go": {
+    "x": 235.05,
+    "y": 784,
+    "w": 131.95,
+    "h": 44
+   },
+   "scrollTo": 698,
+   "badge": {
+    "x": 351,
+    "y": 17,
+    "w": 15,
+    "h": 15
+   },
+   "before": {
+    "nav": {
+     "image": "captures/pocket-product-nav.png",
+     "rect": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 64
+     }
+    },
+    "bar": {
+     "image": "captures/pocket-product-bar.png",
+     "rect": {
+      "x": 8,
+      "y": 770,
+      "w": 374,
+      "h": 72
+     }
+    }
+   },
+   "after": {
+    "nav": {
+     "image": "captures/pocket-product-nav-bagged.png",
+     "rect": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 64
+     }
+    },
+    "bar": {
+     "image": "captures/pocket-product-bar-bagged.png",
+     "rect": {
+      "x": 8,
+      "y": 770,
+      "w": 374,
+      "h": 72
+     }
+    }
+   }
+  }
+ },
+ "night": {
+  "catalogue": {
+   "image": "captures/night-catalogue.png",
+   "frames": "captures/night-catalogue-frames.png",
+   "size": {
+    "w": 1440,
+    "h": 2302.1875
+   },
+   "background": "rgb(10, 10, 10)",
+   "cards": [
+    {
+     "href": "/product/909c3e23-8d2e-4185-88eb-a00d22c80f42",
+     "card": {
+      "x": 40,
+      "y": 40,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 41,
+      "y": 41,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/3ecf96df-72ba-48db-8c27-e3222b49482f",
+     "card": {
+      "x": 384,
+      "y": 40,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 385,
+      "y": 41,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/361280d0-baac-4478-b8f7-dd03db33b96f",
+     "card": {
+      "x": 728,
+      "y": 40,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 729,
+      "y": 41,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/067aae50-2790-4ade-8b1a-6d6c7b0df738",
+     "card": {
+      "x": 1072,
+      "y": 40,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 1073,
+      "y": 41,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/fbf9d334-cd59-4153-bc89-b3cb2d6fef88",
+     "card": {
+      "x": 40,
+      "y": 599.55,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 41,
+      "y": 600.55,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/0820bacc-a2dd-4781-90e6-cc67263d42c5",
+     "card": {
+      "x": 384,
+      "y": 599.55,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 385,
+      "y": 600.55,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/20e50770-f5a5-432e-b203-996186b71393",
+     "card": {
+      "x": 728,
+      "y": 599.55,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 729,
+      "y": 600.55,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/645d8e27-336f-445f-a7f6-fb51251820bd",
+     "card": {
+      "x": 1072,
+      "y": 599.55,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 1073,
+      "y": 600.55,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/af8a5cd5-3279-4e06-b940-ab2862857d05",
+     "card": {
+      "x": 40,
+      "y": 1159.09,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 41,
+      "y": 1160.09,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/f2928caa-b0f5-497d-81a2-cf21005ca390",
+     "card": {
+      "x": 384,
+      "y": 1159.09,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 385,
+      "y": 1160.09,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/09c3ac9a-6aa9-4e88-b5ac-e5d15ec1262d",
+     "card": {
+      "x": 728,
+      "y": 1159.09,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 729,
+      "y": 1160.09,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/eeaa2b3a-103a-4b59-bdab-0a6eed98175a",
+     "card": {
+      "x": 1072,
+      "y": 1159.09,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 1073,
+      "y": 1160.09,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/d94188e1-b917-48bf-8db2-349b6edbce52",
+     "card": {
+      "x": 40,
+      "y": 1718.64,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 41,
+      "y": 1719.64,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/1f484c38-3b18-42cf-9b4f-c33f46ce658a",
+     "card": {
+      "x": 384,
+      "y": 1718.64,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 385,
+      "y": 1719.64,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/ddf2007d-c359-4c85-b05e-6b205632a344",
+     "card": {
+      "x": 728,
+      "y": 1718.64,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 729,
+      "y": 1719.64,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    },
+    {
+     "href": "/product/e1602255-f394-436e-b99f-919053442d70",
+     "card": {
+      "x": 1072,
+      "y": 1718.64,
+      "w": 328,
+      "h": 543.55
+     },
+     "photo": {
+      "x": 1073,
+      "y": 1719.64,
+      "w": 326,
+      "h": 434.66
+     },
+     "broken": false
+    }
+   ]
+  },
+  "builder": {
+   "size": {
+    "w": 390,
+    "h": 844
+   },
+   "states": [
+    {
+     "image": "captures/night-builder-0.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [],
+     "pill": null,
+     "pillText": null
+    },
+    {
+     "image": "captures/night-builder-1.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Leather Mix Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 366,
+        "h": 451
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 366,
+        "h": 451
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 105.95,
+      "h": 32
+     },
+     "pillText": "$990 · 1 piece"
+    },
+    {
+     "image": "captures/night-builder-2.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Leather Mix Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 451
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 451
+       }
+      },
+      {
+       "name": "9 Lives Wide Long Sleeve",
+       "cell": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 451
+       },
+       "img": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 451
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 119.52,
+      "h": 32
+     },
+     "pillText": "$1,165 · 2 pieces"
+    },
+    {
+     "image": "captures/night-builder-3.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Leather Mix Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 270.59
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 270.59
+       }
+      },
+      {
+       "name": "9 Lives Wide Long Sleeve",
+       "cell": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 270.59
+       },
+       "img": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 270.59
+       }
+      },
+      {
+       "name": "P013 Clean Tapered",
+       "cell": {
+        "x": 12,
+        "y": 335.59,
+        "w": 366,
+        "h": 179.41
+       },
+       "img": {
+        "x": 12,
+        "y": 335.59,
+        "w": 366,
+        "h": 179.41
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 124.97,
+      "h": 32
+     },
+     "pillText": "$1,440 · 3 pieces"
+    },
+    {
+     "image": "captures/night-builder-4.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Leather Mix Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 225
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 225
+       }
+      },
+      {
+       "name": "9 Lives Wide Long Sleeve",
+       "cell": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 225
+       },
+       "img": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 225
+       }
+      },
+      {
+       "name": "P013 Clean Tapered",
+       "cell": {
+        "x": 12,
+        "y": 290,
+        "w": 182.5,
+        "h": 225
+       },
+       "img": {
+        "x": 12,
+        "y": 290,
+        "w": 182.5,
+        "h": 225
+       }
+      },
+      {
+       "name": "Air Jordan 3 'True Blue' 2026",
+       "cell": {
+        "x": 195.5,
+        "y": 290,
+        "w": 182.5,
+        "h": 225
+       },
+       "img": {
+        "x": 195.5,
+        "y": 290,
+        "w": 182.5,
+        "h": 225
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 123.95,
+      "h": 32
+     },
+     "pillText": "$1,599 · 4 pieces"
+    },
+    {
+     "image": "captures/night-builder-5.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Leather Mix Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 257.06
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 257.06
+       }
+      },
+      {
+       "name": "9 Lives Wide Long Sleeve",
+       "cell": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 257.06
+       },
+       "img": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 257.06
+       }
+      },
+      {
+       "name": "P013 Clean Tapered",
+       "cell": {
+        "x": 12,
+        "y": 322.06,
+        "w": 121.33,
+        "h": 193.92
+       },
+       "img": {
+        "x": 12,
+        "y": 322.06,
+        "w": 121.33,
+        "h": 193.92
+       }
+      },
+      {
+       "name": "Air Jordan 3 'True Blue' 2026",
+       "cell": {
+        "x": 134.33,
+        "y": 322.06,
+        "w": 121.33,
+        "h": 193.92
+       },
+       "img": {
+        "x": 134.33,
+        "y": 322.06,
+        "w": 121.33,
+        "h": 193.92
+       }
+      },
+      {
+       "name": "V002 Mercer",
+       "cell": {
+        "x": 256.66,
+        "y": 322.06,
+        "w": 121.33,
+        "h": 193.92
+       },
+       "img": {
+        "x": 256.66,
+        "y": 322.06,
+        "w": 121.33,
+        "h": 193.92
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 121.78,
+      "h": 32
+     },
+     "pillText": "$1,779 · 5 pieces"
+    }
+   ]
+  }
+ },
+ "ask": {
+  "stylist": {
+   "size": {
+    "w": 390,
+    "h": 844
+   },
+   "open": "captures/ask-stylist-open.png",
+   "sent": "captures/ask-stylist-sent.png",
+   "reply": "captures/ask-stylist-reply.png",
+   "question": "Smart casual for a dinner date",
+   "bar": {
+    "x": 16,
+    "y": 778,
+    "w": 358,
+    "h": 50
+   },
+   "send": {
+    "x": 313,
+    "y": 6,
+    "w": 38,
+    "h": 38
+   },
+   "typed": [
+    {
+     "image": "captures/ask-stylist-type-00.png",
+     "chars": 0,
+     "caret": {
+      "x": 19,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-01.png",
+     "chars": 1,
+     "caret": {
+      "x": 28.45,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-02.png",
+     "chars": 2,
+     "caret": {
+      "x": 41.63,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-03.png",
+     "chars": 3,
+     "caret": {
+      "x": 49.91,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-04.png",
+     "chars": 4,
+     "caret": {
+      "x": 55.11,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-05.png",
+     "chars": 5,
+     "caret": {
+      "x": 60.71,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-06.png",
+     "chars": 6,
+     "caret": {
+      "x": 64.46,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-07.png",
+     "chars": 7,
+     "caret": {
+      "x": 72.7,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-08.png",
+     "chars": 8,
+     "caret": {
+      "x": 80.98,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-09.png",
+     "chars": 9,
+     "caret": {
+      "x": 88.59,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-10.png",
+     "chars": 10,
+     "caret": {
+      "x": 97.13,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-11.png",
+     "chars": 11,
+     "caret": {
+      "x": 105.41,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-12.png",
+     "chars": 12,
+     "caret": {
+      "x": 108.46,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-13.png",
+     "chars": 13,
+     "caret": {
+      "x": 112.21,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-14.png",
+     "chars": 14,
+     "caret": {
+      "x": 117.23,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-15.png",
+     "chars": 15,
+     "caret": {
+      "x": 125.66,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-16.png",
+     "chars": 16,
+     "caret": {
+      "x": 130.87,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-17.png",
+     "chars": 17,
+     "caret": {
+      "x": 134.62,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-18.png",
+     "chars": 18,
+     "caret": {
+      "x": 142.9,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-19.png",
+     "chars": 19,
+     "caret": {
+      "x": 146.65,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-20.png",
+     "chars": 20,
+     "caret": {
+      "x": 155.63,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-21.png",
+     "chars": 21,
+     "caret": {
+      "x": 158.68,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-22.png",
+     "chars": 22,
+     "caret": {
+      "x": 167.3,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-23.png",
+     "chars": 23,
+     "caret": {
+      "x": 175.93,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-24.png",
+     "chars": 24,
+     "caret": {
+      "x": 184.46,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-25.png",
+     "chars": 25,
+     "caret": {
+      "x": 189.66,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-26.png",
+     "chars": 26,
+     "caret": {
+      "x": 193.41,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-27.png",
+     "chars": 27,
+     "caret": {
+      "x": 202.4,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-28.png",
+     "chars": 28,
+     "caret": {
+      "x": 210.68,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-29.png",
+     "chars": 29,
+     "caret": {
+      "x": 215.74,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    },
+    {
+     "image": "captures/ask-stylist-type-30.png",
+     "chars": 30,
+     "caret": {
+      "x": 224.19,
+      "y": 15,
+      "w": 1.5,
+      "h": 20,
+      "color": "rgb(10, 10, 10)"
+     }
+    }
+   ],
+   "sheet": {
+    "x": 0,
+    "y": 56,
+    "w": 390,
+    "h": 788
+   },
+   "bubbles": [
+    {
+     "text": "Hi! I'm your AI Stylist. Tell me what vibe you're going for,",
+     "rect": {
+      "x": 16,
+      "y": 136.78,
+      "w": 315.03,
+      "h": 64
+     }
+    },
+    {
+     "text": "Smart casual for a dinner date",
+     "rect": {
+      "x": 149.42,
+      "y": 210.78,
+      "w": 224.58,
+      "h": 43
+     }
+    },
+    {
+     "text": "Easy but put together: a tan twill jacket over a washed tee,",
+     "rect": {
+      "x": 16,
+      "y": 263.78,
+      "w": 315.03,
+      "h": 85
+     }
+    }
+   ],
+   "strip": {
+    "x": 16,
+    "y": 356.78,
+    "w": 358,
+    "h": 152.25
+   },
+   "cards": [
+    {
+     "x": 16,
+     "y": 356.78,
+     "w": 84,
+     "h": 148.25
+    },
+    {
+     "x": 108,
+     "y": 356.78,
+     "w": 84,
+     "h": 148.25
+    },
+    {
+     "x": 200,
+     "y": 356.78,
+     "w": 84,
+     "h": 148.25
+    },
+    {
+     "x": 292,
+     "y": 356.78,
+     "w": 84,
+     "h": 148.25
+    }
+   ],
+   "look": {
+    "x": 16,
+    "y": 517.03,
+    "w": 300,
+    "h": 72
+   },
+   "lookHref": "?outerwear=b9f52491-68e5-483f-895d-b1305ca464f1&top=e13fa82f-d245-4267-9e9f-1fba372575ab&bottom=6bf714ad-e69a-478b-af4c-5c719dddc927&shoes=5bf66a72-160b-4d24-b447-0fd2d320378b"
+  },
+  "builder": {
+   "size": {
+    "w": 390,
+    "h": 844
+   },
+   "states": [
+    {
+     "image": "captures/ask-builder-0.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [],
+     "pill": null,
+     "pillText": null
+    },
+    {
+     "image": "captures/ask-builder-1.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Overdyed Twill Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 366,
+        "h": 451
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 366,
+        "h": 451
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 105.73,
+      "h": 32
+     },
+     "pillText": "$495 · 1 piece"
+    },
+    {
+     "image": "captures/ask-builder-2.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Overdyed Twill Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 451
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 451
+       }
+      },
+      {
+       "name": "Cities Tee",
+       "cell": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 451
+       },
+       "img": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 451
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 114.7,
+      "h": 32
+     },
+     "pillText": "$645 · 2 pieces"
+    },
+    {
+     "image": "captures/ask-builder-3.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Overdyed Twill Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 270.59
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 270.59
+       }
+      },
+      {
+       "name": "Cities Tee",
+       "cell": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 270.59
+       },
+       "img": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 270.59
+       }
+      },
+      {
+       "name": "Half & Half All Around Pant",
+       "cell": {
+        "x": 12,
+        "y": 335.59,
+        "w": 366,
+        "h": 179.41
+       },
+       "img": {
+        "x": 12,
+        "y": 335.59,
+        "w": 366,
+        "h": 179.41
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 115.33,
+      "h": 32
+     },
+     "pillText": "$990 · 3 pieces"
+    },
+    {
+     "image": "captures/ask-builder-4.png",
+     "canvas": {
+      "x": 12,
+      "y": 64,
+      "w": 366,
+      "h": 451
+     },
+     "cells": [
+      {
+       "name": "Overdyed Twill Jacket",
+       "cell": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 225
+       },
+       "img": {
+        "x": 12,
+        "y": 64,
+        "w": 182.5,
+        "h": 225
+       }
+      },
+      {
+       "name": "Cities Tee",
+       "cell": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 225
+       },
+       "img": {
+        "x": 195.5,
+        "y": 64,
+        "w": 182.5,
+        "h": 225
+       }
+      },
+      {
+       "name": "Half & Half All Around Pant",
+       "cell": {
+        "x": 12,
+        "y": 290,
+        "w": 182.5,
+        "h": 225
+       },
+       "img": {
+        "x": 12,
+        "y": 290,
+        "w": 182.5,
+        "h": 225
+       }
+      },
+      {
+       "name": "Yuto Horigome x Nike SB Air Force 1 Low 'White Iron Grey'",
+       "cell": {
+        "x": 195.5,
+        "y": 290,
+        "w": 182.5,
+        "h": 225
+       },
+       "img": {
+        "x": 195.5,
+        "y": 290,
+        "w": 182.5,
+        "h": 225
+       }
+      }
+     ],
+     "pill": {
+      "x": 24,
+      "y": 471,
+      "w": 119.86,
+      "h": 32
+     },
+     "pillText": "$1,126 · 4 pieces"
+    }
+   ]
   }
  }
 }

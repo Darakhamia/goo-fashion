@@ -7,6 +7,11 @@
 //   node scripts/render.mjs vertical  → out/master/goo-9x16-master.mp4 (the vertical cut, with sound)
 //   node scripts/render.mjs audio     → out/master/goo-9x16-audio.wav (its sound mix, lossless;
 //                                       scripts/encode-vertical.sh makes the deliverables)
+//   node scripts/render.mjs shorts [night|ask|pocket]
+//                                     → out/master/goo-<name>-master.mp4 (the three shorts)
+//   node scripts/render.mjs shorts-audio [night|ask|pocket]
+//                                     → out/master/goo-<name>-audio.wav (their sound mixes;
+//                                       scripts/encode-shorts.sh makes the MP4s)
 import fs from "node:fs";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
@@ -22,8 +27,9 @@ const serveUrl = await bundle({ entryPoint: path.resolve("src/index.ts"), webpac
 const jobs =
   mode === "card" ? [["Card", "card"]]
   : mode === "vertical" || mode === "audio" ? [["GOO-9x16", "9x16"]]
+  : mode === "shorts" || mode === "shorts-audio" ? [["GOO-Night", "night"], ["GOO-Ask", "ask"], ["GOO-Pocket", "pocket"]]
   : [["GOO-16x9", "16x9"], ["GOO-1x1", "1x1"]];
-const audioOnly = mode === "audio";
+const audioOnly = mode === "audio" || mode === "shorts-audio";
 for (const [id, name] of jobs) {
   if (only && only !== name) continue;
   const composition = await selectComposition({ serveUrl, id, browserExecutable });
