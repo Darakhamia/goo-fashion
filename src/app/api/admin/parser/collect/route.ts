@@ -33,7 +33,9 @@ import { notAProductPage } from "@/lib/server/parser/page-guards";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
 import { commonTitleSuffix } from "@/lib/server/product-fields";
 import { measurePendingBackdrops } from "@/lib/server/bg-color";
-import { checkPendingProducts } from "@/lib/server/catalogue-check/store";
+import { checkPendingProducts, getCheckSettings } from "@/lib/server/catalogue-check/store";
+import { getOpenAIKey } from "@/lib/server/get-openai-key";
+import { pickCategories, readCategoryQuestion, type CategoryChoice } from "@/lib/server/parser/pick-categories";
 import { getSiteConfigs, getAiSettings } from "@/lib/server/parser/configs";
 import type { CrawlItemResult } from "@/lib/server/parser/types";
 
@@ -132,6 +134,32 @@ function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
+/**
+ * A whole-store run's question, asked once with its first plan: which of the
+ * categories it read off the store's menu does the admin's rule keep? The
+ * answer is the AI check's model's, with its key. Without a rule nothing is
+ * asked; without a key, or when the call fails, the answer says why and the
+ * extension walks every category, as it would without a rule.
+ */
+async function chooseCategories(body: unknown, url: string): Promise<CategoryChoice | { error: string } | null> {
+  const question = readCategoryQuestion(body);
+  if (!question) return null;
+  const apiKey = await getOpenAIKey();
+  if (!apiKey) return { error: "no OpenAI key is set in the studio" };
+  try {
+    const { model } = await getCheckSettings();
+    let store = url;
+    try {
+      store = new URL(url).hostname;
+    } catch {
+      /* the address as given */
+    }
+    return await pickCategories({ ...question, store, model, apiKey });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message.slice(0, 200) : "the model did not answer" };
+  }
+}
+
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -181,10 +209,13 @@ export async function POST(req: Request) {
       catalogue: catalogue ?? undefined,
     });
 
+    const categoryChoice = await chooseCategories(body, url);
+
     return NextResponse.json({
       ok: true,
       ...plan,
       ...(catalogue === null ? { linksNote: "the catalogue could not be read — pages are opened in the store's order" } : {}),
+      ...(categoryChoice ? { categoryChoice } : {}),
     });
   }
 
