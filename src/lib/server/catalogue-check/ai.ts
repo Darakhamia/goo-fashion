@@ -14,6 +14,8 @@
  */
 import OpenAI from "openai";
 import type { CategoryGroup } from "@/lib/categories";
+import { STYLE_KEYWORDS } from "@/lib/style-keywords";
+import type { StyleKeyword } from "@/lib/types";
 import { FIX_FIELDS, type ModelFix, type productForModel } from "./fields";
 
 /** Models the check can run on, with OpenAI's price per million tokens. */
@@ -80,13 +82,14 @@ What each field must hold:
 - material: what the item is made of ("100% cotton", "leather"). Wrong when it is a price, a size chart, delivery text or anything else. Take it from the description when it states one; otherwise return [].
 - sizes: remove entries that are not sizes ("Add to cart", "Size guide", prices). Never add sizes.
 - description: remove only text that is not about the product (shipping, returns, cookies, newsletter). Never reword, never add.
+- style: one to three of the catalogue's styles (list below), never another word. Read it from what the record says the item is and is for. Fix it when it is empty and the record shows a style, or when it contradicts the record (running tights tagged classic). An item that fits none of them is left alone — never clear it.
 - price: never change it. Flag it (value []) only when it is implausible for the item and the currency — a T-shirt at 4000 USD that is clearly 4000 UAH.
 
 Rules:
 - Return a fix only when the record itself shows the current value is wrong. When unsure, leave the field alone. Most records need no fixes; an empty "fixes" list is the normal answer.
 - Never invent facts that are not in the record, and do not use outside knowledge of what a product usually is.
-- value is always a list of strings: one element for brand, name, category, subcategory, gender, material and description; the full new list for colors, color_filters and sizes; [] to clear a field.
-- confidence: "high" when the record proves it (the brand is in the name and the page address; the name says "Sneaker" and the subcategory is "Hoodies"); "medium" when it is likely but a person should look; "low" for a guess — prefer leaving those out.
+- value is always a list of strings: one element for brand, name, category, subcategory, gender, material and description; the full new list for colors, color_filters, sizes and style; [] to clear a field.
+- confidence: "high" when the record proves it (the brand is in the name and the page address; the name says "Sneaker" and the subcategory is "Hoodies"; a style the record names, or names the use of — a tuxedo, a running shoe, "for the office"); "medium" when it is likely but a person should look; "low" for a guess — prefer leaving those out.
 - reason: one short sentence in English naming the evidence.
 - Answer for every product id you were given.`;
 
@@ -97,6 +100,15 @@ export interface PromptContext {
   /** House rules typed by the catalogue team in the studio. */
   notes: string;
 }
+
+/** What each of the five styles means, as the style dictionary reads it (`lib/taxonomy/styles`). */
+const STYLE_MEANING: Record<StyleKeyword, string> = {
+  casual: "relaxed everyday wear — for every day, the weekend, a walk, lounging",
+  minimal: "plain, clean design — no logo, no print, monochrome, clean lines",
+  classic: "tailored, timeless or formal — the office, a wedding, an evening; suits, trench coats, loafers",
+  streetwear: "street and skate culture — graphic prints, box logos, skate shoes, hype",
+  sporty: "sport and outdoor activity — running, training, the gym, hiking; tracksuits, performance fabric",
+};
 
 /** Brands named in the shared block; the rest of the catalogue's are matched by the server. */
 const PROMPT_BRANDS = 400;
@@ -113,11 +125,15 @@ function contextBlock(ctx: PromptContext): string {
   const filters = ctx.colorGroups.map((g) => g.name).join(", ");
   const brands = ctx.brands.slice(0, PROMPT_BRANDS).join(" | ");
   const notes = ctx.notes.trim();
+  const styles = STYLE_KEYWORDS.map((s) => `- ${s}: ${STYLE_MEANING[s]}`).join("\n");
   return [
     "CATEGORY TREE (subcategory label [category]):",
     tree,
     "",
     `COLOUR FILTER GROUPS: ${filters}`,
+    "",
+    "CATALOGUE STYLES (the only values style takes):",
+    styles,
     "",
     `KNOWN BRAND SPELLINGS (most used first): ${brands}`,
     ...(notes ? ["", "HOUSE RULES FROM THE CATALOGUE TEAM (follow them; they never allow inventing facts):", notes] : []),

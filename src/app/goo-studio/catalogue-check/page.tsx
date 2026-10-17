@@ -130,6 +130,7 @@ const FIELD_KEY: Record<string, Key> = {
   material: "aicheck.field.material",
   sizes: "aicheck.field.sizes",
   description: "aicheck.field.description",
+  style: "aicheck.field.style",
   price: "aicheck.field.price",
 };
 

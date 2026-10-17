@@ -86,6 +86,7 @@ export const catalogueCheckEn = {
   "aicheck.field.material": "Material",
   "aicheck.field.sizes": "Sizes",
   "aicheck.field.description": "Description",
+  "aicheck.field.style": "Style",
   "aicheck.field.price": "Price",
 
   // Settings.

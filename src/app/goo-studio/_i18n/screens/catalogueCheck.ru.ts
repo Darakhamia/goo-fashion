@@ -124,6 +124,7 @@ export const catalogueCheckRu: Partial<Record<Key, Message>> = {
   "aicheck.field.material": "Материал",
   "aicheck.field.sizes": "Размеры",
   "aicheck.field.description": "Описание",
+  "aicheck.field.style": "Стиль",
   "aicheck.field.price": "Цена",
 
   "aicheck.settings.title": "Настройки",
