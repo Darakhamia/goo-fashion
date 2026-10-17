@@ -136,7 +136,7 @@ export const catalogueCheckRu: Partial<Record<Key, Message>> = {
   "aicheck.mode.autoNote": "Правки, которые подтверждает запись, вносятся сразу; остальные ждут здесь.",
   "aicheck.settings.model": "Модель",
   "aicheck.settings.cap": "Месячный лимит фоновой проверки ($)",
-  "aicheck.settings.spend": "Фоновая проверка потратила {spent} из {cap} в этом месяце. Запуски с этой страницы не ограничены: оценка стоимости — на каждой кнопке.",
+  "aicheck.settings.spend": "Фоновая проверка и выбор расширением, что собирать, потратили {spent} из {cap} в этом месяце. Запуски с этой страницы не ограничены: оценка стоимости — на каждой кнопке.",
   "aicheck.settings.rules": "Правила для модели",
   "aicheck.settings.rulesPlaceholder": "Например: Carhartt WIP и Carhartt — один бренд, писать «Carhartt WIP».\nНазвания — на английском, с заглавных букв.",
   "aicheck.settings.save": "Сохранить настройки",
@@ -226,6 +226,7 @@ export const catalogueCheckRu: Partial<Record<Key, Message>> = {
   "aicheck.kind.auto": "После импорта",
   "aicheck.kind.brands": "Написания брендов",
   "aicheck.kind.manual": "Вручную",
+  "aicheck.kind.collect": "Расширение: что собирать",
   "aicheck.runs.undo": {
     one: "Отменить его {count} правку…",
     few: "Отменить его {count} правки…",

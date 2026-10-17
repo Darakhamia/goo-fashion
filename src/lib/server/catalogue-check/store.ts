@@ -221,7 +221,12 @@ async function loadContext(notes: string, fresh = false): Promise<Context> {
 
 // ── Runs ─────────────────────────────────────────────────────────────────────
 
-export type RunTrigger = "manual" | "auto" | "brands";
+/**
+ * `collect`: the extension's whole-store run asking which categories and
+ * pieces to take (`parser/pick-categories.ts`, `pick-pieces.ts`). It spends
+ * from the same monthly cap as the background sweep.
+ */
+export type RunTrigger = "manual" | "auto" | "brands" | "collect";
 
 interface RunDelta {
   products: number;
@@ -238,6 +243,11 @@ export function newRunId(trigger: RunTrigger): string {
 /** The background sweep keeps one run per day, so the log is not a row per import. */
 function autoRunId(): string {
   return `auto-${new Date().toISOString().slice(0, 10)}`;
+}
+
+/** So does the extension's asking: one row a day, however many plans it sends. */
+function collectRunId(): string {
+  return `collect-${new Date().toISOString().slice(0, 10)}`;
 }
 
 async function addToRun(runId: string, trigger: RunTrigger, model: string, adminId: string | null, d: RunDelta): Promise<void> {
@@ -267,7 +277,10 @@ function monthStart(): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 }
 
-/** Spent this calendar month (UTC): by the background sweep, and in total. */
+/**
+ * Spent this calendar month (UTC): what counts against the monthly cap — the
+ * background sweep and the extension's asking — and in total.
+ */
 async function monthSpend(): Promise<{ auto: number; total: number }> {
   const { data, error } = await db().from("catalogue_check_runs").select("trigger, cost_usd").gte("started_at", monthStart());
   if (error) return { auto: 0, total: 0 };
@@ -276,9 +289,27 @@ async function monthSpend(): Promise<{ auto: number; total: number }> {
   for (const r of (data ?? []) as { trigger: string; cost_usd: number | string }[]) {
     const cost = Number(r.cost_usd) || 0;
     total += cost;
-    if (r.trigger === "auto") auto += cost;
+    if (r.trigger === "auto" || r.trigger === "collect") auto += cost;
   }
   return { auto, total };
+}
+
+/**
+ * The monthly cap and what has been spent of it. The extension asks before
+ * every choice; past the cap its run goes on without AI and says why.
+ */
+export async function capSpent(): Promise<{ spent: number; cap: number }> {
+  const [settings, spent] = await Promise.all([getCheckSettings(), monthSpend()]);
+  return { spent: spent.auto, cap: settings.monthlyBudgetUsd };
+}
+
+/**
+ * Record what the extension's choices cost, in the day's `collect` run.
+ * `judged` is how many categories and pieces the model looked at.
+ */
+export async function recordCollectSpend(model: string, judged: number, usage: Usage): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  await addToRun(collectRunId(), "collect", model, null, { products: judged, applied: 0, suggested: 0, failed: 0, usage });
 }
 
 // ── Checking records ─────────────────────────────────────────────────────────
