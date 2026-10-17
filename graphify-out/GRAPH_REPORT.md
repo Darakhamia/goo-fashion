@@ -1,7 +1,7 @@
 # Graph Report - goo-fashion  (2026-10-17)
 
 ## Corpus Check
-- 521 files · ~880,042 words
+- 521 files · ~880,084 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: .ttf 3, (none) 2, .css 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a86369d9`
+- Built from commit: `f20e51ae`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1058,7 +1058,7 @@ Nodes (4): Cross-cutting, Desktop (≥ 768px viewport), Manual QA Checklist (fin
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `next` connect `supabase.ts` to `Navigation.tsx`, `chat/route.ts`, `mono-subscriptions.ts`, `package.json`, `collect/page.tsx`, `products/[id]/page.tsx`, `retailer-domains.ts`, `useT`, `email/page.tsx`, `browse/page.tsx`, `field-mining/route.ts`, `subscriptions.ts`, `lib/types.ts`, `useDict`, `product-bg-color/route.ts`, `store.ts`, `subscriptions/page.tsx`, `admin-auth.ts`, `collect/route.ts`, `label-audit/route.ts`, `plans.ts`, `field-suggestions.ts`, `outfits/page.tsx`, `outfit-landing.ts`, `StylistDrawer.tsx`, `restyle/route.ts`, `analytics/route.ts`, `categories/route.ts`, `requireAdmin`, `AuthForm.tsx`, `import/page.tsx`, `db.ts`, `ProductClient.tsx`, `duplicates/route.ts`, `HeroSection.tsx`, `generate-outfit/route.ts`, `profile/page.tsx`, `checkRows`, `JournalFeed.tsx`, `catalogue-check/route.ts`, `duplicates/page.tsx`, `ConditionalSiteLayout.tsx`, `outfits/page.tsx`, `AnalyticsTracker.tsx`, `recategorize/route.ts`, `export-images/route.ts`, `fx.ts`, `schema-check.ts`, `app/layout.tsx`, `share/route.ts`, `seo.ts`, `opengraph-image.tsx`, `ProductClient.tsx`, `app/page.tsx`, `blog/[id]/route.ts`, `billing-test/route.ts`, `index.ts`, `email/route.ts`, `privacy/page.tsx`, `plans/page.tsx`, `rate-limit.ts`, `HowItWorksSection.tsx`, `proxy.ts`, `blog/[slug]/page.tsx`, `categories.ts`, `pageMetadata`, `image/route.ts`, `report/page.tsx`, `health/route.ts`, `activity/layout.tsx`, `analytics/layout.tsx`, `audit/layout.tsx`, `blog/layout.tsx`, `brands/layout.tsx`, `catalogue-check/layout.tsx`, `categories/layout.tsx`, `duplicates/layout.tsx`, `email/layout.tsx`, `import/layout.tsx`, `outfits/layout.tsx`, `collect/layout.tsx`, `parser/layout.tsx`, `products/layout.tsx`, `prompts/layout.tsx`, `retailers/layout.tsx`, `settings/layout.tsx`, `subscriptions/layout.tsx`, `users/layout.tsx`, `waitlist/layout.tsx`, `report/layout.tsx`?**
-  _High betweenness centrality (0.290) - this node is a cross-community bridge._
+  _High betweenness centrality (0.291) - this node is a cross-community bridge._
 - **Are the 14 inferred relationships involving `requireAdmin()` (e.g. with `3.2 Что происходит при запросе `POST /api/stylist/chat`` and `Переменные`) actually correct?**
   _`requireAdmin()` has 14 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@tailwindcss/postcss`, `@types/node`, `@types/react` to the rest of the system?**
