@@ -198,9 +198,9 @@
     "semantic_hash": ""
   },
   "src/app/api/analytics/pageview/route.ts": {
-    "mtime": 1791754086.8428094,
-    "seen": 1791989447.2580209,
-    "ast_hash": "dc832efb8738b500325b8014533a63e1",
+    "mtime": 1792242018.3635426,
+    "seen": 1792242313.8063304,
+    "ast_hash": "70024dd013d33333f18f37f58bb1d652",
     "semantic_hash": ""
   },
   "src/app/api/analytics/web-vitals/route.ts": {
@@ -432,9 +432,9 @@
     "semantic_hash": ""
   },
   "src/app/cookie/page.tsx": {
-    "mtime": 1792020947.8820844,
-    "seen": 1792021088.5456817,
-    "ast_hash": "1ba5a2c93bd08331bd72cc18c1996de1",
+    "mtime": 1792242088.1631482,
+    "seen": 1792242313.8096526,
+    "ast_hash": "251e02afa04a86f3367dbfa212b4886a",
     "semantic_hash": ""
   },
   "src/app/error.tsx": {
@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "src/app/privacy/page.tsx": {
-    "mtime": 1792020947.8780882,
-    "seen": 1792021088.548902,
-    "ast_hash": "b857ebae5d9c63ab9736478a185d0378",
+    "mtime": 1792242088.1612568,
+    "seen": 1792242313.8158782,
+    "ast_hash": "531ced55bae8eba131a5dc26ea4c6e2f",
     "semantic_hash": ""
   },
   "src/app/product/[id]/page.tsx": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "src/app/robots.ts": {
-    "mtime": 1791987590.6362813,
-    "seen": 1791989447.2584414,
-    "ast_hash": "f6f15f7fec92d101a8c5ece486722640",
+    "mtime": 1792241990.4535239,
+    "seen": 1792242313.816299,
+    "ast_hash": "31b8c36ad010687dbdc0e4d4d2ea77bd",
     "semantic_hash": ""
   },
   "src/app/saved/page.tsx": {
@@ -648,9 +648,9 @@
     "semantic_hash": ""
   },
   "src/app/sitemap.ts": {
-    "mtime": 1792009667.715125,
-    "seen": 1792010000.2642896,
-    "ast_hash": "780929e0699b123c25ff413f6ab874d3",
+    "mtime": 1792242088.1645753,
+    "seen": 1792242313.8164144,
+    "ast_hash": "6ee1876db632a01de70a96bba99b9cf1",
     "semantic_hash": ""
   },
   "src/app/subscribe/page.tsx": {
@@ -1002,9 +1002,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/rate-limit.ts": {
-    "mtime": 1791754086.8944259,
-    "seen": 1791989447.2588842,
-    "ast_hash": "526dd7a1404fe4d63530b6b1eb93bd3d",
+    "mtime": 1792242018.3630357,
+    "seen": 1792242313.8248248,
+    "ast_hash": "c842c9613dc0c0b1474295422029ecc2",
     "semantic_hash": ""
   },
   "src/lib/server/replicate-ai.ts": {
@@ -1050,9 +1050,9 @@
     "semantic_hash": ""
   },
   "src/proxy.ts": {
-    "mtime": 1791754086.9005134,
-    "seen": 1791989447.2589412,
-    "ast_hash": "f455ef6057f5cce18d79a08b7e23e376",
+    "mtime": 1792241990.4545925,
+    "seen": 1792242313.8261218,
+    "ast_hash": "ac3282d3dd3e5edb8b0f8985c3c023be",
     "semantic_hash": ""
   },
   "supabase-migration-billing-events.sql": {
@@ -1286,9 +1286,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1791995138.8955834,
-    "seen": 1791995167.498011,
-    "ast_hash": "ed8c2fa1b0c8a7c1f3bc3eca3c12b2db",
+    "mtime": 1792242136.4856637,
+    "seen": 1792242313.826502,
+    "ast_hash": "c496c31d778dab7ccfe8344fb50f535e",
     "semantic_hash": ""
   },
   "public/cs/hoodie-card-black.png": {
@@ -3458,15 +3458,15 @@
     "semantic_hash": ""
   },
   "src/app/cookie/uk.tsx": {
-    "mtime": 1792020947.8829873,
-    "seen": 1792021088.5456836,
-    "ast_hash": "91ee998558c06789b059430ad8edcedf",
+    "mtime": 1792242088.16376,
+    "seen": 1792242313.8096561,
+    "ast_hash": "f05bf6096f0d1006481ddb9d3e8a9fda",
     "semantic_hash": ""
   },
   "src/app/privacy/uk.tsx": {
-    "mtime": 1792020947.8791463,
-    "seen": 1792021088.5489042,
-    "ast_hash": "4b0026882fbd8b33443f4c4fa215b23d",
+    "mtime": 1792242088.1623366,
+    "seen": 1792242313.8158827,
+    "ast_hash": "4fad5bb2971f34a0410dbf0ee397d0e9",
     "semantic_hash": ""
   },
   "src/app/refund/uk.tsx": {
@@ -3545,6 +3545,24 @@
     "mtime": 1792235143.3342729,
     "seen": 1792235160.1625776,
     "ast_hash": "1ccd405090eeca96db86f6e1fa19bfac",
+    "semantic_hash": ""
+  },
+  "src/lib/bots.ts": {
+    "mtime": 1792241979.737915,
+    "seen": 1792242313.8206894,
+    "ast_hash": "c47606d2413d04c1031514da43cac8fa",
+    "semantic_hash": ""
+  },
+  "src/lib/server/client-ip.ts": {
+    "mtime": 1792242007.2059145,
+    "seen": 1792242313.823165,
+    "ast_hash": "fb6b157e261cd48317716def840f5f43",
+    "semantic_hash": ""
+  },
+  "docs/CLOUDFLARE.md": {
+    "mtime": 1792242126.8579116,
+    "seen": 1792242313.8266044,
+    "ast_hash": "5a0427b423cd36acdbd55f8144e0f20a",
     "semantic_hash": ""
   }
 }

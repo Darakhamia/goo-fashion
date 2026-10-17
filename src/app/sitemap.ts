@@ -12,9 +12,9 @@ export const revalidate = 3600;
  * a lastmod that changes without the page is what teaches Google to ignore it.
  */
 const LEGAL_UPDATED: Record<string, string> = {
-  "/privacy": "2026-10-14",
+  "/privacy": "2026-10-17",
   "/terms": "2026-10-14",
-  "/cookie": "2026-10-14",
+  "/cookie": "2026-10-17",
   "/refund": "2026-10-14",
 };
 

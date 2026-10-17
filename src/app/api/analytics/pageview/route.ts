@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkAnalyticsRateLimit } from "@/lib/server/rate-limit";
 import { isUntrackedPath } from "@/lib/analytics/paths";
+import { clientIp } from "@/lib/server/client-ip";
 
 const PRIVATE_IP = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|localhost)/;
 
@@ -13,10 +14,8 @@ async function resolveCountry(req: Request): Promise<string | null> {
     req.headers.get("x-forwarded-country");
   if (fromHeader && fromHeader !== "XX") return fromHeader;
 
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip");
-  if (!ip || PRIVATE_IP.test(ip)) return null;
+  const ip = clientIp(req);
+  if (PRIVATE_IP.test(ip)) return null;
 
   try {
     const res = await fetch(`https://ipapi.co/${ip}/country_code/`, {

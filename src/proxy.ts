@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest, NextFetchEvent } from "next/server";
+import { isBlockedBot } from "@/lib/bots";
 
 const ADMIN_PATH = "/goo-studio";
 
@@ -56,6 +57,16 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
  * Kept outside clerkMiddleware so it doesn't depend on Clerk being configured.
  */
 export default function proxy(req: NextRequest, event: NextFetchEvent) {
+  // AI training and SEO-tool crawlers (lib/bots.ts): turned away before any
+  // page renders or Clerk runs. robots.txt stays readable, so the polite ones
+  // learn to stop asking.
+  if (req.nextUrl.pathname !== "/robots.txt" && isBlockedBot(req.headers.get("user-agent"))) {
+    return new NextResponse("Crawling this site is not allowed. See /robots.txt.", {
+      status: 403,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+
   const host = req.headers.get("host") ?? "";
   if (host.startsWith("www.")) {
     // Build the URL from scratch: behind the reverse proxy req.nextUrl carries the
