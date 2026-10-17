@@ -1406,9 +1406,9 @@
     "semantic_hash": ""
   },
   "src/app/api/admin/parser/collect/route.ts": {
-    "mtime": 1792260558.7029707,
-    "seen": 1792260666.4671664,
-    "ast_hash": "9d3815b970c5ba146182fcf9d150f28a",
+    "mtime": 1792260864.2160864,
+    "seen": 1792260965.6343772,
+    "ast_hash": "0b25100b8e35f9bf998161be1ea8bfd0",
     "semantic_hash": ""
   },
   "src/app/api/admin/product-bg-color/route.ts": {
@@ -3548,9 +3548,21 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/pick-categories.ts": {
-    "mtime": 1792260558.7029707,
-    "seen": 1792260666.4677541,
-    "ast_hash": "8152575f84416bc374c6bbe4a70c1fc2",
+    "mtime": 1792260795.1065192,
+    "seen": 1792260965.6450114,
+    "ast_hash": "b584e6e6b34fd6aeac9fad5599170073",
+    "semantic_hash": ""
+  },
+  "src/lib/server/parser/pick-pieces.ts": {
+    "mtime": 1792260928.2434113,
+    "seen": 1792260965.6450148,
+    "ast_hash": "03452e2b9edd144c6d169a54eba70afc",
+    "semantic_hash": ""
+  },
+  "src/lib/server/parser/rule-choice.ts": {
+    "mtime": 1792260764.3945174,
+    "seen": 1792260965.6451392,
+    "ast_hash": "56cb95fd744f813d5517d9cf225ae699",
     "semantic_hash": ""
   }
 }
