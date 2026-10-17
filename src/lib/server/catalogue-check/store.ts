@@ -10,7 +10,9 @@
  * Three ways in:
  *   - after every import (extension, Collect catalog, Parse URL, CSV) the
  *     imported product is queued and the sweep checks it, plus any product
- *     never checked, a batch at a time, under a monthly spending cap;
+ *     never checked, a batch at a time, under a monthly spending cap; the
+ *     extension's pieces go first, and their sure fixes are written in any
+ *     mode but "off" (`checkCollectedProducts`);
  *   - "Check" in the studio walks the catalogue from the admin's tab;
  *   - "Unify brands" reviews every brand spelling the catalogue holds at once.
  */
@@ -55,7 +57,8 @@ export type CheckMode = "off" | "suggest" | "auto";
 export interface CheckSettings {
   /**
    * auto — sure fixes are written, after imports and from the studio;
-   * suggest — nothing is written, every fix waits for a person;
+   * suggest — nothing is written, every fix waits for a person — except the
+   *   sure fixes on pieces the extension collects;
    * off — nothing runs by itself; a run from the studio still writes sure fixes.
    */
   mode: CheckMode;
@@ -221,7 +224,17 @@ async function loadContext(notes: string, fresh = false): Promise<Context> {
 
 // ── Runs ─────────────────────────────────────────────────────────────────────
 
-export type RunTrigger = "manual" | "auto" | "brands";
+/**
+ * `collect`: the extension's whole-store run asking which categories and
+ * pieces to take (`parser/pick-categories.ts`, `pick-pieces.ts`).
+ * `extension`: the check of each piece the extension imports, as it arrives
+ * (`checkCollectedProducts`). Both spend from the same monthly cap as the
+ * background sweep.
+ */
+export type RunTrigger = "manual" | "auto" | "brands" | "collect" | "extension";
+
+/** What counts against the monthly cap. */
+const CAPPED: ReadonlySet<string> = new Set<RunTrigger>(["auto", "collect", "extension"]);
 
 interface RunDelta {
   products: number;
@@ -238,6 +251,16 @@ export function newRunId(trigger: RunTrigger): string {
 /** The background sweep keeps one run per day, so the log is not a row per import. */
 function autoRunId(): string {
   return `auto-${new Date().toISOString().slice(0, 10)}`;
+}
+
+/** So does the extension's asking: one row a day, however many plans it sends. */
+function collectRunId(): string {
+  return `collect-${new Date().toISOString().slice(0, 10)}`;
+}
+
+/** And the check of what it imports: one row a day, however many pieces. */
+function extensionRunId(): string {
+  return `extension-${new Date().toISOString().slice(0, 10)}`;
 }
 
 async function addToRun(runId: string, trigger: RunTrigger, model: string, adminId: string | null, d: RunDelta): Promise<void> {
@@ -267,7 +290,11 @@ function monthStart(): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 }
 
-/** Spent this calendar month (UTC): by the background sweep, and in total. */
+/**
+ * Spent this calendar month (UTC): what counts against the monthly cap — the
+ * background sweep, the extension's asking and the check of what it
+ * imports — and in total.
+ */
 async function monthSpend(): Promise<{ auto: number; total: number }> {
   const { data, error } = await db().from("catalogue_check_runs").select("trigger, cost_usd").gte("started_at", monthStart());
   if (error) return { auto: 0, total: 0 };
@@ -276,9 +303,27 @@ async function monthSpend(): Promise<{ auto: number; total: number }> {
   for (const r of (data ?? []) as { trigger: string; cost_usd: number | string }[]) {
     const cost = Number(r.cost_usd) || 0;
     total += cost;
-    if (r.trigger === "auto") auto += cost;
+    if (CAPPED.has(r.trigger)) auto += cost;
   }
   return { auto, total };
+}
+
+/**
+ * The monthly cap and what has been spent of it. The extension asks before
+ * every choice; past the cap its run goes on without AI and says why.
+ */
+export async function capSpent(): Promise<{ spent: number; cap: number }> {
+  const [settings, spent] = await Promise.all([getCheckSettings(), monthSpend()]);
+  return { spent: spent.auto, cap: settings.monthlyBudgetUsd };
+}
+
+/**
+ * Record what the extension's choices cost, in the day's `collect` run.
+ * `judged` is how many categories and pieces the model looked at.
+ */
+export async function recordCollectSpend(model: string, judged: number, usage: Usage): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  await addToRun(collectRunId(), "collect", model, null, { products: judged, applied: 0, suggested: 0, failed: 0, usage });
 }
 
 // ── Checking records ─────────────────────────────────────────────────────────
@@ -355,10 +400,21 @@ async function inPool<T>(items: T[], lanes: number, work: (item: T) => Promise<v
 /**
  * Check a set of records: ask the model, judge its answer, write what may be
  * written, journal everything, and stamp each record as checked.
+ *
+ * `writeSure` writes the sure fixes whatever the mode: the pieces the
+ * extension collects arrive finished, not waiting in a queue for a person.
  */
 async function checkRows(
   rows: CheckRow[],
-  opts: { runId: string; trigger: RunTrigger; settings: CheckSettings; adminId: string | null; apiKey: string; ctx: Context },
+  opts: {
+    runId: string;
+    trigger: RunTrigger;
+    settings: CheckSettings;
+    adminId: string | null;
+    apiKey: string;
+    ctx: Context;
+    writeSure?: boolean;
+  },
 ): Promise<BatchOutcome> {
   const client = db();
   const outcome: BatchOutcome = { checked: 0, applied: 0, suggested: 0, failed: 0, usage: NO_USAGE, lines: [] };
@@ -415,8 +471,8 @@ async function checkRows(
         continue;
       }
       const writable = Object.keys(fix.after).length > 0;
-      // "Suggest only" writes nothing; "off" only stops the background sweep.
-      if (writable && opts.settings.mode !== "suggest" && fix.confidence === "high") toApply.push(fix);
+      // "Suggest only" writes nothing but the extension's sure fixes; "off" only stops the background sweep.
+      if (writable && (opts.writeSure || opts.settings.mode !== "suggest") && fix.confidence === "high") toApply.push(fix);
       else toSuggest.push(fix);
     }
 
@@ -893,6 +949,8 @@ const SWEEP_EVERY_MS = 15_000;
 const RETRY_AFTER_MS = 30 * 60_000;
 
 const queued = new Set<string>();
+/** Pieces the extension just imported: checked before anything else, sure fixes written. */
+const collected = new Set<string>();
 const retryAt = new Map<string, number>();
 let sweeping: Promise<void> | null = null;
 let lastSweepAt = 0;
@@ -914,7 +972,7 @@ export function checkPendingProducts(opts: { ids?: (string | null | undefined)[]
   const now = Date.now();
   if (now < pausedUntil || now - lastSweepAt < SWEEP_EVERY_MS) {
     // Ids that arrive while throttled are not left waiting for the next import.
-    if (queued.size && !followUp) {
+    if ((queued.size || collected.size) && !followUp) {
       followUp = setTimeout(() => {
         followUp = null;
         void checkPendingProducts();
@@ -930,14 +988,35 @@ export function checkPendingProducts(opts: { ids?: (string | null | undefined)[]
   return sweeping;
 }
 
+/**
+ * Check pieces the extension has just imported (plan 001, decision 3b). They
+ * go through the same sweep, ahead of everything else, and their sure fixes —
+ * a style among them — are written even in "Suggest only"; the unsure ones
+ * wait on the AI check page like any other. The extension does not wait for
+ * any of it.
+ *
+ * With the mode "off", or past the monthly cap, nothing is asked: the pieces
+ * stay unchecked, and the background sweep comes to them in its own time
+ * once the check is back on or the cap allows.
+ */
+export function checkCollectedProducts(ids: (string | null | undefined)[]): Promise<void> {
+  for (const id of ids) if (id) collected.add(id);
+  return checkPendingProducts();
+}
+
 async function sweep(): Promise<void> {
   try {
     if (!isSupabaseConfigured || !supabase) return;
     const settings = await getCheckSettings();
-    if (settings.mode === "off") return;
+    // Left unchecked rather than held: the sweep reaches them once it can run.
+    if (settings.mode === "off") {
+      collected.clear();
+      return;
+    }
     const apiKey = await getOpenAIKey();
     if (!apiKey) {
       pausedUntil = Date.now() + 10 * 60_000;
+      collected.clear();
       return;
     }
     const client = supabase;
@@ -948,7 +1027,30 @@ async function sweep(): Promise<void> {
       if (spent.auto >= settings.monthlyBudgetUsd) {
         pausedUntil = Date.now() + 60 * 60_000;
         queued.clear();
+        collected.clear();
         return;
+      }
+
+      const fresh = [...collected].slice(0, SWEEP_BATCH);
+      for (const id of fresh) collected.delete(id);
+      if (fresh.length) {
+        const rows = (await selectRows((cols) => client.from("products").select(cols).in("id", fresh))).filter(needsCheck);
+        if (!rows.length) continue;
+        const outcome = await checkRows(rows, {
+          runId: extensionRunId(),
+          trigger: "extension",
+          settings,
+          adminId: null,
+          apiKey,
+          ctx,
+          writeSure: true,
+        });
+        for (const line of outcome.lines) if (line.failed) retryAt.set(line.id, Date.now() + RETRY_AFTER_MS);
+        if (outcome.error) {
+          pausedUntil = Date.now() + 5 * 60_000;
+          return;
+        }
+        continue;
       }
 
       const now = Date.now();
@@ -983,7 +1085,7 @@ async function sweep(): Promise<void> {
     if (err instanceof NotMigrated) pausedUntil = Date.now() + 60 * 60_000;
     else console.error("[catalogue-check] sweep failed:", err instanceof Error ? err.message : err);
   } finally {
-    if (queued.size && !followUp) {
+    if ((queued.size || collected.size) && !followUp) {
       followUp = setTimeout(() => {
         followUp = null;
         void checkPendingProducts();

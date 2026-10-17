@@ -21,6 +21,10 @@
  * description manages to talk the model into, the only possible writes are
  * these fields, with these values.
  *
+ * A style is the one judgement the record does not spell out: it is read from
+ * what the piece is and is for, so it is held to the catalogue's five styles
+ * and nothing else, rather than to words in the record.
+ *
  * Prices are never changed. The model may flag one as implausible (a T-shirt
  * at $4,000 that was ₴4,000); that becomes a note for a person, with nothing to
  * apply.
@@ -35,13 +39,14 @@ import {
   canonicalColor,
 } from "@/lib/server/product-fields";
 import { brandSpelledIn, foldBrand, isNotABrand } from "@/lib/server/parser/brand-from-name";
+import { isStyleKeyword, normalizeStyleKeywords } from "@/lib/style-keywords";
 
 /** The product columns the check reads. */
 export const CHECK_COLUMNS = [
   "id", "name", "brand", "category", "subcategory", "gender", "colors", "color_group_ids",
   "material", "sizes", "description", "retailers", "price_min", "price_max", "currency",
   "source_price", "source_currency", "source_url", "gtin", "mpn", "images", "created_at",
-  "catalogue_fingerprint",
+  "style_keywords", "catalogue_fingerprint",
 ] as const;
 
 /** Columns that arrived with a migration a database may not have run yet. */
@@ -71,6 +76,7 @@ export interface CheckRow {
   gtin?: string | null;
   mpn?: string | null;
   images?: string[] | null;
+  style_keywords?: string[] | null;
   created_at?: string | null;
   catalogue_fingerprint?: string | null;
 }
@@ -78,7 +84,7 @@ export interface CheckRow {
 /** Fields the model may speak about. `price` is a flag only — never applied. */
 export const FIX_FIELDS = [
   "brand", "name", "category", "subcategory", "gender", "colors", "color_filters",
-  "material", "sizes", "description", "price",
+  "material", "sizes", "description", "style", "price",
 ] as const;
 export type FixField = (typeof FIX_FIELDS)[number];
 
@@ -126,6 +132,11 @@ export interface Verdict {
  * prices, store links and sizes change with every feed update (a CSV import
  * refreshes them on thousands of rows), and a re-check after each would spend
  * money finding nothing.
+ *
+ * Style is left out too, though the check judges it. "Reset styles" in the
+ * studio rewrites the tags of the whole catalogue at once, and a hash that
+ * read them would send every product back to the model after it — and
+ * adding it here at all would have changed every stored fingerprint.
  */
 export function fingerprint(row: CheckRow): string {
   const groups = [...(row.color_group_ids ?? [])].sort((a, b) => a - b);
@@ -195,6 +206,8 @@ export function productForModel(row: CheckRow, colorGroups: CheckContext["colorG
     material: row.material ?? "",
     sizes: (row.sizes ?? []).slice(0, 30),
     description: description.length > DESCRIPTION_CHARS ? `${description.slice(0, DESCRIPTION_CHARS)}…` : description,
+    // A stored tag outside the five is not a style any more (`lib/style-keywords`).
+    style: normalizeStyleKeywords(row.style_keywords ?? []),
     price: price + source,
     page: shortUrl(row.source_url),
     stores: storeLines(row.retailers)
@@ -271,6 +284,8 @@ function sameJson(a: unknown, b: unknown): boolean {
 // ── Validation ────────────────────────────────────────────────────────────────
 
 const GENDERS = new Set(["men", "women", "unisex"]);
+/** More than this many styles on one piece says nothing about it. */
+const MAX_STYLES = 3;
 
 function first(fix: ModelFix): string {
   return String(fix.value?.[0] ?? "").replace(/\s+/g, " ").trim();
@@ -472,6 +487,20 @@ export function judgeFixes(row: CheckRow, proposed: ModelFix[], ctx: CheckContex
     else if (value.length >= current.length) refuse("description", "only removing text is allowed");
     else if (!onlyRemoves(value, current)) refuse("description", "rewords the description");
     else accept(descFix, { description: row.description ?? "" }, { description: value });
+  }
+
+  // style — only the catalogue's five, and never cleared: a piece the model
+  // cannot place keeps what the dictionary read off its page
+  const styleFix = byField.get("style");
+  if (styleFix) {
+    const named = list(styleFix).map((s) => s.toLowerCase());
+    const unknown = named.filter((s) => !isStyleKeyword(s));
+    const next = normalizeStyleKeywords(named);
+    if (unknown.length) refuse("style", `${unknown.join(", ")} is not one of the catalogue's styles`);
+    else if (!next.length) refuse("style", "clears the style");
+    else if (next.length > MAX_STYLES) refuse("style", `more than ${MAX_STYLES} styles`);
+    else if (sameJson(next, normalizeStyleKeywords(row.style_keywords ?? []))) refuse("style", "no change");
+    else accept(styleFix, { style_keywords: row.style_keywords ?? [] }, { style_keywords: next });
   }
 
   // price — a note for a person, never a write

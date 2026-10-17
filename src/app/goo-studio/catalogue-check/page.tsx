@@ -130,6 +130,7 @@ const FIELD_KEY: Record<string, Key> = {
   material: "aicheck.field.material",
   sizes: "aicheck.field.sizes",
   description: "aicheck.field.description",
+  style: "aicheck.field.style",
   price: "aicheck.field.price",
 };
 
@@ -186,7 +187,17 @@ export default function CatalogueCheckPage() {
   const usd = (n: number) => f.money(n || 0);
   const when = f.dateTime;
   const runKind = (r: Run) =>
-    t(r.trigger === "auto" ? "aicheck.kind.auto" : r.trigger === "brands" ? "aicheck.kind.brands" : "aicheck.kind.manual");
+    t(
+      r.trigger === "auto"
+        ? "aicheck.kind.auto"
+        : r.trigger === "brands"
+          ? "aicheck.kind.brands"
+          : r.trigger === "collect"
+            ? "aicheck.kind.collect"
+            : r.trigger === "extension"
+              ? "aicheck.kind.extension"
+              : "aicheck.kind.manual",
+    );
   const help = useHelp("catalogue-check");
   const fixedOpen = useSetting(FIXED_OPEN_KEY) === "open";
 
