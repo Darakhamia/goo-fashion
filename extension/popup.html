@@ -11,9 +11,17 @@
       <p class="sub" id="store">Reading this tab…</p>
     </header>
 
-    <section class="rows">
-      <label class="row" for="limit">
-        <span>Products to collect</span>
+    <section class="rows" id="rows">
+      <label class="row check" for="all">
+        <span>
+          Everything on this page
+          <small>Ticked: scrolls this tab to the end, presses "Show more", goes through every page, then collects all of it. Unticked: collects the first N the page shows, scrolling only if it shows fewer.</small>
+        </span>
+        <input id="all" type="checkbox" checked />
+      </label>
+
+      <label class="row" for="limit" id="limitRow">
+        <span>Or only the first</span>
         <input id="limit" type="number" min="1" max="2000" value="30" />
       </label>
 
@@ -31,25 +39,70 @@
       </label>
     </section>
 
-    <div class="actions">
-      <button id="start" class="primary">Collect this store</button>
+    <div class="actions" id="pageActions">
+      <button id="start" class="primary">Collect this page</button>
       <button id="stop" class="ghost" hidden>Stop</button>
     </div>
 
+    <section class="whole" id="whole">
+      <div class="actions">
+        <button id="site" class="ghost">Collect the whole store</button>
+        <button id="resume" class="primary" hidden>Resume</button>
+      </div>
+      <label class="rule" for="rule">
+        <span>
+          What to collect
+          <small>For the whole store: AI keeps the menu's categories that fit. Empty: every category.</small>
+        </span>
+        <textarea
+          id="rule"
+          rows="2"
+          maxlength="500"
+          spellcheck="false"
+          placeholder="e.g. men's and women's clothing, shoes and bags; no kids, home or beauty"
+        ></textarea>
+      </label>
+      <p class="hint" id="siteHint">
+        Every category in the store's menu, one after another in this tab, then the store's sitemaps.
+        Each piece is opened once. A big store takes days: Stop any time, Resume carries on.
+      </p>
+    </section>
+
+    <section id="pick" class="pick" hidden>
+      <p class="found" id="pickFound"></p>
+      <p class="small" id="pickRule"></p>
+      <div class="chips">
+        <button type="button" class="chip on" id="showTaking" aria-pressed="true">Taking 0</button>
+        <button type="button" class="chip" id="showSkipped" aria-pressed="false">Show skipped 0</button>
+      </div>
+      <div class="list" id="pickList"></div>
+      <div class="stack">
+        <button id="pickGo" class="primary">Collect 0 categories</button>
+        <button id="pickCancel" class="ghost">Cancel</button>
+        <p class="small" id="pickHint"></p>
+      </div>
+    </section>
+
     <section id="progress" class="progress" hidden>
       <div class="bar"><div id="fill"></div></div>
+      <p class="found" id="found" hidden></p>
       <p class="counts">
         <strong id="done">0</strong><span id="planned"></span>
-        <span class="ok" id="imported"></span>
+        <span class="ok" id="new"></span>
+        <span id="updated"></span>
+        <span class="warn" id="skipped"></span>
         <span class="warn" id="failed"></span>
       </p>
+      <p class="ai" id="aiSkipped" hidden></p>
       <p class="pace" id="pace"></p>
+      <button id="retry" class="ghost retry" hidden>Retry failed</button>
     </section>
 
     <p id="note" class="note" hidden></p>
 
     <p class="foot">
-      Pages open on your machine, at the pace the store asks for. robots.txt is obeyed.
+      Keep the store tab in front while it scrolls. Then the pieces open one by one in the
+      background, at the pace the store asks for. robots.txt is obeyed.
     </p>
 
     <script src="popup.js"></script>
