@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Encode the three shorts (9:16, with sound) as MP4, from their full-resolution
-# masters and lossless sound mixes:
-#   node scripts/render.mjs shorts         → out/master/goo-<name>-master.mp4
-#   node scripts/render.mjs shorts-audio   → out/master/goo-<name>-audio.wav
-#   scripts/encode-shorts.sh [night ask pocket]   → out/goo-<name>.mp4
+# Encode the shorts and the feature films (9:16, with sound) as MP4, from their
+# full-resolution masters and lossless sound mixes:
+#   node scripts/render.mjs shorts|films           → out/master/goo-<name>-master.mp4
+#   node scripts/render.mjs shorts-audio|films-audio → out/master/goo-<name>-audio.wav
+#   scripts/encode-shorts.sh [name …]              → out/goo-<name>.mp4
+#   (names: night ask pocket, the default; local colours search)
 #
 # MP4 only: H.264 High, yuv420p, CRF 18–20, faststart, AAC-LC 160 kb/s 48 kHz
 # stereo. The sound is kept quiet, as in the vertical cut: each mix is brought
@@ -46,4 +47,4 @@ for n in "${names[@]}"; do
   read -r I P < <(measure "$out")
   echo "$out: $I LUFS, true peak $P dBTP"
 done
-ls -l out/goo-night.mp4 out/goo-ask.mp4 out/goo-pocket.mp4 2>/dev/null || true
+for n in "${names[@]}"; do ls -l "out/goo-$n.mp4"; done

@@ -7,6 +7,7 @@ import { DURATION } from "./promo/timeline";
 import type { Format } from "./promo/kit";
 import { Card, CARD } from "./card/Card";
 import { Shorts, shortDuration, type Short } from "./promo/Shorts";
+import { Films, filmDuration, type Film } from "./promo/features/Films";
 
 export const Root: React.FC = () => (
   <>
@@ -15,6 +16,9 @@ export const Root: React.FC = () => (
     <Composition id="GOO-9x16" component={Promo} durationInFrames={DURATION} fps={30} width={1080} height={1920} defaultProps={{ format: "9x16" as Format, sound: true }} />
     {(["night", "ask", "pocket"] as Short[]).map((name) => (
       <Composition key={name} id={`GOO-${name[0].toUpperCase()}${name.slice(1)}`} component={Shorts} durationInFrames={shortDuration(name)} fps={30} width={1080} height={1920} defaultProps={{ name }} />
+    ))}
+    {(["local", "colours", "search"] as Film[]).map((name) => (
+      <Composition key={name} id={`GOO-${name[0].toUpperCase()}${name.slice(1)}`} component={Films} durationInFrames={filmDuration(name)} fps={30} width={1080} height={1920} defaultProps={{ name }} />
     ))}
     <Composition id="Card" component={Card} durationInFrames={CARD.frames} fps={CARD.fps} width={CARD.W} height={CARD.H} defaultProps={{}} />
   </>

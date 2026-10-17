@@ -12,6 +12,10 @@
 //   node scripts/render.mjs shorts-audio [night|ask|pocket]
 //                                     → out/master/goo-<name>-audio.wav (their sound mixes;
 //                                       scripts/encode-shorts.sh makes the MP4s)
+//   node scripts/render.mjs films [local|colours|search]
+//                                     → out/master/goo-<name>-master.mp4 (the feature films)
+//   node scripts/render.mjs films-audio [local|colours|search]
+//                                     → out/master/goo-<name>-audio.wav
 import fs from "node:fs";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
@@ -28,8 +32,9 @@ const jobs =
   mode === "card" ? [["Card", "card"]]
   : mode === "vertical" || mode === "audio" ? [["GOO-9x16", "9x16"]]
   : mode === "shorts" || mode === "shorts-audio" ? [["GOO-Night", "night"], ["GOO-Ask", "ask"], ["GOO-Pocket", "pocket"]]
+  : mode === "films" || mode === "films-audio" ? [["GOO-Local", "local"], ["GOO-Colours", "colours"], ["GOO-Search", "search"]]
   : [["GOO-16x9", "16x9"], ["GOO-1x1", "1x1"]];
-const audioOnly = mode === "audio" || mode === "shorts-audio";
+const audioOnly = mode === "audio" || mode === "shorts-audio" || mode === "films-audio";
 for (const [id, name] of jobs) {
   if (only && only !== name) continue;
   const composition = await selectComposition({ serveUrl, id, browserExecutable });

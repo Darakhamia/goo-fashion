@@ -14,7 +14,9 @@ export type SfxName =
   | "key-0" | "key-1" | "key-2"
   | "snap" | "pop" | "pop-0" | "pop-1" | "pop-2" | "pop-3" | "pop-4"
   | "chime" | "swell" | "impact" | "pad"
-  | "pad-night" | "pad-ask" | "pad-pocket";
+  | "pad-night" | "pad-ask" | "pad-pocket"
+  | "kick" | "hat" | "glitch" | "reel" | "riser"
+  | "pad-local" | "pad-colours" | "pad-search";
 
 /** One sound, starting at frame `at` of the enclosing sequence. */
 export function Sfx({ at, name, volume = 0.5 }: { at: number; name: SfxName; volume?: number }) {

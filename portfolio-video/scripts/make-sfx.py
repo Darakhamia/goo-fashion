@@ -206,3 +206,54 @@ def pad(name, frames, notes, cutoff, seed):
 pad("pad-night", 465, [73.42, 110.00, 174.61, 261.63, 329.63], 1100, 401)  # D2 A2 F3 C4 E4: Dm9, low and dark
 pad("pad-ask", 482, [98.00, 146.83, 185.00, 220.00, 246.94, 293.66], 1500, 402)  # G2 D3 F#3 A3 B3 D4: Gmaj9
 pad("pad-pocket", 453, [130.81, 196.00, 246.94, 293.66, 329.63], 1800, 403)  # C3 G3 B3 D4 E4: Cmaj9, brighter
+
+# For the feature films (src/promo/features/): a soft beat to cut on, a
+# glitch, a slot reel, a riser. Each from its own seed, so none of the files
+# above change.
+r = np.random.default_rng(501)
+n = int(0.32 * SR)
+tt = t(0.32)
+freq = 48 + 90 * np.exp(-tt / 0.03)
+body = np.sin(2 * np.pi * np.cumsum(freq) / SR) * decay(n, 0.12)
+click = onepole_lp(r.standard_normal(n), 3000) * decay(n, 0.004)
+write("kick", body + 0.25 * click)
+
+n = int(0.06 * SR)
+x = r.standard_normal(n)
+x = x - onepole_lp(x, 7000)  # high-pass: only the air
+write("hat", x * decay(n, 0.012))
+
+n = int(0.34 * SR)
+x = np.zeros(n)
+chunk = int(0.018 * SR)
+for i in range(0, n, chunk):
+    seg = min(chunk, n - i)
+    if r.random() < 0.7:
+        f = r.choice([180, 320, 640, 1200, 2400])
+        sq = np.sign(np.sin(2 * np.pi * f * np.arange(seg) / SR))
+        x[i:i + seg] = (0.6 * sq + 0.5 * r.standard_normal(seg)) * r.uniform(0.3, 1)
+x = np.round(x * 6) / 6  # crushed
+write("glitch", onepole_lp(x, 5000) * env(n, 0.003 * SR, 0.08 * SR))
+
+n = int(0.42 * SR)
+x = np.zeros(n)
+pos = 0.0
+gap = 0.012
+while pos < 0.40:
+    i = int(pos * SR)
+    m = min(int(0.006 * SR), n - i)
+    x[i:i + m] += r.standard_normal(m) * decay(m, 0.0015)
+    pos += gap
+    gap *= 1.09  # the reel slows as it stops
+write("reel", svf(x, 2600, q=1.2))
+
+n = int(1.0 * SR)
+tt = t(1.0)
+noise = svf(r.standard_normal(n), 300 * (12 ** np.linspace(0, 1, n)), q=1.4)
+tone = np.sin(2 * np.pi * np.cumsum(110 * 2 ** (2 * np.linspace(0, 1, n))) / SR)
+write("riser", (0.7 * noise + 0.3 * tone) * np.linspace(0, 1, n) ** 2.5 * env(n, 1, 0.02 * SR))
+
+# Pads for the feature films, as long as each film (frames / 30).
+pad("pad-local", 584, [87.31, 130.81, 174.61, 220.00, 261.63, 329.63], 1300, 601)  # F2 C3 F3 A3 C4 E4: Fmaj7, open
+pad("pad-colours", 532, [110.00, 164.81, 207.65, 246.94, 329.63], 1700, 602)  # A2 E3 G#3 B3 E4: Amaj9-ish, bright
+pad("pad-search", 456, [98.00, 146.83, 196.00, 246.94, 293.66], 1500, 603)  # G2 D3 G3 B3 D4: Gadd9

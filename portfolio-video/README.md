@@ -1,6 +1,6 @@
 # GOO Fashion: portfolio video
 
-A 28.5-second silent promo for GOO Fashion, a vertical cut of it with quiet sound, and three 15–16 s vertical shorts. All are made with [Remotion](https://www.remotion.dev/) from captures of the real app.
+A 28.5-second silent promo for GOO Fashion, a vertical cut of it with quiet sound, three 15–16 s vertical shorts, and three vertical feature films. All are made with [Remotion](https://www.remotion.dev/) from captures of the real app.
 - **Ad-style:** kinetic type cards alternate with product moments shown big.
 - **Self-contained:** it has its own `package.json`, and nothing in the app changed.
 
@@ -88,6 +88,7 @@ node capture/build-fixtures.mjs
 COPY_MISSING=1 node capture/mock-supabase.mjs &            # first run copies the photos once
 NODE_PATH=/opt/node-tools/node_modules node capture/shoot.cjs       # → public/captures/ (the promo)
 NODE_PATH=/opt/node-tools/node_modules node capture/shoot.cjs night ask pocket hero-light   # the shorts
+NODE_PATH=/opt/node-tools/node_modules node capture/shoot-features.cjs   # the feature films (morph takes ~10 min per language)
 NODE_PATH=/opt/node-tools/node_modules node capture/compare.cjs /tmp/compare   # live vs local
 ```
 
@@ -120,6 +121,11 @@ node scripts/stills.mjs out 1 GOO-9x16:377 && mv out/GOO-9x16-377.png out/goo-9x
 node scripts/render.mjs shorts       # masters → out/master/goo-{night,ask,pocket}-master.mp4
 node scripts/render.mjs shorts-audio # lossless mixes → out/master/goo-{night,ask,pocket}-audio.wav
 scripts/encode-shorts.sh             # -24 LUFS, H.264 + AAC → out/goo-{night,ask,pocket}.mp4
+
+# The feature films (MP4 only)
+node scripts/render.mjs films        # masters → out/master/goo-{local,colours,search}-master.mp4
+node scripts/render.mjs films-audio  # lossless mixes → out/master/goo-{local,colours,search}-audio.wav
+scripts/encode-shorts.sh local colours search   # → out/goo-{local,colours,search}.mp4
 ```
 
 - Renders run offline from the committed captures.

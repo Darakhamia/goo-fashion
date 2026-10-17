@@ -180,6 +180,55 @@ How the phone is captured:
 - **Ask:** the stylist's cues and a pop on "Build this look".
 - **Pads:** each film has a pad of its own length, chord and seed: Dm9 for Night (low and dark), Gmaj9 for Ask, Cmaj9 for Pocket (brighter). The promo's files are untouched.
 
+### Feature films: Local, Colours, Search (added 2026-10-17)
+
+Three more vertical films, asked for as "different features, more effects". Each one shows something the site does that the promo and the shorts do not. The motion is bolder: glitches, colour-channel splits, punch-ins on the cut, blur along fast moves, slot reels, a circle wipe, cards flying to new places.
+
+- **Format:** MP4 only, 1080×1920, 30 fps, quiet sound at −24 LUFS.
+- **Source:** every piece of interface is still a capture of the local app.
+
+**What is new in the capture** (`capture/shoot-features.cjs`):
+- **The homepage's gooey word, recorded as it moves.** The hero word morphs GOO → Outfits → Looks → Style → Fits, in Ukrainian GOO → Образи → Луки → Стиль → Мода. The page's clock is Playwright's: it is paused, then stepped 1/30 s per frame. So the app's own animation is captured at exactly 30 fps, at deviceScaleFactor 3, and kept as a short video for each language (`morph-en.mp4`, `morph-uk.mp4`).
+- **Phone screens at deviceScaleFactor 3,** because these films show them larger. Full screens are JPEG q92.
+- **Language and currency come from the app's own settings,** stored as it stores them: `goo-lang` and `goo-currency` in localStorage.
+- **The currencies are the switcher's seven:** USD, EUR, GBP, UAH, CZK, JPY and TRY. Prices are converted by the app.
+- **Saved items need a signed-in account.** They can't be shown offline, so there is no saved-items film.
+
+**Local** (19.5 s, 584 frames)
+
+| Time | Beat | On screen |
+|---|---|---|
+| 0.0–6.5 | **The word, in two languages** | Two gooey morphs: GOO → Outfits → Looks. A glitch (slices and a channel split) crosses into Луки → Стиль → Мода, and the label decodes from ENGLISH to УКРАЇНСЬКА. The word sits on the hero's own background, at the same scale. |
+| 5.9–10.2 | **The homepage switches** | A circle wipe opens on the phone homepage ("How it works") and the footer's real language switch, shown big. A tap on UA, then a divider sweeps across: the same screen in English on one side and Ukrainian on the other. |
+| 10.2–11.7 | **"Any / currency."** | Type card |
+| 11.7–16.3 | **Seven currencies** | The sneaker's stores, with each price a slot reel. Row by row, they roll from one currency's capture to the next: $156 → 138 € → £117 → 3,370 Kč → ¥24,591 → 7,708 ₺ → **6,988 ₴**. The buy bar rolls with them, and the currency code and symbol stand huge behind. |
+| 16.3–19.5 | **End card** | The dark hero |
+
+**Colours** (17.7 s, 532 frames, cut on a 120 BPM beat)
+
+| Time | Beat | On screen |
+|---|---|---|
+| 0.0–2.0 | **"Every colour."** | The filter sheet's thirteen real swatches pop in. "colour." is cut out of the thirteen colours sliding through it. |
+| 2.0–7.7 | **A colour a beat** | The frame floods with each swatch's own colour (its hex from the catalogue). The real swatch row shows it picked, and the phone shows the real results for it. The name and the sheet's own count ("198 pieces") stand huge above. The last five come on every half beat. Each cut has a punch-in, a channel split, a little shake and a tap. |
+| 7.7–11.2 | **One tee, 8 colours** | The Cities Tee's page in each of its colours, one tap per swatch, with the frame in that colour |
+| 11.2–14.5 | **Every angle** | The sneaker's ten photos, whipped through with motion blur. The page's own counter goes 1/10 → 10/10. |
+| 14.5–17.7 | **End card** | The light hero |
+
+**Search** (15.2 s, 456 frames)
+
+| Time | Beat | On screen |
+|---|---|---|
+| 0.0–3.2 | **Typing** | A tap on search, then "jacket" typed a key at a time, set huge above the phone. Under it, the app's count rolls 554 → 148 → 44 → 26. |
+| 3.2–6.9 | **Sort** | The real Sort & filter sheet rises. A tap on "Price: low to high", then on "Show 26 pieces". The cards fly from their places in one order to their places in the other. |
+| 6.9–10.2 | **Filter** | The sheet again: black is picked, and the count rolls 26 → 14. The cards that are not black drop out, and the rest close up. |
+| 10.2–12.0 | **"Find it. / Fast."** | Type card |
+| 12.0–15.2 | **End card** | The light hero |
+
+- A search typed into the page has no filter button. So the sort and filter part opens the same results from the address, `/browse?search=jacket`, which keeps the toolbar.
+- The cards that fly are each cut from the capture of the order they land in.
+
+**Sound.** The same library and placement rules, plus a soft kick and hat for the beat, a glitch, a slot-reel ratchet and a riser. All are synthesised by `scripts/make-sfx.py`. Each film has its own pad.
+
 ---
 
 ## 3. Output (`out/`, replacing the old files)
@@ -194,6 +243,7 @@ How the phone is captured:
 | `goo-9x16.webm` | VP9 two-pass, Opus 128 kb/s |
 | `goo-9x16-poster.png` | 1080×1920, the builder frame |
 | `goo-night.mp4`, `goo-ask.mp4`, `goo-pocket.mp4` | The shorts: 1080×1920, 30 fps, H.264 High, yuv420p, CRF 18–20, `+faststart`, AAC 160 kb/s, ≤ 8 MB. MP4 only. |
+| `goo-local.mp4`, `goo-colours.mp4`, `goo-search.mp4` | The feature films, same settings. MP4 only. |
 
 - Rendering is from a lossless master at full resolution, never from a preview.
 - Every file is checked with `ffprobe`, and its width, height and bitrate are reported.

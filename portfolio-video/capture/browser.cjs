@@ -19,6 +19,9 @@ const EXECUTABLE = process.env.CHROMIUM ?? undefined;
 
 const DESKTOP = { width: 1440, height: 900, dpr: 2 };
 const PHONE = { width: 390, height: 844, dpr: 2, mobile: true };
+// At deviceScaleFactor 3, for screens the video shows larger than 2 px per CSS px.
+const DESKTOP3 = { ...DESKTOP, dpr: 3 };
+const PHONE3 = { ...PHONE, dpr: 3 };
 
 const ext = (url, type) => {
   const m = new URL(url).pathname.match(/\.(webp|png|jpe?g|avif|gif|svg|ico)$/i);
@@ -75,8 +78,12 @@ async function launch() {
   return chromium.launch({ executablePath: EXECUTABLE });
 }
 
-/** A page on the local app: light theme, cookie choice made, nothing external. */
-async function newPage(browser, device = DESKTOP, { theme = "light" } = {}) {
+/**
+ * A page on the local app: light theme, cookie choice made, nothing external.
+ * `storage` adds localStorage entries the app reads at load (language,
+ * currency, likes, the bag).
+ */
+async function newPage(browser, device = DESKTOP, { theme = "light", storage = {} } = {}) {
   const ctx = await browser.newContext({
     viewport: { width: device.width, height: device.height },
     deviceScaleFactor: device.dpr,
@@ -106,14 +113,15 @@ async function newPage(browser, device = DESKTOP, { theme = "light" } = {}) {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   });
-  await ctx.addInitScript((t) => {
+  await ctx.addInitScript(([t, extra]) => {
     try {
       localStorage.setItem("goo-cookie-consent", "declined");
       // A returning visitor: the header's one-time "AI Stylist" tip is gone.
       localStorage.setItem("ai-tooltip-dismissed", "1");
       localStorage.setItem("goo-theme", t);
+      for (const [k, v] of Object.entries(extra)) localStorage.setItem(k, v);
     } catch {}
-  }, theme);
+  }, [theme, storage]);
   await ctx.route((url) => !url.href.startsWith(BASE) && !url.href.startsWith(MOCK) && !url.href.startsWith("data:") && !url.href.startsWith("blob:"), handleExternal);
   const page = await ctx.newPage();
   page.on("pageerror", (e) => console.log(`  pageerror ${String(e).slice(0, 200)}`));
@@ -145,4 +153,4 @@ async function rect(locator) {
   return b && { x: b.x, y: b.y, w: b.width, h: b.height };
 }
 
-module.exports = { BASE, DESKTOP, PHONE, launch, newPage, settle, rect };
+module.exports = { BASE, DESKTOP, PHONE, DESKTOP3, PHONE3, launch, newPage, settle, rect };
