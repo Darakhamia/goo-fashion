@@ -2084,21 +2084,21 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/catalogue-check/page.tsx": {
-    "mtime": 1792261077.488944,
-    "seen": 1792261168.65607,
-    "ast_hash": "9be313e2ef4111026e257bf96ea4c27d",
+    "mtime": 1792275572.122192,
+    "seen": 1792275749.712179,
+    "ast_hash": "5d16cc0b448b03e40071db3a5cb611db",
     "semantic_hash": ""
   },
   "src/lib/server/catalogue-check/ai.ts": {
-    "mtime": 1792260513.8121126,
-    "seen": 1792260666.467707,
-    "ast_hash": "9795b8dba362d1fad2e01d9afbdf645c",
+    "mtime": 1792275572.1215653,
+    "seen": 1792275749.7202957,
+    "ast_hash": "591e992eb837c14bc479ebbe86d617e0",
     "semantic_hash": ""
   },
   "src/lib/server/catalogue-check/fields.ts": {
-    "mtime": 1792260513.813437,
-    "seen": 1792260666.467708,
-    "ast_hash": "964d9e8124a6d6125f9d703f0005f016",
+    "mtime": 1792275560.6906025,
+    "seen": 1792275749.720299,
+    "ast_hash": "82e145dd0339de107794414a17b9a26d",
     "semantic_hash": ""
   },
   "src/lib/server/catalogue-check/store.ts": {
@@ -2552,15 +2552,15 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/catalogueCheck.en.ts": {
-    "mtime": 1792261077.489389,
-    "seen": 1792261168.6548326,
-    "ast_hash": "aaf11d44facbf65c5743d3439ae4806d",
+    "mtime": 1792275572.1227179,
+    "seen": 1792275749.7080948,
+    "ast_hash": "51908b6ba4fbfa1b066e7f56fd5e05c6",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/catalogueCheck.ru.ts": {
-    "mtime": 1792261084.1972747,
-    "seen": 1792261168.654835,
-    "ast_hash": "8f1fca47591ca5f85c3a0ee8e06f8ece",
+    "mtime": 1792275572.1233346,
+    "seen": 1792275749.7081006,
+    "ast_hash": "b64677cae584d2420bc3041378762db6",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/categories.en.ts": {
