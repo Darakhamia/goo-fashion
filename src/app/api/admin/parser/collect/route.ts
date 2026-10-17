@@ -33,7 +33,7 @@ import { notAProductPage } from "@/lib/server/parser/page-guards";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
 import { commonTitleSuffix } from "@/lib/server/product-fields";
 import { measurePendingBackdrops } from "@/lib/server/bg-color";
-import { capSpent, checkPendingProducts, getCheckSettings, recordCollectSpend } from "@/lib/server/catalogue-check/store";
+import { capSpent, checkCollectedProducts, getCheckSettings, recordCollectSpend } from "@/lib/server/catalogue-check/store";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
 import { pickCategories, readCategoryQuestion, type CategoryChoice } from "@/lib/server/parser/pick-categories";
 import { pickPieces, readPieceQuestion, type PieceChoice } from "@/lib/server/parser/pick-pieces";
@@ -494,8 +494,9 @@ export async function POST(req: Request) {
     // Cards still without a measured backdrop, a few at a time, after the
     // answer has gone: nothing is slowed and no button has to be pressed.
     after(() => measurePendingBackdrops());
-    // And the AI check reads the record it just wrote, under its monthly cap.
-    after(() => checkPendingProducts({ ids: [result.productId] }));
+    // And the AI check reads the record it just wrote, under its monthly cap,
+    // writing what it is sure of — the style among it — in any mode but "off".
+    after(() => checkCollectedProducts([result.productId]));
     try {
       const cc = await clerkClient();
       const adminUser = await cc.users.getUser(admin.userId);

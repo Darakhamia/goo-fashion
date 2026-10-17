@@ -194,7 +194,9 @@ export default function CatalogueCheckPage() {
           ? "aicheck.kind.brands"
           : r.trigger === "collect"
             ? "aicheck.kind.collect"
-            : "aicheck.kind.manual",
+            : r.trigger === "extension"
+              ? "aicheck.kind.extension"
+              : "aicheck.kind.manual",
     );
   const help = useHelp("catalogue-check");
   const fixedOpen = useSetting(FIXED_OPEN_KEY) === "open";
