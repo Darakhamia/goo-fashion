@@ -1406,9 +1406,9 @@
     "semantic_hash": ""
   },
   "src/app/api/admin/parser/collect/route.ts": {
-    "mtime": 1792260864.2160864,
-    "seen": 1792260965.6343772,
-    "ast_hash": "0b25100b8e35f9bf998161be1ea8bfd0",
+    "mtime": 1792261077.4882867,
+    "seen": 1792261168.6517568,
+    "ast_hash": "80a69a155d641db58d84f2081fe6684c",
     "semantic_hash": ""
   },
   "src/app/api/admin/product-bg-color/route.ts": {
@@ -2084,9 +2084,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/catalogue-check/page.tsx": {
-    "mtime": 1792260513.7858198,
-    "seen": 1792260666.467406,
-    "ast_hash": "9b5cba44dfe1a45c64f7ab209f0ce064",
+    "mtime": 1792261077.488944,
+    "seen": 1792261168.65607,
+    "ast_hash": "9be313e2ef4111026e257bf96ea4c27d",
     "semantic_hash": ""
   },
   "src/lib/server/catalogue-check/ai.ts": {
@@ -2102,9 +2102,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/catalogue-check/store.ts": {
-    "mtime": 1792260513.813437,
-    "seen": 1792260666.4677098,
-    "ast_hash": "30a25be926febcf03beb234aea3c0a4e",
+    "mtime": 1792261060.1533887,
+    "seen": 1792261168.6613665,
+    "ast_hash": "25bffcb09b9f348d2713c9b4034bffe7",
     "semantic_hash": ""
   },
   "scripts/admin-screens/clerk-stub.tsx": {
@@ -2552,15 +2552,15 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/catalogueCheck.en.ts": {
-    "mtime": 1792260513.7816668,
-    "seen": 1792260666.4673414,
-    "ast_hash": "93c7d8caccdb0e78fe588efb288663bd",
+    "mtime": 1792261077.489389,
+    "seen": 1792261168.6548326,
+    "ast_hash": "aaf11d44facbf65c5743d3439ae4806d",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/catalogueCheck.ru.ts": {
-    "mtime": 1792260513.7816668,
-    "seen": 1792260666.4673429,
-    "ast_hash": "9168aa85934c841eef40559150323859",
+    "mtime": 1792261084.1972747,
+    "seen": 1792261168.654835,
+    "ast_hash": "8f1fca47591ca5f85c3a0ee8e06f8ece",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/categories.en.ts": {
@@ -3548,21 +3548,21 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/pick-categories.ts": {
-    "mtime": 1792260795.1065192,
-    "seen": 1792260965.6450114,
-    "ast_hash": "b584e6e6b34fd6aeac9fad5599170073",
+    "mtime": 1792261060.1522546,
+    "seen": 1792261168.6622407,
+    "ast_hash": "c93cfc80494af7a7fcf6f997c304c7d3",
     "semantic_hash": ""
   },
   "src/lib/server/parser/pick-pieces.ts": {
-    "mtime": 1792260928.2434113,
-    "seen": 1792260965.6450148,
-    "ast_hash": "03452e2b9edd144c6d169a54eba70afc",
+    "mtime": 1792261060.1525917,
+    "seen": 1792261168.6622434,
+    "ast_hash": "484e639042070a5fa4bcc6fd6550ce65",
     "semantic_hash": ""
   },
   "src/lib/server/parser/rule-choice.ts": {
-    "mtime": 1792260764.3945174,
-    "seen": 1792260965.6451392,
-    "ast_hash": "56cb95fd744f813d5517d9cf225ae699",
+    "mtime": 1792261060.1517859,
+    "seen": 1792261168.662328,
+    "ast_hash": "1e3946212da61c8f2ffa272e303dbe90",
     "semantic_hash": ""
   }
 }
