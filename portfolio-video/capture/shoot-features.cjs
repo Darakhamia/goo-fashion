@@ -344,19 +344,25 @@ async function search(browser) {
     entry.typed.push({ image: `captures/${file}`, chars: i, count: await countText() });
   }
   entry.bar = r2(bar);
-  // The results as typed, then as sorted by price, then narrowed to black.
+  // The results, then sorted by price, then narrowed to black: the screen,
+  // and each card of the page cut out on its own (the films fly them about).
   const state = async (name) => {
     await loadAll(page);
     await page.evaluate(() => scrollTo(0, 0));
     await page.waitForTimeout(500);
     const file = `search-${name}.jpg`;
     await page.screenshot({ path: shot(file), ...jpeg });
-    const full = `search-${name}-full.jpg`;
     const tag = await page.addStyleTag({ content: `${TABS} { visibility: hidden !important; }` });
-    await page.screenshot({ path: shot(full), fullPage: true, ...jpeg });
+    const list = await cards();
+    const out = [];
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i];
+      const img = `search-${name}-${String(i).padStart(2, "0")}.jpg`;
+      await page.screenshot({ path: shot(img), fullPage: true, clip: { x: c.x, y: c.y, width: c.w, height: c.h }, ...jpeg });
+      out.push({ href: c.href, rect: { x: c.x, y: c.y, w: c.w, h: c.h }, image: `captures/${img}` });
+    }
     await tag.evaluate((t) => t.remove());
-    const h = await page.evaluate(() => document.documentElement.scrollHeight);
-    return { image: `captures/${file}`, full: `captures/${full}`, height: h, cards: (await cards()).map((c) => ({ href: c.href, rect: { x: c.x, y: c.y, w: c.w, h: c.h } })), count: await countText() };
+    return { image: `captures/${file}`, cards: out, count: await countText() };
   };
   // Search mode has no filter button: the same results, opened from the
   // address (/browse?search=jacket), carry the toolbar with the sheet.

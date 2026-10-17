@@ -4,7 +4,7 @@
 //   554 → 148 → 44 → 26.
 // - Sort: the real Sort & filter sheet rises, "Price: low to high" is tapped,
 //   and the cards fly from their places in one order to their places in the
-//   other (each card cut from the capture of the order it lands in).
+//   other (each card is its own capture, from the order it lands in).
 // - Filter: black is picked in the sheet ("Show 26 pieces" → "Show 14
 //   pieces"), the cards that are not black drop out, the rest close up.
 import React from "react";
@@ -116,10 +116,11 @@ type State = typeof S.listed;
 function Flip({ from, to, t0, t1, s }: { from: State; to: State; t0: number; t1: number; s: number }) {
   const f = useCurrentFrame();
   if (f < t0) return <Shot src={from.image} size={SCREEN} scale={s} style={{ left: 0, top: 0 }} />;
-  if (f >= t1 + 8) return <Shot src={to.image} size={SCREEN} scale={s} style={{ left: 0, top: 0 }} />;
+  if (f >= t1 + 10) return <Shot src={to.image} size={SCREEN} scale={s} style={{ left: 0, top: 0 }} />;
   const vis = (st: State) => st.cards.filter((c) => c.rect.y < SCREEN.h);
   const hrefs = [...new Set([...vis(from), ...vis(to)].map((c) => c.href))];
-  const at = (st: State, h: string | null) => st.cards.find((c) => c.href === h)?.rect ?? null;
+  const card = (st: State, h: string | null) => st.cards.find((c) => c.href === h);
+  const at = (st: State, h: string | null) => card(st, h)?.rect ?? null;
   const top = Math.min(from.cards[0].rect.y, to.cards[0].rect.y) - 8;
   const head = ramp(f, t0, t1, easeInOut);
   return (
@@ -127,34 +128,46 @@ function Flip({ from, to, t0, t1, s }: { from: State; to: State; t0: number; t1:
       <Shot src={to.image} size={SCREEN} scale={s} style={{ left: 0, top: 0 }} />
       <Shot src={from.image} size={SCREEN} crop={{ x: 0, y: 0, w: SCREEN.w, h: top }} scale={s} style={{ left: 0, top: 0, opacity: 1 - head }} />
       <div style={{ position: "absolute", left: 0, top: top * s, width: SCREEN.w * s, height: (TABS_TOP - top) * s, background: PAPER }} />
-      {hrefs.map((h, i) => {
+      {hrefs.map((h) => {
+        // Staggered in the order of the screen each card belongs to.
+        const i = Math.max(0, vis(to).findIndex((c) => c.href === h));
+        const o = Math.max(0, vis(from).findIndex((c) => c.href === h));
         const a = at(from, h);
         const b = at(to, h);
-        const t = ramp(f, t0 + i * 1.2, t1 + i * 1.2 - 4, easeInOut);
-        const lift = Math.sin(Math.PI * t);
-        if (a && b) {
-          const x = mix(a.x, b.x, t);
-          const y = mix(a.y, b.y, t);
+        const aOn = !!a && a.y < SCREEN.h;
+        const bOn = !!b && b.y < SCREEN.h;
+        if (aOn && bOn) {
+          // On screen in both orders: it flies across, lifted.
+          const t = ramp(f, t0 + 2 + i, t0 + 20 + i, easeInOut);
+          const lift = Math.sin(Math.PI * t);
           return (
             <Shot
               key={h}
-              src={to.full}
-              size={{ w: SCREEN.w, h: to.height }}
-              crop={b}
+              src={card(to, h)!.image}
+              size={{ w: b!.w, h: b!.h }}
               scale={s}
               radius={16 * s}
-              style={{ left: x * s, top: y * s, transform: `scale(${1 + 0.06 * lift})`, boxShadow: `0 ${20 * lift}px ${50 * lift}px rgba(0,0,0,${0.25 * lift})`, zIndex: Math.round(lift * 10) }}
+              style={{ left: mix(a!.x, b!.x, t) * s, top: mix(a!.y, b!.y, t) * s, transform: `scale(${1 + 0.06 * lift})`, boxShadow: `0 ${20 * lift}px ${50 * lift}px rgba(0,0,0,${0.25 * lift})`, zIndex: Math.round(lift * 10) }}
             />
           );
         }
-        if (a) {
-          // Not in the new results: it drops out where it was.
-          const k = ramp(f, t0 + i * 1.2, t0 + i * 1.2 + 9, easeOut);
-          return <Shot key={h} src={from.full} size={{ w: SCREEN.w, h: from.height }} crop={a} scale={s} radius={16 * s} style={{ left: a.x * s, top: a.y * s, transform: `scale(${1 - 0.35 * k})`, opacity: 1 - k }} />;
+        if (aOn) {
+          // Leaves the screen: it drops out where it was.
+          const k = ramp(f, t0 + o, t0 + 9 + o, easeOut);
+          return <Shot key={h} src={card(from, h)!.image} size={{ w: a!.w, h: a!.h }} scale={s} radius={16 * s} style={{ left: a!.x * s, top: a!.y * s, transform: `scale(${1 - 0.3 * k})`, opacity: 1 - k }} />;
         }
-        // New to the screen: it rises in from below.
-        const k = ramp(f, t0 + 6 + i * 1.2, t1 + i * 1.2, easeOut);
-        return <Shot key={h} src={to.full} size={{ w: SCREEN.w, h: to.height }} crop={b!} scale={s} radius={16 * s} style={{ left: b!.x * s, top: (b!.y + (1 - k) * 260) * s, opacity: k }} />;
+        // Comes on screen: dealt in from below.
+        const k = ramp(f, t0 + 2 + i * 2, t0 + 15 + i * 2, easeOut);
+        return (
+          <Shot
+            key={h}
+            src={card(to, h)!.image}
+            size={{ w: b!.w, h: b!.h }}
+            scale={s}
+            radius={16 * s}
+            style={{ left: b!.x * s, top: (b!.y + (1 - k) * 280) * s, opacity: Math.min(1, k * 1.6), transform: `rotate(${(1 - k) * (i % 2 ? 6 : -6)}deg)`, boxShadow: `0 ${24 * (1 - k)}px ${60 * (1 - k)}px rgba(0,0,0,${0.2 * (1 - k)})` }}
+          />
+        );
       })}
       <Shot src={to.image} size={SCREEN} crop={{ x: 0, y: TABS_TOP, w: SCREEN.w, h: SCREEN.h - TABS_TOP }} scale={s} style={{ left: 0, top: TABS_TOP * s }} />
     </>

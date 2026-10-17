@@ -3960,8 +3960,6 @@
    },
    "listed": {
     "image": "captures/search-listed.jpg",
-    "full": "captures/search-listed-full.jpg",
-    "height": 4325,
     "cards": [
      {
       "href": "/product/909c3e23-8d2e-4185-88eb-a00d22c80f42",
@@ -3970,7 +3968,8 @@
        "y": 124,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-00.jpg"
      },
      {
       "href": "/product/3ecf96df-72ba-48db-8c27-e3222b49482f",
@@ -3979,7 +3978,8 @@
        "y": 124,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-01.jpg"
      },
      {
       "href": "/product/067aae50-2790-4ade-8b1a-6d6c7b0df738",
@@ -3988,7 +3988,8 @@
        "y": 455.1875,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-listed-02.jpg"
      },
      {
       "href": "/product/fbf9d334-cd59-4153-bc89-b3cb2d6fef88",
@@ -3997,7 +3998,8 @@
        "y": 455.1875,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-listed-03.jpg"
      },
      {
       "href": "/product/ff386e30-5c81-4456-930d-5c74b254c1c0",
@@ -4006,7 +4008,8 @@
        "y": 807.5625,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-04.jpg"
      },
      {
       "href": "/product/0820bacc-a2dd-4781-90e6-cc67263d42c5",
@@ -4015,7 +4018,8 @@
        "y": 807.5625,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-05.jpg"
      },
      {
       "href": "/product/20e50770-f5a5-432e-b203-996186b71393",
@@ -4024,7 +4028,8 @@
        "y": 1138.75,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-listed-06.jpg"
      },
      {
       "href": "/product/645d8e27-336f-445f-a7f6-fb51251820bd",
@@ -4033,7 +4038,8 @@
        "y": 1138.75,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-listed-07.jpg"
      },
      {
       "href": "/product/af8a5cd5-3279-4e06-b940-ab2862857d05",
@@ -4042,7 +4048,8 @@
        "y": 1491.125,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-08.jpg"
      },
      {
       "href": "/product/f2928caa-b0f5-497d-81a2-cf21005ca390",
@@ -4051,7 +4058,8 @@
        "y": 1491.125,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-09.jpg"
      },
      {
       "href": "/product/09c3ac9a-6aa9-4e88-b5ac-e5d15ec1262d",
@@ -4060,7 +4068,8 @@
        "y": 1822.3125,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-10.jpg"
      },
      {
       "href": "/product/eeaa2b3a-103a-4b59-bdab-0a6eed98175a",
@@ -4069,7 +4078,8 @@
        "y": 1822.3125,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-11.jpg"
      },
      {
       "href": "/product/d94188e1-b917-48bf-8db2-349b6edbce52",
@@ -4078,7 +4088,8 @@
        "y": 2153.5,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-12.jpg"
      },
      {
       "href": "/product/1f484c38-3b18-42cf-9b4f-c33f46ce658a",
@@ -4087,7 +4098,8 @@
        "y": 2153.5,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-13.jpg"
      },
      {
       "href": "/product/ddf2007d-c359-4c85-b05e-6b205632a344",
@@ -4096,7 +4108,8 @@
        "y": 2484.6875,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-listed-14.jpg"
      },
      {
       "href": "/product/ae3324bc-587e-443a-a2af-6f676f3f987e",
@@ -4105,7 +4118,8 @@
        "y": 2484.6875,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-listed-15.jpg"
      },
      {
       "href": "/product/e1602255-f394-436e-b99f-919053442d70",
@@ -4114,7 +4128,8 @@
        "y": 2837.0625,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-16.jpg"
      },
      {
       "href": "/product/6501f07e-bd74-44f7-a6ed-8790291154e1",
@@ -4123,7 +4138,8 @@
        "y": 2837.0625,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-listed-17.jpg"
      },
      {
       "href": "/product/0c74dae1-62ba-4729-ae59-40235d25da79",
@@ -4132,7 +4148,8 @@
        "y": 3168.25,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-listed-18.jpg"
      },
      {
       "href": "/product/0c3347cf-61c2-481d-a0b2-302554ab3555",
@@ -4141,15 +4158,14 @@
        "y": 3168.25,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-listed-19.jpg"
      }
     ],
     "count": null
    },
    "sorted": {
     "image": "captures/search-sorted.jpg",
-    "full": "captures/search-sorted-full.jpg",
-    "height": 4325,
     "cards": [
      {
       "href": "/product/067aae50-2790-4ade-8b1a-6d6c7b0df738",
@@ -4158,7 +4174,8 @@
        "y": 124,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-sorted-00.jpg"
      },
      {
       "href": "/product/09c3ac9a-6aa9-4e88-b5ac-e5d15ec1262d",
@@ -4167,7 +4184,8 @@
        "y": 124,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-sorted-01.jpg"
      },
      {
       "href": "/product/ddf2007d-c359-4c85-b05e-6b205632a344",
@@ -4176,7 +4194,8 @@
        "y": 476.375,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-sorted-02.jpg"
      },
      {
       "href": "/product/6501f07e-bd74-44f7-a6ed-8790291154e1",
@@ -4185,7 +4204,8 @@
        "y": 476.375,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-sorted-03.jpg"
      },
      {
       "href": "/product/ae3324bc-587e-443a-a2af-6f676f3f987e",
@@ -4194,7 +4214,8 @@
        "y": 828.75,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-04.jpg"
      },
      {
       "href": "/product/3ecf96df-72ba-48db-8c27-e3222b49482f",
@@ -4203,7 +4224,8 @@
        "y": 828.75,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-05.jpg"
      },
      {
       "href": "/product/ff386e30-5c81-4456-930d-5c74b254c1c0",
@@ -4212,7 +4234,8 @@
        "y": 1159.9375,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-06.jpg"
      },
      {
       "href": "/product/0820bacc-a2dd-4781-90e6-cc67263d42c5",
@@ -4221,7 +4244,8 @@
        "y": 1159.9375,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-07.jpg"
      },
      {
       "href": "/product/d94188e1-b917-48bf-8db2-349b6edbce52",
@@ -4230,7 +4254,8 @@
        "y": 1491.125,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-08.jpg"
      },
      {
       "href": "/product/ac69435e-bacf-4de3-b0ff-d1f85714d0a1",
@@ -4239,7 +4264,8 @@
        "y": 1491.125,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-09.jpg"
      },
      {
       "href": "/product/faf6d6e2-d7da-4e7d-a376-528660f10a04",
@@ -4248,7 +4274,8 @@
        "y": 1822.3125,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-sorted-10.jpg"
      },
      {
       "href": "/product/0c3347cf-61c2-481d-a0b2-302554ab3555",
@@ -4257,7 +4284,8 @@
        "y": 1822.3125,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-sorted-11.jpg"
      },
      {
       "href": "/product/f2928caa-b0f5-497d-81a2-cf21005ca390",
@@ -4266,7 +4294,8 @@
        "y": 2174.6875,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-12.jpg"
      },
      {
       "href": "/product/eeaa2b3a-103a-4b59-bdab-0a6eed98175a",
@@ -4275,7 +4304,8 @@
        "y": 2174.6875,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-13.jpg"
      },
      {
       "href": "/product/0c74dae1-62ba-4729-ae59-40235d25da79",
@@ -4284,7 +4314,8 @@
        "y": 2505.875,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-14.jpg"
      },
      {
       "href": "/product/b9f52491-68e5-483f-895d-b1305ca464f1",
@@ -4293,7 +4324,8 @@
        "y": 2505.875,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-15.jpg"
      },
      {
       "href": "/product/e1602255-f394-436e-b99f-919053442d70",
@@ -4302,7 +4334,8 @@
        "y": 2837.0625,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-16.jpg"
      },
      {
       "href": "/product/af8a5cd5-3279-4e06-b940-ab2862857d05",
@@ -4311,7 +4344,8 @@
        "y": 2837.0625,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-sorted-17.jpg"
      },
      {
       "href": "/product/645d8e27-336f-445f-a7f6-fb51251820bd",
@@ -4320,7 +4354,8 @@
        "y": 3168.25,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-sorted-18.jpg"
      },
      {
       "href": "/product/bae21e30-24b2-4f4a-8705-2bbba7f2b219",
@@ -4329,15 +4364,14 @@
        "y": 3168.25,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-sorted-19.jpg"
      }
     ],
     "count": null
    },
    "black": {
     "image": "captures/search-black.jpg",
-    "full": "captures/search-black-full.jpg",
-    "height": 3227,
     "cards": [
      {
       "href": "/product/ae3324bc-587e-443a-a2af-6f676f3f987e",
@@ -4346,7 +4380,8 @@
        "y": 168,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-black-00.jpg"
      },
      {
       "href": "/product/0820bacc-a2dd-4781-90e6-cc67263d42c5",
@@ -4355,7 +4390,8 @@
        "y": 168,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-black-01.jpg"
      },
      {
       "href": "/product/d94188e1-b917-48bf-8db2-349b6edbce52",
@@ -4364,7 +4400,8 @@
        "y": 499.1875,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-black-02.jpg"
      },
      {
       "href": "/product/faf6d6e2-d7da-4e7d-a376-528660f10a04",
@@ -4373,7 +4410,8 @@
        "y": 499.1875,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-black-03.jpg"
      },
      {
       "href": "/product/0c3347cf-61c2-481d-a0b2-302554ab3555",
@@ -4382,7 +4420,8 @@
        "y": 830.375,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-black-04.jpg"
      },
      {
       "href": "/product/ad1f3748-2deb-40fc-afdb-a0a0ec683fbd",
@@ -4391,7 +4430,8 @@
        "y": 830.375,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-black-05.jpg"
      },
      {
       "href": "/product/eeaa2b3a-103a-4b59-bdab-0a6eed98175a",
@@ -4400,7 +4440,8 @@
        "y": 1182.75,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-black-06.jpg"
      },
      {
       "href": "/product/0c74dae1-62ba-4729-ae59-40235d25da79",
@@ -4409,7 +4450,8 @@
        "y": 1182.75,
        "w": 178,
        "h": 321.1875
-      }
+      },
+      "image": "captures/search-black-07.jpg"
      },
      {
       "href": "/product/af8a5cd5-3279-4e06-b940-ab2862857d05",
@@ -4418,7 +4460,8 @@
        "y": 1513.9375,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-black-08.jpg"
      },
      {
       "href": "/product/645d8e27-336f-445f-a7f6-fb51251820bd",
@@ -4427,7 +4470,8 @@
        "y": 1513.9375,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-black-09.jpg"
      },
      {
       "href": "/product/d6d2873e-6914-4b05-8150-97123c93c2f8",
@@ -4436,7 +4480,8 @@
        "y": 1866.3125,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-black-10.jpg"
      },
      {
       "href": "/product/1f484c38-3b18-42cf-9b4f-c33f46ce658a",
@@ -4445,7 +4490,8 @@
        "y": 1866.3125,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-black-11.jpg"
      },
      {
       "href": "/product/c3706911-a765-4d6d-a666-ea5bd23ad6fc",
@@ -4454,7 +4500,8 @@
        "y": 2218.6875,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-black-12.jpg"
      },
      {
       "href": "/product/7127d340-345b-4460-b3d8-d802c0a6d3e3",
@@ -4463,7 +4510,8 @@
        "y": 2218.6875,
        "w": 178,
        "h": 342.375
-      }
+      },
+      "image": "captures/search-black-13.jpg"
      }
     ],
     "count": null

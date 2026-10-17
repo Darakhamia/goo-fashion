@@ -60,6 +60,29 @@ Checked with `ffprobe` and EBU R128 (2026-10-16):
 - `moov` comes before `mdat` (faststart).
 - Each one's last frame equals its first. Its sound is silent at both ends (below −50 dBFS), so each loops seamlessly.
 
+### Feature films: Local, Colours, Search (MP4 only)
+
+Three vertical films about other things the site does, with bolder motion (STORYBOARD.md, "Feature films"):
+- **Local:** the homepage's gooey word in English and Ukrainian, the homepage switching language, prices rolling through seven currencies.
+- **Colours:** the filter's thirteen colours cut on a beat, one tee in eight colours, one sneaker's ten photos.
+- **Search:** "jacket" typed in, then the results sorted by price and narrowed to black.
+
+Checked with `ffprobe` and EBU R128 (2026-10-17):
+
+| File | Length | Video | Size | Bitrate | Loudness |
+|---|---|---|---|---|---|
+| `goo-local.mp4` | 19.47 s, 584 frames | 1080×1920, H.264 High, CRF 18 | 4.88 MB | 2.00 Mb/s (video 1.83) | −24.1 LUFS, true peak −8.4 dBTP |
+| `goo-colours.mp4` | 17.73 s, 532 frames | 1080×1920, H.264 High, CRF 20 | 7.50 MB | 3.39 Mb/s (video 3.22) | −24.1 LUFS, true peak −7.4 dBTP |
+| `goo-search.mp4` | 15.2 s, 456 frames | 1080×1920, H.264 High, CRF 18 | 3.06 MB | 1.61 Mb/s (video 1.44) | −24.0 LUFS, true peak −7.8 dBTP |
+
+- All three are 30 fps, yuv420p, with AAC-LC audio at 160 kb/s, 48 kHz stereo.
+- `moov` comes before `mdat` (faststart).
+- Each one's last frame equals its first.
+- Colours needs CRF 20 to stay under 8 MB: its full-frame colour floods and strobe cuts cost bits.
+- Sound at the loop's ends:
+  - Local and Search are silent at both ends (below −58 dBFS).
+  - Colours opens on the soft start of a rush (−37 dBFS peak in its first 0.1 s).
+
 The last frame equals the first (both are the type cards' black), so the loop is seamless:
 
 ```html
