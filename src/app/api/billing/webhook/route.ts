@@ -19,8 +19,9 @@ import { sendBillingAlert } from "@/lib/server/billing-alerts";
  * states: "success" unlocks the plan, "failure"/"expired"/"reversed" on a
  * renewal counts as a failed charge.
  *
- * The invoice `reference` carries "<userId>|<plan>", so this handler serves
- * both the initial checkout and unattended renewal charges.
+ * The invoice `reference` carries "<userId>|<plan>" (plus "|1d" for the
+ * goo-studio test subscription), so this handler serves both the initial
+ * checkout and unattended renewal charges.
  */
 export async function POST(req: Request) {
   const rawBody = await req.text();
@@ -48,11 +49,11 @@ export async function POST(req: Request) {
     // Not a subscription invoice we recognize — ack so monobank stops retrying.
     return NextResponse.json({ ok: true, ignored: true });
   }
-  const { userId, plan } = parsed;
+  const { userId, plan, interval } = parsed;
 
   try {
     if (payload.status === "success") {
-      const applied = await applyInvoicePaid({ userId, plan, invoiceId: payload.invoiceId });
+      const applied = await applyInvoicePaid({ userId, plan, invoiceId: payload.invoiceId, interval });
       return applied.duplicate
         ? NextResponse.json({ ok: true, duplicate: true })
         : NextResponse.json({ ok: true, cardToken: applied.cardToken });

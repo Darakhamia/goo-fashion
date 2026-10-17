@@ -84,4 +84,27 @@ export const subscriptionsRu: Partial<Record<Key, Message>> = {
   "subs.event.cron_misconfigured": "Cron сломан",
   "subs.kind.renewal": "Продление",
   "subs.empty.log": "Транзакций пока нет.",
+
+  // Тестовая подписка
+  "subs.perDay": "{amount}/день",
+  "subs.test.badge": "тест",
+  "subs.test.title": "Тестовая подписка",
+  "subs.test.description":
+    "Ваш собственный аккаунт, {amount} в день, тем же путём, что настоящий тариф, — чтобы увидеть, что списания и продления работают. Этот блок видите только вы.",
+  "subs.test.plan": "Какой тариф откроет",
+  "subs.test.start": "Запустить — {amount}/день",
+  "subs.test.starting": "Открываю оплату…",
+  "subs.test.how":
+    "Откроется страница оплаты monobank. После оплаты {amount} списывается каждый день: банком или, если банк не дал этому терминалу подписки, с сохранённой карты ежедневной задачей продления. Списания настоящие; вернуть их можно в кабинете monobank.",
+  "subs.test.running": "Идёт: {plan}, {amount}/день",
+  "subs.test.pending": "Ждёт первой оплаты: {plan}, {amount}/день",
+  "subs.test.next": "Следующее списание после {date}",
+  "subs.test.byBank": "Списывает monobank",
+  "subs.test.byCard": "Списывается с карты {card}",
+  "subs.test.noCard": "Карта ещё не сохранена: ежедневное списание ждёт её",
+  "subs.test.stop": "Остановить тест",
+  "subs.test.stopping": "Останавливаю…",
+  "subs.test.stopped": "Остановлено: списаний больше не будет. Тариф остаётся на аккаунте; поменять его можно в «Пользователях».",
+  "subs.test.realPlan": "На вашем аккаунте продлевается настоящий платный тариф. Отмените его в профиле, прежде чем запускать тест.",
+  "subs.test.off": "Оплата выключена: не задан MONOBANK_TOKEN.",
 };

@@ -50,6 +50,7 @@ NODE_PATH=/tmp/goo-admin-screens/pw/node_modules \
   - `outfits-bulk`, `outfits-pending`, `outfits-pending-review`;
   - `brands-confirm`, `brands-toast`, `retailers-help`, `retailers-rule`;
   - `dashboard-fix` («How to fix» открыт), `dashboard-healthy` («All good»), `dashboard-payments-off` (оплата выключена);
+  - `subscriptions-test` (идёт тестовая подписка: строка в списке и блок со Stop);
   - `users-drawer`, `users-bulk`, `email-confirm`, `account-menu`;
   - `catalogue-check-ready`;
   - `import-merchants`, `import-preview`;

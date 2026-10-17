@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { USD_UAH_RATE } from "@/lib/plans";
 import { isMissingTable } from "@/lib/server/db-errors";
-import { isOverdue, PAGE, readAllSubscriptions, summarizeBilling } from "@/lib/server/billing-health";
+import { isOverdue, isTestSubscription, PAGE, readAllSubscriptions, summarizeBilling } from "@/lib/server/billing-health";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Data for /goo-studio/subscriptions: revenue totals, the subscriber list, and
@@ -117,7 +117,7 @@ export async function GET() {
   for (const s of activeSubs) {
     const row = byPlan.get(s.plan) ?? { count: 0, mrr: 0 };
     row.count++;
-    row.mrr += s.amount;
+    if (!isTestSubscription(s)) row.mrr += s.amount;
     byPlan.set(s.plan, row);
   }
 
@@ -178,6 +178,8 @@ export async function GET() {
     hasCardToken: !!s.card_token,
     // Charged by monobank itself: no card of ours is expected.
     bankSubscription: !!s.mono_subscription_id,
+    // The goo-studio test: the amount is per day, not per month.
+    test: isTestSubscription(s),
     failedCharges: s.failed_charges ?? 0,
     overdue: isOverdue(s),
     currentPeriodEnd: s.current_period_end,

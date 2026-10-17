@@ -75,4 +75,27 @@ export const subscriptionsEn = {
   "subs.event.cron_misconfigured": "Cron broken",
   "subs.kind.renewal": "Renewal",
   "subs.empty.log": "No transactions logged yet.",
+
+  // Test subscription (super admin only; BILLING.md, "Test subscription")
+  "subs.perDay": "{amount}/day",
+  "subs.test.badge": "test",
+  "subs.test.title": "Test subscription",
+  "subs.test.description":
+    "Your own account, {amount} a day, through the same steps as a real plan — to see charges and renewals work. Only you see this block.",
+  "subs.test.plan": "Plan it unlocks",
+  "subs.test.start": "Start — {amount}/day",
+  "subs.test.starting": "Opening payment…",
+  "subs.test.how":
+    "monobank's payment page opens. After paying, {amount} is charged every day: by the bank, or — if the bank gives this terminal no subscriptions — from the saved card by the daily renewal task. Real charges; refund them in the monobank cabinet if you like.",
+  "subs.test.running": "Running: {plan}, {amount}/day",
+  "subs.test.pending": "Waiting for the first payment: {plan}, {amount}/day",
+  "subs.test.next": "Next charge after {date}",
+  "subs.test.byBank": "Charged by monobank",
+  "subs.test.byCard": "Charged from card {card}",
+  "subs.test.noCard": "No saved card yet: the daily charge waits for one",
+  "subs.test.stop": "Stop test",
+  "subs.test.stopping": "Stopping…",
+  "subs.test.stopped": "Stopped: no more charges. The plan stays on your account; change it in Users if needed.",
+  "subs.test.realPlan": "A real paid plan is renewing on your account. Cancel it in the profile before starting a test.",
+  "subs.test.off": "Payments are off: MONOBANK_TOKEN is not set.",
 } as const satisfies Record<string, Message>;

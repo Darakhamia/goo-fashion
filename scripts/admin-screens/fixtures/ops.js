@@ -363,6 +363,36 @@ const emailStatus = {
   counts: { all: USERS.length, free: planCounts.free, basic: planCounts.basic, pro: planCounts.pro, premium: planCounts.premium },
 };
 
+// Test subscription (BILLING.md, "Test subscription"): the super admin's own
+// row, here the pending Pro checkout from `subscriptions` above, so the block
+// offers to start a test.
+const billingTest = {
+  configured: true,
+  amountMinor: 1000,
+  interval: "1d",
+  subscription: {
+    plan: "pro", status: "pending", interval: "1m", amountMinor: 99900, autoRenew: true,
+    currentPeriodEnd: null, maskedPan: null, hasCardToken: false, bankSubscription: false,
+  },
+  realPlanRunning: false,
+};
+// The same block a day into a test: paid, the card saved, the next charge due.
+const billingTestRunning = {
+  ...billingTest,
+  subscription: {
+    plan: "pro", status: "active", interval: "1d", amountMinor: 1000, autoRenew: true,
+    currentPeriodEnd: "2026-10-06T09:05:00Z", maskedPan: "537541******4417", hasCardToken: true, bankSubscription: false,
+  },
+};
+const subscriptionsWithTest = {
+  ...subscriptions,
+  subscriptions: [
+    { userId: SUPER_ID, email: "admin@example.com", plan: "pro", status: "active", amountUah: 10, autoRenew: true,
+      maskedPan: "537541******4417", hasCardToken: true, test: true, failedCharges: 0, overdue: false, currentPeriodEnd: "2026-10-06T09:05:00Z" },
+    subscriptions.subscriptions[1],
+  ],
+};
+
 module.exports = {
   routes: {
     "GET /api/admin/stats": stats,
@@ -376,6 +406,7 @@ module.exports = {
     "* /api/admin/users/*": userById,
 
     "GET /api/admin/subscriptions": subscriptions,
+    "GET /api/admin/billing-test": billingTest,
 
     "GET /api/admin/waitlist": waitlist,
     "DELETE /api/admin/waitlist": { ok: true },
@@ -443,6 +474,18 @@ module.exports = {
         );
         await page.getByRole("button", { name: /^(Send to 14 recipients|Отправить 14 получателям)$/ }).click();
         await page.getByText(/people\?|получател(ю|ям)\?/).waitFor({ timeout: 10000 });
+      },
+    },
+    // A test subscription running: its row in the list and the block with Stop.
+    {
+      name: "subscriptions-test",
+      url: "/goo-studio/subscriptions",
+      after: async (page) => {
+        await page.route("**/api/admin/subscriptions*", (r) => r.fulfill({ json: subscriptionsWithTest }));
+        await page.route("**/api/admin/billing-test*", (r) => r.fulfill({ json: billingTestRunning }));
+        await page.reload({ waitUntil: "networkidle" });
+        await page.locator("#test-subscription").waitFor({ timeout: 15000 });
+        await page.waitForTimeout(600);
       },
     },
     {

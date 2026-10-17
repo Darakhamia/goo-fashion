@@ -14,6 +14,7 @@ import {
   type SubscriptionStatusResult,
 } from "@/lib/server/monobank";
 import { downgradeIfOnPlan, logBillingEvent, setClerkPlan } from "@/lib/server/subscriptions";
+import { coerceInterval, type BillingInterval } from "@/lib/server/billing-terms";
 import { sendBillingAlert } from "@/lib/server/billing-alerts";
 
 /**
@@ -32,7 +33,7 @@ import { sendBillingAlert } from "@/lib/server/billing-alerts";
  */
 
 /** monobank's interval format: one month. */
-export const MONO_SUB_INTERVAL = "1m";
+export const MONO_SUB_INTERVAL: BillingInterval = "1m";
 
 const HOUR_MS = 60 * 60 * 1000;
 /** A payment page the customer never paid is invalidated at the bank after this. */
@@ -100,7 +101,8 @@ export type StartResult =
   | { kind: "unavailable"; reason: string };
 
 /**
- * Ask monobank for a monthly subscription and return its payment page.
+ * Ask monobank for a monthly subscription — daily for the goo-studio test —
+ * and return its payment page.
  *
  * The secret that identifies the subscriber in the webhook URLs is stored (as
  * its hash) before the bank is called: the first knock can come right after
@@ -110,7 +112,10 @@ export async function startBankSubscription(args: {
   userId: string;
   plan: PaidPlanId;
   amount: number;
+  /** '1d' only for the goo-studio test subscription. */
+  interval?: BillingInterval;
 }): Promise<StartResult> {
+  const interval = args.interval ?? MONO_SUB_INTERVAL;
   const secret = crypto.randomBytes(24).toString("hex");
   const { data, error } = await db()
     .from("mono_subscriptions")
@@ -120,7 +125,7 @@ export async function startBankSubscription(args: {
       plan: args.plan,
       amount: args.amount,
       ccy: BILLING_CCY,
-      interval: MONO_SUB_INTERVAL,
+      interval,
       status: "creating",
     })
     .select("id")
@@ -136,7 +141,7 @@ export async function startBankSubscription(args: {
     created = await createSubscription({
       amount: args.amount,
       ccy: BILLING_CCY,
-      interval: MONO_SUB_INTERVAL,
+      interval,
       redirectUrl: `${SITE_URL}/subscribe?plan=${args.plan}&status=return`,
       chargeUrl: `${SITE_URL}/api/billing/subscription/${secret}/charge`,
       statusUrl: `${SITE_URL}/api/billing/subscription/${secret}/status`,
@@ -418,6 +423,7 @@ async function grantPlan(
   p: SubscriptionPayment,
 ): Promise<void> {
   const subscriptionId = row.subscription_id!;
+  await markRowInterval(row.user_id, subscriptionId, coerceInterval(row.interval));
   try {
     await setClerkPlan(row.user_id, plan);
   } catch (err) {
@@ -464,6 +470,24 @@ async function grantPlan(
         "Until it is cancelled the customer is charged twice. Cancel it in the monobank business cabinet.",
       ]);
     }
+  }
+}
+
+/**
+ * goo_record_mono_charge writes the plan row without its billing_interval
+ * (migration 029 came later), so the row would keep whatever period it had
+ * before — a test's '1d' under a real monthly plan, say. Only goo-studio reads
+ * it for a plan on a bank subscription, and only to show the period, so a
+ * failure is logged, not raised: the payment is already recorded.
+ */
+async function markRowInterval(userId: string, subscriptionId: string, interval: BillingInterval): Promise<void> {
+  const { error } = await db()
+    .from("subscriptions")
+    .update({ billing_interval: interval })
+    .eq("user_id", userId)
+    .eq("mono_subscription_id", subscriptionId);
+  if (error && !isMissingSchema(error)) {
+    console.error(`[billing] could not record the period of ${subscriptionId} for ${userId}: ${error.message}`);
   }
 }
 

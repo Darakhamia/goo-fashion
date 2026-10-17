@@ -10,12 +10,14 @@ import { Badge, type BadgeTone } from "@/components/admin/Badge";
 import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
 import { CRON_FIX } from "@/lib/billing-cron";
 import { BANNER } from "@/app/goo-studio/_ui/recipes";
+import { TestSubscription } from "./TestSubscription";
 
 /*
  * Subscriptions (docs/ADMIN_DESIGN.md §6, mockup "Subscriptions", GS4-12):
  * what is wrong with billing first, then the key numbers, the subscribers and
  * the transaction log. Read-only; everything comes from
- * GET /api/admin/subscriptions.
+ * GET /api/admin/subscriptions. Below them, for the super admin only, the test
+ * subscription (TestSubscription.tsx), which is not read-only.
  */
 
 // ── Types (mirror /api/admin/subscriptions) ───────────────────────────────────
@@ -52,6 +54,8 @@ interface SubItem {
   hasCardToken: boolean;
   /** Charged by monobank's own subscription — no saved card of ours by design. */
   bankSubscription?: boolean;
+  /** The goo-studio test subscription: the amount is per day. */
+  test?: boolean;
   failedCharges: number;
   overdue: boolean;
   currentPeriodEnd: string | null;
@@ -280,7 +284,8 @@ export default function SubscriptionsPage() {
   ];
 
   // ── Subscribers ───────────────────────────────────────────────────────────
-  const price = (s: SubItem) => t("subs.perMonth", { amount: uah(s.amountUah) });
+  const price = (s: SubItem) => t(s.test ? "subs.perDay" : "subs.perMonth", { amount: uah(s.amountUah) });
+  const planText = (s: SubItem) => (s.test ? `${planLabel(s.plan, t)} · ${t("subs.test.badge")}` : planLabel(s.plan, t));
 
   /** When the paid period ends, and what happens then, in words; null before the first payment of a non-pending row. */
   const renewalText = (s: SubItem): string | null => {
@@ -327,7 +332,7 @@ export default function SubscriptionsPage() {
         </span>
       ),
     },
-    { key: "plan", header: t("subs.col.plan"), cell: (s) => planLabel(s.plan, t) },
+    { key: "plan", header: t("subs.col.plan"), cell: planText },
     {
       key: "status",
       header: t("subs.col.status"),
@@ -421,7 +426,7 @@ export default function SubscriptionsPage() {
           card={(s) => ({
             title: s.email,
             badge: stateOf(s) === "active" ? undefined : <StatusBadge state={stateOf(s)} t={t} />,
-            meta: notes(planLabel(s.plan, t), price(s), renewalText(s)),
+            meta: notes(planText(s), price(s), renewalText(s)),
           })}
           empty={<EmptyState text={t("subs.empty.subscribers")} />}
         />
@@ -443,6 +448,8 @@ export default function SubscriptionsPage() {
           empty={<EmptyState text={t("subs.empty.log")} />}
         />
       </section>
+
+      <TestSubscription />
     </div>
   );
 }
