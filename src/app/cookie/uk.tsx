@@ -36,7 +36,7 @@ export const STRINGS_UK: CookieStrings = {
   kicker: "Юридична інформація",
   title: "Політика щодо файлів cookie",
   // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
-  lastUpdated: "Оновлено: 14 жовтня 2026 р.",
+  lastUpdated: "Оновлено: 17 жовтня 2026 р.",
   introBeforeLink:
     "Ця Політика щодо файлів cookie перелічує всі файли cookie та ключі сховища браузера, які фактично використовує Goo Fashion, пояснює, для чого потрібен кожен із них і як ви можете ними керувати. Вона доповнює нашу",
   introLink: "Політику конфіденційності",
@@ -111,6 +111,15 @@ export const SECTIONS_UK: LegalSection[] = [
             <span className="font-mono text-xs text-[var(--foreground)] max-md:text-[13px]">__clerk</span>), щоб
             зберігати ваш вхід в обліковий запис і захищати його від підроблених запитів. Ці файли cookie суворо
             необхідні, і їх не можна вимкнути, поки ви користуєтеся обліковим записом.
+          </P>
+        </div>
+        <div>
+          <SubLabel>Необхідні — захист (Cloudflare)</SubLabel>
+          <P>
+            Наш мережевий постачальник Cloudflare захищає сайт від ботів і перевантаження. Якщо він попросить
+            ваш браузер пройти перевірку безпеки — рідко, наприклад під час атаки, — він встановить файл cookie{" "}
+            <span className="font-mono text-xs text-[var(--foreground)] max-md:text-[13px]">cf_clearance</span>, щоб
+            не питати вдруге. Він з’являється лише після такої перевірки і є суворо необхідним.
           </P>
         </div>
         <div>

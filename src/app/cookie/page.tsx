@@ -73,6 +73,15 @@ const SECTIONS: LegalSection[] = [
           </P>
         </div>
         <div>
+          <SubLabel>Essential — protection (Cloudflare)</SubLabel>
+          <P>
+            Our network provider Cloudflare protects the site from bots and overload. If it asks your browser to
+            pass a security check — rarely, for example during an attack — it sets a{" "}
+            <span className="font-mono text-xs text-[var(--foreground)] max-md:text-[13px]">cf_clearance</span> cookie
+            so you are not asked again. It is set only after such a check and is strictly necessary.
+          </P>
+        </div>
+        <div>
           <SubLabel>Analytics — PostHog (only with your consent)</SubLabel>
           <P>
             When product analytics is enabled, a banner asks for your consent before anything loads. Only
@@ -220,7 +229,7 @@ const STRINGS_EN: CookieStrings = {
   kicker: "Legal",
   title: "Cookie Policy",
   // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
-  lastUpdated: "Last updated: October 14, 2026",
+  lastUpdated: "Last updated: October 17, 2026",
   introBeforeLink:
     "This Cookie Policy lists every cookie and browser-storage key Goo Fashion actually uses, what each one is for, and how you can control them. It supplements our",
   introLink: "Privacy Policy",

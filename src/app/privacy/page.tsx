@@ -226,6 +226,7 @@ const SECTIONS: LegalSection[] = [
           <Processor name="Clerk (USA)" purpose="Authentication and account management." data="account data, style profile" />
           <Processor name="Supabase" purpose="Database and file storage." data="likes, looks, chat history, subscriptions, analytics events" />
           <Processor name="Server hosting provider" purpose="Hosting the servers the website runs on." data="request data; IP addresses appear transiently in server logs" />
+          <Processor name="Cloudflare (USA)" purpose="The network in front of the website: delivering pages, caching images and static files, and protecting the servers from bots and overload." data="IP address and request data (page address, browser user-agent); a cf_clearance cookie only if you are asked to pass a security check" />
           <Processor name="monobank / Plata by mono (Ukraine)" purpose="Payment processing and card tokenisation on their hosted payment page." data="payment details, subscription reference including your account identifier" />
           <Processor name="Replicate (USA)" purpose="Running the AI models behind the stylist chat and virtual try-on." data="chat messages, style personalisation, try-on photos, product images" />
           <Processor name="OpenAI (USA)" purpose="Search embeddings for catalogue matching, and structuring bug reports." data="search and chat queries; product texts; bug report text, page address, optional screenshot" />
@@ -378,7 +379,7 @@ const STRINGS_EN: PrivacyStrings = {
   kicker: "Legal",
   title: "Privacy Policy",
   // The date sitemap.xml gives this page: keep LEGAL_UPDATED in app/sitemap.ts in step.
-  lastUpdated: "Last updated: October 14, 2026",
+  lastUpdated: "Last updated: October 17, 2026",
   intro:
     "Goo Fashion respects your privacy. This policy explains, in plain language, exactly what personal data we collect, why we collect it, which service providers it is shared with, and the rights you have over it.",
   navTerms: "Terms of Service",

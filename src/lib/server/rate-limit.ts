@@ -1,5 +1,6 @@
 import { Ratelimit, type Duration } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { clientIp } from "@/lib/server/client-ip";
 
 // 10 messages per IP per sliding minute window.
 // Safe for casual public use; increase if needed for authenticated heavy users.
@@ -47,11 +48,6 @@ export interface RateLimitResult {
   limit: number | null;
 }
 
-// Prefer x-forwarded-for for real client IP behind proxies / Vercel edge
-function clientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  return forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";
-}
 
 async function runLimit(
   limiter: Ratelimit | null,
