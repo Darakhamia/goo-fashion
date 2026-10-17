@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { PLANS, BILLING_CCY, planPriceMinor, type PlanId } from "@/lib/plans";
+import { PLANS, BILLING_CCY, type PlanId } from "@/lib/plans";
+import { coerceInterval, periodAmountMinor } from "@/lib/server/billing-terms";
 import { SITE_URL } from "@/lib/seo";
 import { chargeWallet, isMonobankConfigured, listWalletCards } from "@/lib/server/monobank";
 import {
@@ -159,13 +160,19 @@ export async function GET(req: Request) {
       continue;
     }
     const plan = sub.plan as Exclude<PlanId, "free">;
+    // '1d' is the goo-studio test: 10 UAH a day whatever the plan (billing-terms.ts).
+    const interval = coerceInterval(sub.billing_interval);
+    const amount = periodAmountMinor(plan, interval);
     try {
       const charge = await chargeWallet({
         cardToken: sub.card_token,
-        amount: planPriceMinor(plan),
+        amount,
         ccy: BILLING_CCY,
-        reference: buildReference(sub.user_id, plan),
-        destination: `Goo Fashion — ${PLANS[plan].name} (renewal)`,
+        reference: buildReference(sub.user_id, plan, interval),
+        destination:
+          interval === "1d"
+            ? `Goo Fashion — ${PLANS[plan].name} (test, daily)`
+            : `Goo Fashion — ${PLANS[plan].name} (renewal)`,
         webHookUrl: `${SITE_URL}/api/billing/webhook`,
         initiationKind: "merchant",
       });
@@ -176,6 +183,7 @@ export async function GET(req: Request) {
           plan,
           invoiceId: charge.invoiceId,
           kind: "renewal",
+          interval,
         });
         results.push({ userId: sub.user_id, plan, outcome: "renewed" });
       } else if (
@@ -190,7 +198,7 @@ export async function GET(req: Request) {
           kind: "renewal",
           plan,
           invoiceId: charge.invoiceId,
-          amount: planPriceMinor(plan),
+          amount,
           ccy: BILLING_CCY,
           status: charge.status,
           detail: charge.failureReason ?? null,
@@ -208,7 +216,7 @@ export async function GET(req: Request) {
         eventType: "payment_failed",
         kind: "renewal",
         plan,
-        amount: planPriceMinor(plan),
+        amount,
         ccy: BILLING_CCY,
         detail: err instanceof Error ? err.message : "charge error",
       });

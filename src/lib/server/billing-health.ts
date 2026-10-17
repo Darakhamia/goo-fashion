@@ -19,6 +19,8 @@ export interface SubRow {
   current_period_end: string | null;
   /** Set when monobank charges the plan by itself (migration 028); such a row has no card of ours. */
   mono_subscription_id?: string | null;
+  /** '1d' for the goo-studio test subscription (migration 029); absent or '1m' for a real plan. */
+  billing_interval?: string;
 }
 
 /** Supabase returns at most this many rows per request, so totals page through. */
@@ -26,8 +28,16 @@ export const PAGE = 1_000;
 
 const SUB_COLUMNS =
   "user_id,plan,status,amount,auto_renew,masked_pan,card_token,failed_charges,current_period_end";
-/** Read when migration 028 is in; without it the plain list is read instead. */
-const SUB_COLUMNS_028 = `${SUB_COLUMNS},mono_subscription_id`;
+/**
+ * Newest schema first: migration 029 adds billing_interval, 028
+ * mono_subscription_id. A column that is not there yet drops the read to the
+ * next list.
+ */
+const SUB_COLUMN_SETS = [
+  `${SUB_COLUMNS},mono_subscription_id,billing_interval`,
+  `${SUB_COLUMNS},mono_subscription_id`,
+  SUB_COLUMNS,
+];
 
 /**
  * Every subscription, a page at a time. A single `.limit(n)` read stops at
@@ -48,12 +58,12 @@ export async function readAllSubscriptions(): Promise<{ data: SubRow[]; error: {
       .order("user_id", { ascending: true })
       .range(from, from + PAGE - 1);
   const seen = new Set<string>();
-  let columns = SUB_COLUMNS_028;
+  let set = 0;
   for (let from = 0; ; from += PAGE) {
-    let q = await readPage(columns, from);
-    if (q.error && (q.error.code === "42703" || q.error.code === "PGRST204") && columns !== SUB_COLUMNS) {
-      columns = SUB_COLUMNS;
-      q = await readPage(columns, from);
+    let q = await readPage(SUB_COLUMN_SETS[set], from);
+    while (q.error && (q.error.code === "42703" || q.error.code === "PGRST204") && set < SUB_COLUMN_SETS.length - 1) {
+      set++;
+      q = await readPage(SUB_COLUMN_SETS[set], from);
     }
     if (q.error) return { data, error: q.error };
     const rows = (q.data ?? []) as unknown as SubRow[];
@@ -66,6 +76,11 @@ export async function readAllSubscriptions(): Promise<{ data: SubRow[]; error: {
   }
 }
 
+/** The goo-studio test subscription: 10 UAH a day, the admin's own money, not revenue. */
+export function isTestSubscription(s: Pick<SubRow, "billing_interval">): boolean {
+  return s.billing_interval === "1d";
+}
+
 /** Active, and the paid period has ended without a renewal. */
 export function isOverdue(s: Pick<SubRow, "status" | "current_period_end">, now = Date.now()): boolean {
   return s.status === "active" && !!s.current_period_end && new Date(s.current_period_end).getTime() < now;
@@ -76,7 +91,8 @@ export function summarizeBilling(subs: SubRow[], now = Date.now()) {
   const active = subs.filter((s) => s.status === "active");
   return {
     active: active.length,
-    mrrMinor: active.reduce((sum, s) => sum + s.amount, 0),
+    // Monthly money only: a test subscription's daily 10 UAH is not revenue.
+    mrrMinor: active.filter((s) => !isTestSubscription(s)).reduce((sum, s) => sum + s.amount, 0),
     pastDue: subs.filter((s) => s.status === "past_due").length,
     canceled: subs.filter((s) => s.status === "canceled").length,
     pending: subs.filter((s) => s.status === "pending").length,

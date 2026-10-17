@@ -132,7 +132,10 @@ Without it road 2 is a single month.
 
 Migration `028_monobank_subscriptions.sql` (bank subscriptions) is applied by
 the deploy itself (README, «Деплой»). Settings → Database schema shows whether
-it went in; without it checkout uses invoices only.
+it went in; without it checkout uses invoices only. Migration
+`029_subscription_billing_interval.sql` adds the period of a plan
+(`subscriptions.billing_interval`) for the [test subscription](#test-subscription);
+without it everything else works and only that test answers with an error.
 
 The two root files are the starting schema, not numbered migrations, so the
 deploy does not apply them; on production they already exist:
@@ -181,6 +184,43 @@ Two tasks — see the next section. There is no other scheduler.
 
 The webhook URLs are passed with every subscription and invoice, so nothing
 has to be configured for them in the monobank cabinet.
+
+Instead of step 2 at a plan's full price, the
+[test subscription](#test-subscription) does the same for 10 UAH and renews the
+next day.
+
+## Test subscription
+
+goo-studio → Subscriptions → **Test subscription**, at the bottom of the page.
+Super admin only (`SUPER_ADMIN_USER_ID`): for anyone else it would be a paid
+plan for 10 UAH a day.
+
+- **What it is.** The super admin's own account subscribes to a plan of their
+  choice for **10 UAH a day**, to watch real charges and renewals without
+  paying a month's price and waiting a month for the next one. The money is
+  real; refund it in the monobank cabinet if you like.
+- **Same roads as a real checkout** (`POST /api/admin/billing-test`). First a
+  bank subscription with interval `1d`: the bank charges every day and the
+  hourly sync records it. If the bank refuses one, an invoice for 10 UAH that
+  saves the card; after it is paid the daily `billing-renew` charges the saved
+  card 10 UAH. Both return through `/subscribe`, like a customer.
+- **Only the period and the amount differ** (`src/lib/server/billing-terms.ts`).
+  The row's `billing_interval` is `1d` and the invoice reference ends in `|1d`
+  (`<userId>|<plan>|1d`). The amount follows from the interval, never from the
+  row, so a daily row cannot charge a plan's monthly price, and a real checkout
+  writes `1m` back. In our ledger a test day is 23 hours, so each daily run of
+  `billing-renew` finds it due: the first renewal is the first run more than
+  23 hours after paying, then one a day.
+- **Stop** in the same block (the profile's cancel does the same,
+  `POST /api/billing/cancel`): the bank subscription is cancelled at the bank;
+  on the saved-card road auto-renew is switched off. On the saved-card road the
+  plan stays in Clerk afterwards (known gap 3) — set it back in Users.
+- **Guards.** No test while a real paid plan is renewing on the account
+  (cancel it in the profile first), and no second test while one runs.
+- **On the page.** The row is marked "test" and priced per day; it is left out
+  of MRR. Its payments are real money and count in "Total earned".
+- **Needs migration `029`** for the saved-card road; without it the start
+  answers with an error naming the migration.
 
 ## Several sites
 
@@ -380,7 +420,7 @@ whole hryvnia; `≈ $` uses `BILLING_USD_UAH_RATE`.
 |---|---|
 | Total earned | Sum of `amount` over **all** `payment_success` rows in `billing_events` (read page by page, not just the 200 shown in the log). `amount` is the plan price at the moment the payment was recorded, not monobank's settled amount. Reversals and refunds are not subtracted; payments made before `billing_events` existed are not counted. |
 | Earned this month | Same, rows since the 1st of the current month, 00:00 UTC. The subline is the number of `payment_success` rows in total. |
-| MRR / By plan | Sum of the row's `amount` over subscriptions with status `active` (including those with auto-renew off). |
+| MRR / By plan | Sum of the row's `amount` over subscriptions with status `active` (including those with auto-renew off), without [test subscriptions](#test-subscription). |
 | Active subscribers | Rows with status `active`; "N won't renew" = those with auto-renew off. |
 | Past due / Canceled / Pending checkout | Row counts by status. |
 | Renewal cron | Hours since the last `cron_run` (see above). |
@@ -437,6 +477,8 @@ Road 1, seen on 2026-10-14:
 | `src/lib/server/subscriptions.ts` | Supabase ledger + Clerk plan sync + `billing_events` log |
 | `src/lib/server/billing-alerts.ts` | Email alerts via Resend |
 | `src/lib/plans.ts` | Plans, UAH prices, display rate |
+| `src/lib/server/billing-terms.ts` | What a period costs and how long it lasts: monthly at the plan's price, or the daily 10 UAH test |
+| `src/app/api/admin/billing-test/route.ts` | [Test subscription](#test-subscription): state and start, super admin only |
 | `src/app/api/billing/checkout/route.ts` | Create a bank subscription (or an invoice), redirect to monobank |
 | `src/app/api/billing/subscription/[secret]/[event]/route.ts` | monobank's knock for a bank subscription → sync |
 | `src/app/api/billing/sync/route.ts` | Sync the signed-in customer's subscription on return from monobank |

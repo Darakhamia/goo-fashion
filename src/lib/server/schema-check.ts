@@ -122,6 +122,12 @@ const OTHER_CHECKS: readonly Check[] = [
     breaks:
       "Checkout cannot open a monobank subscription and falls back to one-off invoices, which renew only if the bank saved the card.",
   },
+  {
+    table: "subscriptions",
+    column: "billing_interval",
+    migration: "029_subscription_billing_interval.sql",
+    breaks: "The test subscription (Subscriptions → Test subscription) cannot start when the bank refuses a subscription.",
+  },
 ];
 
 /**

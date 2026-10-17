@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { PlanId } from "@/lib/plans";
+import type { BillingInterval } from "@/lib/server/billing-terms";
 import { getInvoiceStatus, listWalletCards } from "@/lib/server/monobank";
 import { activateSubscription, getSubscription, logBillingEvent, parseReference } from "@/lib/server/subscriptions";
 
@@ -17,8 +18,10 @@ export async function applyInvoicePaid(args: {
   userId: string;
   plan: PlanId;
   invoiceId: string;
+  /** From the invoice reference: '1d' only for the goo-studio test subscription. */
+  interval?: BillingInterval;
 }): Promise<{ duplicate: boolean; cardToken: boolean }> {
-  const { userId, plan, invoiceId } = args;
+  const { userId, plan, invoiceId, interval } = args;
 
   // Idempotency: ignore duplicate success callbacks for the same invoice.
   const existing = await getSubscription(userId);
@@ -65,7 +68,7 @@ export async function applyInvoicePaid(args: {
     });
   }
 
-  await activateSubscription({ userId, plan, invoiceId, cardToken, maskedPan, kind });
+  await activateSubscription({ userId, plan, invoiceId, cardToken, maskedPan, kind, interval });
   return { duplicate: false, cardToken: !!cardToken };
 }
 
@@ -101,7 +104,7 @@ export async function reconcilePendingInvoices(): Promise<Array<{ userId: string
         out.push({ userId: row.user_id, invoiceId, outcome: "reference-mismatch" });
         continue;
       }
-      const applied = await applyInvoicePaid({ userId: ref.userId, plan: ref.plan, invoiceId });
+      const applied = await applyInvoicePaid({ userId: ref.userId, plan: ref.plan, invoiceId, interval: ref.interval });
       out.push({ userId: row.user_id, invoiceId, outcome: applied.duplicate ? "duplicate" : "paid" });
     } catch (err) {
       console.error(`[billing] invoice ${invoiceId} reconcile failed: ${err instanceof Error ? err.message : String(err)}`);

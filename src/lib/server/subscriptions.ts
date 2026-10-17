@@ -1,6 +1,7 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
-import { coercePlan, DEFAULT_PLAN, BILLING_CCY, planPriceMinor, type PlanId } from "@/lib/plans";
+import { coercePlan, DEFAULT_PLAN, BILLING_CCY, type PlanId } from "@/lib/plans";
+import { coerceInterval, periodAmountMinor, periodEnd, type BillingInterval } from "@/lib/server/billing-terms";
 
 /**
  * Subscription ledger backing monobank billing.
@@ -27,6 +28,8 @@ export interface SubscriptionRow {
   failed_charges: number;
   /** The monobank subscription this plan runs on; null for invoice + saved card. Absent before migration 028. */
   mono_subscription_id?: string | null;
+  /** '1m' for every real plan, '1d' for the goo-studio test (billing-terms.ts). Absent before migration 029. */
+  billing_interval?: string;
   created_at: string;
   updated_at: string;
 }
@@ -134,6 +137,27 @@ export async function downgradeIfOnPlan(userId: string, paidPlan: PlanId): Promi
   return true;
 }
 
+/**
+ * Upsert a subscriptions row that names its billing_interval. The interval is
+ * always written, so a real plan bought after a test cannot inherit the test's
+ * daily period. Before migration 029 the column is not there: a monthly row is
+ * written without it (monthly is all there is then), a daily one cannot be
+ * written at all.
+ */
+async function upsertWithInterval(row: Record<string, unknown> & { billing_interval: BillingInterval }) {
+  const first = await db().from("subscriptions").upsert(row, { onConflict: "user_id" }).select("user_id");
+  if (!first.error || !isUnknownColumn(first.error)) return first;
+  if (row.billing_interval !== "1m") {
+    return {
+      data: null,
+      error: { message: "subscriptions.billing_interval is missing: migration 029 is not applied (Settings → Database schema)" },
+    };
+  }
+  const withoutInterval: Record<string, unknown> = { ...row };
+  delete withoutInterval.billing_interval;
+  return db().from("subscriptions").upsert(withoutInterval, { onConflict: "user_id" }).select("user_id");
+}
+
 /** Record an invoice we just created, before the customer has paid. */
 export async function upsertPendingSubscription(args: {
   userId: string;
@@ -141,37 +165,30 @@ export async function upsertPendingSubscription(args: {
   amount: number;
   ccy: number;
   invoiceId: string;
+  /** '1d' only for the goo-studio test subscription. */
+  interval?: BillingInterval;
 }): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await db()
-    .from("subscriptions")
-    .upsert(
-      {
-        user_id: args.userId,
-        plan: args.plan,
-        status: "pending",
-        ccy: args.ccy,
-        amount: args.amount,
-        wallet_id: args.userId,
-        last_invoice_id: args.invoiceId,
-        auto_renew: true,
-        updated_at: now,
-      },
-      { onConflict: "user_id" }
-    );
+  const { error } = await upsertWithInterval({
+    user_id: args.userId,
+    plan: args.plan,
+    status: "pending",
+    ccy: args.ccy,
+    amount: args.amount,
+    wallet_id: args.userId,
+    last_invoice_id: args.invoiceId,
+    auto_renew: true,
+    billing_interval: args.interval ?? "1m",
+    updated_at: now,
+  });
   if (error) throw new Error(error.message);
-}
-
-function addOneMonth(from: Date): Date {
-  const d = new Date(from);
-  d.setMonth(d.getMonth() + 1);
-  return d;
 }
 
 /**
  * Mark a subscription active after a successful payment and unlock the plan in
- * Clerk. Extends the billing period by one month from the later of now / the
- * current period end (so an early renewal doesn't lose paid time).
+ * Clerk. Extends the billing period by one month — a day for the goo-studio
+ * test — from the later of now / the current period end (so an early renewal
+ * doesn't lose paid time).
  *
  * Writes the ledger first and only unlocks Clerk once that write is confirmed
  * to have touched a row. The two must not drift: Clerk is what the paywall
@@ -196,28 +213,32 @@ export async function activateSubscription(args: {
   maskedPan?: string | null;
   /** Whether this charge is the first payment or a monthly renewal. */
   kind?: "initial" | "renewal";
+  /** The period the charge paid for, from the invoice reference: '1d' only for the goo-studio test. */
+  interval?: BillingInterval;
 }): Promise<void> {
+  const interval = args.interval ?? "1m";
   const existing = await getSubscription(args.userId);
   const base =
     existing?.current_period_end && new Date(existing.current_period_end) > new Date()
       ? new Date(existing.current_period_end)
       : new Date();
-  const periodEnd = addOneMonth(base).toISOString();
+  const newPeriodEnd = periodEnd(base, interval).toISOString();
   const now = new Date().toISOString();
-  const chargedAmount = args.plan === "free" ? 0 : planPriceMinor(args.plan);
+  const chargedAmount = args.plan === "free" ? 0 : periodAmountMinor(args.plan, interval);
 
-  const row: Record<string, unknown> = {
+  const row: Record<string, unknown> & { billing_interval: BillingInterval } = {
     user_id: args.userId,
     plan: args.plan,
     status: "active",
     // Required on insert (NOT NULL, no default). On conflict these simply
-    // restate the current plan's price, which is what was just charged.
+    // restate what was just charged for the period.
     ccy: BILLING_CCY,
     amount: chargedAmount,
     wallet_id: args.userId,
     last_invoice_id: args.invoiceId,
-    current_period_end: periodEnd,
+    current_period_end: newPeriodEnd,
     failed_charges: 0,
+    billing_interval: interval,
     updated_at: now,
   };
   // Only overwrite the stored token when we actually have a fresh one.
@@ -226,10 +247,7 @@ export async function activateSubscription(args: {
   if (args.cardToken) row.card_token = args.cardToken;
   if (args.maskedPan) row.masked_pan = args.maskedPan;
 
-  const { data, error } = await db()
-    .from("subscriptions")
-    .upsert(row, { onConflict: "user_id" })
-    .select("user_id");
+  const { data, error } = await upsertWithInterval(row);
 
   const wrote = !error && (data?.length ?? 0) > 0;
   if (!wrote) {
@@ -458,17 +476,21 @@ export async function cancelAutoRenew(userId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-/** Parse the "<userId>|<plan>" reference we encode into invoices. */
-export function parseReference(reference: string | undefined | null): { userId: string; plan: PlanId } | null {
+/**
+ * Parse the reference we encode into invoices: "<userId>|<plan>" for a real
+ * plan, "<userId>|<plan>|1d" for the goo-studio test.
+ */
+export function parseReference(
+  reference: string | undefined | null,
+): { userId: string; plan: PlanId; interval: BillingInterval } | null {
   if (!reference) return null;
-  const sep = reference.indexOf("|");
-  if (sep < 0) return null;
-  const userId = reference.slice(0, sep);
-  const plan = coercePlan(reference.slice(sep + 1));
+  const [userId, rawPlan, rawInterval, ...rest] = reference.split("|");
+  if (rawPlan === undefined || rest.length > 0) return null;
+  const plan = coercePlan(rawPlan);
   if (!userId || plan === "free") return null;
-  return { userId, plan };
+  return { userId, plan, interval: coerceInterval(rawInterval) };
 }
 
-export function buildReference(userId: string, plan: PlanId): string {
-  return `${userId}|${plan}`;
+export function buildReference(userId: string, plan: PlanId, interval: BillingInterval = "1m"): string {
+  return interval === "1m" ? `${userId}|${plan}` : `${userId}|${plan}|${interval}`;
 }
