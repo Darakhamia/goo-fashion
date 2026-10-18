@@ -347,6 +347,10 @@ const fix = (status, runId, productName, brand, field, beforeText, afterText, re
 const RUN_B = "c3e1b0a2-77d4-4b8e-9d1c-0f3a2b9e5d11";
 const RUN_A1 = "9a1f5d02-1e44-4f0b-8c6e-5b2d7c9e3a40";
 const RUN_M = "5d7e2c19-a0b3-4e6f-9f12-7c8d9e0a1b23";
+// The extension's whole-store run (plan 001): its choice of what to collect,
+// and the check of each piece it brought in, sure fixes and style written.
+const RUN_C = "e4b8a1c7-3d52-4f09-b6e1-2a7c9d0f8e35";
+const RUN_E = "f7d2c9a4-1b63-4e8f-a5d0-3c6b8e1f2a97";
 const suggestions = [
   ...["Numeric Logo T-Shirt", "Numbers Logo Hoodie", "Glam Slam Shoulder Bag"].map((n) =>
     fix("suggested", RUN_B, n, "Mm6 Maison Margiela", "brand", "Mm6 Maison Margiela", "MM6 Maison Margiela", "One brand written two ways; “MM6 Maison Margiela” is the spelling used on 14 products.", "high", "brand")),
@@ -356,9 +360,12 @@ const suggestions = [
   fix("suggested", RUN_A1, "Adicolor Classics Firebird Track Top | Size: XL", "adidas Originals", "name", "Adicolor Classics Firebird Track Top | Size: XL", "Adicolor Classics Firebird Track Top", "“| Size: XL” is the feed's size, not part of the name.", "medium"),
   fix("suggested", RUN_A1, "Chaussure de running Pegasus 41 pour homme", "Nike", "name", "Chaussure de running Pegasus 41 pour homme", "", "The name is in French; the catalogue names products in English. A name can only lose words here, so rename it by hand.", "medium"),
   fix("suggested", RUN_M, "Moon Boot dog toy", "x Poldo Dog Couture", "category", "Accessories › Other", "", "A dog toy, not something to wear. Consider removing it from the catalogue.", "medium"),
+  fix("suggested", RUN_E, "Court Sneaker", "Common Projects", "style", "(none)", "minimal, casual", "A plain leather sneaker with no logo, sold for every day.", "medium", "record", "2026-10-06T10:04:00Z"),
   fix("suggested", RUN_M, "Maya Short Down Jacket", "Moncler", "price", "$165.00", "", "Other stores list this piece at $1,650 — the stored price looks one digit short. Prices are only flagged, never changed.", "high"),
 ];
 const applied = [
+  fix("applied", RUN_E, "Leather Chelsea Boot", "Dr. Martens", "style", "(none)", "classic", "A Chelsea boot in polished leather; the store sells it for the office.", "high", "record", "2026-10-06T10:03:00Z"),
+  fix("applied", RUN_E, "Pegasus 41 Running Shoe", "Nike", "style", "(none)", "sporty", "A road running shoe for daily training.", "high", "record", "2026-10-06T10:02:00Z"),
   ...["Basic Stüssy Tee", "8 Ball Fleece Hoodie", "Stock Logo Cap", "Classic Dot Crew"].map((n) =>
     fix("applied", RUN_B, n, "STUSSY", "brand", "STUSSY", "Stüssy", "Same brand as “Stüssy” (31 products), written in capitals.", "high", "brand", "2026-10-05T09:12:00Z")),
   fix("applied", RUN_A1, "Trefoil Essentials Hoodie | Size: XS", "adidas Originals", "name", "Trefoil Essentials Hoodie | Size: XS", "Trefoil Essentials Hoodie", "“| Size: XS” is the feed's size, not part of the name.", "high", "record", "2026-10-04T18:41:00Z"),
@@ -380,6 +387,8 @@ const CHECK_READY = {
   sweepPausedUntil: null,
   suggestions, applied,
   runs: [
+    { id: RUN_E, trigger: "extension", model: "gpt-4o-mini", products: 412, applied: 96, suggested: 31, failed: 0, costUsd: 0.0544, startedAt: "2026-10-06T10:00:00Z" },
+    { id: RUN_C, trigger: "collect", model: "gpt-4o-mini", products: 3816, applied: 0, suggested: 0, failed: 0, costUsd: 0.0187, startedAt: "2026-10-06T09:58:00Z" },
     { id: RUN_B, trigger: "brands", model: "gpt-4o-mini", products: 214, applied: 4, suggested: 3, failed: 0, costUsd: 0.0121, startedAt: "2026-10-05T09:11:00Z" },
     { id: RUN_A1, trigger: "auto", model: "gpt-4o-mini", products: 38, applied: 9, suggested: 5, failed: 1, costUsd: 0.0052, startedAt: "2026-10-04T18:39:00Z" },
     { id: "1b2c3d4e-5f60-4718-9a2b-3c4d5e6f7081", trigger: "auto", model: "gpt-4o-mini", products: 64, applied: 11, suggested: 2, failed: 0, costUsd: 0.0086, startedAt: "2026-10-02T07:05:00Z" },
