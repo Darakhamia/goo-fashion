@@ -91,7 +91,7 @@ export const parserEn = {
   "collect.install.step2": "Choose {button} and pick the {folder} folder from the repository.",
   "collect.install.loadUnpacked": "Load unpacked",
   "collect.install.step3":
-    "Open the store you want, click the Goo icon, set how many products to collect and press {button}.",
+    "Open the store you want, click the Goo icon and press {button} for the page you are on, or {whole} for every category of the store.",
   "collect.install.step4": "Chrome will ask once for permission to read that store. Grant it.",
   "collect.stoppedByAdmin": "Stopped by the admin",
   "collect.requestFailed": "Request failed ({status})",
