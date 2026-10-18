@@ -102,7 +102,7 @@ export const parserRu: Partial<Record<Key, Message>> = {
   "collect.install.step2": "Нажмите {button} и выберите папку {folder} из репозитория.",
   "collect.install.loadUnpacked": "Загрузить распакованное расширение",
   "collect.install.step3":
-    "Откройте нужный магазин, нажмите на значок Goo, укажите, сколько товаров собрать, и нажмите {button}.",
+    "Откройте нужный магазин, нажмите на значок Goo и нажмите {button} — для открытой страницы — или {whole} — для всех категорий магазина.",
   "collect.install.step4": "Chrome один раз попросит разрешение читать этот магазин. Разрешите.",
   "collect.stoppedByAdmin": "Остановлено админом",
   "collect.requestFailed": "Запрос не выполнен ({status})",

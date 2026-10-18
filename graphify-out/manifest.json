@@ -1334,33 +1334,33 @@
     "semantic_hash": ""
   },
   "extension/background.js": {
-    "mtime": 1792260513.7367861,
-    "seen": 1792260666.4670196,
-    "ast_hash": "5274358d2a9e709c652f066939351a05",
+    "mtime": 1792279718.0575964,
+    "seen": 1792315947.1395712,
+    "ast_hash": "148f13944c456aa93508dd3cef3dc8a5",
     "semantic_hash": ""
   },
   "extension/bridge.js": {
-    "mtime": 1792260513.7367861,
-    "seen": 1792260666.4670222,
-    "ast_hash": "24d5a2286a1eb0daf90622ab7ea07df2",
+    "mtime": 1792279689.9805954,
+    "seen": 1792315947.139576,
+    "ast_hash": "b5dab6c0d9309588112419200f9f5978",
     "semantic_hash": ""
   },
   "extension/manifest.json": {
-    "mtime": 1792260513.7370503,
-    "seen": 1792260666.467024,
-    "ast_hash": "d3ed517f67f091154ec0eb89f6325010",
+    "mtime": 1792279689.9805954,
+    "seen": 1792315947.139585,
+    "ast_hash": "28dc920be35827d757fcf66edc1a4a73",
     "semantic_hash": ""
   },
   "extension/popup.js": {
-    "mtime": 1792260513.7370503,
-    "seen": 1792260666.4670265,
-    "ast_hash": "4b5258ab137c3ab1822210e2a1afc8f7",
+    "mtime": 1792279689.981818,
+    "seen": 1792315947.1395879,
+    "ast_hash": "08ecd9b31335f24ace6d3b23fde4e2d3",
     "semantic_hash": ""
   },
   "extension/snapshot.js": {
-    "mtime": 1792260513.7370503,
-    "seen": 1792260666.4670284,
-    "ast_hash": "4c66b2a916fd84982d0673fdb3bd3fbd",
+    "mtime": 1792279689.9820733,
+    "seen": 1792315947.1395967,
+    "ast_hash": "4f53d99e2b29016f66891d78928fc5cc",
     "semantic_hash": ""
   },
   "scripts/migration-smoke.sh": {
@@ -1490,9 +1490,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/parser/collect/page.tsx": {
-    "mtime": 1792260513.7874987,
-    "seen": 1792260666.467425,
-    "ast_hash": "2bbf64720d2b99f829ab751afd949cf5",
+    "mtime": 1792279773.9355323,
+    "seen": 1792315947.1494303,
+    "ast_hash": "0abb4d3008976a97e361cd4de573ffcc",
     "semantic_hash": ""
   },
   "src/app/goo-studio/retailers/page.tsx": {
@@ -1940,9 +1940,9 @@
     "semantic_hash": ""
   },
   "docs/ADMIN.md": {
-    "mtime": 1792276125.2365825,
-    "seen": 1792276168.7315614,
-    "ast_hash": "9510cbb5c6d61a79d226e18388df6760",
+    "mtime": 1792279773.9383032,
+    "seen": 1792315947.1608577,
+    "ast_hash": "07b8d0fba760066e25806c4aa566d4bc",
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
@@ -1994,15 +1994,15 @@
     "semantic_hash": ""
   },
   "extension/README.md": {
-    "mtime": 1792260513.7333899,
-    "seen": 1792260666.467959,
-    "ast_hash": "fb4ffd68b8df012066297015fbe70b70",
+    "mtime": 1792279689.9796178,
+    "seen": 1792315947.1650777,
+    "ast_hash": "f560b12a0d80bdf5c1be568fc702dce0",
     "semantic_hash": ""
   },
   "extension/popup.html": {
-    "mtime": 1792260513.7370503,
-    "seen": 1792260666.4679606,
-    "ast_hash": "1be546448613b3832ea781f8747a4643",
+    "mtime": 1792279689.9805954,
+    "seen": 1792315947.165109,
+    "ast_hash": "b6170a72f5d9373f3efab1d97c27764d",
     "semantic_hash": ""
   },
   "src/assets/fonts/OFL.txt": {
@@ -2144,9 +2144,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/fixtures/quality-import.js": {
-    "mtime": 1792260513.7662172,
-    "seen": 1792260666.4670486,
-    "ast_hash": "e9956e1c928241844830e50741b0d78a",
+    "mtime": 1792279827.6821444,
+    "seen": 1792315947.1399083,
+    "ast_hash": "6b179bc54a4ac0b9c98ae875394fe645",
     "semantic_hash": ""
   },
   "scripts/admin-screens/setup.sh": {
@@ -2624,15 +2624,15 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/parser.en.ts": {
-    "mtime": 1792260513.7816668,
-    "seen": 1792260666.4673598,
-    "ast_hash": "984256b8043b66bad4e77dedfca93740",
+    "mtime": 1792279773.935946,
+    "seen": 1792315947.147214,
+    "ast_hash": "9d779cd0d708ddf2113b5ce7d659ebe0",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/parser.ru.ts": {
-    "mtime": 1792260513.7816668,
-    "seen": 1792260666.4673615,
-    "ast_hash": "034f12d5a1deabb1389cfc6c26f5458c",
+    "mtime": 1792279773.936301,
+    "seen": 1792315947.1472175,
+    "ast_hash": "50f4fc1773442123c5b4adf67183bfd7",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_i18n/screens/products.en.ts": {
@@ -3563,6 +3563,24 @@
     "mtime": 1792261060.1517859,
     "seen": 1792261168.662328,
     "ast_hash": "1e3946212da61c8f2ffa272e303dbe90",
+    "semantic_hash": ""
+  },
+  "extension/listing.js": {
+    "mtime": 1792279670.2273567,
+    "seen": 1792315947.1395807,
+    "ast_hash": "e82ef87e6c3484de7295137734d489d4",
+    "semantic_hash": ""
+  },
+  "extension/site.js": {
+    "mtime": 1792279670.2382548,
+    "seen": 1792315947.139591,
+    "ast_hash": "6f298a0d3dffc900281d1a6291b22903",
+    "semantic_hash": ""
+  },
+  "extension/sitemap-pieces.js": {
+    "mtime": 1792279670.240363,
+    "seen": 1792315947.139594,
+    "ast_hash": "aa46ac0c5aa04310005b4bc46028612d",
     "semantic_hash": ""
   }
 }

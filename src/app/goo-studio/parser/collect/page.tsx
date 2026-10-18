@@ -77,7 +77,8 @@ const MODES: { label: Key; linksOnly: boolean; says: Key }[] = [
 const LITERAL = {
   extensionsPage: "chrome://extensions",
   folder: "extension/",
-  extensionButton: "Collect this store",
+  extensionButton: "Collect this page",
+  wholeStoreButton: "Collect the whole store",
   robots: "robots.txt",
   crawlDelay: "crawl-delay",
 } as const;
@@ -469,7 +470,12 @@ export default function CollectPage() {
                   folder: strong(LITERAL.folder),
                 })}
               </li>
-              <li>{fill(t("collect.install.step3"), { button: strong(LITERAL.extensionButton) })}</li>
+              <li>
+                {fill(t("collect.install.step3"), {
+                  button: strong(LITERAL.extensionButton),
+                  whole: strong(LITERAL.wholeStoreButton),
+                })}
+              </li>
               <li>{t("collect.install.step4")}</li>
             </ol>
           </div>

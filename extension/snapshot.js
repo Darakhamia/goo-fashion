@@ -7,10 +7,11 @@
  * in other colours.
  *
  * ── The markup ───────────────────────────────────────────────────────────────
- * The strip list: scripts except JSON-LD, styles, stylesheet links, SVG,
- * noscript, iframes, templates, and inline data-URIs. JSON-LD stays because it
- * is the densest source of truth on the page and the server's extractor reads
- * it first.
+ * This is the bookmarklet in `src/lib/parser-bookmarklet.ts`, with the clicking
+ * automated. The strip list is deliberately identical — scripts except JSON-LD,
+ * styles, stylesheet links, SVG, noscript, iframes, templates, and inline
+ * data-URIs — because the server runs the very same extractor over what comes
+ * out of here as over a pasted page.
  *
  * What the strip is for: a retail page is several megabytes, almost all of it
  * script and style the parser never reads, and the route on the other end takes
@@ -32,6 +33,9 @@
  * not answers — the server puts them through the same host-and-naming tests as
  * every other candidate, because a page's script data names the "you may also
  * like" carousel too.
+ *
+ * This is a deliberate divergence from the bookmarklet, and the only one: the
+ * extension can read a page the bookmarklet's one-shot copy cannot.
  *
  * Before reading anything it scrolls the page. That is the whole reason a real
  * tab is worth its cost over a server fetch: a gallery that lazy-loads on
@@ -87,10 +91,12 @@
    * payload that has been JSON-encoded twice escapes every slash in the path,
    * and a pattern that stops at the first backslash matches the scheme and then
    * finds no file extension to confirm. Same pattern as the server's harvester,
-   * which unescapes the result the same way.
+   * which unescapes the result the same way. Every extension at the end, not
+   * the first: GOAT names a photo `1111426_00.png.png`, and a match stopping at
+   * the first `.png` was an address with no picture behind it.
    */
   const JSON_IMAGE =
-    /(?:https?:)?(?:\\?\/){2}(?:[^"'\s\\)>]|\\\/)+?\.(?:jpe?g|png|webp|avif)(?:\?(?:[^"'\s\\)>]|\\\/)*)?/gi;
+    /(?:https?:)?(?:\\?\/){2}(?:[^"'\s\\)>]|\\\/)+?(?:\.(?:jpe?g|png|webp|avif))+(?:\?(?:[^"'\s\\)>]|\\\/)*)?/gi;
 
   /**
    * A price: a currency marker with an amount right beside it, either order.
@@ -172,6 +178,39 @@
   }
 
   /**
+   * The addresses in a `srcset`, whole — the same reading as `srcsetUrls` in
+   * the site's `gallery.ts`. Split on every comma, a Cloudinary rendition
+   * (`…/upload/b_white,c_lpad,w_960/photo.jpg 960w`, SSENSE's every photo)
+   * came apart into `…/upload/b_white`, `c_lpad` and `w_960/photo.jpg`. A
+   * candidate runs to whitespace, and the comma that ends it is the one after
+   * its descriptor, or one the address itself ends with.
+   */
+  function srcsetUrls(value) {
+    const out = [];
+    const s = String(value);
+    let i = 0;
+    while (i < s.length) {
+      while (i < s.length && /[\s,]/.test(s[i])) i++;
+      if (i >= s.length) break;
+      let j = i;
+      while (j < s.length && !/\s/.test(s[j])) j++;
+      const word = s.slice(i, j);
+      i = j;
+      const url = word.replace(/,+$/, "");
+      if (url) out.push(url);
+      if (url !== word) continue; // the comma closed it: no descriptor
+      let depth = 0;
+      while (i < s.length) {
+        const ch = s[i++];
+        if (ch === "(") depth++;
+        else if (ch === ")") depth = Math.max(0, depth - 1);
+        else if (ch === "," && depth === 0) break;
+      }
+    }
+    return out;
+  }
+
+  /**
    * Every address on the page that could be a photo of this product.
    *
    * Deliberately greedy: it costs a few hundred strings, and the server rejects
@@ -186,10 +225,7 @@
       if (url && found.size < MAX_IMAGES) found.add(url);
     };
     const addSrcset = (value) => {
-      if (!value) return;
-      for (const part of String(value).split(",")) {
-        add(part.trim().split(/\s+/)[0]);
-      }
+      if (value) for (const url of srcsetUrls(value)) add(url);
     };
 
     // `currentSrc` first: on a responsive image it is the rendition the browser
@@ -1059,6 +1095,51 @@
   }
 
   /**
+   * Words a store's sales copy is made of and a maker's name never is, whole
+   * words only ("Off-White" has no "offer", "New Balance" is not "new"); whole
+   * texts that are a badge, not a maker; and the most words a brand has
+   * ("Comme des Garçons Homme Plus" is five). The same lists as the server's
+   * `isSalesCopy` (brand-from-name.ts), which also refuses what older versions
+   * of this extension send.
+   */
+  const SALES_WORDS = new Set([
+    "available", "availability", "unavailable", "excluded", "exclude", "excludes", "exclusion", "exclusions",
+    "discount", "discounts", "discounted", "promotion", "promotions", "promotional", "promo", "promos",
+    "offer", "offers", "coupon", "coupons", "promocode", "shipping", "delivery", "returns", "cart", "checkout",
+    "clearance", "markdown", "markdowns", "bestseller", "bestsellers", "wides", "widths", "preorder", "restocked",
+    "extended", "sizes", "sizing",
+    "доставка", "знижка", "знижки", "скидка", "скидки", "акція", "акции", "акция", "промокод", "наявність",
+    "наличие", "розпродаж", "распродажа", "кошик", "корзина",
+  ]);
+  const BADGES = new Set([
+    "new", "new in", "new arrival", "new arrivals", "sale", "on sale", "sold out", "best seller", "limited edition",
+    "online only", "only online", "exclusive", "online exclusive", "coming soon", "pre order", "back in stock",
+    "low stock", "last chance", "just in", "trending", "members only", "новинка", "новинки",
+  ]);
+  const MAX_BRAND_WORDS = 5;
+
+  /** Is this text the store's sales copy — "Extra 30% Off In Cart!" — rather than a maker? */
+  function isSalesCopy(value) {
+    const text = String(value || "")
+      .normalize("NFD")
+      .replace(/\p{M}+/gu, "")
+      .replace(/[®™©℠]/g, " ")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text) return false;
+    if (/[%!?$€£¥₴₽]/.test(text)) return true;
+    const words = text.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    if (words.length > MAX_BRAND_WORDS || text.length > 60) return true;
+    if (BADGES.has(words.join(" "))) return true;
+    return words.some((w) => SALES_WORDS.has(w));
+  }
+
+  /** A class that styles with the brand's colour or font rather than naming the brand: `text-brand-1`, `hover:bg-brand`. */
+  const STYLE_CLASS =
+    /^(?:[\w-]+:)*(?:text|bg|border|fill|stroke|colou?r|from|via|to|ring|outline|decoration|shadow|accent|caret|divide|placeholder|font)-(?:brand|designer)(?:[-_]|$)/i;
+
+  /**
    * The brand, where the page prints it rather than declares it.
    *
    * Structured data usually carries the brand, which is why it was only
@@ -1066,23 +1147,63 @@
    * designer as a link to a designer page instead of as a property of the
    * product. The spec table answers this too, and the server reads it from
    * there — this covers the stores with no table either.
+   *
+   * Only the product's own part of the page counts, and of what is there, the
+   * candidate nearest the product's title. Up to 1.0.16 the first match in the
+   * whole document won, and on GOAT that is the menu's first brand link: every
+   * piece collected there came in as "Air Jordan".
    */
   function collectBrandText() {
-    const marked = document.querySelector('[itemprop="brand"]');
-    const markedText = squash(textOf(marked));
-    if (markedText && markedText.length <= 60) return markedText;
-
-    const candidates = document.querySelectorAll(
-      '[class*="brand" i],[class*="designer" i],[data-testid*="brand" i],a[href*="/designer"],a[href*="/brand"]',
-    );
-    for (const el of candidates) {
+    // The page's own header, menus, footer and pop-ups, and other products'
+    // cards. A <header> inside the product's <article> or <main> is the
+    // product's heading block, not the page's.
+    const furniture = (el) => {
+      if (el.closest(OTHER_PRODUCTS)) return true;
+      const chrome = el.closest(NOT_THIS_PRODUCT);
+      if (!chrome) return false;
+      return !(chrome.matches("header") && chrome.parentElement && chrome.parentElement.closest('main, article, [role="main"]'));
+    };
+    const usable = (el) => {
+      if (furniture(el)) return "";
       const text = squash(textOf(el));
       // A brand is a name, not a sentence, and not the word "Brand" alone.
-      if (!text || text.length < 2 || text.length > 60) continue;
-      if (/^(?:brand|designer|бренд|дизайнер)$/i.test(text)) continue;
+      if (!text || text.length < 2 || text.length > 60) return "";
+      if (/^(?:brand|designer|бренд|дизайнер)$/i.test(text)) return "";
+      // Nor the store's sales line under the title (Timberland: "Wides
+      // Available", "Excluded from all promotional discounts and offers").
+      if (isSalesCopy(text)) return "";
       return text;
+    };
+    // An element is about the brand when one of its classes says so; one that
+    // only colours its text in the brand's colour — `text-brand-primary`,
+    // `bg-brand` — is not. Up to 1.0.20 either was a brand.
+    const namesBrand = (el) =>
+      [...el.classList].some((c) => /brand|designer/i.test(c) && !STYLE_CLASS.test(c));
+
+    for (const el of document.querySelectorAll('[itemprop="brand"]')) {
+      const text = usable(el);
+      if (text) return text;
     }
-    return "";
+
+    const candidates = [];
+    for (const el of document.querySelectorAll(
+      '[class*="brand" i],[class*="designer" i],[data-testid*="brand" i],a[href*="/designer"],a[href*="/brand"]',
+    )) {
+      if (!el.matches('[data-testid*="brand" i],a[href*="/designer"],a[href*="/brand"]') && !namesBrand(el)) continue;
+      const text = usable(el);
+      if (text) candidates.push({ el, text });
+    }
+    if (!candidates.length) return "";
+
+    // The title the brand belongs to: the first <h1> that is not page furniture
+    // (some stores put their logo in an <h1> inside the header).
+    const title = [...document.querySelectorAll("h1")].find((h) => !furniture(h) && squash(textOf(h)));
+    if (!title) return candidates[0].text;
+    const top = (el) => el.getBoundingClientRect().top + window.scrollY;
+    const at = top(title);
+    let best = candidates[0];
+    for (const c of candidates) if (Math.abs(top(c.el) - at) < Math.abs(top(best.el) - at)) best = c;
+    return best.text;
   }
 
   /**
@@ -1174,8 +1295,15 @@
     // Walk the page so lazy images commit to a real `src`. Four steps is enough
     // for the galleries this is aimed at without turning a snapshot into a
     // visible scroll animation the admin has to wait through.
+    //
+    // Goo Collect 1.3.0 walks it from the worker before this runs, and says so
+    // in `__gooWalked`: a page in a background tab has its timers held to one a
+    // second, so the five short pauses below took five seconds a piece. The
+    // walk here stays for whoever injects this file without walking first.
+    const walked = globalThis.__gooWalked === true;
+    globalThis.__gooWalked = false;
     const height = document.body ? document.body.scrollHeight : 0;
-    if (height > window.innerHeight) {
+    if (!walked && height > window.innerHeight) {
       for (let i = 1; i <= 4; i++) {
         window.scrollTo(0, (height / 4) * i);
         await sleep(220);
