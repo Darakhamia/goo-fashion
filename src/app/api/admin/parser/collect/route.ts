@@ -21,6 +21,7 @@
  */
 import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
+import { invalidateCatalogue } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
@@ -490,6 +491,7 @@ export async function POST(req: Request) {
 
   if (result.status === "imported" || result.status === "updated") {
     revalidatePath("/goo-studio/products");
+    invalidateCatalogue();
     revalidatePath("/");
     // Cards still without a measured backdrop, a few at a time, after the
     // answer has gone: nothing is slowed and no button has to be pressed.

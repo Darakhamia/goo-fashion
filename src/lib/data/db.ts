@@ -199,6 +199,9 @@ export function writeProductRow<T>(
   // Supabase query builders are thenable rather than real Promises.
   write: (row: Record<string, unknown>) => PromiseLike<{ data: T | null; error: WriteError | null }>,
 ) {
+  // Every product save through here is one the storefront should show now,
+  // not when the cached catalogue next expires.
+  invalidateCatalogue();
   return writeRowDroppingUnknown(row, OPTIONAL_COLUMNS, write);
 }
 
@@ -235,7 +238,7 @@ const UNKNOWN_READ_COLUMN_CODES = new Set(["42703", "PGRST204"]);
 // missing, so every later read doesn't pay for the same failed request first.
 let productReadColumns = PRODUCT_READ_COLUMNS;
 
-type ReadResult = { data: unknown; error: { code?: string; message: string } | null };
+type ReadResult = { data: unknown; error: { code?: string; message: string } | null; count?: number | null };
 
 /**
  * Runs a product read with the explicit column list, dropping an optional
@@ -343,39 +346,110 @@ export async function getAllProducts(skipGrouping = false): Promise<Product[]> {
  * getAllProducts that reports a failed read instead of answering with an empty
  * catalogue — for the admin, where "the database is down" and "there are no
  * products" must not look the same.
+ *
+ * The storefront's read (grouped) is cached; the admin's (`skipGrouping`) never
+ * is — see `CATALOGUE_TTL_MS`.
  */
 export async function readAllProducts(
   skipGrouping = false,
 ): Promise<{ products: Product[]; error: string | null }> {
   if (!isSupabaseConfigured || !supabase) return { products: staticProducts, error: null };
 
-  const PAGE = 1000;
-  const allData: DbProduct[] = [];
-  let from = 0;
+  // Admin view (skipGrouping=true) keeps the deterministic newest-first order
+  // from the DB query so the table doesn't reshuffle on every refresh, and is
+  // always fresh: it is where a save is checked.
+  if (skipGrouping) {
+    const { rows, error } = await readProductRows();
+    return error ? { products: [], error } : { products: rows.map(dbToProduct), error: null };
+  }
 
-  while (true) {
-    const { data, error } = await selectProducts((columns) =>
+  const now = Date.now();
+  if (!catalogue || now - catalogue.at > CATALOGUE_TTL_MS) {
+    // The public catalog stays shuffled for visual variety between visits.
+    const read = readProductRows().then(({ rows, error }) =>
+      error
+        ? { products: [] as Product[], error }
+        : { products: shuffleArray(groupVariants(rows.map(dbToProduct))), error: null },
+    );
+    catalogue = { at: now, read };
+    // A failed read is answered to whoever is waiting on it, and not kept.
+    void read.then((r) => {
+      if (r.error && catalogue?.read === read) catalogue = null;
+    });
+  }
+  const { products, error } = await catalogue.read;
+  // A copy of the list: callers sort and slice it, and the cached one is shared.
+  return error ? { products: [], error } : { products: [...products], error: null };
+}
+
+/**
+ * How long one catalogue read serves the storefront.
+ *
+ * Every view of /browse, /builder, the stylist drawer, the sitemaps and the
+ * landing pages read all the products — about 4,000, a thousand per request,
+ * one request after another — to show a page of them. The catalogue changes a
+ * few times an hour, so one read now serves every view for a minute, and a
+ * save in the studio drops it at once (`invalidateCatalogue`). Kept in the
+ * server's memory, not Next's data cache, which refuses entries over 2 MB.
+ */
+const CATALOGUE_TTL_MS = 60_000;
+let catalogue: { at: number; read: Promise<{ products: Product[]; error: string | null }> } | null = null;
+
+/** Drops the cached storefront catalogue, so the next read sees a product just saved. */
+export function invalidateCatalogue(): void {
+  catalogue = null;
+}
+
+/**
+ * Every product row, newest first.
+ *
+ * PostgREST answers at most a thousand rows per request. The first page asks
+ * for the total as well, and the rest are then read side by side rather than
+ * one after another: four round trips' wait becomes two. A page that comes back
+ * full at the end (rows added meanwhile) is followed by the next as before.
+ */
+async function readProductRows(): Promise<{ rows: DbProduct[]; error: string | null }> {
+  const PAGE = 1000;
+  const page = (from: number, count = false) =>
+    selectProducts((columns) =>
       supabase!
         .from("products")
-        .select(columns)
+        .select(columns, count ? { count: "exact" } : undefined)
         .order("created_at", { ascending: false })
         .range(from, from + PAGE - 1),
     );
 
-    if (error) return { products: [], error: error.message };
+  const first = await page(0, true);
+  if (first.error) return { rows: [], error: first.error.message };
+  const pages: DbProduct[][] = [(first.data ?? []) as DbProduct[]];
 
-    const rows = (data ?? []) as DbProduct[];
-    allData.push(...rows);
-    if (rows.length < PAGE) break;
-    from += PAGE;
+  const total = typeof first.count === "number" ? first.count : null;
+  if (pages[0].length === PAGE && total !== null && total > PAGE) {
+    const rest = await Promise.all(
+      Array.from({ length: Math.ceil(total / PAGE) - 1 }, (_, i) => page((i + 1) * PAGE)),
+    );
+    for (const r of rest) {
+      if (r.error) return { rows: [], error: r.error.message };
+      pages.push((r.data ?? []) as DbProduct[]);
+    }
+  }
+  // Sequential from here: no total to plan by, or rows added since it was taken.
+  while (pages[pages.length - 1].length === PAGE) {
+    const r = await page(pages.length * PAGE);
+    if (r.error) return { rows: [], error: r.error.message };
+    pages.push((r.data ?? []) as DbProduct[]);
   }
 
-  const all = allData.map(dbToProduct);
-  const grouped = skipGrouping ? all : groupVariants(all);
-  // Admin view (skipGrouping=true) keeps the deterministic newest-first order from
-  // the DB query so the table doesn't reshuffle on every refresh. The public catalog
-  // stays shuffled for visual variety between visits.
-  return { products: skipGrouping ? grouped : shuffleArray(grouped), error: null };
+  // A row inserted between two page reads shifts the pages by one, and the row
+  // at the seam is read twice.
+  const seen = new Set<string>();
+  const rows: DbProduct[] = [];
+  for (const row of pages.flat()) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    rows.push(row);
+  }
+  return { rows, error: null };
 }
 
 /**
@@ -397,8 +471,9 @@ export function groupVariants(all: Product[]): Product[] {
     }
   }
 
-  const grouped: Product[] = [];
-  for (const [, members] of groups) {
+  const grouped = new Map<string, Product>();
+  const primaryOf = new Map<string, string>();
+  for (const [groupId, members] of groups) {
     // Find primary; fall back to first member if none explicitly marked. The
     // list is newest first, so that is the newest — `primaryVariantId` in
     // lib/seo picks the same one for the variant pages' canonical.
@@ -408,21 +483,23 @@ export function groupVariants(all: Product[]): Product[] {
     const mergedColorGroupIds = [
       ...new Set(members.flatMap((m) => m.colorGroupIds ?? [])),
     ];
-    grouped.push({
+    primaryOf.set(groupId, primary.id);
+    grouped.set(primary.id, {
       ...primary,
       variants: swatches,
       colorGroupIds: mergedColorGroupIds.length ? mergedColorGroupIds : primary.colorGroupIds,
     });
   }
 
-  // Preserve original ordering: ungrouped products stay in their positions
+  // Preserve original ordering: ungrouped products stay in their positions, and
+  // a group sits where its primary does. Looked up by id rather than searched
+  // for: a search per product made this quadratic in a 4,000-piece catalogue.
   const result: Product[] = [];
   for (const p of all) {
     if (!p.variantGroupId) {
       result.push(p);
-    } else if ((p.isGroupPrimary || !groups.get(p.variantGroupId)?.find((m) => m.isGroupPrimary)) &&
-               p.id === (groups.get(p.variantGroupId)?.find((m) => m.isGroupPrimary) ?? groups.get(p.variantGroupId)?.[0])?.id) {
-      const withVariants = grouped.find((g) => g.id === p.id);
+    } else if (primaryOf.get(p.variantGroupId) === p.id) {
+      const withVariants = grouped.get(p.id);
       if (withVariants) result.push(withVariants);
     }
     // non-primary members of a group are silently skipped

@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { cache } from "react";
-import BrowseClient from "./BrowseClient";
+import BrowseClient, { type BrowseInitial } from "./BrowseClient";
 import { getAllColorGroups, readAllOutfits, readAllProducts } from "@/lib/data/db";
+import { toListOutfit, toListProduct } from "@/lib/data/list-product";
 import { withTimeout } from "@/lib/server/with-timeout";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { brandPath, brandSubcategoryPath, categoryPath, subcategoryPath } from "@/lib/landing-paths";
 import { pageMetadata } from "@/lib/seo";
 import { allLandings } from "@/lib/server/landing";
 import { allOutfitLandings } from "@/lib/server/outfit-landing";
-import type { ColorGroup } from "@/lib/types";
+import type { ColorGroup, Product } from "@/lib/types";
 
 interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -91,6 +92,40 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   return pageMetadata({ title: TITLE, description: DESCRIPTION, path, noindex });
 }
 
+/** Two pages of cards: what the first screen shows, and the next one's start. */
+const FIRST_SCREEN = 40;
+
+/** URL parameters that filter the pieces (BrowseClient's `filtersFromParams`). */
+const PIECE_FILTERS = ["search", "subcat", "category", "color", "gender", "brand", "occasion", "ai", "style"];
+
+/**
+ * The pieces written into the page.
+ *
+ * Every prop here is serialised into the HTML and parsed before the page can
+ * be used, and the whole catalogue — 4,000 pieces, a couple of thousand cards
+ * once colourways are grouped — made that page megabytes long for a first
+ * screen of twenty cards. A plain /browse now carries its first two pages, and
+ * the client fetches the rest from /api/products, which answers from the
+ * server's cached catalogue. A filtered link keeps the whole list, since its
+ * matches can be anywhere in it. Either way as lists carry pieces
+ * (lib/data/list-product), not as the database holds them.
+ */
+function firstScreen(
+  read: { products: Product[]; error: string | null },
+  params: Record<string, string>,
+): Pick<BrowseInitial, "products" | "productsPartial" | "productsTotal"> {
+  if (read.error) return {};
+  const all = read.products;
+  if (PIECE_FILTERS.some((k) => params[k]) || all.length <= FIRST_SCREEN) {
+    return { products: all.map(toListProduct) };
+  }
+  return {
+    products: all.slice(0, FIRST_SCREEN).map(toListProduct),
+    productsPartial: true,
+    productsTotal: all.length,
+  };
+}
+
 /**
  * The catalogue, rendered on the server. It used to be a client page that
  * fetched /api/products after load — and /api/ is closed in robots.txt, so to a
@@ -116,8 +151,8 @@ export default async function BrowsePage({ searchParams }: Props) {
   return (
     <BrowseClient
       initial={{
-        products: products.error ? undefined : products.products,
-        outfits: outfits.error ? undefined : outfits.outfits,
+        ...firstScreen(products, params),
+        outfits: outfits.error ? undefined : outfits.outfits.map(toListOutfit),
         colorGroups,
         params,
       }}

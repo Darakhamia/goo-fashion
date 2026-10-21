@@ -108,6 +108,42 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
 
+/**
+ * Cards drawn at a time. The builder drew the whole filtered catalogue at once
+ * — about 4,000 cards, twice over, since the phone row and the desktop grid are
+ * both in the page and one is only hidden by CSS. Now each layout draws a batch
+ * and the next as its end scrolls near.
+ */
+const CATALOG_BATCH = 48;
+
+/**
+ * Calls `more` while `target` is within `margin` of what `root` shows.
+ *
+ * Re-observed whenever `count` changes, because an observer reports only a
+ * change of state: a batch that still leaves the end in view (a tall screen,
+ * a fast scroll) would otherwise be the last one. A layout hidden by CSS has
+ * nothing in view, so it never asks for more.
+ */
+function useRevealMore(
+  root: React.RefObject<HTMLElement | null>,
+  target: React.RefObject<HTMLElement | null>,
+  more: () => void,
+  count: number,
+  enabled: boolean,
+  margin: string,
+) {
+  useEffect(() => {
+    const el = target.current;
+    if (!enabled || !el || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries.some((e) => e.isIntersecting)) more(); },
+      { root: root.current, rootMargin: margin },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [root, target, more, count, enabled, margin]);
+}
+
 function SlotIcon({ id, size = 15 }: { id: SlotId; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
@@ -544,6 +580,30 @@ export default function BuilderPage() {
     }
     return items;
   }, [catalogProducts, selectedColors, availableColors]);
+
+  // The batch starts over when the list is a different list — a filter, the
+  // sort or the search changed — and not when the same list is recomputed
+  // (liking a card recomputes it, and would have thrown the scroll back).
+  // Each layout counts for itself: the hidden one asks for nothing, and so
+  // draws no more than its first batch.
+  const [gridCount, setGridCount] = useState(CATALOG_BATCH);
+  const [rowCount, setRowCount] = useState(CATALOG_BATCH);
+  const listInputs = [catalogCategory, selectedSubcategories, search, likedOnly, maxPrice, selectedBrands, selectedColors, selectedGender, filterStyles, sortBy];
+  const [prevListInputs, setPrevListInputs] = useState(listInputs);
+  if (listInputs.some((v, i) => !Object.is(v, prevListInputs[i]))) {
+    setPrevListInputs(listInputs);
+    setGridCount(CATALOG_BATCH);
+    setRowCount(CATALOG_BATCH);
+  }
+  const gridItems = useMemo(() => expandedCatalogItems.slice(0, gridCount), [expandedCatalogItems, gridCount]);
+  const rowItems = useMemo(() => expandedCatalogItems.slice(0, rowCount), [expandedCatalogItems, rowCount]);
+  const gridEndRef = useRef<HTMLDivElement>(null);
+  const rowEndRef = useRef<HTMLDivElement>(null);
+  const moreInGrid = useCallback(() => setGridCount((n) => n + CATALOG_BATCH), []);
+  const moreInRow = useCallback(() => setRowCount((n) => n + CATALOG_BATCH), []);
+  // A screen's worth ahead, so the next cards are drawn before they are reached.
+  useRevealMore(catalogScrollRef, gridEndRef, moreInGrid, gridCount, gridCount < expandedCatalogItems.length, "0px 0px 900px 0px");
+  useRevealMore(mobileScrollRef, rowEndRef, moreInRow, rowCount, rowCount < expandedCatalogItems.length, "0px 600px 0px 0px");
 
   const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || selectedColors.length > 0 || selectedGender !== null || filterStyles.length > 0 || sortBy !== "featured" || likedOnly || catalogCategory !== null || selectedSubcategories.length > 0;
   const activeFilterCount = (maxPrice !== null ? 1 : 0) + selectedBrands.length + selectedColors.length + (selectedGender !== null ? 1 : 0) + filterStyles.length + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0);
@@ -1456,7 +1516,7 @@ export default function BuilderPage() {
                   initial="hidden"
                   animate="show"
                 >
-                    {expandedCatalogItems.map((item, cardIndex) => {
+                    {gridItems.map((item, cardIndex) => {
                       const { product, forcedVariant } = item;
                       const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
                       const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
@@ -1686,6 +1746,8 @@ export default function BuilderPage() {
                     })}
                 </motion.div>
               )}
+              {/* The next batch is drawn as this comes within a screen of view. */}
+              {gridCount < expandedCatalogItems.length && <div ref={gridEndRef} aria-hidden="true" className="h-px" />}
             </div>
           </div>
 
@@ -2243,7 +2305,7 @@ export default function BuilderPage() {
                 </div>
               ) : (
                 <div className="flex gap-2 px-3 pt-3 pb-1 items-start">
-                  {expandedCatalogItems.map(item => {
+                  {rowItems.map(item => {
                     const { product, forcedVariant } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
                     const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
@@ -2330,6 +2392,7 @@ export default function BuilderPage() {
                       </div>
                     );
                   })}
+                  {rowCount < expandedCatalogItems.length && <div ref={rowEndRef} aria-hidden="true" className="w-px shrink-0 self-stretch" />}
                 </div>
               )}
             </div>
