@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
+import { invalidateCatalogue } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { logAdminAction } from "@/lib/server/audit";
@@ -286,6 +287,7 @@ export async function PUT(req: Request) {
   }
 
   if (created || updated || merged) {
+    invalidateCatalogue();
     revalidatePath("/");
     // Cards still without a measured backdrop, a few at a time, after the
     // answer has gone: nothing is slowed and no button has to be pressed.

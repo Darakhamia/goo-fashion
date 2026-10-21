@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getAllProducts, getProductsByIds, readAllProducts } from "@/lib/data/db";
+import { getAllProducts, getProductsByIds, readAllProducts, invalidateCatalogue } from "@/lib/data/db";
+import { toListProduct } from "@/lib/data/list-product";
 import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
@@ -48,12 +49,16 @@ export async function GET(req: Request) {
     return NextResponse.json(products, { headers: { "Cache-Control": "no-store" } });
   }
 
-  const products = await getAllProducts();
+  // The catalogue as a list carries it (lib/data/list-product): the full rows
+  // were several megabytes, nearly all of it descriptions and photos no card
+  // shows, and the builder and the stylist drawer wait for all of it.
+  const products = (await getAllProducts()).map(toListProduct);
   return NextResponse.json(products, {
     headers: {
       // Public catalog: CDN-cache 5 min, serve stale while revalidating —
-      // this fetch fires every time the stylist drawer opens.
-      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      // this fetch fires every time the stylist drawer opens. A minute in the
+      // browser too, so /browse, /builder and the drawer share one download.
+      "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
     },
   });
 }
@@ -90,6 +95,7 @@ export async function POST(req: Request) {
   });
 
   revalidatePath("/");
+  invalidateCatalogue();
   return NextResponse.json(
     {
       ...dbToProduct({ ...created, bg_color: bgColor }),

@@ -22,6 +22,7 @@
  */
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { invalidateCatalogue } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { loadCategoryTree } from "@/lib/server/category-tree";
@@ -183,6 +184,7 @@ export async function PATCH(req: Request) {
     metadata: { count: ids.length, updated, set: shared, add: body.add ?? null, name: body.name ?? null },
   });
 
+  invalidateCatalogue();
   revalidatePath("/browse");
   return NextResponse.json({ updated, requested: ids.length, failures });
 }

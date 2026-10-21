@@ -25,7 +25,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { isMissingTableLoose } from "@/lib/server/db-errors";
 import { logAdminAction } from "@/lib/server/audit";
-import { writeProductRow } from "@/lib/data/db";
+import { writeProductRow, invalidateCatalogue } from "@/lib/data/db";
 import { joinColourGroup } from "@/lib/server/colour-group";
 import {
   findDuplicateGroups,
@@ -348,6 +348,7 @@ async function merge(adminId: string, keepId: string, mergeIds: string[]) {
       moved,
     },
   });
+  invalidateCatalogue();
   revalidatePath("/");
 
   return NextResponse.json({ ok: true, keepId, removed: mergeIds, filled, moved });
@@ -388,6 +389,7 @@ async function split(adminId: string, groupId: string, keepIds: Set<string>) {
     target_id: [...keepIds][0],
     metadata: { groupId, kept: [...keepIds], movedOut, writes },
   });
+  invalidateCatalogue();
   revalidatePath("/");
   return NextResponse.json({ ok: true, movedOut: movedOut.length });
 }
@@ -421,6 +423,7 @@ async function group(adminId: string, proposals: { ids: string[]; leadId: string
         ...(failed.length ? { failed } : {}),
       },
     });
+    invalidateCatalogue();
     revalidatePath("/");
   }
   if (!done.length && failed.length) {

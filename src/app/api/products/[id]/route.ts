@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
+import { productToDb, dbToProduct, writeProductRow, missingColumnWarning, invalidateCatalogue } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
@@ -68,6 +68,7 @@ export async function PUT(
     target_type: "product",
     metadata: { name: saved.name, brand: saved.brand },
   });
+  invalidateCatalogue();
   revalidatePath("/");
   revalidatePath(`/product/${id}`);
   return NextResponse.json({
@@ -98,6 +99,8 @@ export async function PATCH(
     target_type: "product",
     metadata: { fields: ["crop_data"] },
   });
+  // The crop is drawn on the catalogue's cards.
+  invalidateCatalogue();
   revalidatePath(`/product/${id}`);
   return NextResponse.json({ success: true });
 }
@@ -157,6 +160,7 @@ export async function DELETE(
       metadata: { name: gone.name, brand: gone.brand },
     });
   }
+  invalidateCatalogue();
   revalidatePath("/");
   revalidatePath(`/product/${id}`);
   return NextResponse.json({ success: true });

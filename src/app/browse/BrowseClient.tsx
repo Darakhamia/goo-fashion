@@ -188,6 +188,13 @@ function SheetToggle({ label, on, onChange }: { label: string; on: boolean; onCh
  */
 export interface BrowseInitial {
   products?: Product[];
+  /**
+   * Set when `products` is only the start of the catalogue — the first screen,
+   * written into the page so it shows at once. The rest is fetched straight
+   * after, and `productsTotal` stands for the count until it arrives.
+   */
+  productsPartial?: boolean;
+  productsTotal?: number;
   outfits?: Outfit[];
   colorGroups?: ColorGroup[];
   params: Record<string, string>;
@@ -323,7 +330,9 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
 
   // The server's lists are the first load; the client fetches only what it
   // didn't get, or again when "Try again" bumps the attempt.
-  const hasProducts = Boolean(initial.products);
+  // A first screen is not the catalogue: the rest is fetched as if none had come.
+  const hasProducts = Boolean(initial.products) && !initial.productsPartial;
+  const [productsComplete, setProductsComplete] = useState(hasProducts);
   const hasOutfits = Boolean(initial.outfits);
   const hasColorGroups = Boolean(initial.colorGroups);
 
@@ -331,7 +340,7 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
     if (productsAttempt === 0 && hasProducts) return;
     fetch("/api/products")
       .then((r) => { if (!r.ok) throw new Error(`products ${r.status}`); return r.json(); })
-      .then((d) => { if (!Array.isArray(d)) throw new Error("products: not a list"); setCatalogProducts(d); setProductsFailed(false); })
+      .then((d) => { if (!Array.isArray(d)) throw new Error("products: not a list"); setCatalogProducts(d); setProductsFailed(false); setProductsComplete(true); })
       .catch(() => setProductsFailed(true))
       .finally(() => setLoadingProducts(false));
   }, [productsAttempt, hasProducts]);
@@ -608,8 +617,15 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
     return items;
   }, [filteredProducts, selectedColorGroupIds]);
 
+  // While only the first screen is in, an unfiltered count is the server's
+  // total rather than the forty cards that have arrived; a filter picked in that
+  // second counts what is here, and recounts when the rest lands.
   const count =
-    view === "outfits" ? filteredOutfits.length : displayItems.length;
+    view === "outfits"
+      ? filteredOutfits.length
+      : !productsComplete && initial.productsTotal && activeFiltersCount === 0 && !searchQuery.trim()
+        ? initial.productsTotal
+        : displayItems.length;
 
   // Reset to page 1 whenever filters/sort/view change. Done while rendering
   // (React's "adjust state when inputs change" pattern) rather than in an
