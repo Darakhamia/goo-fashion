@@ -1554,6 +1554,7 @@ export default function AdminProductsPage() {
         rowKey={(p) => p.id}
         loading={loading}
         resetKey={tableResetKey}
+        more
         selection={{
           selected: selectedIds,
           onToggle: toggleSelect,
