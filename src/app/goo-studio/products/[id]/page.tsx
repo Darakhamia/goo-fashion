@@ -39,6 +39,7 @@ import {
 } from "../_editor/form";
 import { PhotoGrid } from "../_editor/PhotoGrid";
 import { StoreTable } from "../_editor/StoreTable";
+import { useListViewMemory } from "../_view";
 
 /*
  * The product page (GS6-1, ADMIN_DESIGN «Товар», mockup "Product page"):
@@ -137,6 +138,7 @@ function ProductPage() {
   const tree = useCategoryTree();
   const subcatToValue = useMemo(() => subcategoryToValue(tree), [tree]);
   const { convertToUsd, canConvert } = useCurrency();
+  const listView = useListViewMemory();
 
   const isNew = id === "new";
   const fromId = isNew ? search.get("from") : null;
@@ -255,10 +257,13 @@ function ProductPage() {
   const dirty = !same(form, baseline);
   const changedSections = [...new Set((Object.keys(form) as (keyof ProductFormState)[]).filter((k) => !same(form[k], baseline[k])).map((k) => t(SECTION_OF[k])))];
 
-  /** Leaving with unsaved edits asks first (the SaveBar only covers a reload). */
-  const leave = async (href: string) => {
+  /**
+   * Leaving with unsaved edits asks first (the SaveBar only covers a reload).
+   * Back to the list, `scroll: false`: the list scrolls itself to where it was.
+   */
+  const leave = async (href: string, { scroll = true } = {}) => {
     if (dirty && !(await confirm({ title: t("products.page.leaveTitle"), body: t("products.page.leaveBody"), confirmLabel: t("products.page.leaveAction"), tone: "danger" }))) return;
-    router.push(href);
+    router.push(href, { scroll });
   };
 
   // ── Color variants ────────────────────────────────────────────────────────
@@ -378,7 +383,10 @@ function ProductPage() {
     }
     toast.ok(t("products.delete.done"));
     setBaseline(form);
-    router.push("/goo-studio/products");
+    // The list opens with the rows it kept (_view.tsx): not with this one.
+    const kept = listView?.read()?.products;
+    if (kept) listView?.save({ products: kept.filter((p) => p.id !== id) });
+    router.push("/goo-studio/products", { scroll: false });
   };
 
   // ── AI field suggestions ─────────────────────────────────────────────────
@@ -645,7 +653,7 @@ function ProductPage() {
     <AdminPage layout="form" aside={aside}>
       <button
         type="button"
-        onClick={() => void leave("/goo-studio/products")}
+        onClick={() => void leave("/goo-studio/products", { scroll: false })}
         className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">

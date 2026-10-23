@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useT } from "@/app/goo-studio/_i18n";
 import { btn } from "@/app/goo-studio/_ui/recipes";
@@ -23,6 +23,8 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
  * - `more` (Products) adds "Load 50 more" before the page numbers: the next
  *   page joins the rows already shown ("1–100 of 412", pages 1 and 2 lit),
  *   and a page number or the arrows go back to one page at a time.
+ *   `initialPages` opens it on a page it reported through `onPagesChange`
+ *   (Products, back from a product).
  * - Selection is the caller's: a checkbox column when `selection` is given,
  *   Shift-click for a run of rows (the caller decides what a run is).
  * - `onRowClick` opens the row (Users: the side panel). The row's own buttons
@@ -72,6 +74,9 @@ export type Paging = {
   /** A remark next to "1–25 of 140"; the footer shows for it even on one page. */
   note?: ReactNode;
 };
+
+/** A client-paged table's place: its page and the pages "Load more" added. */
+export type Pages = { page: number; extra: number };
 
 /** What a row shows as a card on a phone. */
 export type Card = {
@@ -139,6 +144,8 @@ export function DataTable<T>({
   resetKey = "",
   paging,
   more = false,
+  initialPages,
+  onPagesChange,
   onRowClick,
   card,
 }: {
@@ -158,6 +165,10 @@ export function DataTable<T>({
   paging?: Paging;
   /** "Load more" next to the page numbers; not with `paging`. */
   more?: boolean;
+  /** Where to open: a page and the pages "Load more" added after it. */
+  initialPages?: Pages;
+  /** Told each time the page or "Load more" changes, to open there later. */
+  onPagesChange?: (pages: Pages) => void;
   onRowClick?: (row: T) => void;
   /** The row as a card on a phone; without it the phone gets the table. */
   card?: (row: T) => Card;
@@ -165,15 +176,18 @@ export function DataTable<T>({
   const t = useT();
   const phone = useMediaQuery("(width < 48rem)");
   const topRef = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(initialPages?.page ?? 0);
   // Pages "Load more" added after `page`; a page number starts over from one.
-  const [extra, setExtra] = useState(0);
+  const [extra, setExtra] = useState(initialPages?.extra ?? 0);
   const [lastKey, setLastKey] = useState(resetKey);
   if (resetKey !== lastKey) {
     setLastKey(resetKey);
     setPage(0);
     setExtra(0);
   }
+  useEffect(() => {
+    onPagesChange?.({ page, extra });
+  }, [onPagesChange, page, extra]);
 
   const total = paging ? paging.total : rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
