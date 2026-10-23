@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useT } from "@/app/goo-studio/_i18n";
+import { btn } from "@/app/goo-studio/_ui/recipes";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
 /*
@@ -19,6 +20,8 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
  *   draws all 1 224 products, and their photos, at once. `resetKey` sends the
  *   table back to the first page when the filters or the sort change. A list
  *   the server pages (Users) passes `paging`: `rows` is then the current page.
+ * - `more` (Products) swaps the page numbers for "Load 50 more": the next 50
+ *   rows join the ones already shown, and "1–100 of 412" counts them all.
  * - Selection is the caller's: a checkbox column when `selection` is given,
  *   Shift-click for a run of rows (the caller decides what a run is).
  * - `onRowClick` opens the row (Users: the side panel). The row's own buttons
@@ -130,6 +133,7 @@ export function DataTable<T>({
   pageSize = 50,
   resetKey = "",
   paging,
+  more = false,
   onRowClick,
   card,
 }: {
@@ -147,6 +151,8 @@ export function DataTable<T>({
   pageSize?: number;
   resetKey?: string;
   paging?: Paging;
+  /** "Load more" under the rows instead of page numbers; not with `paging`. */
+  more?: boolean;
   onRowClick?: (row: T) => void;
   /** The row as a card on a phone; without it the phone gets the table. */
   card?: (row: T) => Card;
@@ -164,11 +170,13 @@ export function DataTable<T>({
   const total = paging ? paging.total : rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const current = paging ? paging.page : Math.min(page, pageCount - 1);
-  const start = current * pageSize;
-  const shown = paging ? rows : rows.slice(start, start + pageSize);
   const paged = total > pageSize;
+  // "Load more" keeps every page up to the current one on screen.
+  const loadMore = more && !paging && paged;
+  const start = loadMore ? 0 : current * pageSize;
+  const shown = paging ? rows : rows.slice(start, (current + 1) * pageSize);
   const footer = (paged || paging?.note !== undefined) && !loading && rows.length > 0;
-  const Footer = paged ? "nav" : "div";
+  const Footer = paged && !loadMore ? "nav" : "div";
   const colCount = columns.length + (selection ? 1 : 0) + (actions ? 1 : 0);
 
   // Clicks on the row's own controls, and inside a menu portalled out of it,
@@ -191,14 +199,21 @@ export function DataTable<T>({
   const pager = footer && (
     // A landmark only when there are pages to go to.
     <Footer
-      aria-label={paged ? t("table.pages") : undefined}
+      aria-label={paged && !loadMore ? t("table.pages") : undefined}
       className="flex flex-wrap items-center gap-1 min-h-12 px-4 py-2 border-t border-[var(--border)] text-[12px] text-[var(--foreground-muted)]"
     >
-      <span className="tabular-nums mr-auto">
+      {/* Read out after "Load more": the new rows are above the button. */}
+      <span className="tabular-nums mr-auto" aria-live={loadMore ? "polite" : undefined}>
         {t("table.range", { from: start + 1, to: start + shown.length, total })}
         {paging?.note !== undefined && <> · {paging.note}</>}
       </span>
-      {paged && (
+      {loadMore ? (
+        current < pageCount - 1 && (
+          <button type="button" onClick={() => setPage(current + 1)} className={btn("secondary")}>
+            {t("table.more", { count: Math.min(pageSize, total - shown.length) })}
+          </button>
+        )
+      ) : paged && (
         <>
           <button
             type="button"

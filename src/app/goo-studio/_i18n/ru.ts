@@ -109,6 +109,7 @@ export const ru: Partial<Record<Key, Message>> = {
   "table.page": "Страница {page}",
   "table.prev": "Предыдущая страница",
   "table.next": "Следующая страница",
+  "table.more": "Показать ещё {count}",
   "filter.all": "Все",
   "filter.search": "Поиск",
   "filter.searchIn": "Поиск: {label}",

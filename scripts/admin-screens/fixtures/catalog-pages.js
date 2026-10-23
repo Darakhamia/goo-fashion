@@ -405,6 +405,20 @@ module.exports = {
         await page.waitForTimeout(300);
       },
     },
+    // "Load 50 more" under the list, pressed once: rows 51–100 join the first 50.
+    // The sample catalogue (41) is under one batch, so it is tripled to 123 here.
+    {
+      name: "products-more", url: "/goo-studio/products", fullPage: false,
+      after: async (page) => {
+        const many = [0, 1, 2].flatMap((n) => products.map((p) => ({ ...p, id: n ? `${p.id}-${n}` : p.id })));
+        await page.route((u) => u.pathname === "/api/products" && u.searchParams.get("raw") === "true", (r) => r.fulfill({ json: many }));
+        await page.reload({ waitUntil: "networkidle" });
+        await waitRows(page);
+        await page.getByRole("button", { name: /^(Load|Показать ещё) \d+/ }).click();
+        await page.locator(ROW).nth(99).waitFor({ timeout: 30000 });
+        await page.getByRole("button", { name: /^(Load|Показать ещё) \d+/ }).scrollIntoViewIfNeeded();
+      },
+    },
     {
       name: "outfits-bulk", url: "/goo-studio/outfits", fullPage: false,
       after: async (page) => {
