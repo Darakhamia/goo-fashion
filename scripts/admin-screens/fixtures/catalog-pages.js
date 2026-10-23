@@ -405,7 +405,7 @@ module.exports = {
         await page.waitForTimeout(300);
       },
     },
-    // "Load 50 more" under the list, pressed once: rows 51–100 join the first 50.
+    // "Load 50 more" next to the page numbers, pressed once: rows 51–100 join the first 50.
     // The sample catalogue (41) is under one batch, so it is tripled to 123 here.
     {
       name: "products-more", url: "/goo-studio/products", fullPage: false,

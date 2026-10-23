@@ -20,8 +20,9 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
  *   draws all 1 224 products, and their photos, at once. `resetKey` sends the
  *   table back to the first page when the filters or the sort change. A list
  *   the server pages (Users) passes `paging`: `rows` is then the current page.
- * - `more` (Products) swaps the page numbers for "Load 50 more": the next 50
- *   rows join the ones already shown, and "1–100 of 412" counts them all.
+ * - `more` (Products) adds "Load 50 more" before the page numbers: the next
+ *   page joins the rows already shown ("1–100 of 412", pages 1 and 2 lit),
+ *   and a page number or the arrows go back to one page at a time.
  * - Selection is the caller's: a checkbox column when `selection` is given,
  *   Shift-click for a run of rows (the caller decides what a run is).
  * - `onRowClick` opens the row (Users: the side panel). The row's own buttons
@@ -108,9 +109,13 @@ function pad(first: boolean, last: boolean): string {
   return `${first ? "pl-4" : "pl-3"} ${last ? "pr-4" : "pr-3"}`;
 }
 
-/** Which page numbers to show: first, last, and the neighbours of the current one. */
-function pageList(current: number, count: number): (number | "gap")[] {
-  const keep = new Set([0, count - 1, current - 1, current, current + 1].filter((p) => p >= 0 && p < count));
+/**
+ * Which page numbers to show: first, last, and every page on screen (`from`
+ * to `through`, one page unless "Load more" added some) with its neighbours.
+ */
+function pageList(from: number, through: number, count: number): (number | "gap")[] {
+  const onScreen = Array.from({ length: through - from + 1 }, (_, i) => from + i);
+  const keep = new Set([0, count - 1, from - 1, ...onScreen, through + 1].filter((p) => p >= 0 && p < count));
   const out: (number | "gap")[] = [];
   let prev = -1;
   for (const p of [...keep].sort((a, b) => a - b)) {
@@ -151,7 +156,7 @@ export function DataTable<T>({
   pageSize?: number;
   resetKey?: string;
   paging?: Paging;
-  /** "Load more" under the rows instead of page numbers; not with `paging`. */
+  /** "Load more" next to the page numbers; not with `paging`. */
   more?: boolean;
   onRowClick?: (row: T) => void;
   /** The row as a card on a phone; without it the phone gets the table. */
@@ -161,22 +166,26 @@ export function DataTable<T>({
   const phone = useMediaQuery("(width < 48rem)");
   const topRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
+  // Pages "Load more" added after `page`; a page number starts over from one.
+  const [extra, setExtra] = useState(0);
   const [lastKey, setLastKey] = useState(resetKey);
   if (resetKey !== lastKey) {
     setLastKey(resetKey);
     setPage(0);
+    setExtra(0);
   }
 
   const total = paging ? paging.total : rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const current = paging ? paging.page : Math.min(page, pageCount - 1);
   const paged = total > pageSize;
-  // "Load more" keeps every page up to the current one on screen.
   const loadMore = more && !paging && paged;
-  const start = loadMore ? 0 : current * pageSize;
-  const shown = paging ? rows : rows.slice(start, (current + 1) * pageSize);
+  // The last page on screen.
+  const through = loadMore ? Math.min(current + extra, pageCount - 1) : current;
+  const start = current * pageSize;
+  const shown = paging ? rows : rows.slice(start, (through + 1) * pageSize);
   const footer = (paged || paging?.note !== undefined) && !loading && rows.length > 0;
-  const Footer = paged && !loadMore ? "nav" : "div";
+  const Footer = paged ? "nav" : "div";
   const colCount = columns.length + (selection ? 1 : 0) + (actions ? 1 : 0);
 
   // Clicks on the row's own controls, and inside a menu portalled out of it,
@@ -192,14 +201,17 @@ export function DataTable<T>({
 
   const go = (p: number) => {
     if (paging) paging.onPage(p);
-    else setPage(p);
+    else {
+      setPage(p);
+      setExtra(0);
+    }
     topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   };
 
   const pager = footer && (
     // A landmark only when there are pages to go to.
     <Footer
-      aria-label={paged && !loadMore ? t("table.pages") : undefined}
+      aria-label={paged ? t("table.pages") : undefined}
       className="flex flex-wrap items-center gap-1 min-h-12 px-4 py-2 border-t border-[var(--border)] text-[12px] text-[var(--foreground-muted)]"
     >
       {/* Read out after "Load more": the new rows are above the button. */}
@@ -207,13 +219,17 @@ export function DataTable<T>({
         {t("table.range", { from: start + 1, to: start + shown.length, total })}
         {paging?.note !== undefined && <> · {paging.note}</>}
       </span>
-      {loadMore ? (
-        current < pageCount - 1 && (
-          <button type="button" onClick={() => setPage(current + 1)} className={btn("secondary")}>
-            {t("table.more", { count: Math.min(pageSize, total - shown.length) })}
-          </button>
-        )
-      ) : paged && (
+      {loadMore && through < pageCount - 1 && (
+        // Before the page numbers; on a phone its own full-width line under them.
+        <button
+          type="button"
+          onClick={() => setExtra(through - current + 1)}
+          className={`${btn("secondary", "sm")} md:mr-2 max-md:order-last max-md:w-full max-md:mt-1`}
+        >
+          {t("table.more", { count: Math.min(pageSize, total - start - shown.length) })}
+        </button>
+      )}
+      {paged && (
         <>
           <button
             type="button"
@@ -224,7 +240,7 @@ export function DataTable<T>({
           >
             ‹
           </button>
-          {pageList(current, pageCount).map((p, i) =>
+          {pageList(current, through, pageCount).map((p, i) =>
             p === "gap" ? (
               <span key={`gap-${i}`} className="px-1" aria-hidden="true">
                 …
@@ -234,10 +250,10 @@ export function DataTable<T>({
                 key={p}
                 type="button"
                 onClick={() => go(p)}
-                aria-current={p === current ? "page" : undefined}
+                aria-current={p >= current && p <= through ? "page" : undefined}
                 aria-label={t("table.page", { page: p + 1 })}
                 className={`min-w-7 h-7 px-1.5 rounded-lg tabular-nums ${
-                  p === current ? "bg-[var(--fg-overlay-08)] text-[var(--foreground)] font-medium" : "hover:text-[var(--foreground)]"
+                  p >= current && p <= through ? "bg-[var(--fg-overlay-08)] text-[var(--foreground)] font-medium" : "hover:text-[var(--foreground)]"
                 }`}
               >
                 {p + 1}
@@ -246,8 +262,8 @@ export function DataTable<T>({
           )}
           <button
             type="button"
-            onClick={() => go(current + 1)}
-            disabled={current >= pageCount - 1}
+            onClick={() => go(through + 1)}
+            disabled={through >= pageCount - 1}
             aria-label={t("table.next")}
             className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
           >
