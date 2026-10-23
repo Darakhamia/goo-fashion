@@ -1928,9 +1928,9 @@
     "semantic_hash": ""
   },
   "DESIGN_SYSTEM.md": {
-    "mtime": 1792780166.3021019,
-    "seen": 1792780610.102561,
-    "ast_hash": "31e78a00167a23a6ee40b7ce8e82a60c",
+    "mtime": 1792781815.2038817,
+    "seen": 1792781898.0019307,
+    "ast_hash": "1c2288619d3c5c571af4c1aacfc6a908",
     "semantic_hash": ""
   },
   "MIGRATION_RUNBOOK.md": {
@@ -1940,9 +1940,9 @@
     "semantic_hash": ""
   },
   "docs/ADMIN.md": {
-    "mtime": 1792780175.9988952,
-    "seen": 1792780610.1025834,
-    "ast_hash": "a925394ce9cd546107ea78630b72a4ba",
+    "mtime": 1792781815.2092054,
+    "seen": 1792781898.0020268,
+    "ast_hash": "2722bc774b3a0764be59f1899354b764",
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
@@ -2120,9 +2120,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/fixtures/catalog-pages.js": {
-    "mtime": 1792780479.9131575,
-    "seen": 1792780610.101888,
-    "ast_hash": "b24e96812b6e91d2d2cf238ed3b1987a",
+    "mtime": 1792781529.1481988,
+    "seen": 1792781897.9883332,
+    "ast_hash": "fc1300710cdfb240f608dc3695aef659",
     "semantic_hash": ""
   },
   "scripts/admin-screens/fixtures/catalog.js": {
@@ -2246,9 +2246,9 @@
     "semantic_hash": ""
   },
   "src/components/admin/DataTable.tsx": {
-    "mtime": 1792780074.7531333,
-    "seen": 1792780610.1022816,
-    "ast_hash": "db2c98fc0c692b54d03a7110796e5eae",
+    "mtime": 1792781765.0278788,
+    "seen": 1792781897.996156,
+    "ast_hash": "2b62c9f9bbc60af88ec91017fd9ded2b",
     "semantic_hash": ""
   },
   "src/components/admin/FilterBar.tsx": {
