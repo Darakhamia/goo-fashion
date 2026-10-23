@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/products/page.tsx": {
-    "mtime": 1792780145.3176641,
-    "seen": 1792780610.102207,
-    "ast_hash": "47895b698560f3f06e912361ae8fb63f",
+    "mtime": 1792783828.5857954,
+    "seen": 1792784044.7508354,
+    "ast_hash": "b93b0cfe35c5986c5a77e20a511fdfd9",
     "semantic_hash": ""
   },
   "src/app/goo-studio/prompts/page.tsx": {
@@ -1928,9 +1928,9 @@
     "semantic_hash": ""
   },
   "DESIGN_SYSTEM.md": {
-    "mtime": 1792781815.2038817,
-    "seen": 1792781898.0019307,
-    "ast_hash": "1c2288619d3c5c571af4c1aacfc6a908",
+    "mtime": 1792783507.4279714,
+    "seen": 1792784044.757579,
+    "ast_hash": "a7fcdff82b5a44a3a22c355ba30cf73c",
     "semantic_hash": ""
   },
   "MIGRATION_RUNBOOK.md": {
@@ -1940,9 +1940,9 @@
     "semantic_hash": ""
   },
   "docs/ADMIN.md": {
-    "mtime": 1792781815.2092054,
-    "seen": 1792781898.0020268,
-    "ast_hash": "2722bc774b3a0764be59f1899354b764",
+    "mtime": 1792783507.4265435,
+    "seen": 1792784044.7576401,
+    "ast_hash": "8b27b23b2c712fac68ddb910836975f2",
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
@@ -2120,9 +2120,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/fixtures/catalog-pages.js": {
-    "mtime": 1792781529.1481988,
-    "seen": 1792781897.9883332,
-    "ast_hash": "fc1300710cdfb240f608dc3695aef659",
+    "mtime": 1792783500.9839709,
+    "seen": 1792784044.7449145,
+    "ast_hash": "bf1ba32f5dbe20f08b453461b57f6358",
     "semantic_hash": ""
   },
   "scripts/admin-screens/fixtures/catalog.js": {
@@ -2180,9 +2180,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/README.md": {
-    "mtime": 1792780241.1941168,
-    "seen": 1792780610.102717,
-    "ast_hash": "091450e478fc1a9fee6cb558a0ea2607",
+    "mtime": 1792783507.424577,
+    "seen": 1792784044.7602367,
+    "ast_hash": "fb95685aaafbaee1c1b32f4c8afd4b51",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_ui/recipes.ts": {
@@ -2246,9 +2246,9 @@
     "semantic_hash": ""
   },
   "src/components/admin/DataTable.tsx": {
-    "mtime": 1792781765.0278788,
-    "seen": 1792781897.996156,
-    "ast_hash": "2b62c9f9bbc60af88ec91017fd9ded2b",
+    "mtime": 1792783014.0994732,
+    "seen": 1792784044.7520967,
+    "ast_hash": "6a865e1c7deba904c49ecbfb116691c6",
     "semantic_hash": ""
   },
   "src/components/admin/FilterBar.tsx": {
@@ -2390,9 +2390,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/products/layout.tsx": {
-    "mtime": 1792779896.3396876,
-    "seen": 1792780610.1022058,
-    "ast_hash": "f29d14b7503aec3bdff9158c303c7db3",
+    "mtime": 1792782977.9919398,
+    "seen": 1792784044.7508335,
+    "ast_hash": "df009f71aebbe04ab0bd34abebf7571b",
     "semantic_hash": ""
   },
   "src/app/goo-studio/prompts/layout.tsx": {
@@ -2720,9 +2720,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/products/[id]/page.tsx": {
-    "mtime": 1792779896.338929,
-    "seen": 1792780610.1021996,
-    "ast_hash": "73d6a62db441ba97dd35410bf3eed925",
+    "mtime": 1792783397.0588093,
+    "seen": 1792784044.7507129,
+    "ast_hash": "584a13f81c0e07a850f87ccd86684fdc",
     "semantic_hash": ""
   },
   "src/app/goo-studio/products/_editor/PhotoGrid.tsx": {
@@ -3587,6 +3587,12 @@
     "mtime": 1792779896.3715909,
     "seen": 1792780610.102401,
     "ast_hash": "28e9ceb27f0bc922c10d16f48e11b5c8",
+    "semantic_hash": ""
+  },
+  "src/app/goo-studio/products/_view.tsx": {
+    "mtime": 1792783874.683993,
+    "seen": 1792784044.750831,
+    "ast_hash": "b82a27f5b552ad9b8f07da8a1d50000b",
     "semantic_hash": ""
   }
 }

@@ -419,6 +419,29 @@ module.exports = {
         await page.getByRole("button", { name: /^(Load|Показать ещё) \d+/ }).scrollIntoViewIfNeeded();
       },
     },
+    // Back from a product: "Load more" pressed, scrolled to row 71, a product
+    // opened and "← Products" pressed — the list is where it was left.
+    {
+      name: "products-back", url: "/goo-studio/products", fullPage: false,
+      after: async (page) => {
+        const many = [0, 1, 2].flatMap((n) => products.map((p) => ({ ...p, id: n ? `${p.id}-${n}` : p.id })));
+        await page.route((u) => u.pathname === "/api/products" && u.searchParams.get("raw") === "true", (r) => r.fulfill({ json: many }));
+        // The copies open as the product they copy.
+        await page.route((u) => /^\/api\/admin\/products\/.+-\d$/.test(u.pathname), (r) => {
+          const url = new URL(r.request().url().replace(/-\d$/, ""));
+          return r.fulfill({ json: productPage({ url }) });
+        });
+        await page.reload({ waitUntil: "networkidle" });
+        await waitRows(page);
+        await page.getByRole("button", { name: /^(Load|Показать ещё) \d+/ }).click();
+        await page.locator(ROW).nth(70).scrollIntoViewIfNeeded();
+        await page.locator(ROW).nth(72).locator("text=/./").first().click();
+        await page.waitForURL(/\/goo-studio\/products\/[^/]+$/, { timeout: 30000 });
+        await page.getByRole("button", { name: /^(Products|Товары)$/ }).first().click();
+        await page.waitForURL(/\/goo-studio\/products$/, { timeout: 30000 });
+        await waitRows(page);
+      },
+    },
     {
       name: "outfits-bulk", url: "/goo-studio/outfits", fullPage: false,
       after: async (page) => {

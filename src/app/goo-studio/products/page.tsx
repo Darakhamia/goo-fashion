@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ColorGroup, Product, StyleKeyword, CropData } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, styleLabel } from "@/lib/style-keywords";
-import { subcategoryToValue, resolveSubcategory } from "@/lib/categories";
+import { DEFAULT_CATEGORY_GROUPS, subcategoryToValue, resolveSubcategory } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
@@ -22,13 +22,13 @@ import { BANNER, btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "
 import { useFormat, useT, type Key } from "@/app/goo-studio/_i18n";
 import { Modal } from "@/components/admin/Modal";
 import { categoryPath, DEFAULT_COLOR_GROUPS, GENDERS } from "./_editor/form";
+import { useListViewMemory, type SortColumn } from "./_view";
 
 /** A product's own page (GS6-1): the editor that used to be a modal here. */
 const productHref = (id: string) => `/goo-studio/products/${id}`;
 
 // Sort options shown in the admin toolbar dropdown. Each maps to a (key, direction) pair
 // that drives the same sortKey/sortDir state used by the clickable column headers.
-type SortColumn = "name" | "brand" | "category" | "priceMin" | "createdAt";
 const SORT_OPTIONS: { value: string; label: Key }[] = [
   { value: "createdAt:desc", label: "products.sort.newest" },
   { value: "createdAt:asc", label: "products.sort.oldest" },
@@ -132,11 +132,19 @@ function rich(text: string, code: Record<string, string> = {}): ReactNode[] {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AdminProductsPage() {
+  // Back from a product, the list opens as it was left, with the rows it had
+  // (_view.tsx); a fresh copy then loads behind them.
+  const memory = useListViewMemory();
+  const [saved] = useState(() => memory?.read() ?? null);
   // The tree the Categories page edits — the chips below are whatever it says.
-  const categoryGroups = useCategoryTree();
+  // Each mount starts from the built-in default until it loads; back from a
+  // product the tree the list had stands in, so a category filter gives the
+  // same rows to scroll back to.
+  const liveTree = useCategoryTree();
+  const categoryGroups = liveTree === DEFAULT_CATEGORY_GROUPS && saved?.tree ? saved.tree : liveTree;
   const subcatToValue = useMemo(() => subcategoryToValue(categoryGroups), [categoryGroups]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(() => saved?.products ?? []);
+  const [loading, setLoading] = useState(!saved?.products);
   // Why the last catalogue load failed, or null. Kept until a load succeeds,
   // so a failure does not pass for an empty catalogue once the toast is gone.
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -153,25 +161,25 @@ export default function AdminProductsPage() {
   const [sampling, setSampling] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(saved?.search ?? "");
   const confirm = useConfirm();
   const router = useRouter();
   const toast = useToast();
   const t = useT();
   const f = useFormat();
 
-  const [filterGroup, setFilterGroup] = useState<string>("");
-  const [filterSubcategory, setFilterSubcategory] = useState<string>("");
-  const [filterBrand, setFilterBrand] = useState<string>("");
-  const [filterColorGroup, setFilterColorGroup] = useState<string>("");
-  const [filterStyle, setFilterStyle] = useState<string>("");
-  const [filterGender, setFilterGender] = useState<string>("");
+  const [filterGroup, setFilterGroup] = useState<string>(saved?.group ?? "");
+  const [filterSubcategory, setFilterSubcategory] = useState<string>(saved?.subcategory ?? "");
+  const [filterBrand, setFilterBrand] = useState<string>(saved?.brand ?? "");
+  const [filterColorGroup, setFilterColorGroup] = useState<string>(saved?.colorGroup ?? "");
+  const [filterStyle, setFilterStyle] = useState<string>(saved?.style ?? "");
+  const [filterGender, setFilterGender] = useState<string>(saved?.gender ?? "");
   /** Which field to show only the products *missing* — see MISSING_FILTERS. */
-  const [filterMissing, setFilterMissing] = useState<string>("");
-  const [filterNew, setFilterNew] = useState<boolean | null>(null);
+  const [filterMissing, setFilterMissing] = useState<string>(saved?.missing ?? "");
+  const [filterNew, setFilterNew] = useState<boolean | null>(saved?.isNew ?? null);
   // Default to newest-first so the table mirrors the DB order (created_at desc).
-  const [sortKey, setSortKey] = useState<SortColumn>("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortKey, setSortKey] = useState<SortColumn>(saved?.sortKey ?? "createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(saved?.sortDir ?? "desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // ── Crop editor ────────────────────────────────────────────────────────────
@@ -230,8 +238,9 @@ export default function AdminProductsPage() {
   const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false, entries: [] });
   const [grouping, setGrouping] = useState(false);
 
-  const fetchProducts = async () => {
-    setLoading(true);
+  /** `quiet`: the rows on screen stay while the catalogue reloads. */
+  const fetchProducts = async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true);
     try {
       // raw=true returns all products including non-primary variants
       const res = await fetch("/api/products?raw=true");
@@ -256,7 +265,7 @@ export default function AdminProductsPage() {
     fetch("/api/products/seed")
       .then((r) => setDbConfigured(r.status !== 501))
       .catch(() => toast.err(t("products.db.checkFailed")));
-    fetchProducts();
+    fetchProducts({ quiet: !!saved?.products });
     fetch("/api/color-groups")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setColorGroups(d); })
@@ -320,6 +329,56 @@ export default function AdminProductsPage() {
     const search = new URLSearchParams(window.location.search).get("search");
     if (search) setSearchQuery(search);
   }, []);
+
+  // ── Where the list is, for the way back from a product (_view.tsx) ────────
+  useEffect(() => {
+    memory?.save({
+      search: searchQuery,
+      group: filterGroup,
+      subcategory: filterSubcategory,
+      brand: filterBrand,
+      colorGroup: filterColorGroup,
+      style: filterStyle,
+      gender: filterGender,
+      missing: filterMissing,
+      isNew: filterNew,
+      sortKey,
+      sortDir,
+    });
+  }, [memory, searchQuery, filterGroup, filterSubcategory, filterBrand, filterColorGroup, filterStyle, filterGender, filterMissing, filterNew, sortKey, sortDir]);
+  useEffect(() => {
+    if (!loading && !loadError) memory?.save({ products });
+  }, [memory, products, loading, loadError]);
+  useEffect(() => {
+    memory?.save({ tree: categoryGroups });
+  }, [memory, categoryGroups]);
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  // The scroll as it happens. A layout effect, so the listener is gone before
+  // the product page that replaces the list scrolls <main> to its top.
+  useLayoutEffect(() => {
+    const main = rootRef.current?.closest("main");
+    if (!main || !memory) return;
+    const onScroll = () => memory.save({ scrollTop: main.scrollTop });
+    main.addEventListener("scroll", onScroll, { passive: true });
+    return () => main.removeEventListener("scroll", onScroll);
+  }, [memory]);
+  // Back to that scroll (the top for a list opened afresh) once the rows are
+  // there: before the first paint, and once more after Next has scrolled the
+  // arriving page into view — a link does, Back and "← Products" do not.
+  const pendingScroll = useRef<number | null>(saved?.scrollTop ?? 0);
+  useLayoutEffect(() => {
+    const main = rootRef.current?.closest("main");
+    const top = pendingScroll.current;
+    if (main && top !== null && !(loading && top > 0)) main.scrollTop = top;
+  }, [loading]);
+  useEffect(() => {
+    const main = rootRef.current?.closest("main");
+    const top = pendingScroll.current;
+    if (!main || top === null || (loading && top > 0)) return;
+    main.scrollTop = top;
+    pendingScroll.current = null;
+  }, [loading]);
 
   /** Brands actually present in the catalogue, so the list can't offer a dead end. */
   const brandsInCatalogue = useMemo(
@@ -1265,7 +1324,7 @@ export default function AdminProductsPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div>
+    <div ref={rootRef}>
       {/* DB status banner — the one place a missing database is explained;
           every action that writes is disabled below it. */}
       {dbConfigured === false && (
@@ -1555,6 +1614,8 @@ export default function AdminProductsPage() {
         loading={loading}
         resetKey={tableResetKey}
         more
+        initialPages={saved ? { page: saved.page ?? 0, extra: saved.extra ?? 0 } : undefined}
+        onPagesChange={(pages) => memory?.save(pages)}
         selection={{
           selected: selectedIds,
           onToggle: toggleSelect,
@@ -1589,7 +1650,7 @@ export default function AdminProductsPage() {
           loadError ? (
             <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
               <p className="text-[13px] text-[var(--err)] break-words">{loadError}</p>
-              <button onClick={fetchProducts} className={btn("secondary")}>
+              <button onClick={() => fetchProducts()} className={btn("secondary")}>
                 {t("products.retry")}
               </button>
             </div>
