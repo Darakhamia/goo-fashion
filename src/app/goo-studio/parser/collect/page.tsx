@@ -341,6 +341,15 @@ export default function CollectPage() {
 
         case "progress": {
           setConnected(true);
+          // A page the extension could not open or read never reaches an
+          // import, so it is reported here, to stand in the rows with its
+          // reason. Without it a run showed "of 21" and five rows.
+          const failure = payload.failure as { url?: unknown; reason?: unknown } | undefined;
+          if (failure && typeof failure.url === "string") {
+            const reason = typeof failure.reason === "string" ? failure.reason : t("parser.status.failed");
+            setResults((prev) => [...prev, { url: failure.url as string, status: "failed", reason }]);
+            return;
+          }
           if (typeof payload.planned === "number") setPlanned(payload.planned);
           if (typeof payload.delayMs === "number") setDelayMs(payload.delayMs);
           if (typeof payload.store === "string" && payload.store) setStore(payload.store);

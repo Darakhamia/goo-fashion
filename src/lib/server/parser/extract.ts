@@ -1322,8 +1322,44 @@ function looksLikeProductSlug(segment: string): boolean {
 }
 
 /**
+ * A style code of the shapes `looksLikeProductCode` does not know: ASICS and
+ * Onitsuka Tiger `1201a256`, New Balance `m990gl6`, `bb550wt1`, `u574lgrg`,
+ * Vans `vn000d3hy28`. Letters and digits in at most four runs, one of them
+ * three digits or more, six to twelve characters. A filter's hash is not one:
+ * Nike's `37eefznik1zy7ok` is longer and changes between letters and digits
+ * at every turn. Vans start every code with `vn0` and then do the same.
+ */
+function isStyleCode(word: string): boolean {
+  if (word.length < 6 || word.length > 12 || !/^[a-z0-9]+$/.test(word)) return false;
+  if (/^vn0/.test(word)) return true;
+  const runs = word.match(/[a-z]+|\d+/g) ?? [];
+  return runs.length >= 2 && runs.length <= 4 && runs.some((r) => /^\d{3,}$/.test(r));
+}
+
+/**
+ * A piece's name followed by its style code. GOAT addresses every sneaker
+ * this way (`/sneakers/gel-1130-black-1201a256-002`), END. too
+ * (`new-balance-m990gl6-made-in-usa-m990gl6.html`), and with only Nike's and
+ * adidas' codes known, a run on GOAT's trending ASICS planned none of the grid
+ * and collected the release calendar's Jordans instead.
+ *
+ * The code is one of the last two words: ASICS' `1201a256-002` is two. The
+ * words before it must name something: three words in all, one of them all
+ * letters, none of them a section's. "New" is let through here, because with a
+ * code beside it it is New Balance's far more often than a section's.
+ */
+function endsInStyleCode(segment: string): boolean {
+  const token = segment.replace(/\.(?:html?|aspx|jsp|php)$/i, "");
+  const words = token.split(/[-_]/).filter(Boolean);
+  if (words.length < 3) return false;
+  if (words.some((w) => w !== "new" && LISTING_SLUG_WORDS.has(w))) return false;
+  if (!words.some((w) => /^[a-z]{3,}$/.test(w))) return false;
+  return words.slice(-2).some(isStyleCode);
+}
+
+/**
  * Does this path point at a product page rather than a category, a filter or a
- * footer link? Four ways to qualify, cheapest first.
+ * footer link? Five ways to qualify, cheapest first.
  */
 export function looksLikeProductPath(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean).map((s) => s.toLowerCase());
@@ -1347,13 +1383,18 @@ export function looksLikeProductPath(pathname: string): boolean {
   //    Zara, Adidas and Mytheresa all address products this way.
   if (looksLikeProductCode(segments[segments.length - 1])) return true;
 
-  // 4. No code anywhere, but a shop section addresses a named piece:
-  //    `/shop/nebula-jacket-aurelio`. This is the shape a brand's own store
-  //    ships — Squarespace, Webflow, a bespoke build — and without it those
-  //    stores answer "the sitemap is readable but holds no products".
   const last = segments[segments.length - 1];
   const parent = segments.length >= 2 ? segments[segments.length - 2] : "";
   if (SECTION_BY_SLUG_PARENTS.has(parent)) return false;
+
+  // 4. A piece's name ending in a style code the rule above does not read:
+  //    GOAT's `/sneakers/gel-1130-black-1201a256-002`.
+  if (endsInStyleCode(last)) return true;
+
+  // 5. No code anywhere, but a shop section addresses a named piece:
+  //    `/shop/nebula-jacket-aurelio`. This is the shape a brand's own store
+  //    ships — Squarespace, Webflow, a bespoke build — and without it those
+  //    stores answer "the sitemap is readable but holds no products".
   return segments.slice(0, -1).some((s) => SHOP_SECTION_SEGMENTS.has(s)) && looksLikeProductSlug(last);
 }
 
