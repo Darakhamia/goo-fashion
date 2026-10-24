@@ -44,8 +44,8 @@ export function listingStep(opts) {
   // `reset` starts a run afresh. What a page remembers lives as long as the
   // page does, so without it a second run on the same tab, unreloaded, took
   // the cards the first one had seen for old news and never reported them.
-  if (o.reset || !globalThis.__gooListing || !globalThis.__gooListing.names) {
-    globalThis.__gooListing = { seen: new Set(), names: new Set(), dead: new WeakSet() };
+  if (o.reset || !globalThis.__gooListing || !globalThis.__gooListing.furniture) {
+    globalThis.__gooListing = { seen: new Set(), names: new Set(), dead: new WeakSet(), furniture: new WeakSet() };
   }
   const st = globalThis.__gooListing;
   /** Names found by this step, by address: the card's text, for the AI's choice of pieces. */
@@ -98,16 +98,62 @@ export function listingStep(opts) {
   };
 
   /**
-   * Every address the page offers: ordinary links, links inside web
-   * components (their open shadow roots are invisible to a plain query), and
-   * cards that are clickable boxes carrying the address in `data-href` or
-   * `data-url` rather than a link.
+   * What a page keeps around its listing rather than in it: the menus, the
+   * side panels, the pop-ups, and the header and footer of the page itself.
+   * A header or footer inside an article, a section or the main content is
+   * that part's own, a card's title bar as often as not.
+   *
+   * Up to 1.4.0 the walk took every link on the page in page order, so the
+   * header's came first. On GOAT that was the release calendar's Jordans, on
+   * every page: a run on its trending ASICS opened them and nothing else.
+   */
+  const FURNITURE =
+    'nav, aside, dialog, [role="navigation"], [role="menu"], [role="menubar"], [role="dialog"], [aria-modal="true"], [role="banner"], [role="contentinfo"], [role="complementary"]';
+  const isFurniture = (el) => {
+    /** A header or footer met on the way up, and no part of the page around it yet. */
+    let edge = false;
+    // Up to the top, through the shadow roots of any web components on the way.
+    for (let node = el; node; ) {
+      if (node.matches(FURNITURE)) return true;
+      if (node.matches("header, footer")) edge = true;
+      else if (node.matches("article, section, main")) edge = false;
+      const root = node.parentElement ? null : node.getRootNode();
+      node = node.parentElement || (root instanceof ShadowRoot ? root.host : null);
+    }
+    return edge;
+  };
+  /**
+   * Is the link on the page as the admin sees it? One with no box at all is
+   * in a menu that is not open, a tab not shown, or a card the page's own
+   * filter has hidden. A link that only lays out its children
+   * (`display: contents`) is shown when they are.
+   */
+  const isShown = (el) => {
+    if (el.getClientRects().length) return true;
+    if (getComputedStyle(el).display !== "contents") return false;
+    return [...el.children].some((child) => child.getClientRects().length > 0);
+  };
+
+  /**
+   * Every address the page shows as its listing: ordinary links, links inside
+   * web components (their open shadow roots are invisible to a plain query),
+   * and cards that are clickable boxes carrying the address in `data-href` or
+   * `data-url` rather than a link. Not the page's furniture, and not what it
+   * is not showing; a link hidden now is looked at again on the next step.
    */
   const harvest = () => {
     const out = [];
     const note = (href, el) => {
       const url = resolve(href);
       if (!url) return;
+      // Nothing left to learn from it: the cheap test before the costly ones.
+      if (st.seen.has(url) && st.names.has(url)) return;
+      if (st.furniture.has(el)) return;
+      if (isFurniture(el)) {
+        st.furniture.add(el);
+        return;
+      }
+      if (!isShown(el)) return;
       if (!st.seen.has(url)) {
         st.seen.add(url);
         out.push(url);
