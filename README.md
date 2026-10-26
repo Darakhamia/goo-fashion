@@ -50,7 +50,7 @@
 
 | Путь | Что там |
 |---|---|
-| `src/app/` | публичный сайт: главная, `/browse` (серверный рендер каталога), `/product/[id]`, `/outfit/[id]`, `/look/[id]`, посадочные `/brands`, `/brands/[slug]`, `/brands/[slug]/[subcategory]`, `/c/[category]`, `/c/[category]/[subcategory]`, идеи образов по стилю `/outfits/[style]`, `/builder`, `/plans`, `/subscribe`, `/blog`, `/profile`, `/saved`, `/cart`, юридические страницы |
+| `src/app/` | публичный сайт: главная, `/browse` (серверный рендер каталога; «назад» из товара возвращает каталог на то же место — `browse/return-view.ts`), `/product/[id]`, `/outfit/[id]`, `/look/[id]`, посадочные `/brands`, `/brands/[slug]`, `/brands/[slug]/[subcategory]`, `/c/[category]`, `/c/[category]/[subcategory]`, идеи образов по стилю `/outfits/[style]`, `/builder`, `/plans`, `/subscribe`, `/blog`, `/profile`, `/saved`, `/cart`, юридические страницы |
 | `src/app/goo-studio/` | админка: товары, образы, импорт, парсер, бренды, блог, рассылки, пользователи, подписки, аналитика, журнал действий. Руководство — `docs/ADMIN.md` |
 | `src/app/api/` | API-роуты: публичные (`products`, `outfits`, `stylist`, `generate-outfit`, `billing`, `analytics` и др.) и `api/admin/*` для админки |
 | `src/proxy.ts` | proxy Next 16 (бывший middleware): редирект 308 с `www.` на домен без `www`, доступ к `/goo-studio` (только админы), `/profile`, `/saved` (только после входа) |

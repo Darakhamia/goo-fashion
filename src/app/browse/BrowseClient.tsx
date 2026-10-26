@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
@@ -13,9 +13,10 @@ import { useLikes } from "@/lib/context/likes-context";
 import { track } from "@/lib/analytics/track";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
+import { entryView, entryVisit, inOrder, keepCatalogue, keptCatalogue, loadedByBackForward, newVisit, saveView, stampEntry, type SavedView } from "./return-view";
 
-type View = "outfits" | "pieces";
-type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
+export type View = "outfits" | "pieces";
+export type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
 
 const OCCASIONS: Occasion[] = [
   "casual", "work", "evening", "formal", "weekend", "sport",
@@ -247,14 +248,38 @@ function filtersFromParams(params: Record<string, string>, colorGroups: ColorGro
   };
 }
 
+const subscribeNever = () => () => {};
+
+/**
+ * Back from a piece, the catalogue opens where it was left (return-view.ts).
+ * A client render (Back within the page) mounts it with that view at once. A
+ * page loaded by Back first hydrates as the server rendered it, then remounts
+ * with the view before anything is painted.
+ */
 export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
+  // False while hydrating, as on the server; true in a client render.
+  const client = useSyncExternalStore(subscribeNever, () => true, () => false);
+  const [restore, setRestore] = useState<SavedView | null>(() => (client ? entryView() : null));
+  const hydrated = useRef(!client);
+  // Read once: the catalogue it replaces saves its own view as it unmounts.
+  const loadedView = useRef<SavedView | null | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (!hydrated.current || !loadedByBackForward()) return;
+    if (loadedView.current === undefined) loadedView.current = entryView();
+    // The server's render first, then the saved view.
+    if (loadedView.current) setRestore(loadedView.current);
+  }, []);
+  return <Catalogue key={restore ? "restored" : "fresh"} initial={initial} restore={restore} />;
+}
+
+function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: SavedView | null }) {
   // Computed once: every filter below starts from it, on the server and in the
   // browser alike, so the two renders agree.
   const [fromUrl] = useState(() =>
     filtersFromParams(initial.params, initial.colorGroups ?? DEFAULT_COLOR_GROUPS),
   );
-  const [view, setView] = useState<View>(fromUrl.view);
-  const [searchQuery, setSearchQuery] = useState(fromUrl.search);
+  const [view, setView] = useState<View>(restore?.view ?? fromUrl.view);
+  const [searchQuery, setSearchQuery] = useState(restore?.search ?? fromUrl.search);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
@@ -276,19 +301,19 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
     return () => clearTimeout(id);
   }, [searchQuery]);
 
-  const [sort, setSort] = useState<SortOption>("featured");
+  const [sort, setSort] = useState<SortOption>(restore?.sort ?? "featured");
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(restore?.page ?? 1);
   // Pages appended below the current one via "Show more". Reset whenever the
   // page or the filters change, so it never silently carries over.
-  const [extraPages, setExtraPages] = useState(0);
+  const [extraPages, setExtraPages] = useState(restore?.extraPages ?? 0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Phones get a bottom sheet instead of the side drawer; it plays its exit.
   const sheetOv = useOverlayPresence(filtersOpen);
   const sheetCloseRef = useRef<HTMLButtonElement>(null);
-  const [likedOnly, setLikedOnly] = useState(false);
+  const [likedOnly, setLikedOnly] = useState(restore?.likedOnly ?? false);
   const { likedProducts } = useLikes();
 
   useEffect(() => {
@@ -316,8 +341,16 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
   // Lock background scroll while the filter sidebar is open
   useScrollLock(filtersOpen);
 
-  const [catalogProducts, setCatalogProducts] = useState<Product[]>(initial.products ?? []);
-  const [loadingProducts, setLoadingProducts] = useState(!initial.products);
+  // Back to a view: the cards it had, in their order — kept from the visit, or
+  // the server's whole list. A first screen is not enough to find the place, so
+  // without either the catalogue loads first.
+  const [startProducts] = useState<Product[] | null>(() => {
+    if (!restore) return initial.products ?? null;
+    const whole = keptCatalogue() ?? (initial.productsPartial ? null : initial.products);
+    return whole ? inOrder(whole, restore.order) : null;
+  });
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(startProducts ?? []);
+  const [loadingProducts, setLoadingProducts] = useState(!startProducts);
   const [catalogOutfits, setCatalogOutfits] = useState<Outfit[]>(initial.outfits ?? []);
   const [loadingOutfits, setLoadingOutfits] = useState(!initial.outfits);
   // A failed load is an error, not an empty catalogue: phones say so and offer
@@ -332,7 +365,7 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
   // didn't get, or again when "Try again" bumps the attempt.
   // A first screen is not the catalogue: the rest is fetched as if none had come.
   const hasProducts = Boolean(initial.products) && !initial.productsPartial;
-  const [productsComplete, setProductsComplete] = useState(hasProducts);
+  const [productsComplete, setProductsComplete] = useState(hasProducts || Boolean(restore && startProducts));
   const hasOutfits = Boolean(initial.outfits);
   const hasColorGroups = Boolean(initial.colorGroups);
 
@@ -340,10 +373,19 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
     if (productsAttempt === 0 && hasProducts) return;
     fetch("/api/products")
       .then((r) => { if (!r.ok) throw new Error(`products ${r.status}`); return r.json(); })
-      .then((d) => { if (!Array.isArray(d)) throw new Error("products: not a list"); setCatalogProducts(d); setProductsFailed(false); setProductsComplete(true); })
+      .then((d) => {
+        if (!Array.isArray(d)) throw new Error("products: not a list");
+        // A restored view keeps its cards where they stood; the fresh list
+        // only updates them.
+        const list: Product[] = restore ? inOrder(d, restore.order) : d;
+        setCatalogProducts(list);
+        keepCatalogue(list);
+        setProductsFailed(false);
+        setProductsComplete(true);
+      })
       .catch(() => setProductsFailed(true))
       .finally(() => setLoadingProducts(false));
-  }, [productsAttempt, hasProducts]);
+  }, [productsAttempt, hasProducts, restore]);
 
   useEffect(() => {
     if (outfitsAttempt === 0 && hasOutfits) return;
@@ -369,27 +411,28 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
   );
 
   /* Filters */
-  const [selectedBrands, setSelectedBrands] = useState<string[]>(fromUrl.brands);
-  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>(fromUrl.subcategories);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(restore?.brands ?? fromUrl.brands);
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>(restore?.subcategories ?? fromUrl.subcategories);
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
-  const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>(fromUrl.occasions);
-  const [selectedGender, setSelectedGender] = useState<Gender | null>(fromUrl.gender);
+  const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>(restore?.occasions ?? fromUrl.occasions);
+  const [selectedGender, setSelectedGender] = useState<Gender | null>(restore ? restore.gender : fromUrl.gender);
   const [genderOpen, setGenderOpen] = useState(false);
   const [occasionOpen, setOccasionOpen] = useState(false);
   const [priceOpen, setPriceOpen] = useState(false);
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
-  const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>(fromUrl.colorGroupIds);
-  const [aiOnly, setAiOnly] = useState(fromUrl.aiOnly);
+  const [maxPrice, setMaxPrice] = useState<number | null>(restore?.maxPrice ?? null);
+  const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>(restore?.colorGroupIds ?? fromUrl.colorGroupIds);
+  const [aiOnly, setAiOnly] = useState(restore?.aiOnly ?? fromUrl.aiOnly);
   // Styles, for pieces and outfits alike: the same five tags the catalogue
   // files both under. Any one picked is enough.
-  const [selectedStyles, setSelectedStyles] = useState<StyleKeyword[]>(fromUrl.styles);
+  const [selectedStyles, setSelectedStyles] = useState<StyleKeyword[]>(restore?.styles ?? fromUrl.styles);
   const [styleOpen, setStyleOpen] = useState(false);
   // A ?color= link names a colour group, but the groups arrive from the API —
   // hold the name until they do, then resolve it to an id.
-  const [pendingColorName, setPendingColorName] = useState<string | null>(fromUrl.pendingColorName);
+  // A restored view saved them resolved.
+  const [pendingColorName, setPendingColorName] = useState<string | null>(restore ? null : fromUrl.pendingColorName);
   // Same for ?category=: it names a group in a tree the admin panel edits, so
   // the group it points at may only exist once /api/categories has answered.
-  const [pendingCategoryGroup, setPendingCategoryGroup] = useState<string | null>(fromUrl.pendingCategoryGroup);
+  const [pendingCategoryGroup, setPendingCategoryGroup] = useState<string | null>(restore ? null : fromUrl.pendingCategoryGroup);
 
   // The filter tree is the shared one, so a breadcrumb that links to
   // ?category=bottoms always names a group this list actually has.
@@ -651,6 +694,85 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
     () => filteredOutfits.slice((page - 1) * PAGE_SIZE, (page + extraPages) * PAGE_SIZE),
     [filteredOutfits, page, extraPages, PAGE_SIZE]
   );
+
+  // ── Where the catalogue is, for Back from a piece (return-view.ts) ──────────
+  // This history entry's visit: the one it is stamped with, or a new one.
+  const visit = useRef<string | null>(null);
+  const here = useRef<SavedView | null>(null);
+  useEffect(() => {
+    here.current = {
+      url: location.pathname + location.search,
+      view, search: searchQuery, sort,
+      brands: selectedBrands, subcategories: selectedSubcategories, occasions: selectedOccasions,
+      gender: selectedGender, maxPrice, colorGroupIds: selectedColorGroupIds, aiOnly,
+      styles: selectedStyles, likedOnly, page, extraPages,
+      scrollY: here.current?.scrollY ?? window.scrollY,
+      order: catalogProducts.map((p) => p.id),
+    };
+    // Again after a change of tab: replacing the URL drops the stamp.
+    if (visit.current) stampEntry(visit.current, here.current.url);
+  }, [view, searchQuery, sort, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyles, likedOnly, page, extraPages, catalogProducts]);
+  // Saved on the way out: when the page that replaces it mounts, or when the
+  // tab leaves the site. A layout effect, so it is saved before the next page
+  // scrolls the window to its own top.
+  useLayoutEffect(() => {
+    if (!visit.current) visit.current = entryVisit() ?? newVisit();
+    const id = visit.current;
+    stampEntry(id, location.pathname + location.search);
+    const onScroll = () => {
+      if (!here.current) return;
+      here.current.scrollY = window.scrollY;
+      // A router refresh replaces the entry's state without the stamp.
+      stampEntry(id, here.current.url);
+    };
+    const save = () => {
+      if (here.current) saveView(id, here.current);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pagehide", save);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pagehide", save);
+      save();
+    };
+  }, []);
+
+  // Back to the saved scroll once its cards are on the page, before the first
+  // paint — and held there for a second: the browser then restores its own
+  // idea of the place, taken as the piece's page replaced this one and cut to
+  // that page's height. A scroll of the visitor's own ends the hold.
+  const pendingScroll = useRef(restore?.scrollY ?? null);
+  const listReady = view === "outfits" ? !loadingOutfits : !loadingProducts && productsComplete;
+  useLayoutEffect(() => {
+    const saved = pendingScroll.current;
+    if (saved === null || !listReady) return;
+    const top: number = saved;
+    const visitorInput = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+    function hold() {
+      if (Math.abs(window.scrollY - top) > 1) window.scrollTo({ top, behavior: "instant" });
+    }
+    function release() {
+      window.removeEventListener("scroll", hold);
+      for (const type of visitorInput) window.removeEventListener(type, end);
+      clearTimeout(timer);
+    }
+    function end() {
+      pendingScroll.current = null;
+      release();
+    }
+    const timer = setTimeout(end, 1000);
+    hold();
+    window.addEventListener("scroll", hold, { passive: true });
+    for (const type of visitorInput) window.addEventListener(type, end, { passive: true });
+    return release;
+  }, [listReady]);
+  // A restored grid is there at once, without the cards fading in one by one
+  // (eighty of them would take five seconds); cards added later still do.
+  const [instantGrid, setInstantGrid] = useState(Boolean(restore));
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- only the cards on screen at mount skip it
+    if (instantGrid && listReady) setInstantGrid(false);
+  }, [instantGrid, listReady]);
 
   /* Browse context passed to the AI Stylist — mirrors active filter state */
   const browseContext = useMemo(() => ({
@@ -1817,7 +1939,7 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
             <AnimatePresence mode="wait">
             <motion.div
               key={view}
-              initial={{ opacity: 0, y: 8 }}
+              initial={instantGrid ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
@@ -1858,7 +1980,7 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
                   <motion.div
                     className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 md:gap-4 stagger-children"
                     variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
-                    initial="hidden"
+                    initial={instantGrid ? false : "hidden"}
                     animate="show"
                   >
                     {pagedOutfits.map((outfit) => (
@@ -1884,7 +2006,7 @@ export default function BrowseClient({ initial }: { initial: BrowseInitial }) {
                 <motion.div
                   className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 md:gap-4 stagger-children"
                   variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
-                  initial="hidden"
+                  initial={instantGrid ? false : "hidden"}
                   animate="show"
                 >
                   {pagedItems.map(({ product, forcedVariant, key }) => (
