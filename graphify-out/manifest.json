@@ -1250,9 +1250,9 @@
     "semantic_hash": ""
   },
   "AI_ARCHITECTURE.md": {
-    "mtime": 1793135479.0594842,
-    "seen": 1793135590.1818328,
-    "ast_hash": "916ee915e1ce7a1e52eb40edfe607afd",
+    "mtime": 1793136363.6874084,
+    "seen": 1793136457.5096586,
+    "ast_hash": "c727b134cabae988a323c6cf6ad2fa66",
     "semantic_hash": ""
   },
   "AUDIT_DEV_PLAN.md": {
@@ -1262,9 +1262,9 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1793135496.9296565,
-    "seen": 1793135590.1818757,
-    "ast_hash": "68457a346c65b91b1156f9ea758f628b",
+    "mtime": 1793136381.5844314,
+    "seen": 1793136457.5096962,
+    "ast_hash": "a8e54f1d3c0679e3dc00e7f2fef95edb",
     "semantic_hash": ""
   },
   "BILLING.md": {
@@ -3632,9 +3632,9 @@
     "semantic_hash": ""
   },
   "scripts/ai-outfits-check.ts": {
-    "mtime": 1793135021.3994472,
-    "seen": 1793135590.1559057,
-    "ast_hash": "ec68630f9fab02b8357140ed42dd053c",
+    "mtime": 1793136342.509213,
+    "seen": 1793136457.4923131,
+    "ast_hash": "b7b7476c764eff833a73807ca06089b1",
     "semantic_hash": ""
   },
   "src/app/api/admin/ai-outfits/route.ts": {
@@ -3662,9 +3662,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/ai-outfits/model.ts": {
-    "mtime": 1793131248.1297812,
-    "seen": 1793132344.1567583,
-    "ast_hash": "87017f09d17cead52581caba5e96bd43",
+    "mtime": 1793136323.8027039,
+    "seen": 1793136457.5063424,
+    "ast_hash": "e2f38e29ee070211ea8e69623d9865ba",
     "semantic_hash": ""
   },
   "src/lib/server/ai-outfits/pieces.ts": {
@@ -3674,9 +3674,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/ai-outfits/run.ts": {
-    "mtime": 1793134888.4042537,
-    "seen": 1793135590.1766965,
-    "ast_hash": "a7c553c03777568fba837f29f146f2eb",
+    "mtime": 1793136342.5084774,
+    "seen": 1793136457.506463,
+    "ast_hash": "afe3ef27929e9725cd2893d9a5a5529e",
     "semantic_hash": ""
   },
   "src/lib/server/ai-outfits/store.ts": {
@@ -3686,9 +3686,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/ai-outfits/validate.ts": {
-    "mtime": 1793131304.3137846,
-    "seen": 1793132344.156765,
-    "ast_hash": "d452fc9fcc2a2020425fb54f72a4e354",
+    "mtime": 1793136323.803777,
+    "seen": 1793136457.5065126,
+    "ast_hash": "f0a32021e3498d3469a93c5ceb17e26d",
     "semantic_hash": ""
   },
   "src/lib/server/outfit-image.ts": {
