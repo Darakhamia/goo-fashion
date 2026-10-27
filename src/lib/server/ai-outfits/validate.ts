@@ -50,11 +50,20 @@ export interface CheckContext {
 
 export type CheckResult = { ok: true; outfit: CheckedOutfit } | { ok: false; reason: string };
 
+/** A piece id as the model wrote it, as the list's key: "c89", "C89", "89", "#89", "id: c89" → "c89". */
+export function candidateKey(raw: string, pool: CandidatePool): string {
+  const id = raw.trim();
+  if (pool.byKey.has(id)) return id;
+  const n = /^(?:id\s*[:=]?\s*)?[#c]?\s*(\d+)$/i.exec(id)?.[1];
+  return n && pool.byKey.has(`c${Number(n)}`) ? `c${Number(n)}` : id;
+}
+
 export function checkOutfit(proposal: ModelOutfit, ctx: CheckContext): CheckResult {
   const refuse = (reason: string): CheckResult => ({ ok: false, reason });
 
-  // Pieces from the list, each once.
-  const ids = (proposal.pieces ?? []).map((p) => String(p?.id ?? "").trim());
+  // Pieces from the list, each once. The schema allows only the list's ids;
+  // a bare number ("89" for "c89") is still read as the piece it numbers.
+  const ids = (proposal.pieces ?? []).map((p) => candidateKey(String(p?.id ?? ""), ctx.pool));
   const unknown = ids.filter((id) => !ctx.pool.byKey.has(id));
   if (unknown.length) return refuse(`used ids that are not in the list (${unknown.slice(0, 3).join(", ")})`);
   if (new Set(ids).size !== ids.length) return refuse("used one piece twice");

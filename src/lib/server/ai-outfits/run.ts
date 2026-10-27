@@ -150,6 +150,7 @@ export async function runGeneration(input: RunInput, deps: RunDeps): Promise<Run
     costUsd += reply.usage.costUsd;
     await deps.report({ costUsd });
 
+    const refusedNow: string[] = [];
     for (const proposal of reply.outfits) {
       if (kept.length >= brief.count) break;
       const verdict = checkOutfit(proposal, { pool, brief, existing: deps.existingSignatures, kept });
@@ -157,15 +158,16 @@ export async function runGeneration(input: RunInput, deps: RunDeps): Promise<Run
       else {
         refused++;
         const label = String(proposal.name ?? "").trim() || "an outfit";
-        feedback.push(`"${label.slice(0, 40)}": ${verdict.reason}`);
+        refusedNow.push(`"${label.slice(0, 40)}": ${verdict.reason}`);
       }
     }
+    feedback.push(...refusedNow);
     await deps.report({
       message: `Round ${round + 1}: ${reply.outfits.length} proposed, ${kept.length} of ${brief.count} kept so far.`,
     });
+    // Each refusal under its round, for the log: the model's mistakes are worth seeing.
+    for (const f of refusedNow) await deps.report({ message: `Refused ${f}` });
   }
-  // Every refusal, for the log: the model's mistakes are worth seeing.
-  for (const f of feedback) await deps.report({ message: `Refused ${f}` });
   if (!kept.length) {
     const error = "The model proposed no outfit that passed the checks.";
     await deps.report({ message: error });

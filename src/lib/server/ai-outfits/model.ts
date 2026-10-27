@@ -41,7 +41,15 @@ export interface ModelOutfit {
   notes: string;
 }
 
-const SCHEMA = {
+/**
+ * The answer's shape. The piece ids are an enum of this round's candidate ids:
+ * asked for "c89", the model wrote "89" in the first runs on the live
+ * catalogue, every outfit was refused for naming pieces not in the list, and
+ * the run made nothing (2026-10-27). With the ids enumerated a reply cannot
+ * name anything else.
+ */
+export function outfitSchema(candidateIds: string[]) {
+  return {
   type: "object",
   additionalProperties: false,
   required: ["outfits"],
@@ -60,7 +68,7 @@ const SCHEMA = {
               additionalProperties: false,
               required: ["id", "slot"],
               properties: {
-                id: { type: "string" },
+                id: { type: "string", enum: candidateIds },
                 slot: { type: "string", enum: [...OUTFIT_SLOTS] },
               },
             },
@@ -75,7 +83,8 @@ const SCHEMA = {
       },
     },
   },
-} as const;
+  } as const;
+}
 
 const TASK = `You are the senior stylist of GOO, a fashion site that sells complete outfits put together from pieces sold by many stores. You build outfits ONLY from the candidate pieces you are given, and you write the name and the short description shoppers will read.
 
@@ -177,7 +186,10 @@ export async function planOutfits(req: PlanRequest, apiKey: string): Promise<{ o
     model: OUTFIT_MODEL,
     temperature: 0.8,
     max_completion_tokens: 9_000,
-    response_format: { type: "json_schema", json_schema: { name: "outfits", strict: true, schema: SCHEMA } },
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "outfits", strict: true, schema: outfitSchema(req.candidates.map((c) => c.key)) },
+    },
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
