@@ -15,6 +15,7 @@ import { Badge } from "@/components/admin/Badge";
 import { PageHeader, PLUS } from "@/components/admin/PageHeader";
 import { ActiveFilters, FilterBar, FilterChips, FilterMenu, SearchField, type ActiveFilter } from "@/components/admin/FilterBar";
 import { BulkBar } from "@/components/admin/BulkBar";
+import { BackToTop } from "@/components/admin/BackToTop";
 import { RowMenu, type MenuItem } from "@/components/admin/Menu";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
@@ -133,9 +134,10 @@ function rich(text: string, code: Record<string, string> = {}): ReactNode[] {
 
 export default function AdminProductsPage() {
   // Back from a product, the list opens as it was left, with the rows it had
-  // (_view.tsx); a fresh copy then loads behind them.
+  // (_view.tsx); a fresh copy then loads behind them. After a reload the view
+  // comes back once the page is hydrated, without the rows.
   const memory = useListViewMemory();
-  const [saved] = useState(() => memory?.read() ?? null);
+  const [saved, setSaved] = useState(() => memory?.read() ?? null);
   // The tree the Categories page edits — the chips below are whatever it says.
   // Each mount starts from the built-in default until it loads; back from a
   // product the tree the list had stands in, so a category filter gives the
@@ -367,6 +369,27 @@ export default function AdminProductsPage() {
   // there: before the first paint, and once more after Next has scrolled the
   // arriving page into view — a link does, Back and "← Products" do not.
   const pendingScroll = useRef<number | null>(saved?.scrollTop ?? 0);
+  // After a reload: the server drew the list from the top, so the view the tab
+  // left is set here, once hydrated and before the rows arrive.
+  useLayoutEffect(() => {
+    const view = saved ? null : memory?.reloaded();
+    if (!view) return;
+    setSaved(view);
+    setSearchQuery(view.search ?? "");
+    setFilterGroup(view.group ?? "");
+    setFilterSubcategory(view.subcategory ?? "");
+    setFilterBrand(view.brand ?? "");
+    setFilterColorGroup(view.colorGroup ?? "");
+    setFilterStyle(view.style ?? "");
+    setFilterGender(view.gender ?? "");
+    setFilterMissing(view.missing ?? "");
+    setFilterNew(view.isNew ?? null);
+    setSortKey(view.sortKey ?? "createdAt");
+    setSortDir(view.sortDir ?? "desc");
+    pendingScroll.current = view.scrollTop ?? 0;
+    // Mount-only, like the load above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useLayoutEffect(() => {
     const main = rootRef.current?.closest("main");
     const top = pendingScroll.current;
@@ -1608,6 +1631,9 @@ export default function AdminProductsPage() {
       )}
 
       <DataTable
+        // A view a reload brought back comes after the first render: the
+        // table opens again, on its pages.
+        key={saved ? "saved" : "fresh"}
         label={t("nav.products")}
         rows={filtered}
         rowKey={(p) => p.id}
@@ -1688,6 +1714,7 @@ export default function AdminProductsPage() {
         ]}
       />
 
+      <BackToTop />
 
       {/* ── Crop Editor Modal ── */}
       {cropProduct && (

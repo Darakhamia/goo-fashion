@@ -116,6 +116,7 @@ export const en = {
   "table.prev": "Previous page",
   "table.next": "Next page",
   "table.more": "Load {count} more",
+  "table.backToTop": "Back to top",
   "filter.all": "All",
   "filter.search": "Search",
   "filter.searchIn": "Search {label}",

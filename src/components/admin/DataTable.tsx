@@ -24,7 +24,7 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
  *   page joins the rows already shown ("1–100 of 412", pages 1 and 2 lit),
  *   and a page number or the arrows go back to one page at a time.
  *   `initialPages` opens it on a page it reported through `onPagesChange`
- *   (Products, back from a product).
+ *   (Products, back from a product or after a reload).
  * - Selection is the caller's: a checkbox column when `selection` is given,
  *   Shift-click for a run of rows (the caller decides what a run is).
  * - `onRowClick` opens the row (Users: the side panel). The row's own buttons

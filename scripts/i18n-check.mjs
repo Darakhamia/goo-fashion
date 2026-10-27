@@ -57,6 +57,7 @@ const TRANSLATED = [
   "src/components/admin/HelpToggle.tsx",
   "src/components/admin/ImageCropEditor.tsx",
   "src/components/admin/AttentionList.tsx",
+  "src/components/admin/BackToTop.tsx",
   "src/components/admin/DataTable.tsx",
   "src/components/admin/DownloadCardsButton.tsx",
   "src/components/admin/FilterBar.tsx",
