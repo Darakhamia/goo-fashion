@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { useMoneyText } from "@/components/ui/MoneyText";
 
 /**
  * Drives a "clamped until you open it" block: whether it is expanded, and
@@ -83,17 +84,22 @@ export type ClampLines = keyof typeof CLAMP_CLASS;
  * `lines={1}` where the panel below the title matters more than the title.
  */
 export function ClampedHeading({
-  text,
+  text: written,
   className = "",
   label = "name",
   lines = 2,
+  money = false,
 }: {
   text: string;
   className?: string;
   label?: string;
   lines?: ClampLines;
+  /** Show any price in the text in the reader's currency (MoneyText). */
+  money?: boolean;
 }) {
   const ref = useRef<HTMLHeadingElement>(null);
+  const toReader = useMoneyText();
+  const text = money ? toReader(written) : written;
   const { expanded, setExpanded, overflows } = useClampToggle(ref, text);
 
   return (
@@ -122,17 +128,22 @@ export function ClampedHeading({
  * blurred and unreadable — so that variant ends in an ellipsis instead.
  */
 export function ClampedDescription({
-  text,
+  text: written,
   className = "",
   label = "description",
   lines = 2,
+  money = false,
 }: {
   text: string;
   className?: string;
   label?: string;
   lines?: ClampLines;
+  /** Show any price in the text in the reader's currency (MoneyText). */
+  money?: boolean;
 }) {
   const ref = useRef<HTMLParagraphElement>(null);
+  const toReader = useMoneyText();
+  const text = money ? toReader(written) : written;
   const { expanded, setExpanded, overflows } = useClampToggle(ref, text);
 
   if (!text) return null;

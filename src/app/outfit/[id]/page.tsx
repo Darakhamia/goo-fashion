@@ -14,6 +14,8 @@ import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText"
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
 import { outfitStylePath } from "@/lib/landing-paths";
+import { seasonsLabel } from "@/lib/seasons";
+import { styleLabel } from "@/lib/style-keywords";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
 import {
@@ -73,16 +75,17 @@ export default async function OutfitDetailPage({ params }: Props) {
 
   if (!outfit) notFound();
 
-  // The four newest of the same occasion — asked for as such, not picked out
-  // of every outfit on the site.
+  // The four newest sharing a style with this one — asked for as such, not
+  // picked out of every outfit on the site. Styles took over from the
+  // occasion, which this row used to match on (CEO, 2026-10-27).
   const relatedOutfits = await getLatestOutfits({
     limit: 4,
-    occasion: outfit.occasion,
+    styles: outfit.styleKeywords,
     excludeId: outfit.id,
   });
 
   const { heading, description: seoDescription } = buildOutfitSeo(outfit);
-  // Home / Browse / Outfits / Occasion / AI / Name — the optional steps drop
+  // Home / Browse / Outfits / Style / AI / Name — the optional steps drop
   // out when the outfit doesn't carry them, and each links back into the
   // catalog with that filter applied.
   const q = (params: Record<string, string>) =>
@@ -92,7 +95,8 @@ export default async function OutfitDetailPage({ params }: Props) {
     { label: "Browse", href: "/browse" },
     { label: "Outfits", href: q({}) },
   ];
-  if (outfit.occasion) outfitCrumbs.push({ label: outfit.occasion, href: q({ occasion: outfit.occasion }) });
+  const style = outfit.styleKeywords[0];
+  if (style) outfitCrumbs.push({ label: styleLabel(style), href: q({ style }) });
   if (outfit.isAIGenerated) outfitCrumbs.push({ label: "AI", href: q({ ai: "1" }) });
   outfitCrumbs.push({ label: heading });
 
@@ -151,8 +155,8 @@ export default async function OutfitDetailPage({ params }: Props) {
           <div className="md:rounded-2xl md:border md:border-[var(--border)] md:bg-[var(--background)] px-1 md:px-10 md:py-12 flex flex-col">
             {/* Header */}
             <div className="mb-3 md:mb-10">
-              <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3 capitalize">
-                {outfit.occasion} · {outfit.season !== "all" ? outfit.season : "All Season"}
+              <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
+                {seasonsLabel(outfit.seasons)}
               </p>
               {/* One line each, chevron for the rest: outfit names and blurbs are
                   generated from the pieces, so they run long and would otherwise
@@ -163,12 +167,14 @@ export default async function OutfitDetailPage({ params }: Props) {
               <div className="mb-2 md:mb-4">
                 <ClampedHeading
                   text={heading}
+                  money
                   label="outfit name"
                   lines={1}
                   className="max-md:line-clamp-none text-[22px] md:text-4xl font-semibold md:font-bold md:uppercase tracking-[-0.01em] md:tracking-[-0.015em] text-[var(--foreground)] leading-tight"
                 />
               </div>
-              <ClampedDescription text={outfit.description || seoDescription} lines={1} className="max-md:line-clamp-none" />
+              {/* Prices in the words follow the reader's currency (MoneyText). */}
+              <ClampedDescription text={outfit.description || seoDescription} money lines={1} className="max-md:line-clamp-none" />
 
               {/* Total and count — phones read them in the buy bar */}
               <div className="mt-6 hidden md:flex items-center gap-6">

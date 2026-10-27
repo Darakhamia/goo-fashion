@@ -67,6 +67,7 @@ export type DbOutfit = {
   id: string;
   name: string;
   description: string;
+  /** No longer read or written: styles replaced it (CEO, 2026-10-27). */
   occasion: string;
   image_url: string;
   items: DbOutfitItem[];
@@ -76,7 +77,10 @@ export type DbOutfit = {
   style_keywords: string[];
   is_ai_generated: boolean;
   is_saved: boolean;
+  /** The single season before migration 030; still written for older readers. */
   season: string;
+  /** Migration 030; absent on a database a migration behind. */
+  seasons?: string[] | null;
   created_at: string;
   /** Migration 027; absent on a database a migration behind. */
   updated_at?: string | null;

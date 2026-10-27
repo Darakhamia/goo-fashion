@@ -6,6 +6,7 @@
 import type { Metadata } from "next";
 import type { Outfit, Product } from "@/lib/types";
 import { CURRENCIES, DISPLAY_FALLBACK_RATES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
+import { seasonLabel, seasonsPhrase } from "@/lib/seasons";
 
 /** Canonical site origin — always the non-www apex domain. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
@@ -151,12 +152,18 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
 
   const descriptor = [brandLabel, style].filter(Boolean).join(" ").trim();
 
-  // Prefer a data-derived heading; fall back to a real custom name, then occasion.
+  // Prefer a data-derived heading; fall back to a real custom name, then the
+  // season or the piece count.
+  const seasons = outfit.seasons ?? [];
   const heading = descriptor
     ? `${descriptor} look`
     : !isGenericName(outfit.name)
       ? outfit.name
-      : `${outfit.occasion} outfit`;
+      : seasons.length
+        ? `${seasonLabel(seasons[0])} outfit`
+        : pieces
+          ? `${pieces}-piece outfit`
+          : "Outfit";
 
   const piecesLabel = pieces ? `${pieces} piece${pieces === 1 ? "" : "s"}` : "";
   // The piece count goes first when the whole title would be cut off in results.
@@ -164,9 +171,9 @@ export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
   const title = full.length + TITLE_SUFFIX.length <= TITLE_MAX ? full : `${heading} from ${price}`;
 
   const byBrands = brands.length ? ` featuring ${brands.slice(0, 3).join(", ")}` : "";
-  const season = outfit.season && outfit.season !== "all" ? `${outfit.season} ` : "";
+  const kind = [seasonsPhrase(seasons), style].filter(Boolean).join(" ");
   const description = (
-    `Shop this ${season}${outfit.occasion} look${byBrands}. ` +
+    `Shop this ${kind ? `${kind} ` : ""}look${byBrands}. ` +
     `${piecesLabel ? `${piecesLabel} ` : ""}styled together, complete from ${price} across leading retailers.`
   ).slice(0, 160);
 

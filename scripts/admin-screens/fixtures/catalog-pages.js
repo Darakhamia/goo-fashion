@@ -155,6 +155,8 @@ const PIECES = [
   [6, 32, 26], [37, 16, 18, 34], [1, 3, 23], [2, 4, 7], [8, 16, 10], [9, 32, 13], [30, 33, 10, 12],
   [35, 16, 18], [13, 4, 25], [23, 3, 24], [5, 32, 7], [0, 33, 26], [38, 4, 19],
 ];
+// Seasons (migration 030): most looks are for every season, some for a few.
+const SEASON_SETS = [[], ["autumn", "winter"], [], ["summer"], ["spring", "autumn"], []];
 const FIXED_TOTALS = { 0: 3731.18, 3: 3731.18, 7: 3208, 2: 898.1 };
 const outfits = OUTFIT_NAMES.map((name, i) => {
   const items = PIECES[i].map((pi, k) => ({ product: P(pi), role: k === 0 ? "hero" : k === 1 ? "secondary" : "accent" }));
@@ -164,8 +166,7 @@ const outfits = OUTFIT_NAMES.map((name, i) => {
     id: `7f3c2a10-${String(2000 + i)}-4b8e-a1d2-${String(300000000000 + i * 104729).slice(-12)}`,
     name,
     description: i % 5 === 0 ? "" : `A relaxed everyday look built around ${items[0].product.name.toLowerCase()}.`,
-    occasion: "casual",
-    season: "all",
+    seasons: SEASON_SETS[i % SEASON_SETS.length],
     imageUrl: IMG(`outfit-${i}`, OUTFIT_HEX[i % OUTFIT_HEX.length], "look"),
     items,
     totalPriceMin: total,
@@ -183,10 +184,10 @@ const outfits = OUTFIT_NAMES.map((name, i) => {
 /* ── Pending community looks ── */
 const SLOTS = ["top", "bottom", "shoes", "outerwear", "accessory"];
 const pendingDef = [
-  { style: "flatlay", pieces: [36, 4, 7, 38], kw: ["minimal", "casual"], name: "Linen & denim for Friday", desc: "Light layers for a warm office day.", occ: "work", season: "summer", days: 0.3 },
-  { style: "tryon", pieces: [5, 16, 22], kw: ["streetwear", "sporty"], name: null, desc: null, occ: null, season: null, days: 1.2 },
-  { style: "flatlay", pieces: [31, 32, 10, 34], kw: ["classic"], name: "Cardigan, black jeans, Chicagos", desc: "", occ: "casual", season: "autumn", days: 2.8 },
-  { style: null, pieces: [15, 3, 24], kw: ["casual"], name: "Weekend in blue", desc: null, occ: "weekend", season: "spring", days: 5.1 },
+  { style: "flatlay", pieces: [36, 4, 7, 38], kw: ["minimal", "casual"], name: "Linen & denim for Friday", desc: "Light layers for a warm office day.", season: "summer", days: 0.3 },
+  { style: "tryon", pieces: [5, 16, 22], kw: ["streetwear", "sporty"], name: null, desc: null, season: null, days: 1.2 },
+  { style: "flatlay", pieces: [31, 32, 10, 34], kw: ["classic"], name: "Cardigan, black jeans, Chicagos", desc: "", season: "autumn", days: 2.8 },
+  { style: null, pieces: [15, 3, 24], kw: ["casual"], name: "Weekend in blue", desc: null, season: "spring", days: 5.1 },
 ];
 const pendingLooks = pendingDef.map((d, i) => ({
   id: `c51d7e2b-${3000 + i}-4f1a-9e0c-${String(500000000000 + i * 7727).slice(-12)}`,
@@ -199,8 +200,8 @@ const pendingLooks = pendingDef.map((d, i) => ({
   status: "pending",
   name: d.name,
   description: d.desc,
-  occasion: d.occ,
   season: d.season,
+  seasons: d.season ? [d.season] : [],
 }));
 
 /* ── Interaction helpers for extra screenshots ── */
@@ -451,6 +452,19 @@ module.exports = {
         await tick(boxes.nth(0));
         await tick(boxes.nth(1));
         await page.waitForTimeout(300);
+      },
+    },
+    {
+      // The outfit editor, opened from the first row's "…" menu (the pencil
+      // beside it is desktop-only).
+      name: "outfits-editor", url: "/goo-studio/outfits", fullPage: false,
+      after: async (page) => {
+        await waitRows(page);
+        await page.locator(ROW).first().hover();
+        await page.locator(ROW).first().locator('button[aria-haspopup="menu"]').click();
+        await page.getByRole("menuitem", { name: /^(Edit|Изменить)$/ }).click();
+        await page.getByRole("dialog").waitFor();
+        await page.waitForTimeout(400);
       },
     },
     {

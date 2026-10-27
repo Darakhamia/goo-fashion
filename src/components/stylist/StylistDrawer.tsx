@@ -23,7 +23,8 @@ export interface BrowseContext {
   searchQuery?: string;
   categories?: string[];
   brands?: string[];
-  occasions?: string[];
+  /** Outfits view: the seasons the shopper filtered by. */
+  seasons?: string[];
   gender?: string;
   styles?: string[];
   priceLabel?: string;

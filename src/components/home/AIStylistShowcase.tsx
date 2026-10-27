@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "@/components/ui/Image";
+import MoneyText from "@/components/ui/MoneyText";
 import FadeInView from "@/components/ui/FadeInView";
 import { useState } from "react";
 import type { Product, Retailer } from "@/lib/types";
@@ -195,7 +196,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-white truncate leading-snug max-md:text-[14px] max-md:text-[var(--foreground)]">{look.name}</p>
+        <p className="text-[13px] font-medium text-white truncate leading-snug max-md:text-[14px] max-md:text-[var(--foreground)]"><MoneyText text={look.name} /></p>
         {look.price > 0 && (
           <p className="text-[13px] text-white/50 mt-0.5 max-md:text-[12px] max-md:text-[var(--foreground-muted)]">{formatPrice(look.price, look.currency)}</p>
         )}

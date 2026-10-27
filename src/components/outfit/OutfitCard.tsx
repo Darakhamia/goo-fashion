@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "@/components/ui/Image";
 import { motion } from "framer-motion";
+import { useMoneyText } from "@/components/ui/MoneyText";
 import { Outfit } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
@@ -31,8 +32,10 @@ export default function OutfitCard({ outfit }: OutfitCardProps) {
   const { formatPrice } = useCurrency();
   const liked = isOutfitLiked(outfit.id);
   const pieceCount = outfit.items.length;
-  // "Outfit 51" says nothing in a grid of them; its brands and style do.
-  const displayName = outfitDisplayName(outfit);
+  // "Outfit 51" says nothing in a grid of them; its brands and style do. A
+  // price typed into the name reads in the shopper's currency (MoneyText).
+  const toReader = useMoneyText();
+  const displayName = toReader(outfitDisplayName(outfit));
 
   const handleLike = () => {
     if (!isLoggedIn) { login(); return; }

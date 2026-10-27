@@ -32,11 +32,11 @@ const outfitId = (i) => `7c1e0a52-${String(2000 + i)}-4b7d-8e21-${String(5000000
 const OUTFITS = OUTFIT_DEFS.map(([name, occasion, idx, hex], i) => {
   const items = idx.map((k, j) => ({ product: P(k), role: j === 0 ? "hero" : j === 1 ? "secondary" : "accent" }));
   return {
-    id: outfitId(i), name, description: `${name}: a ${occasion} look from the GOO catalogue.`, occasion,
+    id: outfitId(i), name, description: `${name}: a ${occasion} look from the GOO catalogue.`,
     imageUrl: IMG(outfitId(i), hex, "look"), items,
     totalPriceMin: Math.round(items.reduce((s, it) => s + it.product.priceMin, 0)),
     totalPriceMax: Math.round(items.reduce((s, it) => s + it.product.priceMax, 0)),
-    currency: "USD", styleKeywords: ["minimal"], isAIGenerated: i % 2 === 0, isSaved: false, season: "all",
+    currency: "USD", styleKeywords: ["minimal"], isAIGenerated: i % 2 === 0, isSaved: false, seasons: [],
     source: null, isHomepageFeatured: i < 2, createdAt: new Date(NOW - (i + 3) * 4 * DAY).toISOString(),
   };
 });

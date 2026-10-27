@@ -1,6 +1,8 @@
 "use client";
 
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
+import { normalizeSeasons } from "@/lib/seasons";
+import type { Season } from "@/lib/types";
 
 // ── Saved builder look ────────────────────────────────────────────────────────
 export interface SavedLook {
@@ -11,6 +13,8 @@ export interface SavedLook {
   pieces: { slot: string; productId: string; variantId?: string | null; imageUrl?: string; name?: string }[];
   totalPrice: number;
   styleKeywords: string[];
+  /** The seasons it is for; none means every season (lib/seasons). */
+  seasons?: Season[];
   generatedImage?: string | null;
   generatedStyle?: "mannequin" | "flatlay" | "tryon";
 }
@@ -44,7 +48,11 @@ export function loadLocalLooks(): SavedLook[] {
     if (!Array.isArray(parsed)) return [];
     // A look saved before the style vocabulary was cut still carries the
     // dropped styles in this browser; they are not styles any more.
-    return (parsed as SavedLook[]).map((l) => ({ ...l, styleKeywords: normalizeStyleKeywords(l.styleKeywords) }));
+    return (parsed as SavedLook[]).map((l) => ({
+      ...l,
+      styleKeywords: normalizeStyleKeywords(l.styleKeywords),
+      seasons: normalizeSeasons(l.seasons ?? []),
+    }));
   } catch {
     return [];
   }

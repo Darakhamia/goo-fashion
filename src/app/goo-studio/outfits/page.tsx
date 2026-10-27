@@ -1,19 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Link from "next/link";
 import Image from "@/components/ui/Image";
-import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
+import type { Outfit, Season, StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
+import { SEASON_LIST, normalizeSeasons, seasonsFromRow } from "@/lib/seasons";
 import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { BANNER, btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT } from "@/app/goo-studio/_i18n";
 import type { Key, T, Vars } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
 import { PageHeader, PLUS } from "@/components/admin/PageHeader";
 import type { Column } from "@/components/admin/DataTable";
-import { ActiveFilters, FilterBar, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
+import { ActiveFilters, FilterBar, FilterMenu, SearchField } from "@/components/admin/FilterBar";
 import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
@@ -37,47 +39,24 @@ interface PendingLook {
    */
   name: string | null;
   description: string | null;
-  occasion: string | null;
+  /** The single season before migration 030, and the list after it. */
   season: string | null;
+  seasons?: string[] | null;
 }
 
-type OutfitRole = "hero" | "secondary" | "accent";
-type Season = "all" | "spring" | "summer" | "autumn" | "winter";
-
-interface SelectedItem {
-  product: Product;
-  role: OutfitRole;
-  selectedColor?: string;
-}
-
+/**
+ * What the editor changes on a published outfit. Its pieces and price are the
+ * look as it was built: changing those means building it again in the builder
+ * (CEO, 2026-10-27), so the editor shows them and does not edit them.
+ */
 interface OutfitFormState {
   name: string;
-  occasion: Occasion;
-  season: Season;
   description: string;
   imageUrl: string;
   styleKeywords: StyleKeyword[];
+  seasons: Season[];
   isAIGenerated: boolean;
 }
-
-const OCCASIONS: Occasion[] = ["casual", "work", "evening", "sport", "formal", "weekend"];
-const SEASONS: Season[] = ["all", "spring", "summer", "autumn", "winter"];
-const CATEGORIES: { value: Category | "all"; label: Key }[] = [
-  { value: "all", label: "filter.all" },
-  { value: "outerwear", label: "outfits.cat.outerwear" },
-  { value: "tops", label: "outfits.cat.tops" },
-  { value: "bottoms", label: "outfits.cat.bottoms" },
-  { value: "dresses", label: "outfits.cat.dresses" },
-  { value: "knitwear", label: "outfits.cat.knitwear" },
-  { value: "footwear", label: "outfits.cat.footwear" },
-  { value: "accessories", label: "outfits.cat.accessories" },
-];
-const ROLES: OutfitRole[] = ["hero", "secondary", "accent"];
-const ROLE_KEY: Record<OutfitRole, Key> = {
-  hero: "outfits.role.hero",
-  secondary: "outfits.role.secondary",
-  accent: "outfits.role.accent",
-};
 
 /** How a submitted look was drawn, as its badge reads it. */
 const LOOK_STYLE_KEY: Record<string, Key> = {
@@ -103,16 +82,7 @@ function sayFailure(f: Failure, t: T): string {
   return typeof f === "string" ? f : t(f.key, f.vars);
 }
 
-const OCCASION_KEY: Record<Occasion, Key> = {
-  casual: "outfits.occasion.casual",
-  work: "outfits.occasion.work",
-  evening: "outfits.occasion.evening",
-  sport: "outfits.occasion.sport",
-  formal: "outfits.occasion.formal",
-  weekend: "outfits.occasion.weekend",
-};
 const SEASON_KEY: Record<Season, Key> = {
-  all: "outfits.season.all",
   spring: "outfits.season.spring",
   summer: "outfits.season.summer",
   autumn: "outfits.season.autumn",
@@ -129,27 +99,62 @@ const SORT_OPTIONS: { value: SortKey; label: Key }[] = [
 ];
 
 
-/** Most pieces an outfit takes — as many as the collage on the site can draw. */
-const MAX_ITEMS = 6;
-/**
- * Most products the picker draws at once. The catalogue runs to thousands of
- * rows with an image each; past this the search is the way to narrow it.
- */
-const PICKER_LIMIT = 60;
+/** An outfit's seasons in the admin's language: "Spring, Autumn", or "All seasons". */
+function seasonsText(seasons: readonly Season[], t: T): string {
+  return seasons.length ? seasons.map((s) => t(SEASON_KEY[s])).join(", ") : t("outfits.season.all");
+}
+
+/** Where outfits are made now: the builder, then My looks → Publish. */
+const BUILDER_HREF = "/builder";
 
 const defaultForm: OutfitFormState = {
   name: "",
-  occasion: "casual",
-  season: "all",
   description: "",
   imageUrl: "",
   styleKeywords: [],
+  seasons: [],
   isAIGenerated: false,
 };
 
-// The field recipes, full width in the editor's columns.
+// The field recipe, full width in the editor.
 const inputCls = `${INPUT} w-full`;
-const selectCls = `${SELECT} w-full`;
+
+/** Chip classes, the same for styles and seasons. */
+const chipCls = (on: boolean) =>
+  `px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
+    on
+      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
+      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+  }`;
+
+/**
+ * Seasons as chips: any number of the four, and "All seasons" — which is
+ * none picked — to clear them. Picking all four reads as "All seasons" too.
+ */
+function SeasonChips({ value, onChange, label }: { value: Season[]; onChange: (next: Season[]) => void; label: string }) {
+  const t = useT();
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5">
+      <button type="button" aria-pressed={value.length === 0} onClick={() => onChange([])} className={chipCls(value.length === 0)}>
+        {t("outfits.season.all")}
+      </button>
+      {SEASON_LIST.map((season) => {
+        const on = value.includes(season);
+        return (
+          <button
+            key={season}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(normalizeSeasons(on ? value.filter((s) => s !== season) : [...value, season]))}
+            className={chipCls(on)}
+          >
+            {t(SEASON_KEY[season])}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function AdminOutfitsPage() {
   const t = useT();
@@ -163,21 +168,15 @@ export default function AdminOutfitsPage() {
   const [loading, setLoading] = useState(true);
   /** Why the list did not load — shown in place of the table's rows. */
   const [outfitsError, setOutfitsError] = useState<Failure>("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  /** The outfit open in the editor; its pieces show as they were built. */
+  const [editing, setEditing] = useState<Outfit | null>(null);
   const [form, setForm] = useState<OutfitFormState>(defaultForm);
-  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [productSearch, setProductSearch] = useState("");
-  const [productCategory, setProductCategory] = useState<Category | "all">("all");
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [occasionFilter, setOccasionFilter] = useState<Occasion | "">("");
-  const [seasonFilter, setSeasonFilter] = useState<Season | "">("");
+  // A season, or "all" for the outfits set for every season.
+  const [seasonFilter, setSeasonFilter] = useState<Season | "all" | "">("");
   const [homeFilter, setHomeFilter] = useState<"on" | "off" | "">("");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   /** Ticked rows, by outfit id — what the selection bar acts on. */
@@ -208,8 +207,7 @@ export default function AdminOutfitsPage() {
   const [moderation, setModeration] = useState({
     name: "",
     description: "",
-    occasion: "casual" as Occasion,
-    season: "all" as Season,
+    seasons: [] as Season[],
     styleKeywords: [] as StyleKeyword[],
   });
 
@@ -217,12 +215,7 @@ export default function AdminOutfitsPage() {
     setModeration({
       name: look.name ?? "",
       description: look.description ?? "",
-      occasion: (OCCASIONS as string[]).includes(look.occasion ?? "")
-        ? (look.occasion as Occasion)
-        : "casual",
-      season: (SEASONS as string[]).includes(look.season ?? "")
-        ? (look.season as Season)
-        : "all",
+      seasons: seasonsFromRow(look),
       styleKeywords: normalizeStyleKeywords(look.style_keywords),
     });
     setModerationError("");
@@ -302,8 +295,7 @@ export default function AdminOutfitsPage() {
           overrides: {
             name: moderation.name.trim(),
             description: moderation.description.trim(),
-            occasion: moderation.occasion,
-            season: moderation.season,
+            seasons: moderation.seasons,
             styleKeywords: normalizeStyleKeywords(moderation.styleKeywords),
           },
         }),
@@ -360,53 +352,21 @@ export default function AdminOutfitsPage() {
     }
   };
 
-  // Load products when modal opens
-  const loadProducts = useCallback(() => {
-    if (products.length > 0) return;
-    setLoadingProducts(true);
-    fetch("/api/products?raw=true")
-      .then((r) => r.json())
-      .then((data) => setProducts(Array.isArray(data) ? data : []))
-      .catch(() => setProducts([]))
-      .finally(() => setLoadingProducts(false));
-  }, [products.length]);
-
-  const openAddModal = () => {
-    setEditingId(null);
-    setForm(defaultForm);
-    setSelectedItems([]);
-    setSaveError("");
-    setUploadError("");
-    setProductSearch("");
-    setProductCategory("all");
-    setShowModal(true);
-    loadProducts();
-  };
-
   const openEditModal = (outfit: Outfit) => {
-    setEditingId(outfit.id);
+    setEditing(outfit);
     setForm({
       name: outfit.name,
-      occasion: outfit.occasion,
-      season: outfit.season,
       description: outfit.description,
       imageUrl: outfit.imageUrl,
       styleKeywords: outfit.styleKeywords,
+      seasons: outfit.seasons ?? [],
       isAIGenerated: outfit.isAIGenerated,
     });
-    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role, selectedColor: i.selectedColor })));
     setSaveError("");
     setUploadError("");
-    setProductSearch("");
-    setProductCategory("all");
-    setShowModal(true);
-    loadProducts();
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingId(null);
-  };
+  const closeModal = () => setEditing(null);
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
@@ -428,34 +388,29 @@ export default function AdminOutfitsPage() {
     }
   };
 
-  // Price auto-calculated from selected items
-  const priceMin = selectedItems.reduce((s, i) => s + i.product.priceMin, 0);
-  const priceMax = selectedItems.reduce((s, i) => s + i.product.priceMax, 0);
-
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    if (!editing || !form.name.trim()) return;
     setSaving(true);
     setSaveError("");
 
+    // Only what the editor changes; the pieces and the price stay as built.
     const body = {
-      ...form,
-      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role, selectedColor: i.selectedColor })),
-      totalPriceMin: priceMin,
-      totalPriceMax: priceMax,
-      currency: "USD",
+      name: form.name.trim(),
+      description: form.description,
+      imageUrl: form.imageUrl,
+      styleKeywords: normalizeStyleKeywords(form.styleKeywords),
+      seasons: form.seasons,
+      isAIGenerated: form.isAIGenerated,
     };
 
     try {
-      const url = editingId ? `/api/outfits/${editingId}` : "/api/outfits";
-      const method = editingId ? "PUT" : "POST";
-      const res = await fetch(url, {
-        method,
+      const res = await fetch(`/api/outfits/${editing.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
-      // Any failure keeps the editor open with the reason: the outfit is only
-      // in the table once the database has it.
+      // Any failure keeps the editor open with the reason.
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         setSaveError(err.error ?? t("outfits.editor.saveFailed", { status: res.status }));
@@ -463,11 +418,7 @@ export default function AdminOutfitsPage() {
       }
 
       const saved: Outfit = await res.json();
-      if (editingId) {
-        setOutfits((prev) => prev.map((o) => (o.id === editingId ? saved : o)));
-      } else {
-        setOutfits((prev) => [saved, ...prev]);
-      }
+      setOutfits((prev) => prev.map((o) => (o.id === saved.id ? saved : o)));
       closeModal();
     } catch {
       setSaveError(t("outfits.editor.saveNetwork"));
@@ -481,13 +432,13 @@ export default function AdminOutfitsPage() {
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const list = outfits.filter((o) => {
-      if (occasionFilter && o.occasion !== occasionFilter) return false;
-      if (seasonFilter && o.season !== seasonFilter) return false;
+      if (seasonFilter === "all" && o.seasons.length > 0) return false;
+      if (seasonFilter && seasonFilter !== "all" && !o.seasons.includes(seasonFilter)) return false;
       if (homeFilter && !!o.isHomepageFeatured !== (homeFilter === "on")) return false;
       if (!q) return true;
       return (
         o.name.toLowerCase().includes(q) ||
-        o.occasion.toLowerCase().includes(q) ||
+        seasonsText(o.seasons, t).toLowerCase().includes(q) ||
         o.description.toLowerCase().includes(q) ||
         o.styleKeywords.some((k) => styleLabel(k).toLowerCase().includes(q)) ||
         o.items.some((i) => i.product.name.toLowerCase().includes(q) || i.product.brand.toLowerCase().includes(q))
@@ -502,7 +453,7 @@ export default function AdminOutfitsPage() {
     else if (sortKey === "priceAsc") sorted.sort((a, b) => a.totalPriceMin - b.totalPriceMin);
     else sorted.sort((a, b) => b.totalPriceMin - a.totalPriceMin);
     return sorted;
-  }, [outfits, searchQuery, occasionFilter, seasonFilter, homeFilter, sortKey]);
+  }, [outfits, searchQuery, seasonFilter, homeFilter, sortKey, t]);
 
   const allSelected = filteredOutfits.length > 0 && filteredOutfits.every((o) => selectedIds.has(o.id));
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -656,33 +607,6 @@ export default function AdminOutfitsPage() {
     }
   };
 
-  const toggleItem = (product: Product) => {
-    setSelectedItems((prev) => {
-      const exists = prev.find((i) => i.product.id === product.id);
-      if (exists) return prev.filter((i) => i.product.id !== product.id);
-      if (prev.length >= MAX_ITEMS) return prev;
-      const role: OutfitRole =
-        prev.length === 0 ? "hero" : prev.length === 1 ? "secondary" : "accent";
-      return [...prev, { product, role }];
-    });
-  };
-
-  const setRole = (productId: string, role: OutfitRole) => {
-    setSelectedItems((prev) =>
-      prev.map((i) => (i.product.id === productId ? { ...i, role } : i))
-    );
-  };
-
-  const setSelectedColor = (productId: string, color: string) => {
-    setSelectedItems((prev) =>
-      prev.map((i) => (i.product.id === productId ? { ...i, selectedColor: color } : i))
-    );
-  };
-
-  const removeItem = (productId: string) => {
-    setSelectedItems((prev) => prev.filter((i) => i.product.id !== productId));
-  };
-
   const toggleKeyword = (kw: StyleKeyword) => {
     setForm((f) => ({
       ...f,
@@ -692,22 +616,6 @@ export default function AdminOutfitsPage() {
     }));
   };
 
-  // Filtered products for the picker. Memoised so typing in the outfit's own
-  // fields does not re-filter the whole catalogue on every key.
-  const filteredProducts = useMemo(() => {
-    const q = productSearch.toLowerCase();
-    return products.filter((p) => {
-      const matchesSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.brand.toLowerCase().includes(q);
-      const matchesCategory = productCategory === "all" || p.category === productCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [products, productSearch, productCategory]);
-  const shownProducts = useMemo(() => filteredProducts.slice(0, PICKER_LIMIT), [filteredProducts]);
-  const atItemLimit = selectedItems.length >= MAX_ITEMS;
-
   // ── The table ─────────────────────────────────────────────────────────────
 
   const featuredCount = outfits.filter((o) => o.isHomepageFeatured).length;
@@ -715,17 +623,19 @@ export default function AdminOutfitsPage() {
 
   const clearFilters = () => {
     setSearchQuery("");
-    setOccasionFilter("");
     setSeasonFilter("");
     setHomeFilter("");
   };
 
   const activeFilters = [
-    ...(occasionFilter
-      ? [{ key: "occasion", label: `${t("outfits.f.occasion")}: ${t(OCCASION_KEY[occasionFilter])}`, onRemove: () => setOccasionFilter("") }]
-      : []),
     ...(seasonFilter
-      ? [{ key: "season", label: `${t("outfits.f.season")}: ${t(SEASON_KEY[seasonFilter])}`, onRemove: () => setSeasonFilter("") }]
+      ? [
+          {
+            key: "season",
+            label: `${t("outfits.f.season")}: ${t(seasonFilter === "all" ? "outfits.season.all" : SEASON_KEY[seasonFilter])}`,
+            onRemove: () => setSeasonFilter(""),
+          },
+        ]
       : []),
     ...(homeFilter
       ? [
@@ -739,7 +649,7 @@ export default function AdminOutfitsPage() {
   ];
 
   /** Back to the first page when what the table shows changes. */
-  const tableResetKey = [searchQuery, occasionFilter, seasonFilter, homeFilter, sortKey].join("|");
+  const tableResetKey = [searchQuery, seasonFilter, homeFilter, sortKey].join("|");
 
   const rowItems = (o: Outfit): MenuItem[] => [
     // Also an icon beside the menu; on a phone the icon gives its room to the name.
@@ -774,8 +684,7 @@ export default function AdminOutfitsPage() {
         </div>
       ),
     },
-    { key: "occasion", header: t("outfits.col.occasion"), hide: "md", cell: (o) => t(OCCASION_KEY[o.occasion] ?? "outfits.occasion.casual") },
-    { key: "season", header: t("outfits.col.season"), hide: "lg", cell: (o) => t(SEASON_KEY[o.season] ?? "outfits.season.all") },
+    { key: "season", header: t("outfits.col.season"), hide: "md", cell: (o) => seasonsText(o.seasons, t) },
     {
       key: "items",
       header: t("outfits.col.items"),
@@ -851,7 +760,7 @@ export default function AdminOutfitsPage() {
             ? [{ key: "cards", label: t("cards.download"), onClick: () => void cards.download(exportIds), disabled: cards.busy || outfits.length === 0 }]
             : []
         }
-        primary={adminTab === "outfits" ? { key: "add", label: t("outfits.add"), icon: PLUS, onClick: openAddModal } : undefined}
+        primary={adminTab === "outfits" ? { key: "add", label: t("outfits.add"), title: t("outfits.addHint"), icon: PLUS, href: BUILDER_HREF } : undefined}
       />
 
       {/* The count shows on Pending even at zero: an empty queue is news too. */}
@@ -1040,44 +949,24 @@ export default function AdminOutfitsPage() {
               className={`${inputCls} resize-none mb-3`}
             />
 
-            <div className="flex flex-col sm:flex-row gap-2 mb-3">
-              <select
-                value={moderation.occasion}
-                onChange={(e) => setModeration((m) => ({ ...m, occasion: e.target.value as Occasion }))}
-                aria-label={t("outfits.f.occasion")}
-                className={`${selectCls} flex-1`}
-              >
-                {OCCASIONS.map((o) => <option key={o} value={o}>{t(OCCASION_KEY[o])}</option>)}
-              </select>
-              <select
-                value={moderation.season}
-                onChange={(e) => setModeration((m) => ({ ...m, season: e.target.value as Season }))}
-                aria-label={t("outfits.f.season")}
-                className={`${selectCls} flex-1`}
-              >
-                {SEASONS.map((o) => <option key={o} value={o}>{t(SEASON_KEY[o])}</option>)}
-              </select>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
+            <p className={FIELD_LABEL}>{t("outfits.editor.styles")}</p>
+            <div role="group" aria-label={t("outfits.editor.styles")} className="flex flex-wrap gap-1.5 mb-3">
               {STYLE_KEYWORDS.map((kw) => {
                 const on = moderation.styleKeywords.includes(kw);
                 return (
-                  <button
-                    key={kw}
-                    onClick={() => toggleModerationStyle(kw)}
-                    aria-pressed={on}
-                    className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
-                      on
-                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
-                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
+                  <button key={kw} type="button" onClick={() => toggleModerationStyle(kw)} aria-pressed={on} className={chipCls(on)}>
                     {styleLabel(kw)}
                   </button>
                 );
               })}
             </div>
+
+            <p className={FIELD_LABEL}>{t("outfits.editor.seasons")}</p>
+            <SeasonChips
+              label={t("outfits.editor.seasons")}
+              value={moderation.seasons}
+              onChange={(seasons) => setModeration((m) => ({ ...m, seasons }))}
+            />
           </div>
 
           {/* Actions */}
@@ -1127,17 +1016,13 @@ export default function AdminOutfitsPage() {
               shown={filteredOutfits.length}
             >
               <FilterMenu
-                label={t("outfits.f.occasion")}
-                value={occasionFilter}
-                options={OCCASIONS.map((o) => ({ value: o, label: t(OCCASION_KEY[o]) }))}
-                onChange={(v) => setOccasionFilter(v as Occasion | "")}
-                allLabel={t("filter.all")}
-              />
-              <FilterMenu
                 label={t("outfits.f.season")}
                 value={seasonFilter}
-                options={SEASONS.map((o) => ({ value: o, label: t(SEASON_KEY[o]) }))}
-                onChange={(v) => setSeasonFilter(v as Season | "")}
+                options={[
+                  ...SEASON_LIST.map((s) => ({ value: s, label: t(SEASON_KEY[s]) })),
+                  { value: "all", label: t("outfits.season.all") },
+                ]}
+                onChange={(v) => setSeasonFilter(v as Season | "all" | "")}
                 allLabel={t("filter.all")}
               />
               <FilterMenu
@@ -1187,7 +1072,7 @@ export default function AdminOutfitsPage() {
               thumb: <Thumb src={o.imageUrl} fit="cover" size="lg" />,
               title: o.name,
               meta: [
-                t(OCCASION_KEY[o.occasion] ?? "outfits.occasion.casual"),
+                seasonsText(o.seasons, t),
                 f.moneyRange(o.totalPriceMin, o.totalPriceMax),
                 ...(o.isHomepageFeatured ? [t("outfits.home.on")] : []),
               ].join(" · "),
@@ -1230,9 +1115,9 @@ export default function AdminOutfitsPage() {
                         {t("filter.clearFilters")}
                       </button>
                     ) : (
-                      <button onClick={openAddModal} className={btn("primary")}>
+                      <Link href={BUILDER_HREF} className={btn("primary")}>
                         {t("outfits.add")}
-                      </button>
+                      </Link>
                     )
                   }
                 />
@@ -1257,419 +1142,203 @@ export default function AdminOutfitsPage() {
         </div>
       )}
 
-      {/* ── MODAL ── */}
-      {showModal && (
+      {/* ── Editor: the words, styles, seasons and cover of a published outfit ── */}
+      {editing && (
         <Modal
           onClose={closeModal}
-          label={t(editingId ? "outfits.editor.edit" : "outfits.editor.new")}
-          panelClassName="rounded-2xl w-full max-w-5xl max-h-[90dvh] overflow-y-auto overscroll-contain lg:max-h-none lg:overflow-visible flex flex-col"
-          scrimClassName="flex items-center lg:items-start justify-center overflow-y-auto p-4 lg:py-6"
+          label={t("outfits.editor.edit")}
+          panelClassName="rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto overscroll-contain flex flex-col"
           closeOnScrim={false}
         >
-          {/* Below lg the dialog scrolls inside itself; from lg the overlay
-              scrolls and each column keeps its own scroll. */}
-          {/* Modal header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
-            <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-              {t(editingId ? "outfits.editor.edit" : "outfits.editor.new")}
-            </h2>
-            <button
-              onClick={closeModal}
-              aria-label={t("common.close")}
-              title={t("common.close")}
-              className={BTN_ICON}
-            >
+            <h2 className="font-display text-xl font-light text-[var(--foreground)]">{t("outfits.editor.edit")}</h2>
+            <button onClick={closeModal} aria-label={t("common.close")} title={t("common.close")} className={BTN_ICON}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
             </button>
           </div>
 
-          {/* Modal body: two columns */}
-          <div className="flex flex-col lg:flex-row lg:min-h-0">
-
-            {/* ── LEFT: Product picker ── */}
-            <div className="lg:w-[55%] border-b lg:border-b-0 lg:border-r border-[var(--border)] flex flex-col">
-              <div className="px-5 py-4 border-b border-[var(--border)]">
-                <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
-                  {t("outfits.editor.products")}
-                </p>
-                {/* Search */}
-                <input
-                  type="search"
-                  placeholder={t("outfits.editor.search")}
-                  aria-label={t("outfits.editor.search")}
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  className={inputCls}
-                />
-                {/* Category filter: one of a few, as chips. */}
-                <div className="mt-2.5">
-                  <FilterChips
-                    label={t("products.f.category")}
-                    value={productCategory}
-                    options={CATEGORIES.map(({ value, label }) => ({ value, label: t(label) }))}
-                    onChange={(v) => setProductCategory(v as Category | "all")}
-                  />
-                </div>
+          <div className="px-6 py-5 flex flex-col gap-5">
+            {/* The pieces, as the look was built. Changing them is building
+                the look again: the builder, then My looks → Publish. */}
+            <div>
+              <p className={FIELD_LABEL}>{t("outfits.editor.pieces", { count: editing.items.length })}</p>
+              <ul className="rounded-xl border border-[var(--border)] divide-y divide-[var(--border)]">
+                {editing.items.map((item) => {
+                  const colour = item.selectedColor;
+                  const src = (colour && item.product.colorImages?.[colour]?.[0]) || item.product.imageUrl;
+                  return (
+                    <li key={`${item.product.id}-${colour ?? ""}`} className="flex items-center gap-3 px-3 py-2">
+                      <Thumb src={src} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
+                        <p className="text-[12px] text-[var(--foreground-muted)] truncate">
+                          {[item.product.brand, colour].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      <span className="text-[12px] text-[var(--foreground-muted)] tabular-nums shrink-0">{f.money(item.product.priceMin)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-[12px] text-[var(--foreground-muted)]">{t("outfits.editor.total")}</span>
+                <span className="text-sm text-[var(--foreground)] tabular-nums">{f.moneyRange(editing.totalPriceMin, editing.totalPriceMax)}</span>
               </div>
+              <p className="text-[12px] text-[var(--foreground-muted)] mt-1">
+                {t("outfits.editor.piecesNote")}{" "}
+                <Link href={BUILDER_HREF} className="underline underline-offset-2 hover:text-[var(--foreground)]">
+                  {t("outfits.editor.openBuilder")}
+                </Link>
+              </p>
+            </div>
 
-              {/* Product grid */}
-              <div className="overflow-y-auto flex-1 p-4 max-h-[45dvh] lg:max-h-[420px]">
-                {loadingProducts ? (
-                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">{t("outfits.editor.loadingProducts")}</p>
-                ) : filteredProducts.length === 0 ? (
-                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">{t("outfits.editor.noProducts")}</p>
-                ) : (
-                  <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {shownProducts.map((product) => {
-                      const isSelected = selectedItems.some((i) => i.product.id === product.id);
-                      const blocked = !isSelected && atItemLimit;
-                      return (
-                        <button
-                          key={product.id}
-                          onClick={() => toggleItem(product)}
-                          disabled={blocked}
-                          title={blocked ? t("outfits.editor.itemLimit", { count: MAX_ITEMS }) : undefined}
-                          className={`text-left rounded-xl overflow-hidden border transition-colors group relative disabled:opacity-40 disabled:cursor-not-allowed ${
-                            isSelected
-                              ? "border-[var(--foreground)] bg-[var(--background)]"
-                              : "border-[var(--border)] hover:border-[var(--foreground)] disabled:hover:border-[var(--border)]"
-                          }`}
-                        >
-                          {/* Product image */}
-                          <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--background)]">
-                            <Image
-                              src={product.imageUrl}
-                              alt={product.name}
-                              fill
-                              className="object-cover transition-transform group-hover:scale-105"
-                              sizes="(max-width: 640px) 45vw, 160px"
-                            />
-                            {/* Selected overlay */}
-                            {isSelected && (
-                              <div className="absolute inset-0 bg-[var(--fg-overlay-08)] flex items-center justify-center">
-                                <div className="w-6 h-6 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                                    <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--surface)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          {/* Product info */}
-                          <div className="p-2">
-                            <p className="text-[12px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                            <p className="text-xs text-[var(--foreground)] leading-snug line-clamp-2">{product.name}</p>
-                            <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">{f.money(product.priceMin)}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {filteredProducts.length > shownProducts.length && (
-                    <p className="text-xs text-[var(--foreground-subtle)] text-center pt-4">
-                      {t("outfits.editor.pickerLimit", { shown: shownProducts.length, total: filteredProducts.length })}
-                    </p>
-                  )}
-                  </>
-                )}
+            {/* Name */}
+            <div>
+              <label htmlFor="outfit-name" className={FIELD_LABEL}>{t("outfits.editor.name")} *</label>
+              <input
+                id="outfit-name"
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder={t("outfits.editor.namePlaceholder")}
+                maxLength={120}
+                className={inputCls}
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label htmlFor="outfit-description" className={FIELD_LABEL}>{t("outfits.editor.description")}</label>
+              <textarea
+                id="outfit-description"
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder={t("outfits.editor.descriptionPlaceholder")}
+                rows={3}
+                maxLength={2000}
+                className={`${inputCls} resize-none`}
+              />
+            </div>
+
+            {/* Styles */}
+            <div>
+              <p className={FIELD_LABEL}>{t("outfits.editor.styles")}</p>
+              <div role="group" aria-label={t("outfits.editor.styles")} className="flex flex-wrap gap-1.5">
+                {STYLE_KEYWORDS.map((kw) => (
+                  <button
+                    key={kw}
+                    type="button"
+                    onClick={() => toggleKeyword(kw)}
+                    aria-pressed={form.styleKeywords.includes(kw)}
+                    className={chipCls(form.styleKeywords.includes(kw))}
+                  >
+                    {styleLabel(kw)}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* ── RIGHT: Outfit composer ── */}
-            <div className="lg:w-[45%] flex flex-col lg:overflow-y-auto lg:max-h-[600px]">
-              <div className="px-5 py-4 flex flex-col gap-4">
-
-                {/* Selected items */}
-                <div>
-                  <p className={FIELD_LABEL}>
-                    {t("outfits.editor.selected", { count: selectedItems.length, max: MAX_ITEMS })}
-                  </p>
-                  {selectedItems.length === 0 ? (
-                    <p className="text-xs text-[var(--foreground-subtle)] border border-dashed border-[var(--border)] rounded-xl px-3 py-4 text-center">
-                      {t("outfits.editor.selectedEmpty")}
-                    </p>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {selectedItems.map((item) => {
-                        const colorKeys = Object.keys(item.product.colorImages ?? {});
-                        const activeColor = item.selectedColor ?? colorKeys[0];
-                        const thumbSrc =
-                          activeColor && item.product.colorImages?.[activeColor]?.[0]
-                            ? item.product.colorImages[activeColor][0]
-                            : item.product.imageUrl;
-                        return (
-                        <div
-                          key={item.product.id}
-                          className="flex flex-col gap-2 border border-[var(--border)] rounded-xl p-2"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden rounded-lg">
-                              <Image
-                                src={thumbSrc}
-                                alt={item.product.name}
-                                fill
-                                className="object-cover"
-                                sizes="40px"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
-                              <p className="text-[12px] text-[var(--foreground-muted)]">{item.product.brand} · {f.money(item.product.priceMin)}</p>
-                            </div>
-                            {/* Role */}
-                            <select
-                              value={item.role}
-                              onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
-                              aria-label={t("outfits.editor.roleFor", { name: item.product.name })}
-                              className="text-[12px] rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
-                            >
-                              {ROLES.map((r) => (
-                                <option key={r} value={r}>{t(ROLE_KEY[r])}</option>
-                              ))}
-                            </select>
-                            {/* Remove */}
-                            <button
-                              onClick={() => removeItem(item.product.id)}
-                              aria-label={t("outfits.editor.remove", { name: item.product.name })}
-                              title={t("outfits.editor.remove", { name: item.product.name })}
-                              className={`${BTN_ICON} shrink-0`}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                                <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                              </svg>
-                            </button>
-                          </div>
-                          {/* Colour swatches (only for products with multiple colours) */}
-                          {colorKeys.length > 1 && (
-                            <div className="flex items-center gap-1.5 px-1 flex-wrap">
-                              {colorKeys.map((color) => {
-                                const previewImg = item.product.colorImages![color]?.[0];
-                                const isActive = (item.selectedColor ?? colorKeys[0]) === color;
-                                return (
-                                  <button
-                                    key={color}
-                                    title={color}
-                                    onClick={() => setSelectedColor(item.product.id, color)}
-                                    className={`relative w-10 h-10 md:w-6 md:h-6 rounded-full overflow-hidden border transition-colors ${
-                                      isActive
-                                        ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]"
-                                        : "border-[var(--border)] hover:border-[var(--foreground)]"
-                                    }`}
-                                  >
-                                    {previewImg ? (
-                                      <Image
-                                        src={previewImg}
-                                        alt={color}
-                                        fill
-                                        className="object-cover"
-                                        sizes="24px"
-                                      />
-                                    ) : (
-                                      <span className="flex w-full h-full items-center justify-center text-[11px] leading-none text-[var(--foreground-subtle)]">{color.charAt(0).toUpperCase()}</span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                              <span className="text-[12px] text-[var(--foreground-subtle)] capitalize ml-1">{activeColor}</span>
-                            </div>
-                          )}
-                        </div>
-                        );
-                      })}
-                      {/* Price total */}
-                      <div className="flex justify-between items-center pt-1 border-t border-[var(--border)]">
-                        <span className="text-[12px] text-[var(--foreground-muted)]">{t("outfits.editor.total")}</span>
-                        <span className="text-sm text-[var(--foreground)]">
-                          {f.moneyRange(priceMin, priceMax)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Name */}
-                <div>
-                  <label className={FIELD_LABEL}>{t("outfits.editor.name")} *</label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder={t("outfits.editor.namePlaceholder")}
-                    className={inputCls}
-                  />
-                </div>
-
-                {/* Occasion + Season */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={FIELD_LABEL}>{t("outfits.f.occasion")}</label>
-                    <select
-                      value={form.occasion}
-                      onChange={(e) => setForm((f) => ({ ...f, occasion: e.target.value as Occasion }))}
-                      className={selectCls}
-                    >
-                      {OCCASIONS.map((o) => (
-                        <option key={o} value={o}>{t(OCCASION_KEY[o])}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={FIELD_LABEL}>{t("outfits.f.season")}</label>
-                    <select
-                      value={form.season}
-                      onChange={(e) => setForm((f) => ({ ...f, season: e.target.value as Season }))}
-                      className={selectCls}
-                    >
-                      {SEASONS.map((s) => (
-                        <option key={s} value={s}>{t(SEASON_KEY[s])}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className={FIELD_LABEL}>{t("outfits.editor.description")}</label>
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    placeholder={t("outfits.editor.descriptionPlaceholder")}
-                    rows={2}
-                    className={`${inputCls} resize-none`}
-                  />
-                </div>
-
-                {/* Style keywords */}
-                <div>
-                  <label className={FIELD_LABEL}>{t("outfits.editor.styles")}</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {STYLE_KEYWORDS.map((kw) => (
-                      <button
-                        key={kw}
-                        type="button"
-                        onClick={() => toggleKeyword(kw)}
-                        aria-pressed={form.styleKeywords.includes(kw)}
-                        className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
-                          form.styleKeywords.includes(kw)
-                            ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
-                            : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                        }`}
-                      >
-                        {styleLabel(kw)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Cover image upload */}
-                <div>
-                  <label className={FIELD_LABEL}>{t("outfits.editor.cover")}</label>
-
-                  {/* Preview */}
-                  {form.imageUrl ? (
-                    <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden rounded-xl bg-[var(--background)]">
-                      <Image
-                        src={form.imageUrl}
-                        alt={t("outfits.editor.coverAlt")}
-                        fill
-                        className="object-cover"
-                        sizes="400px"
-                        unoptimized={form.imageUrl.startsWith("blob:")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
-                        className="absolute top-2 right-2 w-10 h-10 md:w-6 md:h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
-                        title={t("outfits.editor.removeImage")}
-                        aria-label={t("outfits.editor.removeImage")}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : (
-                    <label className={`block cursor-pointer rounded-xl border border-dashed border-[var(--border)] hover:border-[var(--foreground)] transition-colors text-center py-8 mb-2 ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/avif"
-                        className="sr-only"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) handleImageUpload(f);
-                          e.target.value = "";
-                        }}
-                      />
-                      <div className="flex flex-col items-center gap-1.5">
-                        {uploading ? (
-                          <span className="text-xs text-[var(--foreground-muted)]">{t("outfits.editor.uploading")}</span>
-                        ) : (
-                          <>
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" className="text-[var(--foreground-subtle)]">
-                              <path d="M10 3V14M10 3L6.5 6.5M10 3L13.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                            </svg>
-                            <span className="text-xs text-[var(--foreground-muted)]">{t("outfits.editor.upload")}</span>
-                            <span className="text-[12px] text-[var(--foreground-subtle)]">{t("outfits.editor.uploadHint")}</span>
-                          </>
-                        )}
-                      </div>
-                    </label>
-                  )}
-
-                  {uploadError && (
-                    <p className="text-[12px] text-[var(--err)] mb-1.5">{uploadError}</p>
-                  )}
-
-                  {/* Manual URL fallback */}
-                  <input
-                    type="url"
-                    value={form.imageUrl}
-                    onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                    placeholder={t("outfits.editor.imageUrl")}
-                    aria-label={t("outfits.editor.imageUrl")}
-                    className={inputCls}
-                  />
-                </div>
-
-                {/* AI Generated */}
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="isAIGenerated"
-                    checked={form.isAIGenerated}
-                    onChange={(e) => setForm((f) => ({ ...f, isAIGenerated: e.target.checked }))}
-                    className="w-3.5 h-3.5 accent-[var(--foreground)]"
-                  />
-                  <label htmlFor="isAIGenerated" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
-                    {t("outfits.editor.ai")}
-                  </label>
-                </div>
-
-                {/* Error */}
-                {saveError && (
-                  <p className="text-xs text-[var(--err)]">{saveError}</p>
-                )}
-              </div>
-
-              {/* Modal footer */}
-              <div className="mt-auto px-5 py-4 border-t border-[var(--border)] flex gap-3">
-                <button
-                  onClick={handleSave}
-                  disabled={!form.name.trim() || saving}
-                  className={`${btn("primary")} flex-1`}
-                >
-                  {saving ? t("common.saving") : t(editingId ? "outfits.editor.save" : "outfits.editor.create")}
-                </button>
-                <button
-                  onClick={closeModal}
-                  className={btn("ghost")}
-                >
-                  {t("common.cancel")}
-                </button>
-              </div>
+            {/* Seasons */}
+            <div>
+              <p className={FIELD_LABEL}>{t("outfits.editor.seasons")}</p>
+              <SeasonChips
+                label={t("outfits.editor.seasons")}
+                value={form.seasons}
+                onChange={(seasons) => setForm((f) => ({ ...f, seasons }))}
+              />
             </div>
+
+            {/* Cover image */}
+            <div>
+              <p className={FIELD_LABEL}>{t("outfits.editor.cover")}</p>
+              {form.imageUrl ? (
+                <div className="relative mb-2 w-full max-w-[240px] aspect-[3/4] overflow-hidden rounded-xl bg-[var(--background)]">
+                  <Image
+                    src={form.imageUrl}
+                    alt={t("outfits.editor.coverAlt")}
+                    fill
+                    className="object-cover"
+                    sizes="240px"
+                    unoptimized={form.imageUrl.startsWith("blob:")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                    className="absolute top-2 right-2 w-10 h-10 md:w-6 md:h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
+                    title={t("outfits.editor.removeImage")}
+                    aria-label={t("outfits.editor.removeImage")}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <label className={`block cursor-pointer rounded-xl border border-dashed border-[var(--border)] hover:border-[var(--foreground)] transition-colors text-center py-8 mb-2 ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleImageUpload(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <div className="flex flex-col items-center gap-1.5">
+                    {uploading ? (
+                      <span className="text-xs text-[var(--foreground-muted)]">{t("outfits.editor.uploading")}</span>
+                    ) : (
+                      <>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" className="text-[var(--foreground-subtle)]">
+                          <path d="M10 3V14M10 3L6.5 6.5M10 3L13.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                        <span className="text-xs text-[var(--foreground-muted)]">{t("outfits.editor.upload")}</span>
+                        <span className="text-[12px] text-[var(--foreground-subtle)]">{t("outfits.editor.uploadHint")}</span>
+                      </>
+                    )}
+                  </div>
+                </label>
+              )}
+
+              {uploadError && <p className="text-[12px] text-[var(--err)] mb-1.5">{uploadError}</p>}
+
+              {/* Manual URL fallback */}
+              <input
+                type="url"
+                value={form.imageUrl}
+                onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                placeholder={t("outfits.editor.imageUrl")}
+                aria-label={t("outfits.editor.imageUrl")}
+                className={inputCls}
+              />
+            </div>
+
+            {/* AI Generated */}
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="isAIGenerated"
+                checked={form.isAIGenerated}
+                onChange={(e) => setForm((f) => ({ ...f, isAIGenerated: e.target.checked }))}
+                className="w-3.5 h-3.5 accent-[var(--foreground)]"
+              />
+              <label htmlFor="isAIGenerated" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
+                {t("outfits.editor.ai")}
+              </label>
+            </div>
+
+            {saveError && <p role="alert" className="text-xs text-[var(--err)]">{saveError}</p>}
+          </div>
+
+          <div className="mt-auto px-6 py-4 border-t border-[var(--border)] flex gap-3">
+            <button onClick={handleSave} disabled={!form.name.trim() || saving} className={`${btn("primary")} flex-1`}>
+              {saving ? t("common.saving") : t("outfits.editor.save")}
+            </button>
+            <button onClick={closeModal} className={btn("ghost")}>
+              {t("common.cancel")}
+            </button>
           </div>
         </Modal>
       )}

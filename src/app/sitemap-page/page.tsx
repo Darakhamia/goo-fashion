@@ -4,6 +4,7 @@ import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
 import { withTimeout } from "@/lib/server/with-timeout";
 import { outfitLandingsFrom } from "@/lib/server/outfit-landing";
 import { outfitDisplayName, pageMetadata } from "@/lib/seo";
+import MoneyText from "@/components/ui/MoneyText";
 
 export const revalidate = 3600;
 
@@ -154,11 +155,13 @@ export default async function SitemapPage() {
                     >
                       <div className="min-w-0">
                         <p className="text-sm text-[var(--foreground)] group-hover:opacity-60 transition-opacity duration-150 truncate max-md:text-base">
-                          {outfitDisplayName(outfit)}
+                          <MoneyText text={outfitDisplayName(outfit)} />
                         </p>
-                        <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 capitalize max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
-                          {outfit.occasion}
-                        </p>
+                        {outfit.styleKeywords.length > 0 && (
+                          <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 capitalize max-md:text-[13px] max-md:text-[var(--foreground-muted)]">
+                            {outfit.styleKeywords.join(", ")}
+                          </p>
+                        )}
                       </div>
                       <span className="text-[var(--foreground-subtle)] group-hover:text-[var(--foreground)] transition-colors shrink-0 mt-0.5">
                         →

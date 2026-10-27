@@ -4,8 +4,9 @@ import { useState, useMemo, useEffect, useLayoutEffect, useRef, useSyncExternalS
 import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
-import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch, StyleKeyword } from "@/lib/types";
+import type { ColorGroup, Gender, Outfit, Product, ProductSwatch, Season, StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST, matchesStyles, styleLabel, stylesFromParam } from "@/lib/style-keywords";
+import { SEASON_LIST, matchesSeasons, seasonLabel, seasonsFromParam } from "@/lib/seasons";
 import { DEFAULT_CATEGORY_GROUPS, subcategoryToValue, resolveSubcategory } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
@@ -17,10 +18,6 @@ import { entryView, entryVisit, inOrder, keepCatalogue, keptCatalogue, loadedByB
 
 export type View = "outfits" | "pieces";
 export type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
-
-const OCCASIONS: Occasion[] = [
-  "casual", "work", "evening", "formal", "weekend", "sport",
-];
 
 const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
   { id: 1,  name: "White",      hexCode: "#ffffff", sortOrder: 1 },
@@ -211,7 +208,6 @@ export interface BrowseInitial {
 function filtersFromParams(params: Record<string, string>, colorGroups: ColorGroup[]) {
   const view: View = params.view === "outfits" ? "outfits" : "pieces";
   const gender = params.gender;
-  const occasion = params.occasion;
 
   // ?category= is a group id and selects every subcategory under it;
   // ?subcat= picks a single one. A breadcrumb uses whichever it means.
@@ -240,7 +236,7 @@ function filtersFromParams(params: Record<string, string>, colorGroups: ColorGro
     pendingCategoryGroup,
     gender: gender === "women" || gender === "men" || gender === "unisex" ? (gender as Gender) : null,
     brands: params.brand ? [params.brand] : [],
-    occasions: occasion && (OCCASIONS as string[]).includes(occasion) ? [occasion as Occasion] : [],
+    seasons: seasonsFromParam(params.season ?? null),
     aiOnly: params.ai === "1",
     styles: stylesFromParam(params.style ?? null),
     colorGroupIds,
@@ -414,10 +410,8 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
   const [selectedBrands, setSelectedBrands] = useState<string[]>(restore?.brands ?? fromUrl.brands);
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>(restore?.subcategories ?? fromUrl.subcategories);
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
-  const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>(restore?.occasions ?? fromUrl.occasions);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(restore ? restore.gender : fromUrl.gender);
   const [genderOpen, setGenderOpen] = useState(false);
-  const [occasionOpen, setOccasionOpen] = useState(false);
   const [priceOpen, setPriceOpen] = useState(false);
   const [maxPrice, setMaxPrice] = useState<number | null>(restore?.maxPrice ?? null);
   const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>(restore?.colorGroupIds ?? fromUrl.colorGroupIds);
@@ -426,6 +420,11 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
   // files both under. Any one picked is enough.
   const [selectedStyles, setSelectedStyles] = useState<StyleKeyword[]>(restore?.styles ?? fromUrl.styles);
   const [styleOpen, setStyleOpen] = useState(false);
+  // Seasons, outfits only. Any one picked is enough, and an outfit for every
+  // season answers to each (lib/seasons). Replaced the occasion filter, which
+  // styles cover (CEO, 2026-10-27).
+  const [selectedSeasons, setSelectedSeasons] = useState<Season[]>(restore?.seasons ?? fromUrl.seasons);
+  const [seasonOpen, setSeasonOpen] = useState(false);
   // A ?color= link names a colour group, but the groups arrive from the API —
   // hold the name until they do, then resolve it to an id.
   // A restored view saved them resolved.
@@ -477,10 +476,8 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     setSelectedBrands((p) => (p.includes(b) ? p.filter((x) => x !== b) : [...p, b]));
   const toggleSubcategory = (label: string) =>
     setSelectedSubcategories(p => p.includes(label) ? p.filter(x => x !== label) : [...p, label]);
-  const toggleOccasion = (o: Occasion) =>
-    setSelectedOccasions((p) =>
-      p.includes(o) ? p.filter((x) => x !== o) : [...p, o]
-    );
+  const toggleSeason = (season: Season) =>
+    setSelectedSeasons((p) => (p.includes(season) ? p.filter((x) => x !== season) : [...p, season]));
 
   const toggleStyle = (s: StyleKeyword) =>
     setSelectedStyles((p) => (p.includes(s) ? p.filter((x) => x !== s) : [...p, s]));
@@ -492,7 +489,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
   const switchView = (v: View) => {
     if (v === view) return;
     setView(v);
-    setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+    setSelectedBrands([]); setSelectedSubcategories([]); setSelectedSeasons([]);
     setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
     setSearchQuery(""); setSearchOpen(false); setSelectedStyles([]);
     const url = new URL(window.location.href); url.searchParams.set("view", v);
@@ -502,7 +499,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
   const activeFiltersCount =
     selectedBrands.length +
     selectedSubcategories.length +
-    selectedOccasions.length +
+    selectedSeasons.length +
     selectedColorGroupIds.length +
     (selectedGender !== null ? 1 : 0) +
     (maxPrice !== null ? 1 : 0) +
@@ -514,7 +511,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     setSelectedBrands([]);
     setSelectedSubcategories([]);
     setExpandedCategoryGroups(new Set());
-    setSelectedOccasions([]);
+    setSelectedSeasons([]);
     setSelectedGender(null);
     setMaxPrice(null);
     setSelectedColorGroupIds([]);
@@ -576,30 +573,19 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
     let r = catalogOutfits
-      .filter(
-        (o) =>
-          !selectedOccasions.length ||
-          selectedOccasions.includes(o.occasion as Occasion)
-      )
+      .filter((o) => matchesSeasons(o.seasons, selectedSeasons))
       .filter((o) => !aiOnly || o.isAIGenerated)
       .filter(
         (o) =>
           maxPrice === null || o.totalPriceMin <= maxPrice
       )
-      .filter(
-        (o) =>
-          !selectedStyles.length ||
-          // "casual" is an occasion as well as a style, and an outfit filed
-          // under it answers to either.
-          selectedStyles.includes(o.occasion.toLowerCase() as StyleKeyword) ||
-          matchesStyles(o.styleKeywords, selectedStyles)
-      )
+      .filter((o) => matchesStyles(o.styleKeywords, selectedStyles))
       .filter(
         (o) =>
           !q ||
           o.name.toLowerCase().includes(q) ||
-          o.occasion.toLowerCase().includes(q) ||
-          o.styleKeywords.some((k) => k.toLowerCase().includes(q))
+          o.styleKeywords.some((k) => k.toLowerCase().includes(q)) ||
+          (o.seasons ?? []).some((season) => season.includes(q))
       );
 
     if (sort === "price-asc")
@@ -607,7 +593,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     else if (sort === "price-desc")
       r = [...r].sort((a, b) => b.totalPriceMax - a.totalPriceMax);
     return r;
-  }, [catalogOutfits, selectedOccasions, aiOnly, maxPrice, selectedStyles, searchQuery, sort]);
+  }, [catalogOutfits, selectedSeasons, aiOnly, maxPrice, selectedStyles, searchQuery, sort]);
 
   // When color filters are active, expand each product into one entry per matching
   // color variant. This lets a single product appear as multiple cards when multiple
@@ -673,7 +659,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
   // Reset to page 1 whenever filters/sort/view change. Done while rendering
   // (React's "adjust state when inputs change" pattern) rather than in an
   // effect; the inputs are compared the way effect dependencies would be.
-  const pageResetInputs = [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyles];
+  const pageResetInputs = [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedSeasons, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyles];
   const [prevPageResetInputs, setPrevPageResetInputs] = useState(pageResetInputs);
   if (pageResetInputs.some((v, i) => !Object.is(v, prevPageResetInputs[i]))) {
     setPrevPageResetInputs(pageResetInputs);
@@ -703,7 +689,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     here.current = {
       url: location.pathname + location.search,
       view, search: searchQuery, sort,
-      brands: selectedBrands, subcategories: selectedSubcategories, occasions: selectedOccasions,
+      brands: selectedBrands, subcategories: selectedSubcategories, seasons: selectedSeasons,
       gender: selectedGender, maxPrice, colorGroupIds: selectedColorGroupIds, aiOnly,
       styles: selectedStyles, likedOnly, page, extraPages,
       scrollY: here.current?.scrollY ?? window.scrollY,
@@ -711,7 +697,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     };
     // Again after a change of tab: replacing the URL drops the stamp.
     if (visit.current) stampEntry(visit.current, here.current.url);
-  }, [view, searchQuery, sort, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyles, likedOnly, page, extraPages, catalogProducts]);
+  }, [view, searchQuery, sort, selectedBrands, selectedSubcategories, selectedSeasons, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyles, likedOnly, page, extraPages, catalogProducts]);
   // Saved on the way out: when the page that replaces it mounts, or when the
   // tab leaves the site. A layout effect, so it is saved before the next page
   // scrolls the window to its own top.
@@ -780,53 +766,66 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     searchQuery: searchQuery || undefined,
     categories: selectedSubcategories.length ? selectedSubcategories : undefined,
     brands: selectedBrands.length ? selectedBrands : undefined,
-    occasions: selectedOccasions.length ? (selectedOccasions as string[]) : undefined,
+    seasons: view === "outfits" && selectedSeasons.length ? (selectedSeasons as string[]) : undefined,
     gender: selectedGender ?? undefined,
     styles: selectedStyles.length ? (selectedStyles as string[]) : undefined,
     priceLabel: maxPrice !== null ? `<$${maxPrice.toLocaleString()}` : undefined,
     visibleCount: count,
-  }), [view, searchQuery, selectedSubcategories, selectedBrands, selectedOccasions, selectedGender, selectedStyles, maxPrice, count]);
+  }), [view, searchQuery, selectedSubcategories, selectedBrands, selectedSeasons, selectedGender, selectedStyles, maxPrice, count]);
 
   const filteredBrandsForSearch = BRANDS.filter(
     (b) => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())
   );
 
-  /* Style — the same section in both views */
-  const renderStyleFilter = () => (
+  /**
+   * A section of the sidebar that picks any number of a short list: a heading
+   * that opens it, "All", and a round tick per choice. Style (both views) and
+   * Season (outfits) are built on it.
+   */
+  const renderChoiceFilter = <K extends string>(opts: {
+    title: string;
+    open: boolean;
+    setOpen: (fn: (v: boolean) => boolean) => void;
+    choices: readonly K[];
+    selected: readonly K[];
+    label: (k: K) => string;
+    toggle: (k: K) => void;
+    clear: () => void;
+  }) => (
     <div className="border-b border-[var(--border)] px-5 py-4">
       <button
-        onClick={() => setStyleOpen(v => !v)}
-        aria-expanded={styleOpen}
+        onClick={() => opts.setOpen(v => !v)}
+        aria-expanded={opts.open}
         className="w-full flex items-center justify-between group"
       >
         <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
-          Style{selectedStyles.length > 0 && <span className="ml-2 text-[10px] font-semibold opacity-60 normal-case">— {selectedStyles.length === 1 ? styleLabel(selectedStyles[0]) : `${selectedStyles.length} selected`}</span>}
+          {opts.title}{opts.selected.length > 0 && <span className="ml-2 text-[10px] font-semibold opacity-60 normal-case">— {opts.selected.length === 1 ? opts.label(opts.selected[0]) : `${opts.selected.length} selected`}</span>}
         </p>
-        <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${styleOpen ? "rotate-180" : ""}`}>
+        <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${opts.open ? "rotate-180" : ""}`}>
           <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {styleOpen && (
+      {opts.open && (
         <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
           <button
-            onClick={() => setSelectedStyles([])}
+            onClick={opts.clear}
             className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
           >
-            <span className={`text-[14px] font-bold ${selectedStyles.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
-            {selectedStyles.length === 0 && (
+            <span className={`text-[14px] font-bold ${opts.selected.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
+            {opts.selected.length === 0 && (
               <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             )}
           </button>
-          {STYLE_KEYWORD_LIST.map((st) => {
-            const isChk = selectedStyles.includes(st);
+          {opts.choices.map((k) => {
+            const isChk = opts.selected.includes(k);
             return (
               <button
-                key={st}
-                onClick={() => toggleStyle(st)}
+                key={k}
+                onClick={() => opts.toggle(k)}
                 aria-pressed={isChk}
                 className="w-full flex items-center justify-between px-4 py-3.5 border-t border-[var(--border)] transition-colors hover:bg-[var(--surface)]"
               >
-                <span className={`text-[14px] font-bold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{styleLabel(st)}</span>
+                <span className={`text-[14px] font-bold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{opts.label(k)}</span>
                 <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
                   {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                 </div>
@@ -837,6 +836,18 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
       )}
     </div>
   );
+
+  /* Style — the same section in both views */
+  const renderStyleFilter = () => renderChoiceFilter({
+    title: "Style",
+    open: styleOpen,
+    setOpen: setStyleOpen,
+    choices: STYLE_KEYWORD_LIST,
+    selected: selectedStyles,
+    label: styleLabel,
+    toggle: toggleStyle,
+    clear: () => setSelectedStyles([]),
+  });
 
   /* Sidebar filter content — matches builder style exactly */
   const renderFilters = () => (
@@ -861,71 +872,34 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
 
       {view === "outfits" ? (
         <>
-          {/* AI ONLY */}
+          {/* AI ONLY — a switch: on shows only the looks the AI put together */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Curated by AI</p>
             <button
+              role="switch"
+              aria-checked={aiOnly}
               onClick={() => setAiOnly((v) => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-colors duration-150 ${
-                aiOnly
-                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
+              className="w-full flex items-center justify-between gap-3 text-left group"
             >
-              <span className="text-[11px] font-semibold">AI outfits only</span>
-              {aiOnly && (
-                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                  <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </button>
-          </div>
-          {/* OCCASION */}
-          <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Occasion</p>
-            <button
-              onClick={() => setOccasionOpen(v => !v)}
-              className={`w-full flex items-center justify-between px-3 py-3 rounded-xl border transition-[color,background-color,border-color,opacity] duration-150 ${
-                occasionOpen || selectedOccasions.length > 0
-                  ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-[var(--border-strong)] text-[var(--foreground)] opacity-55 hover:opacity-100 hover:border-[var(--foreground)]"
-              }`}
-            >
-              <span className="text-[13px] font-bold capitalize">
-                {selectedOccasions.length === 0 ? "All" : selectedOccasions.length === 1 ? selectedOccasions[0] : `${selectedOccasions.length} selected`}
+              <span>
+                <span className="block text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Curated by AI</span>
+                <span className="block mt-1 text-[11px] text-[var(--foreground-muted)]">AI outfits only</span>
               </span>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${occasionOpen ? "rotate-180" : ""}`}>
-                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <span aria-hidden="true" className={`relative shrink-0 w-11 h-[26px] rounded-full transition-colors duration-200 ${aiOnly ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"}`}>
+                <span className={`absolute top-[3px] left-[3px] w-5 h-5 rounded-full bg-[var(--background)] transition-transform duration-200 ${aiOnly ? "translate-x-[18px]" : ""}`} />
+              </span>
             </button>
-            {occasionOpen && (
-              <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setSelectedOccasions([])}
-                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
-                >
-                  <span className={`text-[14px] font-bold ${selectedOccasions.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
-                  {selectedOccasions.length === 0 && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  )}
-                </button>
-                {OCCASIONS.map((occ, i) => {
-                  const isChk = selectedOccasions.includes(occ);
-                  return (
-                    <button key={occ} onClick={() => toggleOccasion(occ)}
-                      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-[var(--surface)] ${i >= 0 ? "border-t border-[var(--border)]" : ""}`}
-                    >
-                      <span className={`text-[14px] font-bold capitalize ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{occ}</span>
-                      <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
-                        {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
           {renderStyleFilter()}
+          {renderChoiceFilter({
+            title: "Season",
+            open: seasonOpen,
+            setOpen: setSeasonOpen,
+            choices: SEASON_LIST,
+            selected: selectedSeasons,
+            label: seasonLabel,
+            toggle: toggleSeason,
+            clear: () => setSelectedSeasons([]),
+          })}
         </>
       ) : (
         <>
@@ -1352,16 +1326,6 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
             </>
           ) : (
             <>
-              <SheetSection title="Occasion">
-                <div className="flex flex-wrap gap-2">
-                  <SheetChip on={selectedOccasions.length === 0} onClick={() => setSelectedOccasions([])}>All</SheetChip>
-                  {OCCASIONS.map((occ) => (
-                    <SheetChip key={occ} on={selectedOccasions.includes(occ)} onClick={() => toggleOccasion(occ)}>
-                      {occ.charAt(0).toUpperCase() + occ.slice(1)}
-                    </SheetChip>
-                  ))}
-                </div>
-              </SheetSection>
               <SheetToggle label="AI outfits only" on={aiOnly} onChange={() => setAiOnly((v) => !v)} />
             </>
           )}
@@ -1374,6 +1338,17 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
               ))}
             </div>
           </SheetSection>
+
+          {view === "outfits" && (
+            <SheetSection title="Season">
+              <div className="flex flex-wrap gap-2">
+                <SheetChip on={selectedSeasons.length === 0} onClick={() => setSelectedSeasons([])}>All</SheetChip>
+                {SEASON_LIST.map((season) => (
+                  <SheetChip key={season} on={selectedSeasons.includes(season)} onClick={() => toggleSeason(season)}>{seasonLabel(season)}</SheetChip>
+                ))}
+              </div>
+            </SheetSection>
+          )}
 
           <SheetSection title="Price">
             <div className="flex flex-wrap gap-2">
@@ -1825,9 +1800,9 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
                     />
                   </motion.div>
                 ))}
-                {selectedOccasions.map((occ) => (
+                {selectedSeasons.map((season) => (
                   <motion.div
-                    key={occ}
+                    key={`season-${season}`}
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.85 }}
@@ -1835,8 +1810,8 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
                     layout
                   >
                     <ActiveChip
-                      label={occ}
-                      onRemove={() => toggleOccasion(occ)}
+                      label={seasonLabel(season)}
+                      onRemove={() => toggleSeason(season)}
                     />
                   </motion.div>
                 ))}

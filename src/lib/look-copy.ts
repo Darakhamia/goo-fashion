@@ -12,17 +12,24 @@
  * them keep it or write their own, and store the result. Two consequences worth
  * stating — it costs nothing and cannot fail, because there is no model call in
  * it, and the suggestion matches what the public page will actually render.
+ *
+ * The price goes in as dollars, the currency a look's total is kept in. It
+ * used to go in already converted to the writer's currency, and the stored
+ * text then told every reader "from €1,870" or "from ₴84,000" whatever they
+ * had chosen; the pages that show the text now convert any price in it to the
+ * reader's currency (`lib/money-text`), which only works from a known one.
  */
+import type { Season } from "@/lib/types";
+import { seasonsPhrase } from "@/lib/seasons";
 
 export interface LookCopyInput {
   /** Brands in the look, in piece order; duplicates are collapsed here. */
   brands: string[];
   styleKeywords: string[];
   pieceCount: number;
-  /** Already formatted for display, e.g. "$2,035" — this module does no maths. */
+  /** Formatted in US dollars, e.g. "$2,035" — this module does no maths. */
   price?: string;
-  occasion?: string;
-  season?: string;
+  seasons?: Season[];
 }
 
 const clean = (values: string[]) =>
@@ -39,7 +46,6 @@ export function suggestLookName(input: LookCopyInput): string {
   const descriptor = [brands.slice(0, 2).join(" + "), style].filter(Boolean).join(" ").trim();
 
   if (descriptor) return `${descriptor} look`;
-  if (input.occasion) return `${input.occasion} look`;
   return input.pieceCount ? `${input.pieceCount}-piece look` : "New look";
 }
 
@@ -50,13 +56,12 @@ export function suggestLookName(input: LookCopyInput): string {
 export function suggestLookDescription(input: LookCopyInput): string {
   const brands = clean(input.brands);
   const byBrands = brands.length ? ` featuring ${brands.slice(0, 3).join(", ")}` : "";
-  const season = input.season && input.season !== "all" ? `${input.season} ` : "";
-  const occasion = input.occasion || "casual";
+  const kind = [seasonsPhrase(input.seasons ?? []), clean(input.styleKeywords)[0]].filter(Boolean).join(" ");
   const pieces = input.pieceCount ? `${input.pieceCount} piece${input.pieceCount === 1 ? "" : "s"}` : "";
   const from = input.price ? `, complete from ${input.price} across leading retailers` : "";
 
   return (
-    `Shop this ${season}${occasion} look${byBrands}. ` +
+    `Shop this ${kind ? `${kind} ` : ""}look${byBrands}. ` +
     `${pieces ? `${pieces} styled together` : "Styled together"}${from}.`
   ).slice(0, 300);
 }

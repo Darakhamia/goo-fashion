@@ -45,13 +45,8 @@ export type Category =
   | "blazers"
   | "swimwear";
 
-export type Occasion =
-  | "casual"
-  | "work"
-  | "evening"
-  | "sport"
-  | "formal"
-  | "weekend";
+/** What an outfit is for in the year; none on an outfit means every season. */
+export type Season = "spring" | "summer" | "autumn" | "winter";
 
 export type StyleKeyword =
   | "casual"
@@ -202,7 +197,6 @@ export interface Outfit {
   id: string;
   name: string;
   description: string;
-  occasion: Occasion;
   imageUrl: string;
   items: OutfitItem[];
   totalPriceMin: number;
@@ -211,7 +205,12 @@ export interface Outfit {
   styleKeywords: StyleKeyword[];
   isAIGenerated: boolean;
   isSaved: boolean;
-  season: "all" | "spring" | "summer" | "autumn" | "winter";
+  /**
+   * The seasons it is for, in calendar order (`lib/seasons`); empty means every
+   * season. Replaced a single `season` and the `occasion` field, which styles
+   * now cover (CEO, 2026-10-27) — the database keeps both old columns.
+   */
+  seasons: Season[];
   source?: "community" | null;
   isHomepageFeatured?: boolean;
   /** ISO date string from DB — used for per-entity sitemap lastmod. */

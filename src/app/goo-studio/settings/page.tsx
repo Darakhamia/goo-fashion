@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SUPPORTED_STORES, storeFaviconUrl } from "@/lib/stores";
+import { styleLabel } from "@/lib/style-keywords";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
@@ -31,7 +32,7 @@ interface PickerItem {
   id: string;
   name: string;
   imageUrl: string;
-  sub: string; // brand (products) or occasion (outfits)
+  sub: string; // brand (products) or styles (outfits)
 }
 
 type StepSource = "products" | "outfits";
@@ -197,16 +198,6 @@ function renderSchemaCheck(c: SchemaCheck, t: T) {
     </li>
   );
 }
-
-// Occasions the Outfits screen names in the dictionary; anything else shows as it is.
-const OCCASION_KEY = new Map<string, Key>([
-  ["casual", "outfits.occasion.casual"],
-  ["work", "outfits.occasion.work"],
-  ["evening", "outfits.occasion.evening"],
-  ["sport", "outfits.occasion.sport"],
-  ["formal", "outfits.occasion.formal"],
-  ["weekend", "outfits.occasion.weekend"],
-]);
 
 /** A saved selection that did not load: say so, keep Save off, offer a retry. */
 function SelectionLoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -697,11 +688,11 @@ export default function SettingsPage() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setOutfits(
-          data.map((o: { id: string; name: string; occasion: string; imageUrl: string }) => ({
+          data.map((o: { id: string; name: string; styleKeywords?: string[]; imageUrl: string }) => ({
             id: o.id,
             name: o.name,
             imageUrl: o.imageUrl,
-            sub: o.occasion ?? "",
+            sub: (o.styleKeywords ?? []).map(styleLabel).join(", "),
           }))
         );
       }
@@ -710,12 +701,9 @@ export default function SettingsPage() {
     }
   }
 
-  // Looks as the pickers show them: the occasion in the admin's language, or
-  // just "look" when there is none.
-  const lookItems = outfits.map((o) => {
-    const occasion = OCCASION_KEY.get(o.sub);
-    return { ...o, sub: occasion ? t(occasion) : o.sub || t("settings.picker.look") };
-  });
+  // Looks as the pickers show them: their styles, or just "look" when they
+  // have none. Styles replaced the occasion here (CEO, 2026-10-27).
+  const lookItems = outfits.map((o) => ({ ...o, sub: o.sub || t("settings.picker.look") }));
 
   // Which catalog backs a given step, and a lookup within it.
   const itemsForStep = (step: StepKey) =>

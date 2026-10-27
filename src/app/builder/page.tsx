@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Product, ProductSwatch, StyleKeyword, Brand, Gender } from "@/lib/types";
+import type { Product, ProductSwatch, StyleKeyword, Brand, Gender, Season } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { toCartItem } from "@/lib/cart-item";
@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import { StylePicker } from "@/components/look/StylePicker";
+import { SeasonPicker } from "@/components/look/SeasonPicker";
 import { displayedProduct } from "@/lib/variant-display";
 import { useHoverImageCycle, ImageCycleDots, CYCLE_SLIDE_MS } from "@/lib/hooks/useHoverImageCycle";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
@@ -270,6 +271,9 @@ export default function BuilderPage() {
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
   const [showNameModal, setShowNameModal] = useState(false);
   const [pendingLookName, setPendingLookName] = useState("");
+  // The seasons the look is for, chosen in the save dialog; none means every
+  // season (lib/seasons). Kept between saves of the same session's look.
+  const [lookSeasons, setLookSeasons] = useState<Season[]>([]);
   const [colorPickerSlot, setColorPickerSlot] = useState<SlotId | null>(null);
   const [colorPickerProduct, setColorPickerProduct] = useState<Product | null>(null);
 
@@ -730,7 +734,7 @@ export default function BuilderPage() {
   // Shared persistence helper — used by Save button and post-generation auto-save.
   // If editId (URL) or persistedLookId (session) matches an existing look, updates it.
   // Otherwise creates a new look and remembers its id so future calls reuse it.
-  const persistLook = async (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string } = {}): Promise<boolean> => {
+  const persistLook = async (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string; seasons?: Season[] } = {}): Promise<boolean> => {
     const urlEditId = new URLSearchParams(window.location.search).get("editId");
     const targetId = urlEditId || persistedLookId;
     const pieces = Object.entries(selection)
@@ -772,6 +776,7 @@ export default function BuilderPage() {
                 styleKeywords,
                 ...(extra.name !== undefined && { name: extra.name }),
                 ...(extra.description !== undefined && { description: extra.description }),
+                ...(extra.seasons !== undefined && { seasons: extra.seasons }),
                 // null explicitly clears the stored image; undefined means "don't touch"
                 ...(extra.generatedImage !== undefined && { generatedImage: extra.generatedImage ?? null }),
                 ...(extra.generatedStyle !== undefined && { generatedStyle: extra.generatedStyle }),
@@ -788,6 +793,7 @@ export default function BuilderPage() {
           savedAt: new Date().toISOString(),
           name: extra.name || `Outfit ${existing.length + 1}`,
           ...(extra.description && { description: extra.description }),
+          ...(extra.seasons?.length && { seasons: extra.seasons }),
           pieces,
           totalPrice,
           styleKeywords,
@@ -821,6 +827,8 @@ export default function BuilderPage() {
       const existing = loadLocalLooks();
       const existingLook = urlEditId ? existing.find(o => o.id === urlEditId) : null;
       setPendingLookName(existingLook?.name || `Outfit ${existing.length + 1}`);
+      // A look opened from My looks keeps the seasons it was saved with.
+      if (existingLook) setLookSeasons(existingLook.seasons ?? []);
     } catch {
       setPendingLookName("Outfit 1");
     }
@@ -835,7 +843,7 @@ export default function BuilderPage() {
     if (savingLook) return;
     setSavingLook(true);
     setSaveFailed(false);
-    const ok = await persistLook({ name: pendingLookName.trim() || "My Look", generatedImage: generatedImage });
+    const ok = await persistLook({ name: pendingLookName.trim() || "My Look", generatedImage: generatedImage, seasons: lookSeasons });
     setSavingLook(false);
     if (!ok) { setSaveFailed(true); return; } // keep modal open so the save isn't silently lost
     setSaved(true);
@@ -2495,6 +2503,8 @@ export default function BuilderPage() {
                   <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
+              <p className="mb-1.5 text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">Seasons</p>
+              <SeasonPicker value={lookSeasons} onChange={setLookSeasons} className="mb-5" />
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowNameModal(false)}
@@ -2566,6 +2576,8 @@ export default function BuilderPage() {
                   className="mt-2 block w-full h-[50px] px-3.5 rounded-2xl border border-[var(--border-strong)] focus:border-[var(--foreground)] bg-transparent text-base text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none! transition-colors"
                 />
               </label>
+              <p className="mt-[18px] mb-2.5 text-[13px] text-[var(--foreground-muted)]">Seasons</p>
+              <SeasonPicker value={lookSeasons} onChange={setLookSeasons} />
               {saveFailed && (
                 <p role="alert" className="mt-2 text-[13px] text-[var(--foreground-muted)]">Couldn’t save the look. Try again.</p>
               )}
@@ -3142,7 +3154,7 @@ export default function BuilderPage() {
                   if (savingLook) return;
                   setSavingLook(true);
                   setSaveFailed(false);
-                  const ok = await persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined, generatedImage: generatedImage });
+                  const ok = await persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined, generatedImage: generatedImage, seasons: lookSeasons });
                   setSavingLook(false);
                   if (!ok) { setSaveFailed(true); return; }
                   setSaved(true);
