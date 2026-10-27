@@ -91,6 +91,7 @@ const ACTION_TONE: Record<AdminAction, Tone | null> = {
   "outfits.deleted": "err",
   "looks.approved": "ok",
   "looks.published": "ok",
+  "looks.ai_generated": null,
   "looks.rejected": null,
   "blog.created": null,
   "blog.updated": null,

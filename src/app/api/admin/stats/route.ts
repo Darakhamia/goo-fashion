@@ -67,6 +67,7 @@ const CATALOGUE_ACTIONS: AdminAction[] = [
   "outfits.deleted",
   "looks.approved",
   "looks.published",
+  "looks.ai_generated",
   "looks.rejected",
   "brands.created",
   "brands.deleted",

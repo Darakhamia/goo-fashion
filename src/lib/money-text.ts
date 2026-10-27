@@ -93,3 +93,9 @@ export function localizeMoney(
       : format(first, currency);
   });
 }
+
+/** Does `text` name a price anywhere — "$120", "1 870 €", "USD 2035"? */
+export function containsMoney(text: string): boolean {
+  if (!text || !/\d/.test(text)) return false;
+  return new RegExp(MONEY.source, "u").test(text);
+}

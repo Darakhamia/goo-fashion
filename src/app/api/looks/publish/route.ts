@@ -66,9 +66,9 @@ export async function POST(req: Request) {
     total_price_max: priced.totalPriceMax,
     currency: "USD",
     style_keywords: styleKeywords,
-    // The "AI" mark means the picture was made by the AI, as for an approved
-    // community look; the studio's editor can change it.
-    is_ai_generated: Boolean(generatedImage),
+    // Put together by a person: the "AI" mark is for outfits the AI chose
+    // the pieces of (CEO, 2026-10-27), whoever drew the picture.
+    is_ai_generated: false,
     is_saved: false,
   });
   if ("error" in created) {

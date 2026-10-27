@@ -20,11 +20,12 @@ interface PromptItem {
   required: string[];
 }
 
-type Category = "content" | "image";
+type Category = "content" | "image" | "outfits";
 
 const CATEGORIES: { key: Category; label: Key }[] = [
   { key: "content", label: "prompts.tab.content" },
   { key: "image", label: "prompts.tab.image" },
+  { key: "outfits", label: "prompts.tab.outfits" },
 ];
 
 /** What each prompt is for, in the admin's language; the server's own text is the fallback. */
@@ -37,6 +38,8 @@ const DESCRIPTIONS: Record<string, Key> = {
   prompt_image_mannequin: "prompts.desc.prompt_image_mannequin",
   prompt_image_flatlay: "prompts.desc.prompt_image_flatlay",
   prompt_image_tryon: "prompts.desc.prompt_image_tryon",
+  prompt_ai_outfits_styling: "prompts.desc.prompt_ai_outfits_styling",
+  prompt_ai_outfits_copy: "prompts.desc.prompt_ai_outfits_copy",
 };
 
 function describe(t: T, item: PromptItem): string {

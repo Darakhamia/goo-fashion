@@ -373,6 +373,7 @@ export const en = {
   "prompts.tabs": "Prompt groups",
   "prompts.tab.content": "Content",
   "prompts.tab.image": "Image generation",
+  "prompts.tab.outfits": "AI outfits",
   "prompts.custom": "Custom",
   "prompts.required": "Required:",
   "prompts.missing": {
@@ -393,6 +394,8 @@ export const en = {
   "prompts.desc.prompt_image_mannequin": "Generation on a mannequin. Use {{items}} and {{fidelity}}.",
   "prompts.desc.prompt_image_flatlay": "Flat lay on a surface. Use {{items}} and {{fidelity}}.",
   "prompts.desc.prompt_image_tryon": "Try-on on a person. Use {{items}} and {{fidelity}}.",
+  "prompts.desc.prompt_ai_outfits_styling": "How the AI puts outfits together: colour, style, proportion, season. The outfit's structure and the run's limits (styles, colours, brands, gender) are fixed in code and checked by the server — this is the taste.",
+  "prompts.desc.prompt_ai_outfits_copy": "Rules for AI outfit names and descriptions. The server still checks the text (length, prices, emoji, other brands, generic words) and replaces a weak one with the standard wording.",
 
   // ── Image crop (Products) ─────────────────────────────────────────────────
   "crop.title": "Crop image",
@@ -544,6 +547,7 @@ export const en = {
   "act.outfits.deleted": "Deleted an outfit",
   "act.looks.approved": "Approved a look",
   "act.looks.published": "Published own look",
+  "act.looks.ai_generated": "Asked the AI for outfits",
   "act.looks.rejected": "Rejected a look",
   "act.blog.created": "Added a post",
   "act.blog.updated": "Edited a post",

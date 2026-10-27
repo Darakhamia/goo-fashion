@@ -367,6 +367,7 @@ export const ru: Partial<Record<Key, Message>> = {
   "prompts.tabs": "Группы промтов",
   "prompts.tab.content": "Контент",
   "prompts.tab.image": "Картинки",
+  "prompts.tab.outfits": "AI-образы",
   "prompts.custom": "Изменён",
   "prompts.required": "Обязательно:",
   "prompts.missing": {
@@ -389,6 +390,8 @@ export const ru: Partial<Record<Key, Message>> = {
   "prompts.desc.prompt_image_mannequin": "Промт для генерации на манекене. Используй {{items}} и {{fidelity}}.",
   "prompts.desc.prompt_image_flatlay": "Промт для раскладки на полу/поверхности. Используй {{items}} и {{fidelity}}.",
   "prompts.desc.prompt_image_tryon": "Промт для примерки на человеке. Используй {{items}} и {{fidelity}}.",
+  "prompts.desc.prompt_ai_outfits_styling": "Как AI собирает образы: цвет, стиль, пропорции, сезон. Структура образа и ограничения запуска (стили, цвета, бренды, пол) заданы в коде и проверяются сервером — здесь только вкус.",
+  "prompts.desc.prompt_ai_outfits_copy": "Правила для названий и описаний AI-образов. Сервер всё равно проверяет текст (длина, цены, эмодзи, чужие бренды, общие слова) и заменяет неудачный шаблонным.",
 
   // ── Image crop (Products) ─────────────────────────────────────────────────
   "crop.title": "Кадрирование изображения",
@@ -540,6 +543,7 @@ export const ru: Partial<Record<Key, Message>> = {
   "act.outfits.deleted": "Удалён образ",
   "act.looks.approved": "Образ одобрен",
   "act.looks.published": "Опубликован свой образ",
+  "act.looks.ai_generated": "Запущена генерация образов AI",
   "act.looks.rejected": "Образ отклонён",
   "act.blog.created": "Добавлен пост",
   "act.blog.updated": "Изменён пост",

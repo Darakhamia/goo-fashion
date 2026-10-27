@@ -93,6 +93,18 @@ const OTHER_CHECKS: readonly Check[] = [
     breaks: "A saved look's seasons stay on the device they were chosen on.",
   },
   {
+    table: "ai_outfit_runs",
+    column: "log",
+    migration: "031_ai_outfit_runs.sql",
+    breaks: "Outfits → Pending → Generate with AI cannot start a run.",
+  },
+  {
+    table: "pending_looks",
+    column: "ai_meta",
+    migration: "031_ai_outfit_runs.sql",
+    breaks: "Looks made by the AI cannot be queued, and approval cannot tell them from a shopper's.",
+  },
+  {
     table: "pending_looks",
     column: "look_id",
     migration: "008_pending_looks_look_id.sql",

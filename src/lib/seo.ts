@@ -122,7 +122,7 @@ const GENERIC_OUTFIT_NAMES = new Set([
   "community look", "look", "outfit", "untitled", "untitled look", "new look",
 ]);
 
-function isGenericName(name?: string): boolean {
+export function isGenericName(name?: string): boolean {
   const n = (name ?? "").trim().toLowerCase();
   // The builder's own default ("Outfit 51") and its numbered variants.
   return !n || GENERIC_OUTFIT_NAMES.has(n) || /^(community |my )?(outfit|look)( #?\d+)?$/.test(n);
