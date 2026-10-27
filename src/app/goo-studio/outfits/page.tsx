@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "@/components/ui/Image";
-import type { Outfit, Season, StyleKeyword } from "@/lib/types";
+import type { Gender, Outfit, Season, StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
 import { SEASON_LIST, normalizeSeasons, seasonsFromRow } from "@/lib/seasons";
+import { GENDERS, normalizeGender, outfitGenderOf } from "@/lib/outfit-gender";
 import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
@@ -15,7 +16,7 @@ import type { Key, T, Vars } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
 import { PageHeader, PLUS } from "@/components/admin/PageHeader";
 import type { Column } from "@/components/admin/DataTable";
-import { ActiveFilters, FilterBar, FilterMenu, SearchField } from "@/components/admin/FilterBar";
+import { ActiveFilters, FilterBar, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
 import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
@@ -46,6 +47,8 @@ interface PendingLook {
   seasons?: string[] | null;
   /** Set when the AI put the look together (Generate with AI, migration 031). */
   ai_meta?: AiMeta | null;
+  /** Who it is for (migration 032); null = read from the pieces at approval. */
+  gender?: string | null;
 }
 
 /**
@@ -59,6 +62,7 @@ interface OutfitFormState {
   imageUrl: string;
   styleKeywords: StyleKeyword[];
   seasons: Season[];
+  gender: Gender;
   isAIGenerated: boolean;
 }
 
@@ -118,6 +122,7 @@ const defaultForm: OutfitFormState = {
   imageUrl: "",
   styleKeywords: [],
   seasons: [],
+  gender: "unisex",
   isAIGenerated: false,
 };
 
@@ -161,6 +166,44 @@ function SeasonChips({ value, onChange, label }: { value: Season[]; onChange: (n
   );
 }
 
+const GENDER_KEY: Record<Gender, Key> = {
+  women: "outfits.gender.women",
+  men: "outfits.gender.men",
+  unisex: "outfits.gender.unisex",
+};
+
+/**
+ * Who an outfit is for, as chips: one of three. With `auto`, a fourth —
+ * "From the pieces", none picked — leaves it to what the pieces add up to.
+ */
+function GenderChips({
+  value,
+  onChange,
+  label,
+  auto = false,
+}: {
+  value: Gender | null;
+  onChange: (next: Gender | null) => void;
+  label: string;
+  auto?: boolean;
+}) {
+  const t = useT();
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+      {auto && (
+        <button type="button" role="radio" aria-checked={value === null} onClick={() => onChange(null)} className={chipCls(value === null)}>
+          {t("outfits.gender.auto")}
+        </button>
+      )}
+      {GENDERS.map((g) => (
+        <button key={g} type="button" role="radio" aria-checked={value === g} onClick={() => onChange(g)} className={chipCls(value === g)}>
+          {t(GENDER_KEY[g])}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminOutfitsPage() {
   const t = useT();
   const f = useFormat();
@@ -182,6 +225,7 @@ export default function AdminOutfitsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   // A season, or "all" for the outfits set for every season.
   const [seasonFilter, setSeasonFilter] = useState<Season | "all" | "">("");
+  const [genderFilter, setGenderFilter] = useState<Gender | "">("");
   const [homeFilter, setHomeFilter] = useState<"on" | "off" | "">("");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   /** Ticked rows, by outfit id — what the selection bar acts on. */
@@ -213,6 +257,7 @@ export default function AdminOutfitsPage() {
     name: "",
     description: "",
     seasons: [] as Season[],
+    gender: null as Gender | null,
     styleKeywords: [] as StyleKeyword[],
   });
 
@@ -221,10 +266,74 @@ export default function AdminOutfitsPage() {
       name: look.name ?? "",
       description: look.description ?? "",
       seasons: seasonsFromRow(look),
+      gender: normalizeGender(look.gender),
       styleKeywords: normalizeStyleKeywords(look.style_keywords),
     });
     setModerationError("");
+    setRedrawStyle(look.generated_style === "flatlay" ? "flatlay" : "mannequin");
+    setRewriteNotes([]);
     setSelectedLook(look);
+  };
+
+  // ── Redo in review: the picture, the words (api/admin/pending-looks/[id]) ──
+  const [redrawStyle, setRedrawStyle] = useState<"mannequin" | "flatlay">("mannequin");
+  const [redrawing, setRedrawing] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
+  /** What the copy checks changed in the last rewrite, shown under the fields. */
+  const [rewriteNotes, setRewriteNotes] = useState<string[]>([]);
+
+  const redrawPicture = async (look: PendingLook) => {
+    setRedrawing(true);
+    setModerationError("");
+    try {
+      const res = await fetch(`/api/admin/pending-looks/${look.id}/image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ style: redrawStyle }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.imageUrl) {
+        setModerationError(data.error ?? t("outfits.review.redrawFailed", { status: res.status }));
+        return;
+      }
+      const updated = { ...look, generated_image: data.imageUrl as string, generated_style: redrawStyle };
+      if (updated.ai_meta?.imageError) updated.ai_meta = { ...updated.ai_meta, imageError: undefined };
+      setSelectedLook((cur) => (cur?.id === look.id ? updated : cur));
+      setPendingLooks((prev) => prev.map((l) => (l.id === look.id ? updated : l)));
+    } catch {
+      setModerationError(t("outfits.review.redrawFailedNetwork"));
+    } finally {
+      setRedrawing(false);
+    }
+  };
+
+  const rewriteCopy = async (look: PendingLook) => {
+    setRewriting(true);
+    setModerationError("");
+    try {
+      const res = await fetch(`/api/admin/pending-looks/${look.id}/copy`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.name !== "string") {
+        setModerationError(data.error ?? t("outfits.review.rewriteFailed", { status: res.status }));
+        return;
+      }
+      setModeration((m) => ({ ...m, name: data.name, description: data.description ?? m.description }));
+      const notes = (Array.isArray(data.notes) ? data.notes : []) as NonNullable<AiMeta["copy"]>;
+      setRewriteNotes(
+        notes
+          .filter((n) => n.action === "replaced")
+          .map((n) =>
+            t("outfits.ai.copy.replaced", {
+              field: t(n.field === "name" ? "outfits.editor.name" : "outfits.editor.description"),
+              problem: n.problem,
+            }),
+          ),
+      );
+    } catch {
+      setModerationError(t("outfits.review.rewriteFailedNetwork"));
+    } finally {
+      setRewriting(false);
+    }
   };
 
   const toggleModerationStyle = (kw: StyleKeyword) => {
@@ -310,6 +419,8 @@ export default function AdminOutfitsPage() {
             name: moderation.name.trim(),
             description: moderation.description.trim(),
             seasons: moderation.seasons,
+            // null: what was submitted, else what the pieces add up to.
+            gender: moderation.gender,
             styleKeywords: normalizeStyleKeywords(moderation.styleKeywords),
           },
         }),
@@ -374,6 +485,7 @@ export default function AdminOutfitsPage() {
       imageUrl: outfit.imageUrl,
       styleKeywords: outfit.styleKeywords,
       seasons: outfit.seasons ?? [],
+      gender: outfitGenderOf(outfit),
       isAIGenerated: outfit.isAIGenerated,
     });
     setSaveError("");
@@ -414,6 +526,7 @@ export default function AdminOutfitsPage() {
       imageUrl: form.imageUrl,
       styleKeywords: normalizeStyleKeywords(form.styleKeywords),
       seasons: form.seasons,
+      gender: form.gender,
       isAIGenerated: form.isAIGenerated,
     };
 
@@ -448,6 +561,7 @@ export default function AdminOutfitsPage() {
     const list = outfits.filter((o) => {
       if (seasonFilter === "all" && o.seasons.length > 0) return false;
       if (seasonFilter && seasonFilter !== "all" && !o.seasons.includes(seasonFilter)) return false;
+      if (genderFilter && outfitGenderOf(o) !== genderFilter) return false;
       if (homeFilter && !!o.isHomepageFeatured !== (homeFilter === "on")) return false;
       if (!q) return true;
       return (
@@ -467,7 +581,7 @@ export default function AdminOutfitsPage() {
     else if (sortKey === "priceAsc") sorted.sort((a, b) => a.totalPriceMin - b.totalPriceMin);
     else sorted.sort((a, b) => b.totalPriceMin - a.totalPriceMin);
     return sorted;
-  }, [outfits, searchQuery, seasonFilter, homeFilter, sortKey, t]);
+  }, [outfits, searchQuery, seasonFilter, genderFilter, homeFilter, sortKey, t]);
 
   const allSelected = filteredOutfits.length > 0 && filteredOutfits.every((o) => selectedIds.has(o.id));
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -638,6 +752,7 @@ export default function AdminOutfitsPage() {
   const clearFilters = () => {
     setSearchQuery("");
     setSeasonFilter("");
+    setGenderFilter("");
     setHomeFilter("");
   };
 
@@ -651,6 +766,9 @@ export default function AdminOutfitsPage() {
           },
         ]
       : []),
+    ...(genderFilter
+      ? [{ key: "gender", label: `${t("outfits.f.gender")}: ${t(GENDER_KEY[genderFilter])}`, onRemove: () => setGenderFilter("") }]
+      : []),
     ...(homeFilter
       ? [
           {
@@ -663,7 +781,7 @@ export default function AdminOutfitsPage() {
   ];
 
   /** Back to the first page when what the table shows changes. */
-  const tableResetKey = [searchQuery, seasonFilter, homeFilter, sortKey].join("|");
+  const tableResetKey = [searchQuery, seasonFilter, genderFilter, homeFilter, sortKey].join("|");
 
   const rowItems = (o: Outfit): MenuItem[] => [
     // Also an icon beside the menu; on a phone the icon gives its room to the name.
@@ -698,6 +816,7 @@ export default function AdminOutfitsPage() {
         </div>
       ),
     },
+    { key: "gender", header: t("outfits.col.gender"), hide: "lg", cell: (o) => t(GENDER_KEY[outfitGenderOf(o)]) },
     { key: "season", header: t("outfits.col.season"), hide: "md", cell: (o) => seasonsText(o.seasons, t) },
     {
       key: "items",
@@ -914,14 +1033,42 @@ export default function AdminOutfitsPage() {
           {/* Body: image left, pieces right; stacked on phones, where the
               whole dialog scrolls instead of each column. */}
           <div className="flex flex-col md:flex-row shrink-0 md:shrink md:min-h-0 md:flex-1 md:overflow-hidden">
-            {/* Generated image */}
-            <div className="w-full h-72 md:h-auto md:w-[55%] shrink-0 bg-[var(--background)] overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selectedLook.generated_image ?? selectedLook.pieces[0]?.imageUrl ?? ""}
-                alt={t("outfits.review.imageAlt")}
-                className={`w-full h-full ${selectedLook.generated_image ? "object-cover object-top" : "object-contain p-6"}`}
-              />
+            {/* Generated image — the whole of it (it is square; covering the
+                column cut its edges off), with the controls to draw it again. */}
+            <div className="relative w-full h-80 md:h-auto md:w-[55%] shrink-0 bg-[var(--background)] overflow-hidden flex flex-col">
+              <div className="relative flex-1 min-h-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selectedLook.generated_image ?? selectedLook.pieces[0]?.imageUrl ?? ""}
+                  alt={t("outfits.review.imageAlt")}
+                  className={`absolute inset-0 w-full h-full object-contain ${selectedLook.generated_image ? "" : "p-6"}`}
+                />
+                {redrawing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-overlay-90)] text-[13px] text-[var(--foreground)]" role="status">
+                    {t("outfits.review.redrawing")}
+                  </div>
+                )}
+              </div>
+              <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-t border-[var(--border)] bg-[var(--surface)]">
+                <FilterChips
+                  label={t("outfits.ai.photo")}
+                  value={redrawStyle}
+                  options={[
+                    { value: "mannequin", label: t("outfits.ai.photo.mannequin") },
+                    { value: "flatlay", label: t("outfits.ai.photo.flatlay") },
+                  ]}
+                  onChange={(v) => setRedrawStyle(v as "mannequin" | "flatlay")}
+                />
+                <button
+                  type="button"
+                  onClick={() => void redrawPicture(selectedLook)}
+                  disabled={redrawing || approvingId === selectedLook.id}
+                  className={`${btn("secondary", "sm")} inline-flex items-center gap-1.5`}
+                >
+                  {SPARK}
+                  {t(redrawing ? "outfits.review.redrawingShort" : "outfits.review.redraw")}
+                </button>
+              </div>
             </div>
 
             {/* Pieces list */}
@@ -957,9 +1104,20 @@ export default function AdminOutfitsPage() {
               endpoint keeps its own fallback rather than publishing blanks. */}
           <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 md:max-h-[38vh] md:overflow-y-auto">
             {selectedLook.ai_meta && <AiLookNotes meta={selectedLook.ai_meta} />}
-            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
-              {t("outfits.review.publishAs")}
-            </p>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className="text-[13px] font-medium text-[var(--foreground)]">
+                {t("outfits.review.publishAs")}
+              </p>
+              <button
+                type="button"
+                onClick={() => void rewriteCopy(selectedLook)}
+                disabled={rewriting || approvingId === selectedLook.id}
+                className={`${btn("ghost", "sm")} inline-flex items-center gap-1.5`}
+              >
+                {SPARK}
+                {t(rewriting ? "outfits.review.rewriting" : "outfits.review.rewrite")}
+              </button>
+            </div>
 
             {/* The placeholder is the name an empty box publishes under. */}
             <input
@@ -981,6 +1139,11 @@ export default function AdminOutfitsPage() {
               maxLength={2000}
               className={`${inputCls} resize-none mb-3`}
             />
+            {rewriteNotes.length > 0 && (
+              <ul className="-mt-1.5 mb-3 space-y-0.5 text-[12px] text-[var(--foreground-muted)]">
+                {rewriteNotes.map((n) => <li key={n}>{n}</li>)}
+              </ul>
+            )}
 
             <p className={FIELD_LABEL}>{t("outfits.editor.styles")}</p>
             <div role="group" aria-label={t("outfits.editor.styles")} className="flex flex-wrap gap-1.5 mb-3">
@@ -999,6 +1162,14 @@ export default function AdminOutfitsPage() {
               label={t("outfits.editor.seasons")}
               value={moderation.seasons}
               onChange={(seasons) => setModeration((m) => ({ ...m, seasons }))}
+            />
+
+            <p className={`${FIELD_LABEL} mt-3`}>{t("outfits.editor.gender")}</p>
+            <GenderChips
+              auto
+              label={t("outfits.editor.gender")}
+              value={moderation.gender}
+              onChange={(gender) => setModeration((m) => ({ ...m, gender }))}
             />
           </div>
 
@@ -1056,6 +1227,13 @@ export default function AdminOutfitsPage() {
                   { value: "all", label: t("outfits.season.all") },
                 ]}
                 onChange={(v) => setSeasonFilter(v as Season | "all" | "")}
+                allLabel={t("filter.all")}
+              />
+              <FilterMenu
+                label={t("outfits.f.gender")}
+                value={genderFilter}
+                options={GENDERS.map((g) => ({ value: g, label: t(GENDER_KEY[g]) }))}
+                onChange={(v) => setGenderFilter(v as Gender | "")}
                 allLabel={t("filter.all")}
               />
               <FilterMenu
@@ -1284,6 +1462,16 @@ export default function AdminOutfitsPage() {
                 label={t("outfits.editor.seasons")}
                 value={form.seasons}
                 onChange={(seasons) => setForm((f) => ({ ...f, seasons }))}
+              />
+            </div>
+
+            {/* Who it is for */}
+            <div>
+              <p className={FIELD_LABEL}>{t("outfits.editor.gender")}</p>
+              <GenderChips
+                label={t("outfits.editor.gender")}
+                value={form.gender}
+                onChange={(gender) => setForm((f) => ({ ...f, gender: gender ?? "unisex" }))}
               />
             </div>
 

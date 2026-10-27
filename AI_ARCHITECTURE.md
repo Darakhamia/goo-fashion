@@ -21,7 +21,7 @@
 | Семантический поиск стилиста | внутри чата | OpenAI `text-embedding-3-small` | ключ OpenAI | — | выключен флагом `STYLIST_SEMANTIC_SEARCH` |
 | Догрузка эмбеддингов | `GET/POST /api/admin/embeddings`, карточка Embeddings в Settings | OpenAI `text-embedding-3-small` | ключ OpenAI | админ | 100 товаров за запрос, максимум 200 |
 | Генерация изображения образа | `POST /api/generate-outfit` | Replicate, `google/nano-banana-2` | `REPLICATE_API_TOKEN` | вошедший с планом Basic и выше | квоты нет (см. §10) |
-| AI-образы: подбор вещей, название, описание, фото | `POST/GET /api/admin/ai-outfits`, Outfits → Pending → Generate with AI | OpenAI `gpt-4.1-mini` (подбор и текст) + Replicate `google/nano-banana-2` (фото) | ключ OpenAI и `REPLICATE_API_TOKEN` | админ | до 10 образов за запуск, один запуск за раз (§4.1) |
+| AI-образы: подбор вещей, название, описание, фото | `POST/GET /api/admin/ai-outfits`, Outfits → Pending → Generate with AI; в окне проверки `POST /api/admin/pending-looks/[id]/image` и `/copy` | OpenAI `gpt-4.1-mini` (подбор и текст) + Replicate `google/nano-banana-2` (фото) | ключ OpenAI и `REPLICATE_API_TOKEN` | админ | до 10 образов за запуск, один запуск за раз (§4.1) |
 | Пост для блога | `POST /api/admin/generate-post` | OpenAI `gpt-4o-mini` | ключ OpenAI | админ | нет |
 | Текст письма рассылки | `POST /api/admin/email/ai-write` | OpenAI `gpt-4o-mini` | ключ OpenAI | админ | нет |
 | AI-разбор страницы в парсере | `src/lib/server/parser/ai-extract.ts` (роут collect) | OpenAI `gpt-4o-mini` | ключ OpenAI | админ | по умолчанию включён, управляется настройкой парсера |
@@ -421,8 +421,18 @@ Replicate и датасет `training/goo-stylist-dataset.jsonl` — удале�
 nano-banana-2 на образ, по тарифу Replicate. Её код не считает.
 
 **Одобрение.** `/api/looks/approve` ставит `is_ai_generated: true` и `source: "ai"`
-только при `ai_meta`. Образ покупателя получает `false` и `source: "community"`.
-`/api/looks/publish` (свой образ админа) — `false`.
+только при `ai_meta`. Образ, присланный из «Мои образы» (покупателем или админом),
+получает `false` и `source: "community"`. Прямой публикации в обход очереди нет
+(решение CEO 2026-10-27, роут `/api/looks/publish` удалён).
+
+**Переделать в окне проверки** (`src/lib/server/ai-outfits/review.ts`) — для любого
+образа в очереди, не только AI-образа:
+- `POST /api/admin/pending-looks/[id]/image` `{ style }` — перерисовывает фото тем же
+  `outfit-image.ts` (манекен или раскладка) и заменяет его у образа в очереди;
+- `POST /api/admin/pending-looks/[id]/copy` — один вызов `gpt-4.1-mini` (строгая схема
+  `{ name, description }`, домашний стиль из `prompt_ai_outfits_copy`), затем та же
+  проверка `copy.ts`. В базу ничего не пишет: текст попадает в поля окна, а сохраняется
+  при одобрении.
 
 ---
 

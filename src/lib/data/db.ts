@@ -17,6 +17,7 @@ import { findSupportedStore, storeFaviconUrl, storeHomepageUrl, type SupportedSt
 import { writeRowDroppingUnknown, type WriteError } from "@/lib/server/write-row";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
 import { legacySeason, normalizeSeasons, seasonsFromRow } from "@/lib/seasons";
+import { genderOfPieces, normalizeGender } from "@/lib/outfit-gender";
 
 // Older imports stored the *brand* as the store name (so "Where to buy" rows
 // read e.g. "Supreme" instead of "Farfetch"). Correct those at read time:
@@ -713,6 +714,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     isAIGenerated: row.is_ai_generated ?? false,
     isSaved: row.is_saved ?? false,
     seasons: seasonsFromRow(row),
+    gender: normalizeGender(row.gender) ?? genderOfPieces(items.map((i) => i.product.gender)),
     source: (row.source === "community" ? "community" : null),
     isHomepageFeatured: row.is_homepage_featured ?? false,
     createdAt: row.created_at,
@@ -731,6 +733,8 @@ export interface OutfitPatchBody {
   imageUrl?: string;
   styleKeywords?: string[];
   seasons?: string[];
+  /** women | men | unisex; null puts it back to what the pieces say. */
+  gender?: string | null;
   isAIGenerated?: boolean;
 }
 
@@ -743,6 +747,7 @@ export function outfitPatchToDb(o: OutfitPatchBody): Record<string, unknown> {
   if (Array.isArray(o.styleKeywords)) row.style_keywords = normalizeStyleKeywords(o.styleKeywords);
   if (Array.isArray(o.seasons)) Object.assign(row, seasonColumns(normalizeSeasons(o.seasons)));
   if (typeof o.isAIGenerated === "boolean") row.is_ai_generated = o.isAIGenerated;
+  if (o.gender !== undefined) row.gender = normalizeGender(o.gender);
   return row;
 }
 
@@ -755,7 +760,7 @@ export function seasonColumns(seasons: Outfit["seasons"]) {
 }
 
 /** Outfit columns that arrived with a migration, dropped from a write to a database without them. */
-export const OPTIONAL_OUTFIT_COLUMNS = ["seasons", "source"] as const;
+export const OPTIONAL_OUTFIT_COLUMNS = ["seasons", "source", "gender"] as const;
 
 /** Every product id an outfit row names. */
 function outfitProductIds(rows: DbOutfit[]): string[] {

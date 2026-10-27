@@ -2,7 +2,8 @@
 
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
 import { normalizeSeasons } from "@/lib/seasons";
-import type { Season } from "@/lib/types";
+import { normalizeGender } from "@/lib/outfit-gender";
+import type { Gender, Season } from "@/lib/types";
 
 // ── Saved builder look ────────────────────────────────────────────────────────
 export interface SavedLook {
@@ -15,6 +16,8 @@ export interface SavedLook {
   styleKeywords: string[];
   /** The seasons it is for; none means every season (lib/seasons). */
   seasons?: Season[];
+  /** Who it is for; absent = read from its pieces (lib/outfit-gender). */
+  gender?: Gender;
   generatedImage?: string | null;
   generatedStyle?: "mannequin" | "flatlay" | "tryon";
 }
@@ -52,6 +55,7 @@ export function loadLocalLooks(): SavedLook[] {
       ...l,
       styleKeywords: normalizeStyleKeywords(l.styleKeywords),
       seasons: normalizeSeasons(l.seasons ?? []),
+      gender: normalizeGender(l.gender) ?? undefined,
     }));
   } catch {
     return [];

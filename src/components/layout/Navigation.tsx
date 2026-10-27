@@ -284,11 +284,14 @@ export default function Navigation() {
           </button>
         )}
 
-        {/* Logo */}
+        {/* Logo. From md it is a grid item in the 1fr track, which a grid
+            stretches to the track's full width by default — the whole empty
+            left of the bar used to lead home. justify-self-start keeps the
+            link as wide as the word. */}
         <Link
           href="/"
           style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 800 }}
-          className={`max-md:relative max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-[9px] text-[17px] tracking-[0.16em] md:text-[22px] md:tracking-[0.18em] hover:opacity-70 transition-opacity duration-200 shrink-0 ${backHref ? "flex-1 text-center md:flex-none md:text-left" : ""} ${logoClass}`}
+          className={`max-md:relative max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-[9px] text-[17px] tracking-[0.16em] md:text-[22px] md:tracking-[0.18em] md:justify-self-start hover:opacity-70 transition-opacity duration-200 shrink-0 ${backHref ? "flex-1 text-center md:flex-none md:text-left" : ""} ${logoClass}`}
         >
           GOO
         </Link>

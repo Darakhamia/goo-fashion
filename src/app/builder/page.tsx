@@ -13,6 +13,8 @@ import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import { StylePicker } from "@/components/look/StylePicker";
 import { SeasonPicker } from "@/components/look/SeasonPicker";
+import { GenderPicker } from "@/components/look/GenderPicker";
+import { genderOfPieces } from "@/lib/outfit-gender";
 import { displayedProduct } from "@/lib/variant-display";
 import { useHoverImageCycle, ImageCycleDots, CYCLE_SLIDE_MS } from "@/lib/hooks/useHoverImageCycle";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
@@ -274,6 +276,9 @@ export default function BuilderPage() {
   // The seasons the look is for, chosen in the save dialog; none means every
   // season (lib/seasons). Kept between saves of the same session's look.
   const [lookSeasons, setLookSeasons] = useState<Season[]>([]);
+  // Who the look is for. Null follows the pieces (lib/outfit-gender); a pick
+  // in the save dialog holds until another look is opened.
+  const [lookGenderPick, setLookGenderPick] = useState<Gender | null>(null);
   const [colorPickerSlot, setColorPickerSlot] = useState<SlotId | null>(null);
   const [colorPickerProduct, setColorPickerProduct] = useState<Product | null>(null);
 
@@ -369,6 +374,7 @@ export default function BuilderPage() {
   [selection, convertToUsd]);
 
   const selectedCount = Object.values(selection).filter(Boolean).length;
+  const lookGender: Gender = lookGenderPick ?? genderOfPieces(Object.values(selection).map((p) => p?.gender));
 
   // ── URL persistence ───────────────────────────────────────────────────────
   const updateURL = useCallback((sel: Partial<Record<SlotId, Product>>, variants?: Partial<Record<SlotId, string>>) => {
@@ -734,7 +740,7 @@ export default function BuilderPage() {
   // Shared persistence helper — used by Save button and post-generation auto-save.
   // If editId (URL) or persistedLookId (session) matches an existing look, updates it.
   // Otherwise creates a new look and remembers its id so future calls reuse it.
-  const persistLook = async (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string; seasons?: Season[] } = {}): Promise<boolean> => {
+  const persistLook = async (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string; seasons?: Season[]; gender?: Gender } = {}): Promise<boolean> => {
     const urlEditId = new URLSearchParams(window.location.search).get("editId");
     const targetId = urlEditId || persistedLookId;
     const pieces = Object.entries(selection)
@@ -777,6 +783,7 @@ export default function BuilderPage() {
                 ...(extra.name !== undefined && { name: extra.name }),
                 ...(extra.description !== undefined && { description: extra.description }),
                 ...(extra.seasons !== undefined && { seasons: extra.seasons }),
+                ...(extra.gender !== undefined && { gender: extra.gender }),
                 // null explicitly clears the stored image; undefined means "don't touch"
                 ...(extra.generatedImage !== undefined && { generatedImage: extra.generatedImage ?? null }),
                 ...(extra.generatedStyle !== undefined && { generatedStyle: extra.generatedStyle }),
@@ -794,6 +801,7 @@ export default function BuilderPage() {
           name: extra.name || `Outfit ${existing.length + 1}`,
           ...(extra.description && { description: extra.description }),
           ...(extra.seasons?.length && { seasons: extra.seasons }),
+          ...(extra.gender && { gender: extra.gender }),
           pieces,
           totalPrice,
           styleKeywords,
@@ -828,7 +836,10 @@ export default function BuilderPage() {
       const existingLook = urlEditId ? existing.find(o => o.id === urlEditId) : null;
       setPendingLookName(existingLook?.name || `Outfit ${existing.length + 1}`);
       // A look opened from My looks keeps the seasons it was saved with.
-      if (existingLook) setLookSeasons(existingLook.seasons ?? []);
+      if (existingLook) {
+        setLookSeasons(existingLook.seasons ?? []);
+        setLookGenderPick(existingLook.gender ?? null);
+      }
     } catch {
       setPendingLookName("Outfit 1");
     }
@@ -843,7 +854,7 @@ export default function BuilderPage() {
     if (savingLook) return;
     setSavingLook(true);
     setSaveFailed(false);
-    const ok = await persistLook({ name: pendingLookName.trim() || "My Look", generatedImage: generatedImage, seasons: lookSeasons });
+    const ok = await persistLook({ name: pendingLookName.trim() || "My Look", generatedImage: generatedImage, seasons: lookSeasons, gender: lookGender });
     setSavingLook(false);
     if (!ok) { setSaveFailed(true); return; } // keep modal open so the save isn't silently lost
     setSaved(true);
@@ -2504,7 +2515,9 @@ export default function BuilderPage() {
                 </svg>
               </div>
               <p className="mb-1.5 text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">Seasons</p>
-              <SeasonPicker value={lookSeasons} onChange={setLookSeasons} className="mb-5" />
+              <SeasonPicker value={lookSeasons} onChange={setLookSeasons} className="mb-4" />
+              <p className="mb-1.5 text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">For</p>
+              <GenderPicker value={lookGender} onChange={setLookGenderPick} className="mb-5" />
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowNameModal(false)}
@@ -2578,6 +2591,8 @@ export default function BuilderPage() {
               </label>
               <p className="mt-[18px] mb-2.5 text-[13px] text-[var(--foreground-muted)]">Seasons</p>
               <SeasonPicker value={lookSeasons} onChange={setLookSeasons} />
+              <p className="mt-[18px] mb-2.5 text-[13px] text-[var(--foreground-muted)]">For</p>
+              <GenderPicker value={lookGender} onChange={setLookGenderPick} />
               {saveFailed && (
                 <p role="alert" className="mt-2 text-[13px] text-[var(--foreground-muted)]">Couldn’t save the look. Try again.</p>
               )}
@@ -3154,7 +3169,7 @@ export default function BuilderPage() {
                   if (savingLook) return;
                   setSavingLook(true);
                   setSaveFailed(false);
-                  const ok = await persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined, generatedImage: generatedImage, seasons: lookSeasons });
+                  const ok = await persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined, generatedImage: generatedImage, seasons: lookSeasons, gender: lookGender });
                   setSavingLook(false);
                   if (!ok) { setSaveFailed(true); return; }
                   setSaved(true);

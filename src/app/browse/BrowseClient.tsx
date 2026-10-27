@@ -7,6 +7,7 @@ import ProductCard from "@/components/product/ProductCard";
 import type { ColorGroup, Gender, Outfit, Product, ProductSwatch, Season, StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST, matchesStyles, styleLabel, stylesFromParam } from "@/lib/style-keywords";
 import { SEASON_LIST, matchesSeasons, seasonLabel, seasonsFromParam } from "@/lib/seasons";
+import { matchesOutfitGender } from "@/lib/outfit-gender";
 import { DEFAULT_CATEGORY_GROUPS, subcategoryToValue, resolveSubcategory } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
@@ -574,6 +575,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     const q = searchQuery.toLowerCase();
     let r = catalogOutfits
       .filter((o) => matchesSeasons(o.seasons, selectedSeasons))
+      .filter((o) => matchesOutfitGender(o, selectedGender))
       .filter((o) => !aiOnly || o.isAIGenerated)
       .filter(
         (o) =>
@@ -593,7 +595,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     else if (sort === "price-desc")
       r = [...r].sort((a, b) => b.totalPriceMax - a.totalPriceMax);
     return r;
-  }, [catalogOutfits, selectedSeasons, aiOnly, maxPrice, selectedStyles, searchQuery, sort]);
+  }, [catalogOutfits, selectedSeasons, selectedGender, aiOnly, maxPrice, selectedStyles, searchQuery, sort]);
 
   // When color filters are active, expand each product into one entry per matching
   // color variant. This lets a single product appear as multiple cards when multiple
@@ -837,6 +839,42 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
     </div>
   );
 
+  /* Gender — the same section in both views: pieces, and outfits (lib/outfit-gender). */
+  const renderGenderFilter = () => (
+    <div className="border-b border-[var(--border)] px-5 py-4">
+      <button
+        onClick={() => setGenderOpen(v => !v)}
+        className="w-full flex items-center justify-between group"
+      >
+        <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+          Gender{selectedGender !== null && <span className="ml-2 text-[10px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
+        </p>
+        <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderOpen ? "rotate-180" : ""}`}>
+          <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {genderOpen && (
+        <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
+          {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g, i) => {
+            const label = g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1);
+            const isActive = selectedGender === g;
+            return (
+              <button key={label}
+                onClick={() => { setSelectedGender(g); setGenderOpen(false); }}
+                className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-[var(--surface)] ${i > 0 ? "border-t border-[var(--border)]" : ""}`}
+              >
+                <span className={`text-[14px] font-bold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{label}</span>
+                {isActive && (
+                  <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   /* Style — the same section in both views */
   const renderStyleFilter = () => renderChoiceFilter({
     title: "Style",
@@ -900,6 +938,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
             toggle: toggleSeason,
             clear: () => setSelectedSeasons([]),
           })}
+          {renderGenderFilter()}
         </>
       ) : (
         <>
@@ -989,39 +1028,7 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
             )}
           </div>
           {renderStyleFilter()}
-          {/* GENDER */}
-          <div className="border-b border-[var(--border)] px-5 py-4">
-            <button
-              onClick={() => setGenderOpen(v => !v)}
-              className="w-full flex items-center justify-between group"
-            >
-              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
-                Gender{selectedGender !== null && <span className="ml-2 text-[10px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
-              </p>
-              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderOpen ? "rotate-180" : ""}`}>
-                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {genderOpen && (
-              <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
-                {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g, i) => {
-                  const label = g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1);
-                  const isActive = selectedGender === g;
-                  return (
-                    <button key={label}
-                      onClick={() => { setSelectedGender(g); setGenderOpen(false); }}
-                      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-[var(--surface)] ${i > 0 ? "border-t border-[var(--border)]" : ""}`}
-                    >
-                      <span className={`text-[14px] font-bold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{label}</span>
-                      {isActive && (
-                        <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {renderGenderFilter()}
           {/* COLORS */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <button
@@ -1314,21 +1321,22 @@ function Catalogue({ initial, restore }: { initial: BrowseInitial; restore: Save
                 </div>
               </SheetSection>
 
-              <SheetSection title="Gender">
-                <div className="flex flex-wrap gap-2">
-                  {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g) => (
-                    <SheetChip key={g ?? "all"} on={selectedGender === g} onClick={() => setSelectedGender(g)}>
-                      {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
-                    </SheetChip>
-                  ))}
-                </div>
-              </SheetSection>
             </>
           ) : (
             <>
               <SheetToggle label="AI outfits only" on={aiOnly} onChange={() => setAiOnly((v) => !v)} />
             </>
           )}
+
+          <SheetSection title="Gender">
+            <div className="flex flex-wrap gap-2">
+              {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g) => (
+                <SheetChip key={g ?? "all"} on={selectedGender === g} onClick={() => setSelectedGender(g)}>
+                  {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
+                </SheetChip>
+              ))}
+            </div>
+          </SheetSection>
 
           <SheetSection title="Style">
             <div className="flex flex-wrap gap-2">
