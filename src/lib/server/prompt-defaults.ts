@@ -93,6 +93,33 @@ export const DEFAULT_IMAGE_FLATLAY = `Editorial fashion flat-lay photograph for 
 export const DEFAULT_IMAGE_TRYON = `Fashion studio try-on photograph. PERSON: The FIRST reference image shows the subject. Reproduce this exact person — their face, facial features, skin tone, hair colour, hair length, body shape, and proportions precisely. Do NOT alter, idealise, composite, or replace the person with a model. OUTFIT: Dress this exact person in the following items, taken from the remaining reference images: {{items}}. Garment layering: outerwear worn over top; bottom on legs; shoes on feet; bags on shoulder or crossbody — never floating. {{fidelity}} POSE: Simple, confident standing studio pose — feet shoulder-width apart, arms relaxed at sides (or one hand lightly in pocket). Full body visible head to toe. Natural, not stiff. BACKGROUND: Pure white seamless studio infinity cove — floor and wall blend into one unbroken white plane. No props, no texture, no gradient. Only a soft contact shadow directly beneath the feet. LIGHTING: Soft diffused frontal studio strobe, perfectly even, no harsh shadows. Natural skin-tone rendering. Square 1:1 frame. Full body centered. Photorealistic, ultra-sharp focus, luxury fashion editorial quality.`;
 
 // ── Registry ──────────────────────────────────────────────────────────────────
+/**
+ * The AI outfit generator (lib/server/ai-outfits): how outfits are put
+ * together. The structure every outfit needs (shoes, a top and a bottom or a
+ * one-piece) and the brief's limits are fixed in the code and checked again
+ * by the server; this is the taste on top of them.
+ */
+export const DEFAULT_AI_OUTFITS_STYLING = `- Colour: build on a clear palette — one or two colours plus neutrals. Tonal outfits (shades of one colour) and monochrome are welcome. Never two loud colours fighting each other; keep warm with warm and cool with cool. A printed or multicolour piece is the only statement: keep everything else plain.
+- Style and formality: every piece speaks the same language. Tailoring goes with tailoring or with clean minimal basics; sportswear with sneakers. No running shoes with a suit, no heels with track pants, unless the outfit is deliberately streetwear.
+- Proportion: balance volumes — an oversized top with a slim or straight bottom, a fitted top with wide trousers, a long coat over a short or fitted layer.
+- Season: the pieces agree on the weather. No shorts or sandals with a wool coat or a puffer; heavy knits and boots for autumn and winter; linen, shorts and sandals for summer.
+- One hero: each outfit is built around one piece the rest supports.
+- Real life: something a person would wear as it is, today. Nothing costume-like.
+- Shoes finish the outfit: their formality matches everything else.`;
+
+/** The AI outfit generator: the house style for outfit names and descriptions. */
+export const DEFAULT_AI_OUTFITS_COPY = `Name:
+- 2 to 5 words, at most 40 characters, Title Case, in English.
+- Specific: the mood, the moment, or the key piece and its colour — "Camel Coat Sunday", "Navy Office Ease", "Off-Duty Denim".
+- Never generic ("Casual Look", "Outfit 1", "Stylish Outfit"), never the word "AI", no brand names, no prices, no emoji, no quotation marks.
+- Every name in one batch is different.
+
+Description:
+- One or two sentences, 120 to 240 characters, in English.
+- Name the key pieces with their colours, and say when or where the outfit is worn.
+- Only facts from the candidate list: never invent fabrics, fits, details or sustainability claims. Brands only of pieces in the outfit, two at most.
+- No prices or currencies (the page shows the live total), no superlatives ("perfect", "must-have", "ultimate"), no emoji, no hashtags, no exclamation marks, no "you'll love".`;
+
 // Every prompt the studio can override, keyed by its settings row. `required`
 // lists the placeholders the generator fills in: a prompt without one of them
 // runs without that input (no products, no scraped text, no brief), so an
@@ -102,11 +129,25 @@ export interface PromptMeta {
   label: string;
   description: string;
   default: string;
-  category: "content" | "image";
+  category: "content" | "image" | "outfits";
   required: readonly string[];
 }
 
 export const PROMPT_META: Record<string, PromptMeta> = {
+  prompt_ai_outfits_styling: {
+    label: "AI outfits — Styling rules",
+    description: "Как AI собирает образы: цвет, стиль, пропорции, сезон. Структура образа и ограничения запуска (стиль, цвета, бренды, пол) заданы в коде и проверяются сервером — здесь только вкус.",
+    default: DEFAULT_AI_OUTFITS_STYLING,
+    category: "outfits",
+    required: [],
+  },
+  prompt_ai_outfits_copy: {
+    label: "AI outfits — Names and descriptions",
+    description: "Правила для названий и описаний AI-образов. Сервер всё равно проверяет текст (длина, цены, эмодзи, чужие бренды, общие слова) и заменяет неудачный шаблонным.",
+    default: DEFAULT_AI_OUTFITS_COPY,
+    category: "outfits",
+    required: [],
+  },
   prompt_blog_system: {
     label: "Blog — System",
     description: "Системный промт для генерации статей блога. Задаёт роль и формат вывода.",

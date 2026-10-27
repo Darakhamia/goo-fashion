@@ -72,21 +72,27 @@ export async function POST(req: Request) {
     ? normalizeSeasons(overrides.seasons)
     : seasonsFromRow(look);
 
+  // Put together by the AI (Generate with AI in the studio) or by a person.
+  // Only the first is marked AI on the site — the mark means the AI chose the
+  // pieces, not that it drew the picture (CEO, 2026-10-27).
+  const byAi = Boolean(look.ai_meta);
+
   // Create an outfit from the pending look. The occasion is left to the
   // database's default: styles replaced it (CEO, 2026-10-27).
   const created = await insertOutfitRow({
     name: pick("name", "Community Look"),
     description: pick("description", ""),
     ...seasonColumns(seasons),
-    image_url: look.generated_image,
+    // A generated look whose picture failed has none; the site draws a collage.
+    image_url: look.generated_image ?? "",
     items: priced.items,
     total_price_min: priced.totalPriceMin,
     total_price_max: priced.totalPriceMax,
     currency: "USD",
     style_keywords: normalizeStyleKeywords(styleKeywords),
-    is_ai_generated: true,
+    is_ai_generated: byAi,
     is_saved: false,
-    source: "community",
+    source: byAi ? "ai" : "community",
   });
 
   if ("error" in created) {

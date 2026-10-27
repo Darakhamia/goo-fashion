@@ -51,6 +51,7 @@ export type AdminAction =
   | "outfits.deleted"
   | "looks.approved"
   | "looks.published"
+  | "looks.ai_generated"
   | "looks.rejected"
   | "blog.created"
   | "blog.updated"

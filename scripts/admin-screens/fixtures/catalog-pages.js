@@ -204,6 +204,63 @@ const pendingLooks = pendingDef.map((d, i) => ({
   seasons: d.season ? [d.season] : [],
 }));
 
+/* ── Generate with AI (2026-10-27): a run halfway through, and its first look in the queue ── */
+const AI_PIECES = [39, 3, 18, 34];
+pendingLooks.push({
+  id: "c51d7e2b-3010-4f1a-9e0c-500000099999",
+  created_at: new Date(Date.parse("2026-10-05T09:00:00Z") - 0.05 * 86400e3).toISOString(),
+  generated_image: IMG("pending-ai", "#e7e1d6", "mannequin"),
+  generated_style: "mannequin",
+  pieces: AI_PIECES.map((pi, k) => ({ slot: ["top", "bottom", "shoes", "accessories"][k], productId: P(pi).id, imageUrl: P(pi).imageUrl, name: P(pi).name })),
+  total_price: Math.round(AI_PIECES.reduce((s, pi) => s + P(pi).priceMin, 0) * 100) / 100,
+  style_keywords: ["minimal"],
+  status: "pending",
+  name: "Stone Shirt, Black Trousers",
+  description: "A stone relaxed linen shirt with black wide-leg trousers, white track sneakers and a black shoulder bag — an easy minimal outfit for warm city days.",
+  season: "all",
+  seasons: ["spring", "summer"],
+  ai_meta: {
+    runId: "a1b2c3d4-0000-4000-8000-000000000001",
+    model: "gpt-4.1-mini",
+    notes: "Neutrals around one light piece; the relaxed shirt balances the wide-leg trousers, and white sneakers keep it casual.",
+    palette: ["stone", "black", "white"],
+    brief: { styles: ["minimal"], colours: [], brands: [], gender: "women" },
+    copy: [{ field: "name", action: "replaced", problem: "generic", original: "Minimal Look" }],
+  },
+});
+const AI_RUN = {
+  id: "a1b2c3d4-0000-4000-8000-000000000001",
+  status: "running",
+  requested: 4,
+  made: 1,
+  failed: 0,
+  cost_usd: 0.0061,
+  error: null,
+  created_at: "2026-10-05T08:52:00Z",
+  finished_at: null,
+  log: [
+    ["08:52:01", "Started."],
+    ["08:52:03", "Chose 118 candidate pieces (of 1 204 that fit the brief)."],
+    ["08:52:31", "Round 1: 6 proposed, 4 of 4 kept so far."],
+    ["08:52:31", "Refused \"Night Out\": mixed men's and women's pieces"],
+    ["08:52:31", "Refused \"Weekend Brights\": too many colours at once (red, yellow, green)"],
+    ["08:53:20", "Queued \"Stone Shirt, Black Trousers\" (c4 + c31 + c58 + c97). Standard wording used — name: generic"],
+  ].map(([time, message]) => ({ at: `2026-10-05T${time}Z`, message })),
+};
+const aiOutfits = {
+  runs: [AI_RUN],
+  ready: { openai: true, replicate: true, database: true },
+  options: {
+    brands: brandNames.slice(0, 40).map((name, i) => ({ name, count: 120 - i * 2 })),
+    colorGroups: [
+      ["White", "#ffffff"], ["Multicolor", "#multicolor"], ["Brown", "#7a4f35"], ["Pink", "#e8698a"], ["Yellow", "#f5c518"],
+      ["Orange", "#e87722"], ["Grey", "#808080"], ["Black", "#111111"], ["Green", "#2d6a3f"], ["Red", "#c0392b"],
+      ["Violet", "#7b3fa0"], ["Blue", "#1a47a0"], ["Beige", "#d4c5a9"],
+    ].map(([name, hexCode], i) => ({ id: i + 1, name, hexCode, sortOrder: i + 1 })),
+    maxOutfits: 10,
+  },
+};
+
 /* ── Interaction helpers for extra screenshots ── */
 /* A row of a DataTable: a table row on a desktop, a card on a phone (GS4-11). */
 const ROW = "[data-row]";
@@ -316,6 +373,7 @@ module.exports = {
     // Outfits
     "GET /api/outfits": outfits,
     "GET /api/looks/pending": pendingLooks,
+    "GET /api/admin/ai-outfits": aiOutfits,
   },
 
   pages: [
@@ -473,6 +531,28 @@ module.exports = {
         await page.getByRole("tab", { name: /^(Pending|На проверке)/ }).click();
         await page.waitForSelector('img:is([alt="Look"], [alt="Образ"])', { timeout: 15000 });
         await unclip(page);
+      },
+    },
+    {
+      // Generate with AI: the dialog, opened from the Pending tab's header.
+      name: "outfits-ai", url: "/goo-studio/outfits", fullPage: false,
+      after: async (page) => {
+        await page.getByRole("tab", { name: /^(Pending|На проверке)/ }).click();
+        await page.getByRole("button", { name: /^(Generate with AI|Сгенерировать AI)$/ }).first().click();
+        await page.getByRole("dialog", { name: /^(Generate outfits with AI|Генерация образов AI)$/ }).waitFor();
+        await page.getByRole("button", { name: /^(Minimal)$/ }).click();
+        await page.getByRole("button", { name: /^Beige/ }).click();
+        await page.waitForTimeout(300);
+      },
+    },
+    {
+      // The review of a look the AI put together: its note and what the checks changed.
+      name: "outfits-pending-review-ai", url: "/goo-studio/outfits", fullPage: false,
+      after: async (page) => {
+        await page.getByRole("tab", { name: /^(Pending|На проверке)/ }).click();
+        await page.locator('img:is([alt="Look"], [alt="Образ"])').last().click();
+        await page.getByRole("dialog", { name: /^(Review submitted look|Проверка присланного образа)$/ }).waitFor();
+        await page.waitForTimeout(300);
       },
     },
     {

@@ -22,11 +22,13 @@ import type { MenuItem } from "@/components/admin/Menu";
 import { Tabs, tabPanel } from "@/components/admin/Tabs";
 import { Modal } from "@/components/admin/Modal";
 import { Badge } from "@/components/admin/Badge";
+import { AiGenerateDialog, AiLookNotes, AiRunPanel, SPARK, useAiRuns, type AiMeta } from "./ai-generator";
 
 interface PendingLook {
   id: string;
   created_at: string;
-  generated_image: string;
+  /** Null for a generated look whose picture failed; approval then publishes a collage. */
+  generated_image: string | null;
   generated_style: string | null;
   pieces: { slot: string; productId: string; imageUrl?: string; name?: string }[];
   total_price: number | null;
@@ -42,6 +44,8 @@ interface PendingLook {
   /** The single season before migration 030, and the list after it. */
   season: string | null;
   seasons?: string[] | null;
+  /** Set when the AI put the look together (Generate with AI, migration 031). */
+  ai_meta?: AiMeta | null;
 }
 
 /**
@@ -60,6 +64,7 @@ interface OutfitFormState {
 
 /** How a submitted look was drawn, as its badge reads it. */
 const LOOK_STYLE_KEY: Record<string, Key> = {
+  mannequin: "outfits.style.mannequin",
   flatlay: "outfits.style.flatlay",
   tryon: "outfits.style.tryon",
 };
@@ -280,6 +285,15 @@ export default function AdminOutfitsPage() {
     loadOutfits();
     loadPending();
   }, [loadOutfits, loadPending]);
+
+  // Generate with AI: the runs, followed while one goes; each outfit it makes
+  // lands in the queue, which is read again as they do.
+  const [aiOpen, setAiOpen] = useState(false);
+  const ai = useAiRuns(loadPending);
+  const openAi = () => {
+    setAiOpen(true);
+    void ai.reload(true);
+  };
 
   const handleApproveLook = async (id: string) => {
     setApprovingId(id);
@@ -760,7 +774,11 @@ export default function AdminOutfitsPage() {
             ? [{ key: "cards", label: t("cards.download"), onClick: () => void cards.download(exportIds), disabled: cards.busy || outfits.length === 0 }]
             : []
         }
-        primary={adminTab === "outfits" ? { key: "add", label: t("outfits.add"), title: t("outfits.addHint"), icon: PLUS, href: BUILDER_HREF } : undefined}
+        primary={
+          adminTab === "outfits"
+            ? { key: "add", label: t("outfits.add"), title: t("outfits.addHint"), icon: PLUS, href: BUILDER_HREF }
+            : { key: "ai", label: t("outfits.ai.generate"), title: t("outfits.ai.intro"), icon: SPARK, onClick: openAi }
+        }
       />
 
       {/* The count shows on Pending even at zero: an empty queue is news too. */}
@@ -783,6 +801,7 @@ export default function AdminOutfitsPage() {
       {/* ── Pending looks tab ── */}
       {adminTab === "pending" && (
         <div {...tabPanel("outfits", "pending")}>
+          {ai.latest && <AiRunPanel key={ai.latest.id} run={ai.latest} />}
           {pendingError && (
             <div role="alert" className={`${BANNER.err} mb-4 flex items-center justify-between`}>
               <span>{sayFailure(pendingError, t)}</span>
@@ -800,7 +819,14 @@ export default function AdminOutfitsPage() {
           {loadingPending ? (
             <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">{t("common.loading")}</p>
           ) : pendingError && pendingLooks.length === 0 ? null : pendingLooks.length === 0 ? (
-            <EmptyState text={t("outfits.pending.empty")} />
+            <EmptyState
+              text={t("outfits.pending.empty")}
+              action={
+                <button onClick={openAi} className={btn("secondary")}>
+                  {t("outfits.ai.generate")}
+                </button>
+              }
+            />
           ) : (
             <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
               {pendingLooks.map((look, idx) => (
@@ -814,11 +840,16 @@ export default function AdminOutfitsPage() {
                   {/* Thumbnail */}
                   <div className="w-12 h-16 shrink-0 overflow-hidden bg-[var(--background)] rounded-xl border border-[var(--border)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={look.generated_image} alt={t("outfits.pending.lookAlt")} className="w-full h-full object-cover" />
+                    <img
+                      src={look.generated_image ?? look.pieces[0]?.imageUrl ?? ""}
+                      alt={t("outfits.pending.lookAlt")}
+                      className={`w-full h-full ${look.generated_image ? "object-cover" : "object-contain p-1"}`}
+                    />
                   </div>
                   {/* Meta */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
+                      {look.ai_meta && <Badge tone="inverse">{t("outfits.ai.badge")}</Badge>}
                       {look.generated_style && <Badge>{t(LOOK_STYLE_KEY[look.generated_style] ?? "outfits.style.ai")}</Badge>}
                       {look.total_price != null && (
                         <span className="text-xs text-[var(--foreground)] font-medium">{f.money(look.total_price)}</span>
@@ -855,6 +886,7 @@ export default function AdminOutfitsPage() {
           {/* Modal header */}
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+              {selectedLook.ai_meta && <Badge tone="inverse">{t("outfits.ai.badge")}</Badge>}
               {selectedLook.generated_style && (
                 <Badge>{t(LOOK_STYLE_KEY[selectedLook.generated_style] ?? "outfits.style.ai")}</Badge>
               )}
@@ -886,9 +918,9 @@ export default function AdminOutfitsPage() {
             <div className="w-full h-72 md:h-auto md:w-[55%] shrink-0 bg-[var(--background)] overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={selectedLook.generated_image}
+                src={selectedLook.generated_image ?? selectedLook.pieces[0]?.imageUrl ?? ""}
                 alt={t("outfits.review.imageAlt")}
-                className="w-full h-full object-cover object-top"
+                className={`w-full h-full ${selectedLook.generated_image ? "object-cover object-top" : "object-contain p-6"}`}
               />
             </div>
 
@@ -924,6 +956,7 @@ export default function AdminOutfitsPage() {
               exactly what the shopper wrote; empty means the approval
               endpoint keeps its own fallback rather than publishing blanks. */}
           <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 md:max-h-[38vh] md:overflow-y-auto">
+            {selectedLook.ai_meta && <AiLookNotes meta={selectedLook.ai_meta} />}
             <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
               {t("outfits.review.publishAs")}
             </p>
@@ -1140,6 +1173,10 @@ export default function AdminOutfitsPage() {
             ]}
           />
         </div>
+      )}
+
+      {aiOpen && (
+        <AiGenerateDialog onClose={() => setAiOpen(false)} onStarted={() => void ai.reload()} ready={ai.ready} options={ai.options} />
       )}
 
       {/* ── Editor: the words, styles, seasons and cover of a published outfit ── */}
