@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
-import { isSupabaseConfigured } from "@/lib/supabase";
-import { getOutfitsByIds, readAllOutfits, createOutfit, outfitToDb } from "@/lib/data/db";
+import { getOutfitsByIds, readAllOutfits } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
-import { logAdminAction } from "@/lib/server/audit";
-import { MAX_OUTFIT_ITEMS } from "@/lib/outfit-limits";
+
+// Outfits are made in the builder and published from My looks — a shopper's
+// through the moderation queue, an admin's straight away (api/looks/publish).
+// The studio's own "New outfit" form, and the POST here that it called, went
+// with the CEO's decision of 2026-10-27: one way to build a look, not two.
 
 /** Most a single ids= lookup will resolve, so one caller can't ask for the lot. */
 const MAX_IDS = 24;
@@ -33,42 +34,4 @@ export async function GET(req: Request) {
     );
   }
   return NextResponse.json(outfits);
-}
-
-export async function POST(req: Request) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isSupabaseConfigured) {
-    return NextResponse.json(
-      { error: "Database not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY." },
-      { status: 501 }
-    );
-  }
-
-  const body = await req.json();
-
-  // body.items = [{ productId, role }]
-  if (Array.isArray(body.items) && body.items.length > MAX_OUTFIT_ITEMS) {
-    return NextResponse.json(
-      { error: `An outfit takes up to ${MAX_OUTFIT_ITEMS} items.` },
-      { status: 400 }
-    );
-  }
-  const row = outfitToDb(body);
-  const { outfit, error } = await createOutfit(row);
-
-  if (!outfit) {
-    return NextResponse.json({ error: error ?? "Failed to create outfit." }, { status: 500 });
-  }
-
-  await logAdminAction({
-    admin_id: admin.userId,
-    action: "outfits.created",
-    target_id: outfit.id,
-    target_type: "outfit",
-    metadata: { name: outfit.name },
-  });
-
-  revalidatePath("/");
-  return NextResponse.json(outfit, { status: 201 });
 }

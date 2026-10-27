@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { updateOutfit, outfitToDb, toggleOutfitHomepageFeatured } from "@/lib/data/db";
+import { updateOutfit, outfitPatchToDb, toggleOutfitHomepageFeatured } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
-import { MAX_OUTFIT_ITEMS } from "@/lib/outfit-limits";
 
 export async function PUT(
   req: Request,
@@ -21,18 +20,22 @@ export async function PUT(
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const body = await req.json();
-  if (Array.isArray(body.items) && body.items.length > MAX_OUTFIT_ITEMS) {
-    return NextResponse.json(
-      { error: `An outfit takes up to ${MAX_OUTFIT_ITEMS} items.` },
-      { status: 400 }
-    );
+  const body = await req.json().catch(() => null);
+  // Only what the studio's editor changes: the name, the words, the styles,
+  // the seasons, the cover and the AI mark. The pieces and the price stay as
+  // the look was built — this used to rewrite the whole row from whatever the
+  // form sent, items and price included.
+  const row = outfitPatchToDb(body ?? {});
+  if (Object.keys(row).length === 0) {
+    return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   }
-  const row = outfitToDb(body);
-  const outfit = await updateOutfit(id, row);
+  if (row.name === "") {
+    return NextResponse.json({ error: "An outfit needs a name." }, { status: 400 });
+  }
+  const { outfit, error } = await updateOutfit(id, row);
 
   if (!outfit) {
-    return NextResponse.json({ error: "Failed to update outfit." }, { status: 500 });
+    return NextResponse.json({ error: error ?? "Failed to update outfit." }, { status: 500 });
   }
 
   await logAdminAction({
@@ -40,7 +43,7 @@ export async function PUT(
     action: "outfits.updated",
     target_id: id,
     target_type: "outfit",
-    metadata: { name: outfit.name },
+    metadata: { name: outfit.name, fields: Object.keys(row) },
   });
 
   revalidatePath("/");

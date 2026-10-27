@@ -7,7 +7,6 @@ export const outfits: Outfit[] = [
     name: "The Considered Minimal",
     description:
       "A study in restraint. Neutral volumes, precise tailoring, understated confidence.",
-    occasion: "work",
     imageUrl: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=90",
     items: [
       { product: products[4], role: "hero" },
@@ -20,14 +19,13 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal", "classic"],
     isAIGenerated: false,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-002",
     name: "Weekend Softness",
     description:
       "Unstructured ease for the unhurried day. Cashmere, raw denim, quiet luxury.",
-    occasion: "casual",
     imageUrl: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&q=90",
     items: [
       { product: products[2], role: "hero" },
@@ -40,14 +38,13 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal", "classic"],
     isAIGenerated: true,
     isSaved: true,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-003",
     name: "Evening Architecture",
     description:
       "Structural lines for after dark. The slip dress as canvas, Chelsea boots as statement.",
-    occasion: "evening",
     imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=90",
     items: [
       { product: products[6], role: "hero" },
@@ -60,14 +57,13 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal"],
     isAIGenerated: true,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-004",
     name: "The Sunday Coat",
     description:
       "An overcoat and nothing else. Volume and restraint in equal measure.",
-    occasion: "weekend",
     imageUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=90",
     items: [
       { product: products[0], role: "hero" },
@@ -81,14 +77,13 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal", "classic"],
     isAIGenerated: false,
     isSaved: false,
-    season: "autumn",
+    seasons: ["autumn"],
   },
   {
     id: "o-005",
     name: "Office Quiet",
     description:
       "Tailored restraint. When the work speaks for itself, the wardrobe follows suit.",
-    occasion: "work",
     imageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=90",
     items: [
       { product: products[4], role: "hero" },
@@ -101,14 +96,13 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal", "classic"],
     isAIGenerated: true,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-006",
     name: "Dusk Palette",
     description:
       "Warm tonals for the in-between hour. Wool, cashmere, quiet earth tones.",
-    occasion: "casual",
     imageUrl: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=800&q=90",
     items: [
       { product: products[0], role: "hero" },
@@ -121,13 +115,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal", "classic"],
     isAIGenerated: true,
     isSaved: false,
-    season: "autumn",
+    seasons: ["autumn"],
   },
   {
     id: "o-007",
     name: "Urban Cargo Edit",
     description: "Relaxed utility meets street sensibility. Denim jacket layered over an organic tee, cargo trousers, suede boots.",
-    occasion: "casual",
     imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&q=90",
     items: [
       { product: products[22], role: "hero" },
@@ -141,13 +134,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["casual", "streetwear"],
     isAIGenerated: true,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-008",
     name: "Trench & Flannel",
     description: "Layered sophistication for the working week. Trench over flannel, refined to the seam.",
-    occasion: "work",
     imageUrl: "https://images.unsplash.com/photo-1502716119720-b23a93e5fe1b?w=800&q=90",
     items: [
       { product: products[18], role: "hero" },
@@ -160,13 +152,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["classic", "minimal"],
     isAIGenerated: false,
     isSaved: false,
-    season: "autumn",
+    seasons: ["autumn"],
   },
   {
     id: "o-009",
     name: "Silk & Structure",
     description: "Evening poise. Silk blouse tucked into tailored trousers — understated power.",
-    occasion: "evening",
     imageUrl: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&q=90",
     items: [
       { product: products[19], role: "hero" },
@@ -179,13 +170,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal"],
     isAIGenerated: true,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-010",
     name: "Coastal Weekend",
     description: "Denim jacket over a clean tee. Relaxed, effortless, built for wherever Saturday leads.",
-    occasion: "weekend",
     imageUrl: "https://images.unsplash.com/photo-1488161628813-04466f872be2?w=800&q=90",
     items: [
       { product: products[22], role: "hero" },
@@ -198,13 +188,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["casual", "minimal"],
     isAIGenerated: true,
     isSaved: false,
-    season: "spring",
+    seasons: ["spring"],
   },
   {
     id: "o-011",
     name: "Biker & Silk",
     description: "The tension between edge and refinement. Biker jacket over satin — night-ready.",
-    occasion: "evening",
     imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=90",
     items: [
       { product: products[14], role: "hero" },
@@ -217,13 +206,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["streetwear"],
     isAIGenerated: true,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-012",
     name: "Skirt & Turtleneck",
     description: "Merino turtleneck with a pleated mini — textured simplicity elevated to a statement.",
-    occasion: "work",
     imageUrl: "https://images.unsplash.com/photo-1571513800374-df1bbe650e56?w=800&q=90",
     items: [
       { product: products[11], role: "hero" },
@@ -236,13 +224,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal", "classic"],
     isAIGenerated: false,
     isSaved: false,
-    season: "autumn",
+    seasons: ["autumn"],
   },
   {
     id: "o-013",
     name: "Formal Architecture",
     description: "Precise tailoring at its peak. Structured blazer, flannel trousers, leather derby.",
-    occasion: "formal",
     imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=90",
     items: [
       { product: products[4], role: "hero" },
@@ -255,13 +242,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["classic", "minimal"],
     isAIGenerated: false,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-014",
     name: "Cardigan Layering",
     description: "Sculptural cardigan over a slip dress — texture against texture, volume against form.",
-    occasion: "casual",
     imageUrl: "https://images.unsplash.com/photo-1568708167823-a1ab5d822026?w=800&q=90",
     items: [
       { product: products[23], role: "hero" },
@@ -273,13 +259,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["casual", "minimal"],
     isAIGenerated: true,
     isSaved: false,
-    season: "autumn",
+    seasons: ["autumn"],
   },
   {
     id: "o-015",
     name: "Weekend Knit",
     description: "Cashmere crew, raw denim, leather crossbody. Quiet luxury for the unhurried day.",
-    occasion: "weekend",
     imageUrl: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=800&q=90",
     items: [
       { product: products[2], role: "hero" },
@@ -292,13 +277,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal", "classic"],
     isAIGenerated: false,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-016",
     name: "The Blazer Dress",
     description: "Wear the blazer as a dress. Silk blouse beneath, ankle boots below — confident, editorial, precise.",
-    occasion: "evening",
     imageUrl: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=90",
     items: [
       { product: products[9], role: "hero" },
@@ -311,13 +295,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal"],
     isAIGenerated: true,
     isSaved: false,
-    season: "all",
+    seasons: [],
   },
   {
     id: "o-017",
     name: "Autumn Layers",
     description: "Warmth through considered layering. Trench over turtleneck, fluid trousers, leather crossbody — dressed for the cool season.",
-    occasion: "weekend",
     imageUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&q=90",
     items: [
       { product: products[18], role: "hero" },
@@ -331,13 +314,12 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal", "classic"],
     isAIGenerated: true,
     isSaved: false,
-    season: "autumn",
+    seasons: ["autumn"],
   },
   {
     id: "o-018",
     name: "Ecru Layers",
     description: "Tonal dressing in the palest register. White, ecru, ivory — a whisper of intention.",
-    occasion: "casual",
     imageUrl: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&q=90",
     items: [
       { product: products[15], role: "hero" },
@@ -350,6 +332,6 @@ export const outfits: Outfit[] = [
     styleKeywords: ["minimal"],
     isAIGenerated: false,
     isSaved: false,
-    season: "spring",
+    seasons: ["spring"],
   },
 ];

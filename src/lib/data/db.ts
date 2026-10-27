@@ -16,6 +16,7 @@ import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
 import { findSupportedStore, storeFaviconUrl, storeHomepageUrl, type SupportedStore } from "@/lib/stores";
 import { writeRowDroppingUnknown, type WriteError } from "@/lib/server/write-row";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
+import { legacySeason, normalizeSeasons, seasonsFromRow } from "@/lib/seasons";
 
 // Older imports stored the *brand* as the store name (so "Where to buy" rows
 // read e.g. "Supreme" instead of "Farfetch"). Correct those at read time:
@@ -703,7 +704,6 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     id: row.id,
     name: row.name,
     description: row.description ?? "",
-    occasion: row.occasion as Outfit["occasion"],
     imageUrl: row.image_url ?? "",
     items,
     totalPriceMin: row.total_price_min,
@@ -712,7 +712,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     styleKeywords: normalizeStyleKeywords(row.style_keywords),
     isAIGenerated: row.is_ai_generated ?? false,
     isSaved: row.is_saved ?? false,
-    season: (row.season ?? "all") as Outfit["season"],
+    seasons: seasonsFromRow(row),
     source: (row.source === "community" ? "community" : null),
     isHomepageFeatured: row.is_homepage_featured ?? false,
     createdAt: row.created_at,
@@ -720,37 +720,42 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
   };
 }
 
-export interface OutfitApiBody {
+/**
+ * What the studio may change on a published outfit. Its pieces and price are
+ * the look as it was built and published; changing what an outfit is made of
+ * means building it again in the builder (CEO, 2026-10-27).
+ */
+export interface OutfitPatchBody {
   name?: string;
   description?: string;
-  occasion?: string;
   imageUrl?: string;
-  items?: { productId: string; role: string; selectedColor?: string }[];
-  totalPriceMin?: number;
-  totalPriceMax?: number;
-  currency?: string;
   styleKeywords?: string[];
+  seasons?: string[];
   isAIGenerated?: boolean;
-  isSaved?: boolean;
-  season?: string;
 }
 
-export function outfitToDb(o: OutfitApiBody) {
-  return {
-    name: o.name ?? "",
-    description: o.description ?? "",
-    occasion: o.occasion ?? "casual",
-    image_url: o.imageUrl ?? "",
-    items: (o.items ?? []).map((i) => ({ product_id: i.productId, role: i.role, selected_color: i.selectedColor })),
-    total_price_min: o.totalPriceMin ?? 0,
-    total_price_max: o.totalPriceMax ?? o.totalPriceMin ?? 0,
-    currency: o.currency ?? "USD",
-    style_keywords: o.styleKeywords ?? [],
-    is_ai_generated: o.isAIGenerated ?? false,
-    is_saved: o.isSaved ?? false,
-    season: o.season ?? "all",
-  };
+/** The columns a patch names, and only those: a field left out stays as it is. */
+export function outfitPatchToDb(o: OutfitPatchBody): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (typeof o.name === "string") row.name = o.name.trim();
+  if (typeof o.description === "string") row.description = o.description.trim();
+  if (typeof o.imageUrl === "string") row.image_url = o.imageUrl;
+  if (Array.isArray(o.styleKeywords)) row.style_keywords = normalizeStyleKeywords(o.styleKeywords);
+  if (Array.isArray(o.seasons)) Object.assign(row, seasonColumns(normalizeSeasons(o.seasons)));
+  if (typeof o.isAIGenerated === "boolean") row.is_ai_generated = o.isAIGenerated;
+  return row;
 }
+
+/**
+ * Both season columns for a list: `seasons` itself, and the old single
+ * `season` for anything still reading that one.
+ */
+export function seasonColumns(seasons: Outfit["seasons"]) {
+  return { seasons, season: legacySeason(seasons) };
+}
+
+/** Outfit columns that arrived with a migration, dropped from a write to a database without them. */
+export const OPTIONAL_OUTFIT_COLUMNS = ["seasons", "source"] as const;
 
 /** Every product id an outfit row names. */
 function outfitProductIds(rows: DbOutfit[]): string[] {
@@ -784,49 +789,52 @@ export async function readAllOutfits(): Promise<{ outfits: Outfit[]; error: stri
   return { outfits: rows.map((r) => dbToOutfit(r, productMap)), error: null };
 }
 
+/**
+ * A new outfit row, written through the columns the database has: `seasons`
+ * (migration 030) is dropped on a database without it, and the outfit lands
+ * with the old single season instead.
+ */
 export async function createOutfit(
-  data: ReturnType<typeof outfitToDb>
+  data: Record<string, unknown>
 ): Promise<{ outfit: Outfit | null; error: string | null }> {
   if (!isSupabaseConfigured || !supabase) return { outfit: null, error: "Database not configured." };
 
-  const { data: row, error } = await supabase
-    .from("outfits")
-    .insert(data)
-    .select()
-    .single();
+  const { data: row, error, dropped } = await writeRowDroppingUnknown<DbOutfit>(
+    data,
+    OPTIONAL_OUTFIT_COLUMNS,
+    (payload) => supabase!.from("outfits").insert(payload).select().single(),
+  );
 
-  if (error) {
-    console.error("[db] createOutfit:", error.message);
-    return { outfit: null, error: error.message };
+  if (error || !row) {
+    console.error("[db] createOutfit:", error?.message);
+    return { outfit: null, error: error?.message ?? "Failed to create the outfit." };
   }
+  if (dropped.length) console.warn(`[db] createOutfit: stored without ${dropped.join(", ")} — a migration is pending`);
 
-  // Hydrate returned row
-  const productMap = await loadProductMap(outfitProductIds([row as DbOutfit]));
-
-  return { outfit: dbToOutfit(row as DbOutfit, productMap), error: null };
+  const productMap = await loadProductMap(outfitProductIds([row]));
+  return { outfit: dbToOutfit(row, productMap), error: null };
 }
 
 export async function updateOutfit(
   id: string,
-  data: ReturnType<typeof outfitToDb>
-): Promise<Outfit | null> {
-  if (!isSupabaseConfigured || !supabase) return null;
+  data: Record<string, unknown>
+): Promise<{ outfit: Outfit | null; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) return { outfit: null, error: "Database not configured." };
 
-  const { data: row, error } = await supabase
-    .from("outfits")
-    .update(data)
-    .eq("id", id)
-    .select()
-    .single();
+  const { data: row, error, dropped } = await writeRowDroppingUnknown<DbOutfit>(
+    data,
+    OPTIONAL_OUTFIT_COLUMNS,
+    (payload) => supabase!.from("outfits").update(payload).eq("id", id).select().single(),
+  );
 
-  if (error) {
-    console.error("[db] updateOutfit:", error.message);
-    return null;
+  if (error || !row) {
+    console.error("[db] updateOutfit:", error?.message);
+    return { outfit: null, error: error?.message ?? "Failed to update the outfit." };
   }
+  if (dropped.length) console.warn(`[db] updateOutfit: stored without ${dropped.join(", ")} — a migration is pending`);
 
-  const productMap = await loadProductMap(outfitProductIds([row as DbOutfit]));
-
-  return dbToOutfit(row as DbOutfit, productMap);
+  const productMap = await loadProductMap(outfitProductIds([row]));
+  return { outfit: dbToOutfit(row, productMap), error: null };
 }
 
 export async function getOutfitById(id: string): Promise<Outfit | undefined> {
@@ -887,27 +895,29 @@ export async function getOutfitsByIds(ids: string[]): Promise<Outfit[]> {
 }
 
 /**
- * The newest outfits, at most `limit` of them — optionally only one occasion's,
- * and without one given outfit. For rows that show a handful of outfits, which
- * would otherwise read every outfit (and every product in them) to keep four.
+ * The newest outfits, at most `limit` of them — optionally only those sharing
+ * one of `styles`, and without one given outfit. For rows that show a handful
+ * of outfits, which would otherwise read every outfit (and every product in
+ * them) to keep four.
  */
 export async function getLatestOutfits(opts: {
   limit: number;
-  occasion?: string;
+  styles?: string[];
   excludeId?: string;
 }): Promise<Outfit[]> {
-  const { limit, occasion, excludeId } = opts;
+  const { limit, excludeId } = opts;
+  const styles = opts.styles?.length ? opts.styles : undefined;
   if (limit <= 0) return [];
   if (!isSupabaseConfigured || !supabase) {
     return staticOutfits
-      .filter((o) => o.id !== excludeId && (occasion === undefined || o.occasion === occasion))
+      .filter((o) => o.id !== excludeId && (!styles || o.styleKeywords.some((k) => styles.includes(k))))
       .slice(0, limit);
   }
 
   // `*` like the other outfit reads: `source` is optional in older databases,
   // and naming a missing column fails the whole read.
   let query = supabase.from("outfits").select("*");
-  if (occasion !== undefined) query = query.eq("occasion", occasion);
+  if (styles) query = query.overlaps("style_keywords", styles);
   if (excludeId) query = query.neq("id", excludeId);
   const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
   if (error) {

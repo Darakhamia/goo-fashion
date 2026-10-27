@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { writeRowDroppingUnknown } from "@/lib/server/write-row";
+import { seasonColumns } from "@/lib/data/db";
+import { normalizeSeasons } from "@/lib/seasons";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -39,8 +41,9 @@ export async function POST(req: Request) {
     look_id: body.lookId ?? null,
     name: text(body.name, 120),
     description: text(body.description, 2000),
-    occasion: text(body.occasion, 40),
-    season: text(body.season, 20),
+    // The seasons it is for (migration 030), and the old single season beside
+    // them. The occasion is no longer asked: styles cover it (CEO, 2026-10-27).
+    ...seasonColumns(normalizeSeasons(body.seasons ?? [])),
   };
 
   // Each of these arrived with a migration, so a database a step behind the
@@ -49,7 +52,7 @@ export async function POST(req: Request) {
   // error at all, including real ones.
   const { data, error, dropped } = await writeRowDroppingUnknown<{ id: string }>(
     row,
-    ["look_id", "name", "description", "occasion", "season"],
+    ["look_id", "name", "description", "season", "seasons"],
     (payload) => supabase!.from("pending_looks").insert(payload).select("id").single(),
   );
 

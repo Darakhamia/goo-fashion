@@ -6,6 +6,7 @@ import Image from "@/components/ui/Image";
 import Price from "@/components/ui/Price";
 import { getUserLookById, sharedLookFromShareData, type SharedLook } from "@/lib/data/db";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import MoneyText from "@/components/ui/MoneyText";
 
 // Looks are created at runtime, so a given id may not exist at build time and
 // must always be re-fetched — never statically cached (which could freeze in a
@@ -173,11 +174,12 @@ export default async function SharedLookPage(props: Props) {
               {/* Desktop's −0.015em is spelled out: any tracking class turns off the
                   size-based rule in globals.css (DESIGN_SYSTEM.md §12.13). */}
               <h1 className="text-[22px] md:text-4xl font-semibold md:font-bold md:uppercase tracking-[-0.01em] md:tracking-[-0.015em] text-[var(--foreground)] leading-tight mb-2 md:mb-4">
-                {heading}
+                <MoneyText text={heading} />
               </h1>
+              {/* A price in the words reads in the visitor's currency (MoneyText). */}
               {look.description?.trim() && (
                 <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-w-sm">
-                  {look.description}
+                  <MoneyText text={look.description} />
                 </p>
               )}
 

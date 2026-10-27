@@ -69,15 +69,28 @@ const OTHER_CHECKS: readonly Check[] = [
   },
   {
     table: "pending_looks",
-    column: "occasion",
-    migration: "017_pending_look_details.sql",
-    breaks: "Published community looks all fall back to the default occasion.",
-  },
-  {
-    table: "pending_looks",
     column: "season",
     migration: "017_pending_look_details.sql",
     breaks: "Published community looks all fall back to the default season.",
+  },
+  {
+    table: "outfits",
+    column: "seasons",
+    migration: "030_outfit_seasons.sql",
+    breaks:
+      "An outfit keeps one season: a choice of several is stored as \"all seasons\", and Browse filters by the old single season.",
+  },
+  {
+    table: "pending_looks",
+    column: "seasons",
+    migration: "030_outfit_seasons.sql",
+    breaks: "A look submitted for several seasons reaches the studio as \"all seasons\".",
+  },
+  {
+    table: "user_looks",
+    column: "seasons",
+    migration: "030_outfit_seasons.sql",
+    breaks: "A saved look's seasons stay on the device they were chosen on.",
   },
   {
     table: "pending_looks",

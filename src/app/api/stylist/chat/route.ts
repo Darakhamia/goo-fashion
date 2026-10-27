@@ -45,7 +45,8 @@ interface BrowseContext {
   searchQuery?: string;
   categories?: string[];
   brands?: string[];
-  occasions?: string[];
+  /** Outfits view: the seasons the shopper filtered by. */
+  seasons?: string[];
   gender?: string;
   styles?: string[];
   priceLabel?: string;
@@ -691,6 +692,7 @@ function buildBrowseContext(ctx: BrowseContext): string {
   if (ctx.brands?.length) filters.push(`Brands: ${ctx.brands.slice(0, 10).join(", ")}`);
   if (ctx.gender) filters.push(`Gender: ${ctx.gender}`);
   if (ctx.styles?.length) filters.push(`Styles: ${ctx.styles.join(", ")}`);
+  if (ctx.seasons?.length) filters.push(`Seasons: ${ctx.seasons.slice(0, 4).join(", ")}`);
   if (ctx.priceLabel) filters.push(`Price: ${ctx.priceLabel}`);
   lines.push(filters.length > 0 ? `Active filters: ${filters.join(" · ")}` : "No filters active.");
   lines.push("Help the user discover items or suggest complementary pieces.");

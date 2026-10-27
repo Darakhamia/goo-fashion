@@ -96,7 +96,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 const FIRST_SCREEN = 40;
 
 /** URL parameters that filter the pieces (BrowseClient's `filtersFromParams`). */
-const PIECE_FILTERS = ["search", "subcat", "category", "color", "gender", "brand", "occasion", "ai", "style"];
+const PIECE_FILTERS = ["search", "subcat", "category", "color", "gender", "brand", "ai", "style"];
 
 /**
  * The pieces written into the page.

@@ -4,12 +4,15 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { useCurrency } from "@/lib/context/currency-context";
+import { applyFormat, useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
 import { toCartRetailers } from "@/lib/cart-item";
-import type { Product, StyleKeyword } from "@/lib/types";
+import type { Product, Season, StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
+import { normalizeSeasons, seasonLabel } from "@/lib/seasons";
+import { SeasonPicker } from "@/components/look/SeasonPicker";
+import { useMoneyText } from "@/components/ui/MoneyText";
 import { generationPieces } from "@/lib/look-generation";
 import { StylePicker, type GenerationStyle } from "@/components/look/StylePicker";
 import { StatusDot, BagIcon, NewLookIcon, PhoneEmpty } from "@/components/look/CardBits";
@@ -110,23 +113,29 @@ function LookCard({
   publication,
   onSubmitted,
   onUpgradePrompt,
+  isAdmin,
 }: {
   look: SavedLook;
   onDelete: () => void;
   onUpdate: (
     id: string,
-    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "generatedImage" | "generatedStyle">>,
+    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "seasons" | "generatedImage" | "generatedStyle">>,
   ) => void;
   allProducts: Product[];
   publication: PublicationStatus | null;
-  onSubmitted: (lookId: string, generatedImage: string | null) => void;
+  onSubmitted: (lookId: string, generatedImage: string | null, status?: PublicationStatus) => void;
   onUpgradePrompt: (prompt: UpgradePrompt) => void;
+  /** An admin publishes straight to the catalogue instead of submitting. */
+  isAdmin: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { formatPrice } = useCurrency();
+  const toReader = useMoneyText();
   const { addManyToCart } = useCart();
   const [submitState, setSubmitState] = useState<"idle" | "submitting">("idle");
+  /** Why the last direct publication failed (admins only). */
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [bagAdded, setBagAdded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [modalEditingName, setModalEditingName] = useState(false);
@@ -150,10 +159,11 @@ function LookCard({
   // the look to the account, and a request per character is not a save, it is a
   // flood. The draft is seeded when the sheet opens so Cancel really cancels.
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<{ name: string; description: string; styleKeywords: string[] }>({
+  const [draft, setDraft] = useState<{ name: string; description: string; styleKeywords: string[]; seasons: Season[] }>({
     name: "",
     description: "",
     styleKeywords: [],
+    seasons: [],
   });
 
   /**
@@ -164,6 +174,10 @@ function LookCard({
    * comes from), it was simply never offered before the fact or stored. So the
    * suggestion is instant, free, cannot fail, and matches what the catalogue
    * will show.
+   *
+   * The price goes in in dollars, the currency the look's total is kept in,
+   * not in this shopper's: the text is stored and read by everyone, and the
+   * pages that show it convert it to each reader's currency (MoneyText).
    */
   const suggestCopy = () => {
     const resolved = look.pieces
@@ -173,7 +187,8 @@ function LookCard({
       brands: resolved.map((prod) => prod.brand).filter(Boolean) as string[],
       styleKeywords: draft.styleKeywords,
       pieceCount: look.pieces.length,
-      price: formatPrice(look.totalPrice),
+      price: applyFormat(look.totalPrice, "USD", {}),
+      seasons: draft.seasons,
     };
     setDraft((d) => ({
       ...d,
@@ -187,6 +202,7 @@ function LookCard({
       name: look.name ?? "",
       description: look.description ?? "",
       styleKeywords: look.styleKeywords ?? [],
+      seasons: look.seasons ?? [],
     });
     setEditing(true);
   };
@@ -209,6 +225,7 @@ function LookCard({
       // Normalised so the stored order matches the vocabulary rather than the
       // order the chips happened to be clicked in.
       styleKeywords: normalizeStyleKeywords(draft.styleKeywords),
+      seasons: normalizeSeasons(draft.seasons),
     });
     setEditing(false);
   };
@@ -265,9 +282,45 @@ function LookCard({
     }
   };
 
-  const canSubmit = !!look.generatedImage && publication !== "pending" && publication !== "approved";
+  // A shopper's look goes to the queue with its photo; an admin's goes straight
+  // to the catalogue, with or without one (the outfit card draws a collage).
+  const canSubmit = isAdmin
+    ? publication !== "approved"
+    : !!look.generatedImage && publication !== "pending" && publication !== "approved";
+
+  /** An admin's own look, straight into the catalogue (api/looks/publish). */
+  const handlePublishNow = async () => {
+    if (!canSubmit || submitState !== "idle") return;
+    setSubmitState("submitting");
+    setPublishError(null);
+    try {
+      const res = await fetch("/api/looks/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lookId: look.id,
+          generatedImage: look.generatedImage,
+          generatedStyle: look.generatedStyle,
+          pieces: look.pieces,
+          styleKeywords: look.styleKeywords,
+          seasons: look.seasons ?? [],
+          name: look.name,
+          description: look.description,
+        }),
+      });
+      if (res.ok) onSubmitted(look.id, look.generatedImage ?? null, "approved");
+      else {
+        const err = await res.json().catch(() => ({}));
+        setPublishError(err.error ?? `Could not publish (${res.status}).`);
+      }
+    } catch {
+      setPublishError("Could not publish: network error.");
+    }
+    setSubmitState("idle");
+  };
 
   const handleSubmitForPublication = async () => {
+    if (isAdmin) return handlePublishNow();
     if (!canSubmit || submitState !== "idle") return;
     setSubmitState("submitting");
     try {
@@ -281,6 +334,7 @@ function LookCard({
           pieces: look.pieces,
           totalPrice: look.totalPrice,
           styleKeywords: look.styleKeywords,
+          seasons: look.seasons ?? [],
           // A saved look has carried a name and description all along; they
           // just were not being sent, so the catalogue never saw them.
           name: look.name,
@@ -739,7 +793,7 @@ function LookCard({
               className="text-[14px] md:text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug w-full text-left hover:opacity-70 transition-opacity"
               title="Click to rename"
             >
-              {displayName}
+              {toReader(displayName)}
             </button>
           )}
 
@@ -865,6 +919,15 @@ function LookCard({
               })}
             </div>
 
+            <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)] mb-2.5 md:mb-1.5">
+              Seasons
+            </label>
+            <SeasonPicker
+              value={draft.seasons}
+              onChange={(seasons) => setDraft((d) => ({ ...d, seasons }))}
+              className="mb-6"
+            />
+
             {publication === "pending" && (
               <p className="text-[11px] text-[var(--foreground-subtle)] mb-4">
                 Already submitted — these edits apply to your copy, and to the next submission.
@@ -981,7 +1044,7 @@ function LookCard({
                     title="Rename"
                   >
                     <span className="text-[18px] md:text-[17px] font-semibold md:font-bold text-[var(--foreground)] leading-snug truncate">
-                      {displayName}
+                      {toReader(displayName)}
                     </span>
                     <svg
                       width="11" height="11" viewBox="0 0 16 16" fill="currentColor"
@@ -1009,7 +1072,7 @@ function LookCard({
                     with a placeholder that reads like real copy. */}
                 {look.description && (
                   <p className="text-[12px] text-[var(--foreground-muted)] mt-2.5 whitespace-pre-line">
-                    {look.description}
+                    {toReader(look.description)}
                   </p>
                 )}
                 {(look.styleKeywords?.length ?? 0) > 0 && (
@@ -1024,6 +1087,10 @@ function LookCard({
                     ))}
                   </div>
                 )}
+                {(look.seasons?.length ?? 0) > 0 && (
+                  <p className="mt-2 text-[12px] md:text-[11px] text-[var(--foreground-muted)]">
+                    {look.seasons!.map(seasonLabel).join(", ")}
+                  </p>                )}
               </div>
               <button
                 onClick={() => { setOpen(false); setModalEditingName(false); setModalShare(false); }}
@@ -1300,17 +1367,25 @@ function LookCard({
                           </svg>
                         }
                       >
-                        {publication === "pending"
-                          ? "Pending approval"
-                          : publication === "approved"
+                        {publication === "approved"
                           ? "Published to GOO"
+                          : isAdmin
+                          ? submitState === "submitting" ? "Publishing…" : "Publish to catalogue"
+                          : publication === "pending"
+                          ? "Pending approval"
                           : submitState === "submitting"
                           ? "Submitting…"
                           : "Submit for publication"}
                       </MenuItem>
                       <MenuCaption>
-                        Publication requires admin approval.
-                        {!look.generatedImage && " Generate an image for this look to submit it."}
+                        {isAdmin ? (
+                          "You're an admin: the look goes straight to the catalogue, no review."
+                        ) : (
+                          <>
+                            Publication requires admin approval.
+                            {!look.generatedImage && " Generate an image for this look to submit it."}
+                          </>
+                        )}
                       </MenuCaption>
                     </ActionMenu>
                     <button
@@ -1343,6 +1418,33 @@ function LookCard({
                         <span className="block text-[11px] text-[var(--foreground-subtle)]">This look is live on the site.</span>
                       </span>
                     </div>
+                  ) : isAdmin ? (
+                    <>
+                      <button
+                        onClick={handlePublishNow}
+                        disabled={submitState === "submitting"}
+                        className="mt-3 w-full flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-left hover:border-[var(--border-strong)] transition-colors disabled:opacity-50 disabled:cursor-default"
+                      >
+                        <span className="w-8 h-8 shrink-0 rounded-full bg-[var(--fg-overlay-08)] text-[var(--foreground)] flex items-center justify-center">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 19V5m0 0-5 5m5-5 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[13px] font-semibold text-[var(--foreground)]">
+                            {submitState === "submitting" ? "Publishing…" : "Publish to catalogue"}
+                          </span>
+                          <span className="block text-[11px] text-[var(--foreground-subtle)]">
+                            {publication === "pending"
+                              ? "It is also in the review queue; publishing closes that submission."
+                              : "Straight to the catalogue, no review — you're an admin."}
+                          </span>
+                        </span>
+                      </button>
+                      {publishError && (
+                        <p role="alert" className="mt-2 text-[11px] text-red-500">{publishError}</p>
+                      )}
+                    </>
                   ) : publication === "pending" ? (
                     <div className="mt-3 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3">
                       <span className="w-8 h-8 shrink-0 rounded-full bg-orange-400/15 text-orange-400 flex items-center justify-center">
@@ -1430,6 +1532,9 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
   // Ids already asked for, so editing or deleting a look doesn't refetch them.
   const requestedProductIds = useRef(new Set<string>());
   const [submissions, setSubmissions] = useState<LookSubmission[]>([]);
+  // Whether this account may publish without review. Asked of the server: who
+  // is an admin is decided there (an id list, or the Users panel's flag).
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Load saved looks — from API when logged in, else from localStorage
   useEffect(() => {
@@ -1452,6 +1557,11 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
         .then((r) => r.json())
         .then((d: LookSubmission[]) => { if (Array.isArray(d)) setSubmissions(d); })
         .catch(() => {});
+      fetch("/api/admin/me", { cache: "no-store" })
+        .then((r) => { if (!cancelled) setIsAdmin(r.ok); })
+        .catch(() => {});
+    } else {
+      setIsAdmin(false);
     }
 
     return () => { cancelled = true; };
@@ -1503,7 +1613,7 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
     // `generatedImage` joined the list when "Regenerate photo" started actually
     // regenerating: a new shot is an edit to the look like any other, and takes
     // the same local-first-then-push path.
-    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "generatedImage" | "generatedStyle">>,
+    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "seasons" | "generatedImage" | "generatedStyle">>,
   ) => {
     setMyLooks((prev) => {
       const next = prev.map((l) => (l.id === id ? { ...l, ...patch } : l));
@@ -1544,9 +1654,9 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
     onCountChange?.(myLooks.length);
   }, [myLooks.length, onCountChange]);
 
-  const markSubmitted = (lookId: string, generatedImage: string | null) => {
+  const markSubmitted = (lookId: string, generatedImage: string | null, status: PublicationStatus = "pending") => {
     setSubmissions((prev) => [
-      { id: `local-${lookId}`, lookId, generatedImage, status: "pending" },
+      { id: `local-${lookId}`, lookId, generatedImage, status },
       ...prev,
     ]);
   };
@@ -1585,6 +1695,7 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
                 publication={publicationFor(look)}
                 onSubmitted={markSubmitted}
                 onUpgradePrompt={setUpgradePrompt}
+                isAdmin={isAdmin}
               />
             </motion.div>
           ))}

@@ -3,8 +3,10 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getProductsByIds } from "@/lib/data/db";
-import { toUsd } from "@/lib/server/fx";
+import { seasonColumns } from "@/lib/data/db";
+import { insertOutfitRow, priceLook, type LookPiece } from "@/lib/server/look-outfit";
+import { normalizeSeasons, seasonsFromRow } from "@/lib/seasons";
+import { normalizeStyleKeywords } from "@/lib/style-keywords";
 
 export async function POST(req: Request) {
   const admin = await requireAdmin();
@@ -39,38 +41,10 @@ export async function POST(req: Request) {
     );
   }
 
-  // Map builder pieces → outfit items (first = hero, second = secondary, rest = accent)
-  const roles = ["hero", "secondary", "accent"] as const;
-  const pieces = (Array.isArray(look.pieces) ? look.pieces : []) as { productId?: string }[];
-  const items = pieces.map((p, i) => ({
-    product_id: p.productId,
-    role: roles[Math.min(i, 2)],
-  }));
-
-  // The price is the catalogue's, not the submission's: `total_price` was sent
-  // by the shopper's browser, and an outfit approved on it would advertise
-  // whatever number arrived. Summed in dollars, as the builder does.
-  const productIds = pieces
-    .map((p) => p.productId)
-    .filter((pid): pid is string => typeof pid === "string" && pid.length > 0);
-  const products = await getProductsByIds(productIds);
-  // getProductsByIds reports a failed read as an empty list. Publishing on that
-  // would put the look in the catalogue at $0, so none found is an error here.
-  if (productIds.length > 0 && products.length === 0) {
-    return NextResponse.json(
-      { error: "None of this look's products could be read from the catalogue, so it cannot be priced. Try again; if it persists, its products may have been removed." },
-      { status: 500 }
-    );
-  }
-  const inUsd = async (amount: number, currency: string) =>
-    (await toUsd(amount, currency || "USD"))?.usd ?? amount;
-  let totalPriceMin = 0;
-  let totalPriceMax = 0;
-  for (const p of products) {
-    totalPriceMin += await inUsd(p.priceMin, p.currency);
-    totalPriceMax += await inUsd(p.priceMax, p.currency);
-  }
-  const cents = (n: number) => Math.round(n * 100) / 100;
+  // The pieces as outfit items, priced from the catalogue (lib/server/look-outfit).
+  const pieces = (Array.isArray(look.pieces) ? look.pieces : []) as LookPiece[];
+  const priced = await priceLook(pieces);
+  if ("error" in priced) return NextResponse.json({ error: priced.error }, { status: 500 });
 
   // What the shopper called it, or an admin's edit of it, wins. The constants
   // are only a floor for looks submitted before those columns existed: this
@@ -92,31 +66,34 @@ export async function POST(req: Request) {
     ? (overrides.styleKeywords as string[])
     : (look.style_keywords ?? []);
 
-  // Create an outfit from the pending look
-  const { data: outfit, error: insertErr } = await supabase
-    .from("outfits")
-    .insert({
-      name: pick("name", "Community Look"),
-      description: pick("description", ""),
-      occasion: pick("occasion", "casual"),
-      season: pick("season", "all"),
-      image_url: look.generated_image,
-      items,
-      total_price_min: cents(totalPriceMin),
-      total_price_max: cents(totalPriceMax),
-      currency: "USD",
-      style_keywords: styleKeywords,
-      is_ai_generated: true,
-      is_saved: false,
-      source: "community",
-    })
-    .select("id")
-    .single();
+  // Seasons: the admin's pick, else the shopper's — the list (migration 030),
+  // or the single season a submission from before it carried.
+  const seasons = Array.isArray(overrides.seasons)
+    ? normalizeSeasons(overrides.seasons)
+    : seasonsFromRow(look);
 
-  if (insertErr || !outfit) {
-    console.error("[looks/approve] insert outfit error:", insertErr);
-    return NextResponse.json({ error: insertErr?.message ?? "Failed to create the outfit." }, { status: 500 });
+  // Create an outfit from the pending look. The occasion is left to the
+  // database's default: styles replaced it (CEO, 2026-10-27).
+  const created = await insertOutfitRow({
+    name: pick("name", "Community Look"),
+    description: pick("description", ""),
+    ...seasonColumns(seasons),
+    image_url: look.generated_image,
+    items: priced.items,
+    total_price_min: priced.totalPriceMin,
+    total_price_max: priced.totalPriceMax,
+    currency: "USD",
+    style_keywords: normalizeStyleKeywords(styleKeywords),
+    is_ai_generated: true,
+    is_saved: false,
+    source: "community",
+  });
+
+  if ("error" in created) {
+    console.error("[looks/approve] insert outfit error:", created.error);
+    return NextResponse.json({ error: created.error }, { status: 500 });
   }
+  const outfit = created;
 
   // Mark the look approved — again only if it is still pending, so of two
   // moderators approving at once exactly one wins. Whoever loses, or a failed

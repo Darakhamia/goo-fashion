@@ -1,4 +1,4 @@
-import type { Gender, Occasion, Product, StyleKeyword } from "@/lib/types";
+import type { Gender, Product, Season, StyleKeyword } from "@/lib/types";
 import type { SortOption, View } from "./BrowseClient";
 
 /*
@@ -34,7 +34,8 @@ export type SavedView = {
   sort: SortOption;
   brands: string[];
   subcategories: string[];
-  occasions: Occasion[];
+  /** Absent in a view saved before seasons replaced occasions. */
+  seasons?: Season[];
   gender: Gender | null;
   maxPrice: number | null;
   colorGroupIds: number[];
