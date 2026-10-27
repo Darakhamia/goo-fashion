@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { getOutfitsByIds, readAllOutfits } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
 
-// Outfits are made in the builder and published from My looks — a shopper's
-// through the moderation queue, an admin's straight away (api/looks/publish).
+// Outfits are made in the builder and submitted from My looks, or put
+// together by the AI in the studio; either way they go through the moderation
+// queue (api/looks/submit, api/looks/approve).
 // The studio's own "New outfit" form, and the POST here that it called, went
 // with the CEO's decision of 2026-10-27: one way to build a look, not two.
 

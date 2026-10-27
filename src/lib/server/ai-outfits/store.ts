@@ -192,7 +192,7 @@ async function queueLook(adminId: string, look: QueuedLook): Promise<void> {
     },
     // Columns of older migrations; `ai_meta` arrives with the runs table and
     // is required — a look without it would be approved as a person's.
-    ["look_id", "name", "description", "season", "seasons"],
+    ["look_id", "name", "description", "season", "seasons", "gender"],
     (payload) => supabase!.from("pending_looks").insert(payload).then(({ error: e }) => ({ data: null, error: e })),
   );
   if (error) throw new Error(error.message);

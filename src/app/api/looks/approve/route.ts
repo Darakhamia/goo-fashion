@@ -6,6 +6,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { seasonColumns } from "@/lib/data/db";
 import { insertOutfitRow, priceLook, type LookPiece } from "@/lib/server/look-outfit";
 import { normalizeSeasons, seasonsFromRow } from "@/lib/seasons";
+import { normalizeGender } from "@/lib/outfit-gender";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
 
 export async function POST(req: Request) {
@@ -83,6 +84,8 @@ export async function POST(req: Request) {
     name: pick("name", "Community Look"),
     description: pick("description", ""),
     ...seasonColumns(seasons),
+    // The admin's pick, else the submitted one, else what the pieces add up to.
+    gender: normalizeGender(overrides.gender) ?? normalizeGender(look.gender) ?? priced.gender,
     // A generated look whose picture failed has none; the site draws a collage.
     image_url: look.generated_image ?? "",
     items: priced.items,

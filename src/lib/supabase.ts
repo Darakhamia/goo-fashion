@@ -81,6 +81,8 @@ export type DbOutfit = {
   season: string;
   /** Migration 030; absent on a database a migration behind. */
   seasons?: string[] | null;
+  /** Migration 032: women | men | unisex; null = read from the pieces. */
+  gender?: string | null;
   created_at: string;
   /** Migration 027; absent on a database a migration behind. */
   updated_at?: string | null;

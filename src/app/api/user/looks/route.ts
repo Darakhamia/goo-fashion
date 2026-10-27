@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { writeRowDroppingUnknown } from "@/lib/server/write-row";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
 import { normalizeSeasons } from "@/lib/seasons";
+import { normalizeGender } from "@/lib/outfit-gender";
 
 export async function GET() {
   const { userId } = await auth();
@@ -31,6 +32,7 @@ export async function GET() {
     totalPrice: r.total_price,
     styleKeywords: normalizeStyleKeywords(r.style_keywords),
     seasons: normalizeSeasons(r.seasons ?? []),
+    gender: normalizeGender(r.gender) ?? undefined,
     generatedImage: r.generated_image,
     generatedStyle: r.generated_style,
   }));
@@ -76,6 +78,7 @@ export async function POST(req: Request) {
     total_price: body.totalPrice ?? null,
     style_keywords: body.styleKeywords ?? [],
     seasons: normalizeSeasons(body.seasons ?? []),
+    gender: normalizeGender(body.gender),
     generated_image: body.generatedImage ?? null,
     generated_style: body.generatedStyle ?? null,
   };
@@ -95,7 +98,7 @@ export async function POST(req: Request) {
   // PostgREST's unknown-column code, and it says what it dropped.
   const { error, dropped } = await writeRowDroppingUnknown<null>(
     row,
-    ["look_name", "look_description", "seasons"],
+    ["look_name", "look_description", "seasons", "gender"],
     (payload) => supabase!.from("user_looks").upsert(payload, { onConflict: "id" }).then(
       ({ error: e }) => ({ data: null, error: e }),
     ),
@@ -106,7 +109,7 @@ export async function POST(req: Request) {
   if (dropped.length) {
     console.warn(
       `[user/looks] saved without ${dropped.join(", ")} — a migration is pending (009 adds the name and ` +
-      "description, 030 the seasons); until then those stay on the device they were set on",
+      "description, 030 the seasons, 032 the gender); until then those stay on the device they were set on",
     );
   }
 

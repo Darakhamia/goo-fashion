@@ -211,6 +211,11 @@ export interface Outfit {
    * now cover (CEO, 2026-10-27) — the database keeps both old columns.
    */
   seasons: Season[];
+  /**
+   * Who it is for. Stored since migration 032; an outfit without it is read
+   * from its pieces (`outfitGenderOf` in lib/outfit-gender).
+   */
+  gender?: Gender;
   source?: "community" | null;
   isHomepageFeatured?: boolean;
   /** ISO date string from DB — used for per-entity sitemap lastmod. */

@@ -13,7 +13,8 @@
  * What it talks to — the model, the image model, the database — comes in as
  * `deps`, so the whole run can be exercised without any of them.
  */
-import type { ColorGroup, Product, Season, StyleKeyword } from "@/lib/types";
+import type { ColorGroup, Gender, Product, Season, StyleKeyword } from "@/lib/types";
+import { genderOfPieces } from "@/lib/outfit-gender";
 import type { ImageStyle, OutfitImageResult, SlotProduct } from "@/lib/server/outfit-image";
 import { buildCandidates, poolProblem, randomSource, type GenerationBrief } from "./candidates";
 import { checkOutfit, signature, type CheckedOutfit } from "./validate";
@@ -61,6 +62,8 @@ export interface QueuedLook {
   total_price: number;
   style_keywords: string[];
   seasons: Season[];
+  /** The brief's, else what the pieces add up to. */
+  gender: Gender;
   name: string;
   description: string;
   ai_meta: AiMeta;
@@ -213,6 +216,7 @@ export async function runGeneration(input: RunInput, deps: RunDeps): Promise<Run
       total_price: Math.round(total * 100) / 100,
       style_keywords: outfit.styles,
       seasons: outfit.seasons,
+      gender: brief.gender ?? genderOfPieces(outfit.pieces.map((p) => p.product.gender)),
       name: copy.name,
       description: copy.description,
       ai_meta: {

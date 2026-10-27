@@ -172,6 +172,7 @@ async function main() {
   expect("emoji and ! tidied, the description kept", dress.description.includes("slip dress") && !/🖤|!/.test(dress.description));
   expect("failed picture: queued without one, reason kept", bad.generated_image === null && bad.ai_meta.imageError === "Replicate timed out");
   expect("pieces stored under builder slots", dress.pieces.map((p) => p.slot).join(",") === "bottom,shoes,accessories");
+  expect("gender read from the pieces: the dress look is women's, the shirt look men's", dress.gender === "women" && bad.gender === "men");
   expect("total in dollars", good.total_price === good.pieces.reduce((s, p) => s + catalogue.find((c) => c.id === p.productId)!.priceMin, 0));
   expect("sold-out and swimwear pieces never offered", !model.asked[0].candidates.some((c) => /Sold Out|Swim/.test(c.product.name)));
   for (const q of a.queued) console.log(`     queued: "${q.name}" — ${q.description}`);
@@ -186,6 +187,7 @@ async function main() {
   expect("no women's pieces offered to a men's brief", !offered.some((c) => c.product.gender === "women"));
   expect("no off-palette colours offered (red hoodie, yellow puffer, green cargo)", !offered.some((c) => /Hoodie|Puffer|Cargo/.test(c.product.name)));
   expect("brief outfit kept", b.queued.some((q) => q.name === "Brown Study"));
+  expect("a men's brief stores men", b.queued.every((q) => q.gender === "men"));
   expect("outfit without the brand or the colour refused", b.log.some((l) => l.includes("Weekend Grey") && /no piece by Our Legacy|no piece in brown/.test(l)));
 
   console.log("\n3. A piece set the site already has is refused");

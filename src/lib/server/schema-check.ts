@@ -93,6 +93,24 @@ const OTHER_CHECKS: readonly Check[] = [
     breaks: "A saved look's seasons stay on the device they were chosen on.",
   },
   {
+    table: "outfits",
+    column: "gender",
+    migration: "032_outfit_gender.sql",
+    breaks: "An outfit's gender is always read from its pieces; one chosen in the studio, the builder or My looks is not kept.",
+  },
+  {
+    table: "pending_looks",
+    column: "gender",
+    migration: "032_outfit_gender.sql",
+    breaks: "A submitted look's gender is not kept; approval reads it from the pieces.",
+  },
+  {
+    table: "user_looks",
+    column: "gender",
+    migration: "032_outfit_gender.sql",
+    breaks: "A saved look's gender stays on the device it was chosen on.",
+  },
+  {
     table: "ai_outfit_runs",
     column: "log",
     migration: "031_ai_outfit_runs.sql",

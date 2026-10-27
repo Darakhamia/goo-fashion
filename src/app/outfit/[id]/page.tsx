@@ -15,6 +15,7 @@ import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
 import { outfitStylePath } from "@/lib/landing-paths";
 import { seasonsLabel } from "@/lib/seasons";
+import { genderLabel, outfitGenderOf } from "@/lib/outfit-gender";
 import { styleLabel } from "@/lib/style-keywords";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
@@ -156,7 +157,7 @@ export default async function OutfitDetailPage({ params }: Props) {
             {/* Header */}
             <div className="mb-3 md:mb-10">
               <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
-                {seasonsLabel(outfit.seasons)}
+                {genderLabel(outfitGenderOf(outfit))} · {seasonsLabel(outfit.seasons)}
               </p>
               {/* One line each, chevron for the rest: outfit names and blurbs are
                   generated from the pieces, so they run long and would otherwise

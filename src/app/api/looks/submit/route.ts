@@ -4,6 +4,9 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { writeRowDroppingUnknown } from "@/lib/server/write-row";
 import { seasonColumns } from "@/lib/data/db";
 import { normalizeSeasons } from "@/lib/seasons";
+import { normalizeGender } from "@/lib/outfit-gender";
+import { requireAdmin } from "@/lib/server/admin-auth";
+import { MAX_OUTFIT_ITEMS } from "@/lib/outfit-limits";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -12,8 +15,18 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!body?.generatedImage) {
+  // Every look reaches the catalogue through this queue, an admin's own too
+  // (CEO, 2026-10-27; there used to be a straight-to-catalogue route for
+  // admins). A shopper's look needs its picture; an admin's may come without
+  // one and is published as a collage of its pieces.
+  if (!body?.generatedImage && !(await requireAdmin())) {
     return NextResponse.json({ error: "generatedImage is required" }, { status: 400 });
+  }
+  if (!Array.isArray(body?.pieces) || body.pieces.length === 0) {
+    return NextResponse.json({ error: "A look needs at least one piece." }, { status: 400 });
+  }
+  if (body.pieces.length > MAX_OUTFIT_ITEMS) {
+    return NextResponse.json({ error: `An outfit takes up to ${MAX_OUTFIT_ITEMS} pieces.` }, { status: 400 });
   }
 
   if (!isSupabaseConfigured || !supabase) {
@@ -32,7 +45,7 @@ export async function POST(req: Request) {
 
   const row = {
     user_id: userId,
-    generated_image: body.generatedImage,
+    generated_image: body.generatedImage || null,
     generated_style: body.generatedStyle ?? null,
     pieces: body.pieces ?? [],
     total_price: body.totalPrice ?? null,
@@ -44,6 +57,8 @@ export async function POST(req: Request) {
     // The seasons it is for (migration 030), and the old single season beside
     // them. The occasion is no longer asked: styles cover it (CEO, 2026-10-27).
     ...seasonColumns(normalizeSeasons(body.seasons ?? [])),
+    // Who it is for (migration 032); null = read from the pieces at approval.
+    gender: normalizeGender(body.gender),
   };
 
   // Each of these arrived with a migration, so a database a step behind the
@@ -52,7 +67,7 @@ export async function POST(req: Request) {
   // error at all, including real ones.
   const { data, error, dropped } = await writeRowDroppingUnknown<{ id: string }>(
     row,
-    ["look_id", "name", "description", "season", "seasons"],
+    ["look_id", "name", "description", "season", "seasons", "gender"],
     (payload) => supabase!.from("pending_looks").insert(payload).select("id").single(),
   );
 
