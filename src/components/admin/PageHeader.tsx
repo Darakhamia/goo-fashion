@@ -140,7 +140,8 @@ export function PageHeader({
         slot &&
         createPortal(
           // The page's last screen of rows scrolls up from under the fade.
-          <div className="[body:has([data-bulk-bar])_&]:hidden px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-linear-to-t from-[var(--background)] from-70% to-transparent">
+          // data-pinned-action: BackToTop stands above it.
+          <div data-pinned-action className="[body:has([data-bulk-bar])_&]:hidden px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-linear-to-t from-[var(--background)] from-70% to-transparent">
             {primary.href && !primary.disabled ? (
               <Link href={primary.href} className={`${btn("primary", "lg")} w-full`}>
                 {primary.icon}

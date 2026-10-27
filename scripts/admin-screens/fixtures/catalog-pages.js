@@ -443,6 +443,21 @@ module.exports = {
       },
     },
     {
+      // The list after a reload: where it was, with "Back to top" in the corner.
+      name: "products-reload", url: "/goo-studio/products", fullPage: false,
+      after: async (page) => {
+        const many = [0, 1, 2].flatMap((n) => products.map((p) => ({ ...p, id: n ? `${p.id}-${n}` : p.id })));
+        await page.route((u) => u.pathname === "/api/products" && u.searchParams.get("raw") === "true", (r) => r.fulfill({ json: many }));
+        await page.reload({ waitUntil: "networkidle" });
+        await waitRows(page);
+        await page.getByRole("button", { name: /^(Load|Показать ещё) \d+/ }).click();
+        await page.locator(ROW).nth(70).scrollIntoViewIfNeeded();
+        await page.waitForTimeout(300);
+        await page.reload({ waitUntil: "networkidle" });
+        await waitRows(page);
+      },
+    },
+    {
       name: "outfits-bulk", url: "/goo-studio/outfits", fullPage: false,
       after: async (page) => {
         // Row boxes by place, not by label: the label is in the admin's language.
