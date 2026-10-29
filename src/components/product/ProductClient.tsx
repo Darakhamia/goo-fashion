@@ -305,7 +305,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               <button
                 onClick={handleLike}
                 aria-label={!isLoggedIn ? "Sign in to save item" : liked ? "Unlike item" : "Like item"}
-                className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full"
+                className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center bg-black/80 hover:bg-black backdrop-blur-sm rounded-full transition-[scale,background-color] duration-200 hover:scale-110 active:scale-[0.97]"
               >
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="text-white">
                   <path

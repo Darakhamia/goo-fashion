@@ -111,7 +111,7 @@ export default function OutfitCard({ outfit }: OutfitCardProps) {
       <button
         onClick={handleLike}
         aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
-        className="absolute top-0.5 right-0.5 md:top-3 md:right-3 z-20 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center md:bg-[var(--bg-overlay-90)] md:backdrop-blur-sm md:rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100"
+        className="absolute top-0.5 right-0.5 md:top-3 md:right-3 z-20 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center md:bg-[var(--bg-overlay-90)] md:hover:bg-[var(--background)] md:backdrop-blur-sm md:rounded-full transition-[opacity,scale,background-color] duration-200 md:opacity-0 md:group-hover:opacity-100 md:hover:scale-110 active:scale-[0.97]"
       >
         <span className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center md:contents">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="md:hidden text-black" aria-hidden="true">

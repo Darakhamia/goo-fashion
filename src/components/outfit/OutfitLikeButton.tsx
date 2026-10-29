@@ -23,7 +23,7 @@ export default function OutfitLikeButton({ outfitId }: { outfitId: string }) {
       onClick={handleLike}
       aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
       aria-pressed={liked}
-      className="absolute top-1 right-1 md:top-4 md:right-4 w-12 h-12 md:w-9 md:h-9 flex items-center justify-center md:bg-black/80 md:backdrop-blur-sm md:rounded-full"
+      className="absolute top-1 right-1 md:top-4 md:right-4 w-12 h-12 md:w-9 md:h-9 flex items-center justify-center md:bg-black/80 md:hover:bg-black md:backdrop-blur-sm md:rounded-full transition-[scale,background-color] duration-200 md:hover:scale-110 active:scale-[0.97]"
     >
       {/* Phones: a light circle in a 48px target (DESIGN_SYSTEM.md §12.6); the
           circle's box dissolves on desktop. */}
