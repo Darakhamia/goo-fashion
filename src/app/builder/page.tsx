@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Product, ProductSwatch, StyleKeyword, Brand, Gender, Season } from "@/lib/types";
@@ -9,11 +9,15 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { toCartItem } from "@/lib/cart-item";
 import { useAuth } from "@/lib/context/auth-context";
-import { useCurrency } from "@/lib/context/currency-context";
+import { applyFormat, useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
-import { StylePicker } from "@/components/look/StylePicker";
-import { SeasonPicker } from "@/components/look/SeasonPicker";
-import { GenderPicker } from "@/components/look/GenderPicker";
+import { StylePicker, type GenerationStyle } from "@/components/look/StylePicker";
+import { LookDetailsFields, type LookDetails } from "@/components/look/LookDetailsFields";
+import { LookDrawing } from "@/components/look/LookDrawing";
+import { LookPhotoMenu } from "@/components/look/LookPhotoMenu";
+import { generationStyleLabel } from "@/lib/look-generation";
+import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
+import { downloadLookPhoto } from "@/lib/download-look-photo";
 import { genderOfPieces } from "@/lib/outfit-gender";
 import { displayedProduct } from "@/lib/variant-display";
 import { useHoverImageCycle, ImageCycleDots, CYCLE_SLIDE_MS } from "@/lib/hooks/useHoverImageCycle";
@@ -24,7 +28,7 @@ import { loadLocalLooks, saveLocalLooks, pushLook, syncLooks, newLookId, type Sa
 import { subcategoryToValue, resolveSubcategory } from "@/lib/categories";
 import { photoBackdrop } from "@/lib/image";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
-import { STYLE_KEYWORD_LIST, matchesStyles, styleLabel } from "@/lib/style-keywords";
+import { STYLE_KEYWORD_LIST, matchesStyles, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -279,6 +283,11 @@ export default function BuilderPage() {
   // Who the look is for. Null follows the pieces (lib/outfit-gender); a pick
   // in the save dialog holds until another look is opened.
   const [lookGenderPick, setLookGenderPick] = useState<Gender | null>(null);
+  // The words and styles chosen in the save dialog: the same fields as My
+  // looks → Edit info, so a look is described before it is saved, not after
+  // (CEO, 2026-10-29). Seeded each time the dialog opens.
+  const [lookDescription, setLookDescription] = useState("");
+  const [lookStyles, setLookStyles] = useState<string[]>([]);
   const [colorPickerSlot, setColorPickerSlot] = useState<SlotId | null>(null);
   const [colorPickerProduct, setColorPickerProduct] = useState<Product | null>(null);
 
@@ -302,16 +311,21 @@ export default function BuilderPage() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [modalLookName, setModalLookName] = useState("");
-  const [modalLookDescription, setModalLookDescription] = useState("");
-  const [showModalDetails, setShowModalDetails] = useState(false);
   const [showStylePicker, setShowStylePicker] = useState(false);
+  // The style sheet opened from the save dialog's photo menu goes back to the
+  // dialog when it closes, whatever was chosen — cancelling included.
+  const [pickerFromDialog, setPickerFromDialog] = useState(false);
+  // The photo menu over the dialog's picture, and a download running from it.
+  const [photoMenu, setPhotoMenu] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   // Naming a look means typing in a field; a selection dragged past the panel
   // must not close it. See the hook.
   const nameBackdrop = useBackdropDismiss(() => setShowNameModal(false));
-  const savedBackdrop = useBackdropDismiss(() => setShowModal(false));
-  const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay" | "tryon">("mannequin");
+  // The style of the photo shown; the one being drawn is `drawingStyle`, so a
+  // failed redraw does not relabel the photo it left in place.
+  const [activeStyle, setActiveStyle] = useState<GenerationStyle>("mannequin");
+  const [drawingStyle, setDrawingStyle] = useState<GenerationStyle | null>(null);
   // Tracks the localStorage id of the look we've already persisted in this session,
   // so repeated Generate/Save calls update the same saved look instead of creating duplicates.
   const [persistedLookId, setPersistedLookId] = useState<string | null>(null);
@@ -740,7 +754,7 @@ export default function BuilderPage() {
   // Shared persistence helper — used by Save button and post-generation auto-save.
   // If editId (URL) or persistedLookId (session) matches an existing look, updates it.
   // Otherwise creates a new look and remembers its id so future calls reuse it.
-  const persistLook = async (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string; seasons?: Season[]; gender?: Gender } = {}): Promise<boolean> => {
+  const persistLook = async (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string; styleKeywords?: StyleKeyword[]; seasons?: Season[]; gender?: Gender } = {}): Promise<boolean> => {
     const urlEditId = new URLSearchParams(window.location.search).get("editId");
     const targetId = urlEditId || persistedLookId;
     const pieces = Object.entries(selection)
@@ -779,7 +793,7 @@ export default function BuilderPage() {
                 ...o,
                 pieces: mergedPieces,
                 totalPrice,
-                styleKeywords,
+                styleKeywords: extra.styleKeywords ?? styleKeywords,
                 ...(extra.name !== undefined && { name: extra.name }),
                 ...(extra.description !== undefined && { description: extra.description }),
                 ...(extra.seasons !== undefined && { seasons: extra.seasons }),
@@ -804,7 +818,7 @@ export default function BuilderPage() {
           ...(extra.gender && { gender: extra.gender }),
           pieces,
           totalPrice,
-          styleKeywords,
+          styleKeywords: extra.styleKeywords ?? styleKeywords,
           ...(extra.generatedImage && { generatedImage: extra.generatedImage }),
           ...(extra.generatedStyle && { generatedStyle: extra.generatedStyle }),
         };
@@ -835,15 +849,72 @@ export default function BuilderPage() {
       const existing = loadLocalLooks();
       const existingLook = urlEditId ? existing.find(o => o.id === urlEditId) : null;
       setPendingLookName(existingLook?.name || `Outfit ${existing.length + 1}`);
-      // A look opened from My looks keeps the seasons it was saved with.
+      // A look opened from My looks keeps its words, styles and seasons; a new
+      // one starts with the styles its pieces carry, as it was always saved.
+      setLookDescription(existingLook?.description ?? "");
+      setLookStyles(existingLook?.styleKeywords?.length ? existingLook.styleKeywords : styleKeywords);
       if (existingLook) {
         setLookSeasons(existingLook.seasons ?? []);
         setLookGenderPick(existingLook.gender ?? null);
       }
     } catch {
       setPendingLookName("Outfit 1");
+      setLookDescription("");
+      setLookStyles(styleKeywords);
     }
+    setPhotoError(null);
+    setGenerateError(null);
     setShowStylePicker(true);
+  };
+
+  /** The dialog's fields as one value, for the shared LookDetailsFields. */
+  const lookDetails: LookDetails = {
+    name: pendingLookName,
+    description: lookDescription,
+    styleKeywords: lookStyles,
+    seasons: lookSeasons,
+    gender: lookGender,
+  };
+  const setLookDetails = (next: LookDetails) => {
+    setPendingLookName(next.name);
+    setLookDescription(next.description);
+    setLookStyles(next.styleKeywords);
+    setLookSeasons(next.seasons);
+    if (next.gender !== lookGender) setLookGenderPick(next.gender);
+  };
+
+  /** Name and description from the pieces' brands, the chosen style and the price (lib/look-copy). */
+  const suggestCopy = () => {
+    const pieces = SLOTS.map(s => selection[s.id]).filter(Boolean) as Product[];
+    const input = {
+      brands: pieces.map(p => p.brand).filter(Boolean) as string[],
+      styleKeywords: lookStyles,
+      pieceCount: pieces.length,
+      // In dollars, the currency a look's total is kept in (lib/look-copy).
+      price: applyFormat(totalPrice, "USD", {}),
+      seasons: lookSeasons,
+    };
+    setPendingLookName(suggestLookName(input));
+    setLookDescription(suggestLookDescription(input));
+  };
+
+  /** The photo menu's "Regenerate photo": back to the style sheet, then back here. */
+  const reopenStylePicker = () => {
+    setPhotoMenu(false);
+    setPhotoError(null);
+    setPickerFromDialog(true);
+    setShowNameModal(false);
+    setShowStylePicker(true);
+  };
+
+  const downloadPhoto = async () => {
+    if (!generatedImage || downloading) return;
+    setDownloading(true);
+    setPhotoError(null);
+    const failed = await downloadLookPhoto(generatedImage);
+    if (failed) setPhotoError(failed);
+    else setPhotoMenu(false);
+    setDownloading(false);
   };
 
   const handleMobileSave = () => {
@@ -854,7 +925,16 @@ export default function BuilderPage() {
     if (savingLook) return;
     setSavingLook(true);
     setSaveFailed(false);
-    const ok = await persistLook({ name: pendingLookName.trim() || "My Look", generatedImage: generatedImage, seasons: lookSeasons, gender: lookGender });
+    const ok = await persistLook({
+      name: pendingLookName.trim() || "My Look",
+      // Empty clears it: the dialog showed the look's description to edit.
+      description: lookDescription.trim(),
+      styleKeywords: normalizeStyleKeywords(lookStyles),
+      generatedImage: generatedImage,
+      ...(generatedImage && { generatedStyle: activeStyle }),
+      seasons: lookSeasons,
+      gender: lookGender,
+    });
     setSavingLook(false);
     if (!ok) { setSaveFailed(true); return; } // keep modal open so the save isn't silently lost
     setSaved(true);
@@ -862,20 +942,15 @@ export default function BuilderPage() {
     router.push("/saved?tab=looks");
   };
 
-  const openStylePicker = () => {
-    if (!isLoggedIn) {
-      login();
-      return;
-    }
-    setShowStylePicker(true);
-  };
-
   // ── Nano Banana 2 generation via Replicate ────────────────────────────────
-  const generateOutfit = async (style: "mannequin" | "flatlay" | "tryon", photoUri?: string) => {
-    setActiveStyle(style);
+  // Drawn while the save dialog is open: the dialog shows the animation over
+  // the picture (LookDrawing) and the fields stay editable meanwhile. The old
+  // photo stays until the new one arrives, and stays if it does not.
+  const generateOutfit = async (style: GenerationStyle, photoUri?: string) => {
+    if (generating) return;
+    setDrawingStyle(style);
     setGenerating(true);
     setGenerateError(null);
-    setGeneratedImage(null);
 
     const pieces = Object.entries(selection)
       .filter(([, p]) => p != null)
@@ -918,17 +993,22 @@ export default function BuilderPage() {
         setGenerateError(json.error ?? "Generation failed. Try again.");
       } else {
         setGeneratedImage(json.imageUrl);
+        setActiveStyle(style);
         // Auto-save the look (with its generated image) to the account right away
         // so it's persisted to the database the moment it's created — no second
         // save, refresh, or re-login needed for it to show on other devices.
         void persistLook({ generatedImage: json.imageUrl, generatedStyle: style });
         setSaved(true);
-        setShowNameModal(true);
+        // `persisted: false`: Replicate's temporary copy, gone within the hour.
+        if (json.persisted === false) {
+          setGenerateError("The photo could not be stored permanently — regenerate it later if it disappears.");
+        }
       }
     } catch {
       setGenerateError("Network error. Check your connection.");
     } finally {
       setGenerating(false);
+      setDrawingStyle(null);
     }
   };
 
@@ -2421,190 +2501,215 @@ export default function BuilderPage() {
 
       </div>
 
-      {/* ── NAME & SAVE MODAL — desktop; phones get the sheet below ─────── */}
-      <AnimatePresence>
-      {showNameModal && (
-        <div
-          className="fixed inset-0 z-[80] hidden md:flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          {...nameBackdrop}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="bg-[var(--background)] border border-[var(--border)] rounded-2xl overflow-hidden w-full max-w-sm flex flex-col"
-            style={{ maxHeight: "90dvh" }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Look preview */}
-            <div className="relative overflow-hidden bg-[var(--surface)]" style={{ aspectRatio: "3/4" }}>
-              {generatedImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={generatedImage} alt="Look preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                  {(() => {
-                    const frames = SLOTS
-                      .filter(s => selection[s.id] != null)
-                      .map(s => {
-                        const p = selection[s.id]!;
-                        const variantId = variantOverrides[s.id];
-                        const activeVariant = variantId ? p.variants?.find(v => v.id === variantId) : null;
-                        const colorKey = colorImageOverrides[s.id];
-                        const shown = displayedProduct(p, {
-                          variant: activeVariant,
-                          colorImages: colorKey ? p.colorImages?.[colorKey] : null,
-                        });
-                        return { imageUrl: shown.imageUrl, name: shown.name };
+      {/* ── SAVE LOOK — a window on desktop, a sheet on phones ────────────
+          The look's picture with its photo menu — shoot it again in another
+          style, or download it — and the fields of My looks → Edit info: name
+          with Suggest, description, styles, seasons, who it is for. Saving
+          offered a name, seasons and "For" only; anything else, or another
+          shot, meant saving first and editing the look in My looks (CEO,
+          2026-10-29). Both layouts are mounted; CSS shows one. */}
+      {(() => {
+        if (!showNameModal) return null;
+        const pictureContent = (
+          <>
+            {generatedImage ? (
+              // The whole photo, never cropped: it is what is being approved.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={generatedImage} alt="Look preview" className="absolute inset-0 w-full h-full object-contain" />
+            ) : (
+              <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                {(() => {
+                  const frames = SLOTS
+                    .filter(s => selection[s.id] != null)
+                    .map(s => {
+                      const p = selection[s.id]!;
+                      const variantId = variantOverrides[s.id];
+                      const activeVariant = variantId ? p.variants?.find(v => v.id === variantId) : null;
+                      const colorKey = colorImageOverrides[s.id];
+                      const shown = displayedProduct(p, {
+                        variant: activeVariant,
+                        colorImages: colorKey ? p.colorImages?.[colorKey] : null,
                       });
-                    const n = frames.length;
-                    const cell = (f: { imageUrl?: string; name: string }, key: string, pad = "p-2") => (
-                      <div key={key} className="relative overflow-hidden flex-1 bg-white">
-                        {f.imageUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={f.imageUrl} alt={f.name} className={`absolute inset-0 w-full h-full object-contain ${pad}`} />
-                        )}
-                      </div>
-                    );
-                    if (n === 0) return <div className="absolute inset-0 flex items-center justify-center"><span className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">No pieces selected</span></div>;
-                    if (n === 1) return <div className="absolute inset-0 flex">{cell(frames[0], "f0", "p-4")}</div>;
-                    if (n === 2) return <div className="absolute inset-0 flex gap-px bg-gray-200">{frames.map((f, i) => cell(f, `f${i}`))}</div>;
-                    if (n === 3) return (
-                      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
-                        <div className="relative overflow-hidden flex-1 bg-white">{frames[2].imageUrl && <img src={frames[2].imageUrl} alt={frames[2].name} className="absolute inset-0 w-full h-full object-contain p-2" />}</div>
-                      </div>
-                    );
-                    if (n === 4) return (
-                      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                        <div className="flex gap-px flex-1 bg-gray-200">{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
-                        <div className="flex gap-px flex-1 bg-gray-200">{frames.slice(2, 4).map((f, i) => cell(f, `f${i+2}`))}</div>
-                      </div>
-                    );
-                    return (
-                      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
-                        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
-                        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>{frames.slice(2).map((f, i) => cell(f, `f${i+2}`, "p-1.5"))}</div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-              {generatedImage && (
-                <span className="absolute top-3 left-3 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
-                  {activeStyle === "flatlay" ? "Flat lay" : activeStyle === "tryon" ? "On You" : "AI"}
-                </span>
-              )}
-            </div>
-
-            {/* Name input + actions */}
-            <div className="shrink-0 px-5 pt-4 pb-6 border-t border-[var(--border)]">
-              <div className="flex items-center gap-1.5 mb-5">
-                <input
-                  type="text"
-                  value={pendingLookName}
-                  onChange={e => setPendingLookName(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && pendingLookName.trim()) confirmSave(); }}
-                  className="flex-1 min-w-0 text-[20px] font-bold bg-transparent outline-none border-b border-[var(--border-strong)] pb-1 text-[var(--foreground)] placeholder-[var(--foreground-subtle)] focus:border-[var(--foreground)] transition-colors"
-                  placeholder="Name your look…"
-                  autoFocus
-                />
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="shrink-0 mb-0.5 text-[var(--foreground-subtle)]">
-                  <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                      return { imageUrl: shown.imageUrl, name: shown.name };
+                    });
+                  const n = frames.length;
+                  const cell = (f: { imageUrl?: string; name: string }, key: string, pad = "p-2") => (
+                    <div key={key} className="relative overflow-hidden flex-1 bg-white">
+                      {f.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={f.imageUrl} alt={f.name} className={`absolute inset-0 w-full h-full object-contain ${pad}`} />
+                      )}
+                    </div>
+                  );
+                  if (n === 0) return <div className="absolute inset-0 flex items-center justify-center"><span className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">No pieces selected</span></div>;
+                  if (n === 1) return <div className="absolute inset-0 flex">{cell(frames[0], "f0", "p-4")}</div>;
+                  if (n === 2) return <div className="absolute inset-0 flex gap-px bg-gray-200">{frames.map((f, i) => cell(f, `f${i}`))}</div>;
+                  if (n === 3) return (
+                    <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                      <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
+                      <div className="relative overflow-hidden flex-1 bg-white">{frames[2].imageUrl && <img src={frames[2].imageUrl} alt={frames[2].name} className="absolute inset-0 w-full h-full object-contain p-2" />}</div>
+                    </div>
+                  );
+                  if (n === 4) return (
+                    <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                      <div className="flex gap-px flex-1 bg-gray-200">{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
+                      <div className="flex gap-px flex-1 bg-gray-200">{frames.slice(2, 4).map((f, i) => cell(f, `f${i+2}`))}</div>
+                    </div>
+                  );
+                  return (
+                    <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                      <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
+                      <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>{frames.slice(2).map((f, i) => cell(f, `f${i+2}`, "p-1.5"))}</div>
+                    </div>
+                  );
+                })()}
               </div>
-              <p className="mb-1.5 text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">Seasons</p>
-              <SeasonPicker value={lookSeasons} onChange={setLookSeasons} className="mb-4" />
-              <p className="mb-1.5 text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">For</p>
-              <GenderPicker value={lookGender} onChange={setLookGenderPick} className="mb-5" />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowNameModal(false)}
-                  className="flex-1 h-11 border border-[var(--border)] rounded-xl text-[11px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmSave}
-                  disabled={!pendingLookName.trim() || savingLook}
-                  className="flex-1 h-11 bg-[var(--foreground)] text-[var(--background)] rounded-xl text-[11px] tracking-[0.14em] uppercase font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
-                >
-                  {savingLook ? "Saving…" : saveFailed ? "Retry save" : "Save look"}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-      </AnimatePresence>
-
-      {/* Phones: "Save look" is a sheet from the bottom (DESIGN_SYSTEM.md §12.7,
-          mockup v2 «Б · Конструктор — сохранить образ»). */}
-      {showNameModal && (() => {
-        const firstPiece = SLOTS.map(s => selection[s.id]).find(Boolean);
-        const thumb = generatedImage ?? firstPiece?.imageUrl ?? null;
-        return (
-          <div className="md:hidden fixed inset-0 z-[80] flex flex-col justify-end">
-            <div aria-hidden="true" className="ov-scrim absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowNameModal(false)} />
-            <section
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="save-look-title"
-              className="ov-rise relative rounded-t-3xl bg-[var(--surface)] px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+16px)]"
-            >
-              <div aria-hidden="true" className="mx-auto w-9 h-1 rounded-full bg-[var(--border-strong)]" />
-              <div className="mt-1 flex items-center">
-                <h2 id="save-look-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">Save look</h2>
-                <button
-                  onClick={() => setShowNameModal(false)}
-                  aria-label="Close"
-                  className="-mr-2.5 w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-                    <path d="M6 6l12 12M18 6L6 18" />
-                  </svg>
-                </button>
-              </div>
-              <div className="mt-1.5 flex items-center gap-3">
-                <span className="w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-white">
-                  {thumb && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt="" className={`w-full h-full ${generatedImage ? "object-cover" : "object-contain p-1.5"}`} />
-                  )}
-                </span>
-                <div>
-                  <p className="text-[15px] font-medium text-[var(--foreground)]">{selectedCount} {selectedCount === 1 ? "piece" : "pieces"}</p>
-                  <p className="mt-0.5 text-[13px] text-[var(--foreground-muted)]">{formatPrice(totalPrice)} in total</p>
-                </div>
-              </div>
-              <label className="mt-[18px] block text-[13px] text-[var(--foreground-muted)]">
-                Name
-                <input
-                  type="text"
-                  value={pendingLookName}
-                  onChange={e => setPendingLookName(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && pendingLookName.trim()) confirmSave(); }}
-                  placeholder="Name your look…"
-                  className="mt-2 block w-full h-[50px] px-3.5 rounded-2xl border border-[var(--border-strong)] focus:border-[var(--foreground)] bg-transparent text-base text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none! transition-colors"
-                />
-              </label>
-              <p className="mt-[18px] mb-2.5 text-[13px] text-[var(--foreground-muted)]">Seasons</p>
-              <SeasonPicker value={lookSeasons} onChange={setLookSeasons} />
-              <p className="mt-[18px] mb-2.5 text-[13px] text-[var(--foreground-muted)]">For</p>
-              <GenderPicker value={lookGender} onChange={setLookGenderPick} />
-              {saveFailed && (
-                <p role="alert" className="mt-2 text-[13px] text-[var(--foreground-muted)]">Couldn’t save the look. Try again.</p>
-              )}
-              <button
-                onClick={confirmSave}
-                disabled={!pendingLookName.trim() || savingLook}
-                className="mt-[18px] w-full h-[50px] rounded-full bg-[var(--foreground)] text-[var(--background)] text-[16px] font-semibold disabled:opacity-40"
+            )}
+            {generatedImage && (
+              <span className="absolute top-3 left-3 z-10 text-[11px] font-semibold bg-white/80 text-black px-[9px] py-1 rounded-full md:font-mono md:text-[8px] md:font-normal md:tracking-[0.18em] md:uppercase md:bg-black/55 md:text-white md:px-2 md:py-0.5 md:rounded-md backdrop-blur-sm">
+                {generationStyleLabel(activeStyle)}
+              </span>
+            )}
+            <LookPhotoMenu
+              open={photoMenu}
+              onOpenChange={setPhotoMenu}
+              hasImage={!!generatedImage}
+              busy={generating ? "regenerate" : downloading ? "download" : null}
+              error={photoError}
+              onDownload={downloadPhoto}
+              onRegenerate={reopenStylePicker}
+            />
+            {generating && <LookDrawing style={drawingStyle} />}
+            {(generateError || photoError) && !generating && !photoMenu && (
+              <p
+                role="alert"
+                className="absolute bottom-3 inset-x-3 z-20 rounded-xl bg-[var(--background)]/90 backdrop-blur-sm px-3 py-2 text-[13px] md:text-[11px] text-[var(--foreground)]"
               >
-                {savingLook ? "Saving…" : saveFailed ? "Retry save" : "Save look"}
-              </button>
-            </section>
-          </div>
+                {generateError ?? photoError}
+              </p>
+            )}
+          </>
+        );
+        const details = (desktop: boolean) => (
+          <LookDetailsFields
+            value={lookDetails}
+            onChange={setLookDetails}
+            onSuggest={suggestCopy}
+            namePlaceholder="Name your look…"
+            onSubmit={() => { if (pendingLookName.trim()) void confirmSave(); }}
+            autoFocusName={desktop}
+          />
+        );
+        // Not while a photo is being drawn: it would land after the save.
+        const saveDisabled = !pendingLookName.trim() || savingLook || generating;
+        const saveLabel = generating ? "Drawing…" : savingLook ? "Saving…" : saveFailed ? "Retry save" : "Save look";
+        const summary = `${selectedCount} ${selectedCount === 1 ? "piece" : "pieces"} · ${formatPrice(totalPrice)}`;
+        return (
+          <>
+            <div
+              className="fixed inset-0 z-[80] hidden md:flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+              {...nameBackdrop}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="save-look-title-desktop"
+                className="bg-[var(--background)] border border-[var(--border)] rounded-2xl overflow-hidden w-full max-w-[860px] h-[min(90dvh,720px)] flex"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="relative w-[46%] shrink-0 border-r border-[var(--border)] bg-[var(--surface)]">
+                  {pictureContent}
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 shrink-0">
+                    <div className="min-w-0">
+                      <h2 id="save-look-title-desktop" className="text-sm font-medium text-[var(--foreground)]">Save look</h2>
+                      <p className="mt-0.5 text-[11px] text-[var(--foreground-muted)]">{summary}</p>
+                    </div>
+                    <button
+                      onClick={() => setShowNameModal(false)}
+                      aria-label="Close"
+                      className="mt-0.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto px-6">{details(true)}</div>
+                  <div className="shrink-0 px-6 py-4 border-t border-[var(--border)]">
+                    {saveFailed && (
+                      <p role="alert" className="mb-2 text-[11px] text-[var(--foreground-muted)]">Couldn’t save the look. Try again.</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowNameModal(false)}
+                        className="flex-1 h-11 border border-[var(--border)] rounded-xl text-[11px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => void confirmSave()}
+                        disabled={saveDisabled}
+                        className="flex-1 h-11 bg-[var(--foreground)] text-[var(--background)] rounded-xl text-[11px] tracking-[0.14em] uppercase font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
+                      >
+                        {saveLabel}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Phones: a sheet from the bottom (DESIGN_SYSTEM.md §12.7). The
+                picture is square, as in My looks' sheet; the fields scroll and
+                the save button stays at the foot. */}
+            <div className="md:hidden fixed inset-0 z-[80] flex flex-col justify-end">
+              <div aria-hidden="true" className="ov-scrim absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowNameModal(false)} />
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="save-look-title"
+                className="ov-rise relative max-h-[calc(100%-56px)] rounded-t-3xl bg-[var(--surface)] flex flex-col pb-[calc(env(safe-area-inset-bottom)+16px)]"
+              >
+                <div aria-hidden="true" className="mx-auto mt-2 w-9 h-1 shrink-0 rounded-full bg-[var(--border-strong)]" />
+                <div className="mt-1 px-4 flex items-center shrink-0">
+                  <h2 id="save-look-title" className="flex-1 text-[18px] font-semibold text-[var(--foreground)]">Save look</h2>
+                  <button
+                    onClick={() => setShowNameModal(false)}
+                    aria-label="Close"
+                    className="-mr-2.5 w-11 h-11 rounded-full flex items-center justify-center text-[var(--foreground-muted)]"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4">
+                  <div className="relative mt-1.5 w-full aspect-square rounded-2xl overflow-hidden bg-[var(--background)]">
+                    {pictureContent}
+                  </div>
+                  <p className="mt-2.5 mb-[18px] text-[13px] text-[var(--foreground-muted)]">{summary} in total</p>
+                  {details(false)}
+                </div>
+                <div className="shrink-0 px-4 pt-3">
+                  {saveFailed && (
+                    <p role="alert" className="mb-2 text-[13px] text-[var(--foreground-muted)]">Couldn’t save the look. Try again.</p>
+                  )}
+                  <button
+                    onClick={() => void confirmSave()}
+                    disabled={saveDisabled}
+                    className="w-full h-[50px] rounded-full bg-[var(--foreground)] text-[var(--background)] text-[16px] font-semibold disabled:opacity-40"
+                  >
+                    {saveLabel}
+                  </button>
+                </div>
+              </section>
+            </div>
+          </>
         );
       })()}
 
@@ -2957,17 +3062,23 @@ export default function BuilderPage() {
       {/* Shared with the saved page, which opens the same sheet to replace a
           look's photo. One implementation, so "the window from the builder" is
           literally that window. */}
+      {/* Opened by Save, and again by the save dialog's "Regenerate photo";
+          from the dialog it always leads back to it, a cancel included. A
+          choice opens the dialog at once — the photo is drawn inside it. */}
       <StylePicker
         open={showStylePicker}
-        onClose={() => setShowStylePicker(false)}
-        title="Save look"
-        collage={{ label: "Without generation", hint: "Save as collage" }}
+        onClose={() => {
+          setShowStylePicker(false);
+          if (pickerFromDialog) { setPickerFromDialog(false); setShowNameModal(true); }
+        }}
+        title={pickerFromDialog ? (generatedImage ? "Regenerate photo" : "Generate photo") : "Save look"}
+        collage={{ label: "Without generation", hint: pickerFromDialog ? "Show the pieces as a collage" : "Save as collage" }}
         onCollage={() => { setGeneratedImage(null); setShowNameModal(true); }}
-        onGenerate={(style, photo) => generateOutfit(style, photo)}
+        onGenerate={(style, photo) => { setShowNameModal(true); void generateOutfit(style, photo); }}
       />
 
-      {/* ── Generate error toast ──────────────────────────────────────────────── */}
-      {generateError && (
+      {/* ── Generate error toast — the save dialog shows its own ─────────────── */}
+      {generateError && !showNameModal && (
         <p className="fixed bottom-20 right-4 z-50 text-[11px] text-red-600 bg-[var(--background)] border border-red-300 px-3 py-2 shadow-md max-w-[260px]">
           {generateError}
         </p>
@@ -2989,204 +3100,6 @@ export default function BuilderPage() {
       {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
       <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
 
-      {/* ── Generating overlay ────────────────────────────────────────────────── */}
-      {generating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 overflow-hidden animate-scale-in rounded-2xl">
-
-            {/* Indeterminate progress line at top */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--surface)] overflow-hidden">
-              <div className="absolute inset-y-0 w-1/2 bg-[var(--foreground)] origin-left animate-progress-bar" />
-            </div>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-3.5 border-b border-[var(--border)]">
-              <div>
-                <p className="font-mono text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-                  Generating Look
-                </p>
-                <p className="font-mono text-[9px] text-[var(--foreground-subtle)] mt-0.5">
-                  {selectedCount} {selectedCount === 1 ? "piece" : "pieces"} ·{" "}
-                  {activeStyle === "mannequin" ? "Mannequin" : activeStyle === "flatlay" ? "Flat lay" : "On You"}
-                </p>
-              </div>
-              {/* Bouncing dots */}
-              <div className="flex items-center gap-1">
-                {[0, 1, 2].map(i => (
-                  <span
-                    key={i}
-                    className="block w-1.5 h-1.5 rounded-full bg-[var(--foreground-subtle)]"
-                    style={{ animation: `dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Shimmer image placeholder */}
-            <div className="relative w-full aspect-square bg-[var(--surface)] overflow-hidden flex flex-col items-center justify-center gap-4">
-              {/* shimmer sweep */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent animate-shimmer pointer-events-none" />
-              {/* Pulsing central icon */}
-              <svg
-                width="48" height="48" viewBox="0 0 24 24" fill="none"
-                className="text-[var(--foreground-subtle)] opacity-20 animate-pulse"
-              >
-                <path d="M12 2L14.4 9.6H22L15.8 14.4L18.2 22L12 17.6L5.8 22L8.2 14.4L2 9.6H9.6L12 2Z"
-                  stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-              </svg>
-              <p className="font-mono text-[9px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] opacity-30 animate-pulse">
-                Creating your look…
-              </p>
-            </div>
-
-            {/* Footer */}
-            <div className="px-5 py-3.5 border-t border-[var(--border)]">
-              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] leading-relaxed">
-                This may take 10–30 seconds. Sit back and relax.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Generated image modal ────────────────────────────────────────────── */}
-      {showModal && generatedImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in"
-          {...savedBackdrop}
-        >
-          <div
-            className="relative bg-[var(--background)] shadow-2xl max-w-sm w-full mx-4 animate-scale-in rounded-2xl overflow-hidden flex flex-col"
-            style={{ maxHeight: "92dvh" }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header — editable name */}
-            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--border)] shrink-0">
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <input
-                  type="text"
-                  value={modalLookName}
-                  onChange={e => setModalLookName(e.target.value)}
-                  className="flex-1 min-w-0 text-[15px] font-semibold bg-transparent outline-none text-[var(--foreground)] border-b border-[var(--border)] focus:border-[var(--foreground)] transition-colors pb-0.5 placeholder-[var(--foreground-subtle)]"
-                  placeholder="Name your look…"
-                />
-                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)]">
-                  <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <div className="flex items-center gap-2.5 shrink-0">
-                <button
-                  onClick={() => { setShowModal(false); openStylePicker(); }}
-                  className="font-mono flex items-center gap-1 text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M10 6A4 4 0 1 1 6 2M6 2L9 1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  Regen
-                </button>
-                <a
-                  href={generatedImage}
-                  download="goo-outfit.png"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono flex items-center gap-1 text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M6 1V8M3 6L6 9L9 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M1 10H11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                  Save file
-                </a>
-                <button onClick={() => setShowModal(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
-                  <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
-                    <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Image */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={generatedImage}
-              alt="AI generated outfit"
-              className="w-full object-cover flex-1 min-h-0"
-              style={{ aspectRatio: "3/4" }}
-            />
-
-            {/* Collapsible details */}
-            <div className="shrink-0 border-t border-[var(--border)]">
-              <button
-                onClick={() => setShowModalDetails(v => !v)}
-                className="w-full flex items-center justify-between px-5 py-3 text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-              >
-                <span>Details</span>
-                <svg
-                  width="10" height="10" viewBox="0 0 10 10" fill="none"
-                  className={`transition-transform duration-200 ${showModalDetails ? "rotate-180" : ""}`}
-                >
-                  <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-              {showModalDetails && (
-                <div className="px-5 pb-4 border-t border-[var(--border)]">
-                  <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-1.5 mt-3">Description</p>
-                  <textarea
-                    value={modalLookDescription}
-                    onChange={e => setModalLookDescription(e.target.value)}
-                    rows={3}
-                    className="w-full text-[12px] text-[var(--foreground-muted)] bg-transparent outline-none resize-none border-b border-dashed border-[var(--border)] pb-1 leading-relaxed placeholder-[var(--foreground-subtle)] focus:border-[var(--foreground-muted)] transition-colors"
-                    placeholder="Describe this look…"
-                  />
-                  <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-2 mt-3">Style tags</p>
-                  {styleKeywords.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {styleKeywords.map(kw => (
-                        <span key={kw} className="text-[9px] tracking-[0.1em] uppercase px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--foreground-muted)]">
-                          {kw}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-[var(--foreground-subtle)]">No tags</p>
-                  )}
-                  <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mt-3 mb-1">Summary</p>
-                  <p className="text-[12px] text-[var(--foreground-muted)]">
-                    {selectedCount} piece{selectedCount !== 1 ? "s" : ""} · {formatPrice(totalPrice)}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Footer — save */}
-            <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between gap-4 shrink-0">
-              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] leading-relaxed">
-                May not reflect exact products.
-              </p>
-              <button
-                disabled={savingLook}
-                onClick={async () => {
-                  if (savingLook) return;
-                  setSavingLook(true);
-                  setSaveFailed(false);
-                  const ok = await persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined, generatedImage: generatedImage, seasons: lookSeasons, gender: lookGender });
-                  setSavingLook(false);
-                  if (!ok) { setSaveFailed(true); return; }
-                  setSaved(true);
-                  setShowModal(false);
-                  router.push("/saved?tab=looks");
-                }}
-                className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl hover:opacity-80 transition-opacity shrink-0 disabled:opacity-50"
-              >
-                <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor" stroke="currentColor" strokeWidth="0.5">
-                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                </svg>
-                {savingLook ? "Saving…" : saveFailed ? "Retry save" : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
