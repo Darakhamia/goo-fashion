@@ -15,7 +15,7 @@ import { genderLabel, genderOfPieces } from "@/lib/outfit-gender";
 import { GenderPicker } from "@/components/look/GenderPicker";
 import { SeasonPicker } from "@/components/look/SeasonPicker";
 import { useMoneyText } from "@/components/ui/MoneyText";
-import { generationPieces } from "@/lib/look-generation";
+import { generationPieces, generationStyleLabel } from "@/lib/look-generation";
 import { StylePicker, type GenerationStyle } from "@/components/look/StylePicker";
 import { StatusDot, BagIcon, NewLookIcon, PhoneEmpty } from "@/components/look/CardBits";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
@@ -245,7 +245,7 @@ function LookCard({
     ? "Generated look"
     : look.generatedStyle === "flatlay"
     ? "Flat lay look"
-    : "AI look";
+    : "Mannequin look";
   const displayName = look.name || autoName;
   const [nameValue, setNameValue] = useState(look.name || autoName);
 
@@ -624,7 +624,9 @@ function LookCard({
       ? "Couldn't copy — tap to retry"
       : "Share link";
 
-  // Metadata segment: publication status > availability > origin
+  // Metadata segment: publication status > availability > origin. The origin
+  // is the shopper, picture or not: it read "AI generated" for a look with a
+  // generated photo, though the shopper chose every piece (CEO, 2026-10-29).
   const statusSegment =
     publication === "approved"
       ? { label: "Published to GOO", dot: "bg-green-500" }
@@ -634,8 +636,6 @@ function LookCard({
       ? { label: "Rejected", dot: "bg-red-400" }
       : partial
       ? { label: `${availableCount}/${totalPieces} available`, dot: "bg-orange-400" }
-      : look.generatedImage
-      ? { label: "AI generated", dot: "bg-violet-400" }
       : { label: "Created by you", dot: null };
 
   return (
@@ -754,7 +754,7 @@ function LookCard({
           {look.generatedImage && (
             // Phones: a light pill, like every control on the photo (DESIGN_SYSTEM.md §12.6)
             <span className="absolute top-2.5 left-2.5 z-10 text-[11px] font-semibold bg-white/80 text-black px-[9px] py-1 rounded-full md:font-mono md:text-[8px] md:font-normal md:tracking-[0.18em] md:uppercase md:bg-black/55 md:text-white md:px-2 md:py-0.5 md:rounded-md backdrop-blur-sm">
-              {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
+              {generationStyleLabel(look.generatedStyle)}
             </span>
           )}
           <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
@@ -1110,7 +1110,7 @@ function LookCard({
                     />
                     {look.generatedStyle && (
                       <span className="absolute top-3 left-3 md:font-mono text-[11px] md:text-[8px] font-semibold md:font-normal md:tracking-[0.18em] md:uppercase bg-white/80 md:bg-black/55 text-black md:text-white px-[9px] md:px-2 py-1 rounded-full md:rounded-md md:backdrop-blur-sm">
-                        {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
+                        {generationStyleLabel(look.generatedStyle)}
                       </span>
                     )}
                     {/* Photo actions. Was a bare download icon; the photo also

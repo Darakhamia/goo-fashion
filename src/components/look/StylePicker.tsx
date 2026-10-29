@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 
-export type GenerationStyle = "mannequin" | "flatlay" | "tryon";
+import type { GenerationStyle } from "@/lib/look-generation";
+
+export type { GenerationStyle };
 
 /**
  * The "how should this look be photographed" sheet.

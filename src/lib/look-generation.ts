@@ -1,6 +1,19 @@
 import type { Product } from "@/lib/types";
 import type { SavedLook } from "@/lib/looks-storage";
 
+/** How a look's photo is shot (StylePicker). */
+export type GenerationStyle = "mannequin" | "flatlay" | "tryon";
+
+/**
+ * A look's photo style as its badge reads it — the names the style sheet
+ * offers. The mannequin shot used to be badged "AI", and a shared look's photo
+ * "AI Generated", which read as "the AI made this look" on a look the shopper
+ * put together themselves (CEO, 2026-10-29).
+ */
+export function generationStyleLabel(style?: string | null): string {
+  return style === "flatlay" ? "Flat lay" : style === "tryon" ? "On You" : "Mannequin";
+}
+
 /**
  * The pieces of a saved look, in the shape `/api/generate-outfit` reads.
  *
