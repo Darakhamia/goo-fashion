@@ -16,6 +16,7 @@ import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
 import { outfitStylePath } from "@/lib/landing-paths";
 import { seasonsLabel } from "@/lib/seasons";
 import { genderLabel, outfitGenderOf } from "@/lib/outfit-gender";
+import { outfitKind, outfitKindLabel } from "@/lib/outfit-kind";
 import { styleLabel } from "@/lib/style-keywords";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
@@ -142,13 +143,15 @@ export default async function OutfitDetailPage({ params }: Props) {
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
               )}
-              {outfit.isAIGenerated && (
-                <div className="absolute top-3.5 left-3.5 md:top-4 md:left-4">
-                  <span className="block rounded-full bg-white/80 md:bg-black/60 md:backdrop-blur-sm text-black md:text-white text-[11px] md:text-[9px] font-semibold md:font-medium md:tracking-[0.16em] md:uppercase px-[9px] py-1 md:px-3 md:py-1.5">
-                    AI Generated
-                  </span>
-                </div>
-              )}
+              {/* Who put it together, as on its card (lib/outfit-kind). */}
+              <div className="absolute top-3.5 left-3.5 md:top-4 md:left-4">
+                <span
+                  data-outfit-kind={outfitKind(outfit)}
+                  className="block rounded-full bg-white/80 md:bg-black/60 md:backdrop-blur-sm text-black md:text-white text-[11px] md:text-[9px] font-semibold md:font-medium md:tracking-[0.16em] md:uppercase px-[9px] py-1 md:px-3 md:py-1.5"
+                >
+                  {outfitKindLabel(outfitKind(outfit))}
+                </span>
+              </div>
 
               <OutfitLikeButton outfitId={outfit.id} />
             </div>
