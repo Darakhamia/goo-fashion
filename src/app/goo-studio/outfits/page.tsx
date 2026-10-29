@@ -7,6 +7,7 @@ import type { Gender, Outfit, Season, StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
 import { SEASON_LIST, normalizeSeasons, seasonsFromRow } from "@/lib/seasons";
 import { GENDERS, normalizeGender, outfitGenderOf } from "@/lib/outfit-gender";
+import { OUTFIT_KINDS, outfitKind, type OutfitKind } from "@/lib/outfit-kind";
 import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
@@ -172,6 +173,12 @@ const GENDER_KEY: Record<Gender, Key> = {
   unisex: "outfits.gender.unisex",
 };
 
+/** Who put an outfit together, as the site marks it (lib/outfit-kind). */
+const KIND_KEY: Record<OutfitKind, Key> = {
+  community: "outfits.kind.community",
+  ai: "outfits.kind.ai",
+};
+
 /**
  * Who an outfit is for, as chips: one of three. With `auto`, a fourth —
  * "From the pieces", none picked — leaves it to what the pieces add up to.
@@ -227,6 +234,9 @@ export default function AdminOutfitsPage() {
   const [seasonFilter, setSeasonFilter] = useState<Season | "all" | "">("");
   const [genderFilter, setGenderFilter] = useState<Gender | "">("");
   const [homeFilter, setHomeFilter] = useState<"on" | "off" | "">("");
+  // Who put it together (lib/outfit-kind) and a style it is tagged with.
+  const [kindFilter, setKindFilter] = useState<OutfitKind | "">("");
+  const [styleFilter, setStyleFilter] = useState<StyleKeyword | "">("");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   /** Ticked rows, by outfit id — what the selection bar acts on. */
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -563,6 +573,8 @@ export default function AdminOutfitsPage() {
       if (seasonFilter && seasonFilter !== "all" && !o.seasons.includes(seasonFilter)) return false;
       if (genderFilter && outfitGenderOf(o) !== genderFilter) return false;
       if (homeFilter && !!o.isHomepageFeatured !== (homeFilter === "on")) return false;
+      if (kindFilter && outfitKind(o) !== kindFilter) return false;
+      if (styleFilter && !o.styleKeywords.includes(styleFilter)) return false;
       if (!q) return true;
       return (
         o.name.toLowerCase().includes(q) ||
@@ -581,7 +593,7 @@ export default function AdminOutfitsPage() {
     else if (sortKey === "priceAsc") sorted.sort((a, b) => a.totalPriceMin - b.totalPriceMin);
     else sorted.sort((a, b) => b.totalPriceMin - a.totalPriceMin);
     return sorted;
-  }, [outfits, searchQuery, seasonFilter, genderFilter, homeFilter, sortKey, t]);
+  }, [outfits, searchQuery, seasonFilter, genderFilter, homeFilter, kindFilter, styleFilter, sortKey, t]);
 
   const allSelected = filteredOutfits.length > 0 && filteredOutfits.every((o) => selectedIds.has(o.id));
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -754,9 +766,17 @@ export default function AdminOutfitsPage() {
     setSeasonFilter("");
     setGenderFilter("");
     setHomeFilter("");
+    setKindFilter("");
+    setStyleFilter("");
   };
 
   const activeFilters = [
+    ...(kindFilter
+      ? [{ key: "kind", label: `${t("outfits.f.kind")}: ${t(KIND_KEY[kindFilter])}`, onRemove: () => setKindFilter("") }]
+      : []),
+    ...(styleFilter
+      ? [{ key: "style", label: `${t("outfits.f.style")}: ${styleLabel(styleFilter)}`, onRemove: () => setStyleFilter("") }]
+      : []),
     ...(seasonFilter
       ? [
           {
@@ -781,7 +801,7 @@ export default function AdminOutfitsPage() {
   ];
 
   /** Back to the first page when what the table shows changes. */
-  const tableResetKey = [searchQuery, seasonFilter, genderFilter, homeFilter, sortKey].join("|");
+  const tableResetKey = [searchQuery, seasonFilter, genderFilter, homeFilter, kindFilter, styleFilter, sortKey].join("|");
 
   const rowItems = (o: Outfit): MenuItem[] => [
     // Also an icon beside the menu; on a phone the icon gives its room to the name.
@@ -815,6 +835,16 @@ export default function AdminOutfitsPage() {
           </div>
         </div>
       ),
+    },
+    {
+      key: "kind",
+      header: t("outfits.col.kind"),
+      hide: "md",
+      cell: (o) => {
+        const kind = outfitKind(o);
+        // The AI's in the queue's own mark (inverse), a person's plain.
+        return <Badge tone={kind === "ai" ? "inverse" : "neutral"}>{t(KIND_KEY[kind])}</Badge>;
+      },
     },
     { key: "gender", header: t("outfits.col.gender"), hide: "lg", cell: (o) => t(GENDER_KEY[outfitGenderOf(o)]) },
     { key: "season", header: t("outfits.col.season"), hide: "md", cell: (o) => seasonsText(o.seasons, t) },
@@ -1219,6 +1249,20 @@ export default function AdminOutfitsPage() {
               onClearAll={clearFilters}
               shown={filteredOutfits.length}
             >
+              <FilterMenu
+                label={t("outfits.f.kind")}
+                value={kindFilter}
+                options={OUTFIT_KINDS.map((k) => ({ value: k, label: t(KIND_KEY[k]) }))}
+                onChange={(v) => setKindFilter(v as OutfitKind | "")}
+                allLabel={t("filter.all")}
+              />
+              <FilterMenu
+                label={t("outfits.f.style")}
+                value={styleFilter}
+                options={STYLE_KEYWORDS.map((s) => ({ value: s, label: styleLabel(s) }))}
+                onChange={(v) => setStyleFilter(v as StyleKeyword | "")}
+                allLabel={t("filter.all")}
+              />
               <FilterMenu
                 label={t("outfits.f.season")}
                 value={seasonFilter}

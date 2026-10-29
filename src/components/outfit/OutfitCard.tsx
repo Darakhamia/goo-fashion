@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import OutfitCollage from "./OutfitCollage";
 import { outfitDisplayName } from "@/lib/seo";
+import { outfitKind, outfitKindLabel } from "@/lib/outfit-kind";
 
 interface OutfitCardProps {
   outfit: Outfit;
@@ -26,14 +27,24 @@ function PeopleIcon() {
   );
 }
 
+/** The AI's mark: a four-point spark, as on the studio's "Generate with AI". */
+function SparkIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 1.5 9.4 6.6 14.5 8 9.4 9.4 8 14.5 6.6 9.4 1.5 8 6.6 6.6Z" />
+    </svg>
+  );
+}
+
 export default function OutfitCard({ outfit }: OutfitCardProps) {
+  const kind = outfitKind(outfit);
   const { isOutfitLiked, toggleOutfitLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
   const liked = isOutfitLiked(outfit.id);
   const pieceCount = outfit.items.length;
-  // "Outfit 51" says nothing in a grid of them; its brands and style do. A
-  // price typed into the name reads in the shopper's currency (MoneyText).
+  // The name as the studio has it (lib/seo). A price typed into the name reads
+  // in the shopper's currency (MoneyText).
   const toReader = useMoneyText();
   const displayName = toReader(outfitDisplayName(outfit));
 
@@ -69,22 +80,27 @@ export default function OutfitCard({ outfit }: OutfitCardProps) {
             />
           )}
 
-          {/* Community badge — perfect circle, expands to pill on hover. Below md
-              it is light, like every control on the photo (DESIGN_SYSTEM.md §12.6). */}
-          {outfit.source === "community" && (
-            <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-10">
-              <div className="group/cm inline-flex items-center md:border md:border-[var(--border-strong)] bg-white/80 text-black md:bg-[var(--bg-overlay-90)] md:text-[var(--foreground)] backdrop-blur-sm rounded-full overflow-hidden h-7">
-                <span className="w-7 h-7 flex items-center justify-center flex-shrink-0">
-                  <PeopleIcon />
+          {/* Who put it together — a person or the AI (lib/outfit-kind); every
+              outfit has one. A perfect circle that expands to a pill on hover.
+              Below md it is light, like every control on the photo
+              (DESIGN_SYSTEM.md §12.6). It used to show for `source = community`
+              only, which left the AI's outfits and older ones unmarked. */}
+          <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-10">
+            <div
+              data-outfit-kind={kind}
+              title={outfitKindLabel(kind)}
+              className="group/cm inline-flex items-center md:border md:border-[var(--border-strong)] bg-white/80 text-black md:bg-[var(--bg-overlay-90)] md:text-[var(--foreground)] backdrop-blur-sm rounded-full overflow-hidden h-7"
+            >
+              <span className="w-7 h-7 flex items-center justify-center flex-shrink-0">
+                {kind === "ai" ? <SparkIcon /> : <PeopleIcon />}
+              </span>
+              <span className="max-w-0 overflow-hidden group-hover/cm:max-w-[110px] transition-[max-width] duration-300 ease-out">
+                <span className="pr-2.5 text-[9px] tracking-[0.14em] uppercase font-bold whitespace-nowrap">
+                  {outfitKindLabel(kind)}
                 </span>
-                <span className="max-w-0 overflow-hidden group-hover/cm:max-w-[80px] transition-[max-width] duration-300 ease-out">
-                  <span className="pr-2.5 text-[9px] tracking-[0.14em] uppercase font-bold whitespace-nowrap">
-                    Community
-                  </span>
-                </span>
-              </div>
+              </span>
             </div>
-          )}
+          </div>
 
           <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
         </div>
@@ -95,7 +111,7 @@ export default function OutfitCard({ outfit }: OutfitCardProps) {
       <button
         onClick={handleLike}
         aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
-        className="absolute top-0.5 right-0.5 md:top-3 md:right-3 z-20 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center md:bg-[var(--bg-overlay-90)] md:backdrop-blur-sm md:rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100"
+        className="absolute top-0.5 right-0.5 md:top-3 md:right-3 z-20 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center md:bg-[var(--bg-overlay-90)] md:hover:bg-[var(--background)] md:backdrop-blur-sm md:rounded-full transition-[opacity,scale,background-color] duration-200 md:opacity-0 md:group-hover:opacity-100 md:hover:scale-110 active:scale-[0.97]"
       >
         <span className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center md:contents">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="md:hidden text-black" aria-hidden="true">

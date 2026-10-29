@@ -6,7 +6,7 @@
 import type { Metadata } from "next";
 import type { Outfit, Product } from "@/lib/types";
 import { CURRENCIES, DISPLAY_FALLBACK_RATES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
-import { seasonLabel, seasonsPhrase } from "@/lib/seasons";
+import { seasonsPhrase } from "@/lib/seasons";
 
 /** Canonical site origin — always the non-www apex domain. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
@@ -122,6 +122,10 @@ const GENERIC_OUTFIT_NAMES = new Set([
   "community look", "look", "outfit", "untitled", "untitled look", "new look",
 ]);
 
+/**
+ * A placeholder rather than a name. The AI outfit generator's copy check
+ * (`ai-outfits/copy.ts`) refuses one; the site shows an outfit's name as it is.
+ */
 export function isGenericName(name?: string): boolean {
   const n = (name ?? "").trim().toLowerCase();
   // The builder's own default ("Outfit 51") and its numbered variants.
@@ -136,46 +140,42 @@ export interface OutfitSeo {
 }
 
 /**
- * Derive a unique, descriptive title/description/heading for an outfit from its
- * own data (brands + style + piece count + price) so Google does not cluster
- * the generically-named "Community Look" pages as duplicates.
+ * The title, description and heading of an outfit's page.
  *
- * Example: "Y-3 + SP5DER streetwear look — 3 pieces from $765" (the root layout's
- * title template adds the brand).
+ * The heading is the outfit's own name, as the studio has it. It used to be put
+ * together from the outfit's brands and style ("Y-3 + SP5DER streetwear look")
+ * whatever the outfit was called, so the site showed a name the studio had
+ * never seen; the site now shows what the studio wrote (CEO, 2026-10-29). The
+ * title adds the piece count and the price: "Outfit 44 — 5 pieces from $2,094"
+ * (the root layout's title template adds the brand).
+ *
+ * The description is the outfit's own too. Only an outfit without one gets the
+ * sentence from its brands and price, and only in the meta tags, where a search
+ * snippet needs some text — the page itself shows nothing in its place.
  */
 export function buildOutfitSeo(outfit: Outfit): OutfitSeo {
   const brands = [...new Set(outfit.items.map((i) => i.product?.brand).filter(Boolean))] as string[];
-  const brandLabel = brands.slice(0, 2).join(" + ");
   const style = outfit.styleKeywords?.[0];
   const pieces = outfit.items.length;
   const price = formatMetaPrice(outfit.totalPriceMin, outfit.currency);
-
-  const descriptor = [brandLabel, style].filter(Boolean).join(" ").trim();
-
-  // Prefer a data-derived heading; fall back to a real custom name, then the
-  // season or the piece count.
   const seasons = outfit.seasons ?? [];
-  const heading = descriptor
-    ? `${descriptor} look`
-    : !isGenericName(outfit.name)
-      ? outfit.name
-      : seasons.length
-        ? `${seasonLabel(seasons[0])} outfit`
-        : pieces
-          ? `${pieces}-piece outfit`
-          : "Outfit";
+
+  const heading = outfitDisplayName(outfit);
 
   const piecesLabel = pieces ? `${pieces} piece${pieces === 1 ? "" : "s"}` : "";
   // The piece count goes first when the whole title would be cut off in results.
   const full = [heading, piecesLabel && `${piecesLabel} from ${price}`].filter(Boolean).join(" — ");
   const title = full.length + TITLE_SUFFIX.length <= TITLE_MAX ? full : `${heading} from ${price}`;
 
+  const own = (outfit.description ?? "").trim();
   const byBrands = brands.length ? ` featuring ${brands.slice(0, 3).join(", ")}` : "";
   const kind = [seasonsPhrase(seasons), style].filter(Boolean).join(" ");
-  const description = (
-    `Shop this ${kind ? `${kind} ` : ""}look${byBrands}. ` +
-    `${piecesLabel ? `${piecesLabel} ` : ""}styled together, complete from ${price} across leading retailers.`
-  ).slice(0, 160);
+  const description = own
+    ? clipText(own, 160)
+    : (
+        `Shop this ${kind ? `${kind} ` : ""}look${byBrands}. ` +
+        `${piecesLabel ? `${piecesLabel} ` : ""}styled together, complete from ${price} across leading retailers.`
+      ).slice(0, 160);
 
   return { heading, title, description };
 }
@@ -200,12 +200,14 @@ export function primaryVariantId(product: Product): string {
 }
 
 /**
- * The name to show for an outfit: its own, unless that is a placeholder like
- * "Outfit 51" or "Community Look" — then the heading its page is built under,
- * from its brands and style ("Carhartt WIP + Air Jordan streetwear look").
+ * The name to show for an outfit: its own, exactly as the studio has it — on
+ * the card, the page and in search alike. A placeholder like "Outfit 51" used
+ * to be swapped for one made from the brands and style ("Carhartt WIP + Air
+ * Jordan streetwear look"), so Browse and the studio named the same outfit two
+ * ways (CEO, 2026-10-29). An outfit stored with no name at all reads "Outfit".
  */
-export function outfitDisplayName(outfit: Outfit): string {
-  return isGenericName(outfit.name) ? buildOutfitSeo(outfit).heading : outfit.name;
+export function outfitDisplayName(outfit: Pick<Outfit, "name">): string {
+  return (outfit.name ?? "").trim() || "Outfit";
 }
 
 // ── Product meta description ─────────────────────────────────────────────────

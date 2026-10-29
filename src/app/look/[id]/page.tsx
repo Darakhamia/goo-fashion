@@ -7,6 +7,7 @@ import Price from "@/components/ui/Price";
 import { getUserLookById, sharedLookFromShareData, type SharedLook } from "@/lib/data/db";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import MoneyText from "@/components/ui/MoneyText";
+import { generationStyleLabel } from "@/lib/look-generation";
 
 // Looks are created at runtime, so a given id may not exist at build time and
 // must always be re-fetched — never statically cached (which could freeze in a
@@ -156,8 +157,9 @@ export default async function SharedLookPage(props: Props) {
               )}
               {look.generatedImage && (
                 <div className="absolute top-3.5 left-3.5 md:top-4 md:left-4">
+                  {/* How the photo was shot, as on the shopper's own card. */}
                   <span className="block rounded-full bg-white/80 md:bg-black/60 md:backdrop-blur-sm text-black md:text-white text-[11px] md:text-[9px] font-semibold md:font-medium md:tracking-[0.16em] md:uppercase px-[9px] py-1 md:px-3 md:py-1.5">
-                    AI Generated
+                    {generationStyleLabel(look.generatedStyle)}
                   </span>
                 </div>
               )}

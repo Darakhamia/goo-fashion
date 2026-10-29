@@ -16,6 +16,7 @@ import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
 import { outfitStylePath } from "@/lib/landing-paths";
 import { seasonsLabel } from "@/lib/seasons";
 import { genderLabel, outfitGenderOf } from "@/lib/outfit-gender";
+import { outfitKind, outfitKindLabel } from "@/lib/outfit-kind";
 import { styleLabel } from "@/lib/style-keywords";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
@@ -51,8 +52,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const outfit = await loadOutfit(id);
   if (!outfit) return {};
 
-  // Derive a unique title/description from the outfit's own data so the
-  // generically-named "Community Look" pages don't read as duplicates.
+  // The outfit's own name with its piece count and price; its own description,
+  // or a sentence from its brands when it has none (lib/seo).
   const { title, description } = buildOutfitSeo(outfit);
 
   return {
@@ -85,7 +86,9 @@ export default async function OutfitDetailPage({ params }: Props) {
     excludeId: outfit.id,
   });
 
-  const { heading, description: seoDescription } = buildOutfitSeo(outfit);
+  // The name and description the studio has for it, word for word.
+  const heading = outfitDisplayName(outfit);
+  const description = outfit.description.trim();
   // Home / Browse / Outfits / Style / AI / Name — the optional steps drop
   // out when the outfit doesn't carry them, and each links back into the
   // catalog with that filter applied.
@@ -140,13 +143,15 @@ export default async function OutfitDetailPage({ params }: Props) {
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
               )}
-              {outfit.isAIGenerated && (
-                <div className="absolute top-3.5 left-3.5 md:top-4 md:left-4">
-                  <span className="block rounded-full bg-white/80 md:bg-black/60 md:backdrop-blur-sm text-black md:text-white text-[11px] md:text-[9px] font-semibold md:font-medium md:tracking-[0.16em] md:uppercase px-[9px] py-1 md:px-3 md:py-1.5">
-                    AI Generated
-                  </span>
-                </div>
-              )}
+              {/* Who put it together, as on its card (lib/outfit-kind). */}
+              <div className="absolute top-3.5 left-3.5 md:top-4 md:left-4">
+                <span
+                  data-outfit-kind={outfitKind(outfit)}
+                  className="block rounded-full bg-white/80 md:bg-black/60 md:backdrop-blur-sm text-black md:text-white text-[11px] md:text-[9px] font-semibold md:font-medium md:tracking-[0.16em] md:uppercase px-[9px] py-1 md:px-3 md:py-1.5"
+                >
+                  {outfitKindLabel(outfitKind(outfit))}
+                </span>
+              </div>
 
               <OutfitLikeButton outfitId={outfit.id} />
             </div>
@@ -159,12 +164,12 @@ export default async function OutfitDetailPage({ params }: Props) {
               <p className="text-[13px] md:text-[10px] md:tracking-[0.18em] md:uppercase md:font-medium text-[var(--foreground-muted)] md:text-[var(--foreground-subtle)] mb-1 md:mb-3">
                 {genderLabel(outfitGenderOf(outfit))} · {seasonsLabel(outfit.seasons)}
               </p>
-              {/* One line each, chevron for the rest: outfit names and blurbs are
-                  generated from the pieces, so they run long and would otherwise
-                  push the bag button and the piece list off the screen. Phones
-                  show the whole name — the bag button lives in the bar there.
-                  Desktop's −0.015em is spelled out: any tracking class turns off
-                  the size-based rule in globals.css (DESIGN_SYSTEM.md §12.13). */}
+              {/* One line each, chevron for the rest: outfit names and blurbs can
+                  run long and would otherwise push the bag button and the piece
+                  list off the screen. Phones show the whole name — the bag
+                  button lives in the bar there. Desktop's −0.015em is spelled
+                  out: any tracking class turns off the size-based rule in
+                  globals.css (DESIGN_SYSTEM.md §12.13). */}
               <div className="mb-2 md:mb-4">
                 <ClampedHeading
                   text={heading}
@@ -174,8 +179,12 @@ export default async function OutfitDetailPage({ params }: Props) {
                   className="max-md:line-clamp-none text-[22px] md:text-4xl font-semibold md:font-bold md:uppercase tracking-[-0.01em] md:tracking-[-0.015em] text-[var(--foreground)] leading-tight"
                 />
               </div>
-              {/* Prices in the words follow the reader's currency (MoneyText). */}
-              <ClampedDescription text={outfit.description || seoDescription} money lines={1} className="max-md:line-clamp-none" />
+              {/* Prices in the words follow the reader's currency (MoneyText).
+                  No description, no paragraph: one made up from the brands
+                  read as the studio's words when they were not (CEO, 2026-10-29). */}
+              {description && (
+                <ClampedDescription text={description} money lines={1} className="max-md:line-clamp-none" />
+              )}
 
               {/* Total and count — phones read them in the buy bar */}
               <div className="mt-6 hidden md:flex items-center gap-6">

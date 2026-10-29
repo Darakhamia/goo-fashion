@@ -7,19 +7,21 @@ import { useUser } from "@clerk/nextjs";
 import { applyFormat, useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
 import { toCartRetailers } from "@/lib/cart-item";
-import type { Gender, Product, Season, StyleKeyword } from "@/lib/types";
-import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
+import type { Gender, Product } from "@/lib/types";
+import { normalizeStyleKeywords } from "@/lib/style-keywords";
 import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
 import { normalizeSeasons, seasonsLabel } from "@/lib/seasons";
 import { genderLabel, genderOfPieces } from "@/lib/outfit-gender";
-import { GenderPicker } from "@/components/look/GenderPicker";
-import { SeasonPicker } from "@/components/look/SeasonPicker";
+import { LookDetailsFields, type LookDetails } from "@/components/look/LookDetailsFields";
+import { LookDrawing } from "@/components/look/LookDrawing";
+import { LookPhotoMenu } from "@/components/look/LookPhotoMenu";
 import { useMoneyText } from "@/components/ui/MoneyText";
-import { generationPieces } from "@/lib/look-generation";
+import { generationPieces, generationStyleLabel } from "@/lib/look-generation";
 import { StylePicker, type GenerationStyle } from "@/components/look/StylePicker";
 import { StatusDot, BagIcon, NewLookIcon, PhoneEmpty } from "@/components/look/CardBits";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { fetchProductsByIds } from "@/lib/products-by-ids";
+import { downloadLookPhoto } from "@/lib/download-look-photo";
 import { isProductAvailable } from "@/lib/availability";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import {
@@ -148,6 +150,8 @@ function LookCard({
   const [photoBusy, setPhotoBusy] = useState<"download" | "regenerate" | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [stylePicker, setStylePicker] = useState(false);
+  // The style being drawn, for the animation over the picture (LookDrawing).
+  const [drawingStyle, setDrawingStyle] = useState<GenerationStyle | null>(null);
 
   // Dismiss on a backdrop click, but not when a text selection merely *ended*
   // out there — see the hook. The details editor is full of fields, which is
@@ -161,7 +165,7 @@ function LookCard({
   // the look to the account, and a request per character is not a save, it is a
   // flood. The draft is seeded when the sheet opens so Cancel really cancels.
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<{ name: string; description: string; styleKeywords: string[]; seasons: Season[]; gender: Gender }>({
+  const [draft, setDraft] = useState<LookDetails>({
     name: "",
     description: "",
     styleKeywords: [],
@@ -214,15 +218,6 @@ function LookCard({
     setEditing(true);
   };
 
-  const toggleDraftStyle = (kw: StyleKeyword) => {
-    setDraft((d) => ({
-      ...d,
-      styleKeywords: d.styleKeywords.includes(kw)
-        ? d.styleKeywords.filter((k) => k !== kw)
-        : [...d.styleKeywords, kw],
-    }));
-  };
-
   const commitDetails = () => {
     onUpdate(look.id, {
       // An empty name means "no name", not the literal empty string — the card
@@ -245,7 +240,7 @@ function LookCard({
     ? "Generated look"
     : look.generatedStyle === "flatlay"
     ? "Flat lay look"
-    : "AI look";
+    : "Mannequin look";
   const displayName = look.name || autoName;
   const [nameValue, setNameValue] = useState(look.name || autoName);
 
@@ -369,39 +364,15 @@ function LookCard({
 
   // ── Photo actions ────────────────────────────────────────────────────────
   //
-  // Download. A plain `<a download>` does not save a cross-origin file — the
-  // attribute is ignored and the browser navigates to the picture instead,
-  // which is the "it opens in a new tab" this replaces. Look photos are always
-  // on the storage host, so that was never going to work for any of them. The
-  // bytes come back through our own origin and are saved from a blob, the same
-  // way the studio's card export does it.
+  // Download, through our own origin (lib/download-look-photo).
   const downloadPhoto = async () => {
     if (!look.generatedImage || photoBusy) return;
     setPhotoBusy("download");
     setPhotoError(null);
-    try {
-      const res = await fetch(`/api/looks/image?url=${encodeURIComponent(look.generatedImage)}`);
-      if (!res.ok) {
-        const message = await res.json().then((j: { error?: string }) => j.error).catch(() => null);
-        setPhotoError(message ?? "Could not download the photo.");
-        return;
-      }
-      const blob = await res.blob();
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = href;
-      link.download =
-        /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "goo-look.jpg";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(href);
-      setPhotoMenu(false);
-    } catch {
-      setPhotoError("Could not download the photo.");
-    } finally {
-      setPhotoBusy(null);
-    }
+    const failed = await downloadLookPhoto(look.generatedImage);
+    if (failed) setPhotoError(failed);
+    else setPhotoMenu(false);
+    setPhotoBusy(null);
   };
 
   // Regenerate. This used to `router.push(builderUrl)` — the same thing "Edit
@@ -435,6 +406,7 @@ function LookCard({
     }
 
     setPhotoBusy("regenerate");
+    setDrawingStyle(style);
     setPhotoError(null);
     try {
       const res = await fetch("/api/generate-outfit", {
@@ -475,9 +447,11 @@ function LookCard({
       setPhotoError("Network error. Check your connection.");
     } finally {
       setPhotoBusy(null);
+      setDrawingStyle(null);
     }
   };
 
+  const drawing = photoBusy === "regenerate";
 
   // "Share link" publishes a snapshot of this look and points at its public
   // /look/[id] page — image on the left, the list of pieces on the right, the
@@ -624,7 +598,9 @@ function LookCard({
       ? "Couldn't copy — tap to retry"
       : "Share link";
 
-  // Metadata segment: publication status > availability > origin
+  // Metadata segment: publication status > availability > origin. The origin
+  // is the shopper, picture or not: it read "AI generated" for a look with a
+  // generated photo, though the shopper chose every piece (CEO, 2026-10-29).
   const statusSegment =
     publication === "approved"
       ? { label: "Published to GOO", dot: "bg-green-500" }
@@ -634,8 +610,6 @@ function LookCard({
       ? { label: "Rejected", dot: "bg-red-400" }
       : partial
       ? { label: `${availableCount}/${totalPieces} available`, dot: "bg-orange-400" }
-      : look.generatedImage
-      ? { label: "AI generated", dot: "bg-violet-400" }
       : { label: "Created by you", dot: null };
 
   return (
@@ -754,10 +728,11 @@ function LookCard({
           {look.generatedImage && (
             // Phones: a light pill, like every control on the photo (DESIGN_SYSTEM.md §12.6)
             <span className="absolute top-2.5 left-2.5 z-10 text-[11px] font-semibold bg-white/80 text-black px-[9px] py-1 rounded-full md:font-mono md:text-[8px] md:font-normal md:tracking-[0.18em] md:uppercase md:bg-black/55 md:text-white md:px-2 md:py-0.5 md:rounded-md backdrop-blur-sm">
-              {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
+              {generationStyleLabel(look.generatedStyle)}
             </span>
           )}
           <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
+          {drawing && <LookDrawing style={drawingStyle} compact />}
         </button>
 
         {/* Info */}
@@ -848,78 +823,11 @@ function LookCard({
             <div aria-hidden="true" className="md:hidden mx-auto -mt-2 mb-3 w-9 h-1 rounded-full bg-[var(--border-strong)]" />
             <p className="text-[18px] md:text-sm font-semibold md:font-medium text-[var(--foreground)] mb-4 md:mb-5">Edit look</p>
 
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)]">
-                Name
-              </label>
-              <button
-                onClick={suggestCopy}
-                className="max-md:-mr-3 max-md:h-11 max-md:px-3 text-[14px] md:text-[10px] md:uppercase md:tracking-[0.12em] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                title="Fill the name and description from this look's brands, style and price"
-              >
-                Suggest
-              </button>
-            </div>
-            <input
-              type="text"
-              value={draft.name}
-              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-              placeholder={autoName}
-              maxLength={120}
-              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors mb-5"
-            />
-
-            <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5">
-              Description
-            </label>
-            <textarea
-              value={draft.description}
-              onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-              placeholder="What makes this look work?"
-              rows={4}
-              maxLength={2000}
-              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors mb-5 resize-none"
-            />
-
-            <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)] mb-2.5 md:mb-1.5">
-              Styles
-            </label>
-            <div className="flex flex-wrap gap-2 md:gap-1.5 mb-6">
-              {STYLE_KEYWORDS.map((kw) => {
-                const on = draft.styleKeywords.includes(kw);
-                return (
-                  <button
-                    key={kw}
-                    onClick={() => toggleDraftStyle(kw)}
-                    aria-pressed={on}
-                    className={`h-9 md:h-auto px-3.5 md:px-4 md:py-2 rounded-full md:border text-[13px] md:text-[11px] md:tracking-[0.12em] capitalize md:uppercase md:font-medium transition-colors duration-200 ${
-                      on
-                        ? "md:border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)] max-md:font-semibold"
-                        : "bg-[var(--fg-overlay-08)] md:bg-transparent md:border-[var(--border-strong)] text-[var(--foreground)] md:text-[var(--foreground-muted)] md:hover:border-[var(--foreground)] md:hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {kw}
-                  </button>
-                );
-              })}
-            </div>
-
-            <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)] mb-2.5 md:mb-1.5">
-              Seasons
-            </label>
-            <SeasonPicker
-              value={draft.seasons}
-              onChange={(seasons) => setDraft((d) => ({ ...d, seasons }))}
-              className="mb-5"
-            />
-
-            <label className="block text-[13px] md:text-[10px] md:uppercase md:tracking-[0.14em] text-[var(--foreground-muted)] mb-2.5 md:mb-1.5">
-              For
-            </label>
-            <GenderPicker
-              value={draft.gender}
-              onChange={(gender) => setDraft((d) => ({ ...d, gender }))}
-              className="mb-6"
+            <LookDetailsFields
+              value={draft}
+              onChange={setDraft}
+              onSuggest={suggestCopy}
+              namePlaceholder={autoName}
             />
 
             {publication === "pending" && (
@@ -1110,73 +1018,9 @@ function LookCard({
                     />
                     {look.generatedStyle && (
                       <span className="absolute top-3 left-3 md:font-mono text-[11px] md:text-[8px] font-semibold md:font-normal md:tracking-[0.18em] md:uppercase bg-white/80 md:bg-black/55 text-black md:text-white px-[9px] md:px-2 py-1 rounded-full md:rounded-md md:backdrop-blur-sm">
-                        {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
+                        {generationStyleLabel(look.generatedStyle)}
                       </span>
                     )}
-                    {/* Photo actions. Was a bare download icon; the photo also
-                        needs regenerating, and two icons stacked over the image
-                        is one more than it can carry. */}
-                    <div className="absolute top-3 right-3" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setPhotoMenu((v) => !v)}
-                        aria-label="Photo actions"
-                        aria-expanded={photoMenu}
-                        className="w-11 h-11 md:w-9 md:h-9 rounded-full bg-[var(--background)]/85 backdrop-blur-sm flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
-                        </svg>
-                      </button>
-                      {/* Deliberately not ActionMenu. Below sm that component
-                          positions itself `fixed`, and the sheet around it is a
-                          motion.div that animates `scale` — a transform makes
-                          the modal the containing block for fixed descendants,
-                          so the panel was laid out against the modal and then
-                          clipped by this column's overflow-hidden. That is the
-                          black bar across the photo.
-
-                          A plain absolute panel has none of that: it is
-                          positioned against the button, and it fits inside the
-                          column, so the clipping never engages. */}
-                      <AnimatePresence>
-                        {photoMenu && (
-                          <>
-                            <div className="fixed inset-0 z-40" onClick={() => setPhotoMenu(false)} />
-                            <motion.div
-                              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                              transition={{ duration: 0.16, ease: [0.32, 0.72, 0, 1] }}
-                              className="absolute right-0 top-full mt-2 z-50 w-56 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5"
-                            >
-                              <button
-                                onClick={downloadPhoto}
-                                disabled={!!photoBusy}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] disabled:opacity-40 transition-colors"
-                              >
-                                {photoBusy === "download" ? "Downloading…" : "Download image"}
-                              </button>
-                              <button
-                                onClick={openRegenerate}
-                                disabled={!!photoBusy}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] disabled:opacity-40 transition-colors"
-                              >
-                                {photoBusy === "regenerate" ? "Regenerating…" : "Regenerate photo"}
-                              </button>
-                              {photoError ? (
-                                <p className="px-4 pt-2 pb-1 text-[10px] leading-snug text-red-500">
-                                  {photoError}
-                                </p>
-                              ) : (
-                                <p className="px-4 pt-2 pb-1 text-[10px] leading-snug text-[var(--foreground-subtle)]">
-                                  Regenerating asks how the look should be shot, the same way saving it does.
-                                </p>
-                              )}
-                            </motion.div>
-                          </>
-                        )}
-                      </AnimatePresence>
-                    </div>
                   </>
                 ) : (
                   <div className="absolute inset-0 bg-white md:bg-gray-200 flex flex-col gap-px">
@@ -1224,6 +1068,29 @@ function LookCard({
                       );
                     })()}
                   </div>
+                )}
+                {/* Photo actions — a collage look's too, as "Generate photo".
+                    Was a bare download icon; the photo also needs redoing, and
+                    two icons stacked over the image is one more than it can carry. */}
+                <LookPhotoMenu
+                  open={photoMenu}
+                  onOpenChange={setPhotoMenu}
+                  hasImage={!!look.generatedImage}
+                  busy={photoBusy}
+                  error={photoError}
+                  onDownload={downloadPhoto}
+                  onRegenerate={openRegenerate}
+                />
+                {drawing && <LookDrawing style={drawingStyle} />}
+                {/* The menu is closed by the time a photo fails; the reason
+                    shows on the picture instead of nowhere. */}
+                {photoError && !photoMenu && !drawing && (
+                  <p
+                    role="alert"
+                    className="absolute bottom-3 inset-x-3 z-20 rounded-xl bg-[var(--background)]/90 backdrop-blur-sm px-3 py-2 text-[13px] md:text-[11px] text-[var(--foreground)]"
+                  >
+                    {photoError}
+                  </p>
                 )}
               </div>
 
@@ -1460,12 +1327,13 @@ function LookCard({
       </AnimatePresence>
 
       {/* The builder's own style sheet, opened from "Regenerate photo" so the
-          shot is chosen the same way it is when the look is first saved. */}
+          shot is chosen the same way it is when the look is first saved. A
+          collage look has no photo to drop, so no collage option. */}
       <StylePicker
         open={stylePicker}
         onClose={() => setStylePicker(false)}
-        title="Regenerate photo"
-        collage={{ label: "Without generation", hint: "Show the pieces as a collage" }}
+        title={look.generatedImage ? "Regenerate photo" : "Generate photo"}
+        collage={look.generatedImage ? { label: "Without generation", hint: "Show the pieces as a collage" } : null}
         onCollage={clearPhoto}
         onGenerate={regeneratePhoto}
       />
