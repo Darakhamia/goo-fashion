@@ -14,7 +14,7 @@
  */
 import type { ColorGroup, Product } from "../src/lib/types";
 import { runGeneration, type QueuedLook, type RunInput } from "../src/lib/server/ai-outfits/run";
-import { buildMessages, type ModelOutfit, type PlanRequest } from "../src/lib/server/ai-outfits/model";
+import { buildMessages, outfitSchema, type ModelOutfit, type PlanRequest } from "../src/lib/server/ai-outfits/model";
 import { checkCopy } from "../src/lib/server/ai-outfits/copy";
 
 const groups: ColorGroup[] = [
@@ -189,6 +189,16 @@ async function main() {
   expect("brief outfit kept", b.queued.some((q) => q.name === "Brown Study"));
   expect("a men's brief stores men", b.queued.every((q) => q.gender === "men"));
   expect("outfit without the brand or the colour refused", b.log.some((l) => l.includes("Weekend Grey") && /no piece by Our Legacy|no piece in brown/.test(l)));
+
+  console.log("\n2b. Ids written without their prefix (\"89\" for \"c89\") — the live catalogue's first runs");
+  const bare = fakeModel((k) => [
+    o([[k("Wool Overcoat").slice(1), "outerwear"], [k("Silk Blouse").slice(1), "top"], [k("Wide Trousers").slice(1), "bottom"], [k("Leather Loafers").slice(1), "shoes"]]),
+  ]);
+  const e = await run({ ...base, count: 1 }, bare);
+  expect("bare numbers read as the pieces they number", e.queued.length === 1);
+  const schema = outfitSchema(["c1", "c2"]);
+  const idSchema = schema.properties.outfits.items.properties.pieces.items.properties.id;
+  expect("the schema allows only the round's ids", JSON.stringify(idSchema.enum) === JSON.stringify(["c1", "c2"]));
 
   console.log("\n3. A piece set the site already has is refused");
   const same = fakeModel((k) => [o([[k("Wool Overcoat"), "outerwear"], [k("Silk Blouse"), "top"], [k("Wide Trousers"), "bottom"], [k("Leather Loafers"), "shoes"]])]);
