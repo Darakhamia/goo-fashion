@@ -32,8 +32,8 @@ export default function OutfitCard({ outfit }: OutfitCardProps) {
   const { formatPrice } = useCurrency();
   const liked = isOutfitLiked(outfit.id);
   const pieceCount = outfit.items.length;
-  // "Outfit 51" says nothing in a grid of them; its brands and style do. A
-  // price typed into the name reads in the shopper's currency (MoneyText).
+  // The name as the studio has it (lib/seo). A price typed into the name reads
+  // in the shopper's currency (MoneyText).
   const toReader = useMoneyText();
   const displayName = toReader(outfitDisplayName(outfit));
 
