@@ -317,6 +317,17 @@ export default function AdminOutfitsPage() {
     }
   };
 
+  /** What the copy checks replaced in a rewrite, as lines under the fields. */
+  const replacedNotes = (raw: unknown): string[] =>
+    ((Array.isArray(raw) ? raw : []) as NonNullable<AiMeta["copy"]>)
+      .filter((n) => n.action === "replaced")
+      .map((n) =>
+        t("outfits.ai.copy.replaced", {
+          field: t(n.field === "name" ? "outfits.editor.name" : "outfits.editor.description"),
+          problem: n.problem,
+        }),
+      );
+
   const rewriteCopy = async (look: PendingLook) => {
     setRewriting(true);
     setModerationError("");
@@ -328,17 +339,7 @@ export default function AdminOutfitsPage() {
         return;
       }
       setModeration((m) => ({ ...m, name: data.name, description: data.description ?? m.description }));
-      const notes = (Array.isArray(data.notes) ? data.notes : []) as NonNullable<AiMeta["copy"]>;
-      setRewriteNotes(
-        notes
-          .filter((n) => n.action === "replaced")
-          .map((n) =>
-            t("outfits.ai.copy.replaced", {
-              field: t(n.field === "name" ? "outfits.editor.name" : "outfits.editor.description"),
-              problem: n.problem,
-            }),
-          ),
-      );
+      setRewriteNotes(replacedNotes(data.notes));
     } catch {
       setModerationError(t("outfits.review.rewriteFailedNetwork"));
     } finally {
@@ -500,9 +501,46 @@ export default function AdminOutfitsPage() {
     });
     setSaveError("");
     setUploadError("");
+    setEditorRewriteNotes([]);
   };
 
   const closeModal = () => setEditing(null);
+
+  // ── Rewrite in the editor: the review's copywriter, for a published outfit ──
+  // (api/outfits/[id]/copy). It writes from the editor as it stands, unsaved
+  // styles and seasons included; Save keeps the words, Cancel drops them.
+  const [editorRewriting, setEditorRewriting] = useState(false);
+  const [editorRewriteNotes, setEditorRewriteNotes] = useState<string[]>([]);
+
+  const rewriteOutfitCopy = async (outfit: Outfit) => {
+    setEditorRewriting(true);
+    setSaveError("");
+    setEditorRewriteNotes([]);
+    try {
+      const res = await fetch(`/api/outfits/${outfit.id}/copy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          styleKeywords: form.styleKeywords,
+          seasons: form.seasons,
+          gender: form.gender,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.name !== "string") {
+        setSaveError(data.error ?? t("outfits.review.rewriteFailed", { status: res.status }));
+        return;
+      }
+      setForm((f) => ({ ...f, name: data.name, description: data.description ?? f.description }));
+      setEditorRewriteNotes(replacedNotes(data.notes));
+    } catch {
+      setSaveError(t("outfits.review.rewriteFailedNetwork"));
+    } finally {
+      setEditorRewriting(false);
+    }
+  };
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
@@ -1453,9 +1491,21 @@ export default function AdminOutfitsPage() {
               </p>
             </div>
 
-            {/* Name */}
+            {/* Name — with the review's rewrite: a published outfit's words can
+                be written again too, not only a queued look's (CEO, 2026-10-31). */}
             <div>
-              <label htmlFor="outfit-name" className={FIELD_LABEL}>{t("outfits.editor.name")} *</label>
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="outfit-name" className={FIELD_LABEL}>{t("outfits.editor.name")} *</label>
+                <button
+                  type="button"
+                  onClick={() => void rewriteOutfitCopy(editing)}
+                  disabled={editorRewriting || saving}
+                  className={`${btn("ghost", "sm")} -mt-1.5 inline-flex items-center gap-1.5`}
+                >
+                  {SPARK}
+                  {t(editorRewriting ? "outfits.review.rewriting" : "outfits.review.rewrite")}
+                </button>
+              </div>
               <input
                 id="outfit-name"
                 type="text"
@@ -1479,6 +1529,11 @@ export default function AdminOutfitsPage() {
                 maxLength={2000}
                 className={`${inputCls} resize-none`}
               />
+              {editorRewriteNotes.length > 0 && (
+                <ul className="mt-1.5 space-y-0.5 text-[12px] text-[var(--foreground-muted)]">
+                  {editorRewriteNotes.map((n) => <li key={n}>{n}</li>)}
+                </ul>
+              )}
             </div>
 
             {/* Styles */}

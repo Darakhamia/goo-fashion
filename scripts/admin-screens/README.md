@@ -47,7 +47,7 @@ NODE_PATH=/tmp/goo-admin-screens/pw/node_modules \
 - **Основные:** `dashboard`, `products`, `outfits`, `brands`, `retailers`, `audit`, `duplicates`, `catalogue-check`, `categories`, `blog`, `import`, `parser`, `parser-collect`, `users`, `waitlist`, `email`, `analytics`, `subscriptions`, `activity`, `settings`, `prompts`.
 - **Состояния** (открытая модалка, вкладка, шаг) — их объявляют фикстуры через `pages`:
   - `products-editor` … `products-editor-4`, `products-bulk`, `products-filter`, `products-row-menu`, `products-maintenance`, `products-more` (нажата «Load 50 more»), `products-back` (список после «← Products» со страницы товара: на том же месте);
-  - `outfits-bulk`, `outfits-editor` (правка образа из меню «…» строки), `outfits-pending`, `outfits-pending-review`, `outfits-ai` (окно «Generate with AI»), `outfits-pending-review-ai` (проверка образа, собранного AI);
+  - `outfits-bulk`, `outfits-editor` (правка образа из меню «…» строки), `outfits-editor-rewrite` (та же правка после «Rewrite name and description»), `outfits-pending`, `outfits-pending-review`, `outfits-ai` (окно «Generate with AI»), `outfits-pending-review-ai` (проверка образа, собранного AI);
   - `brands-confirm`, `brands-toast`, `retailers-help`, `retailers-rule`;
   - `dashboard-fix` («How to fix» открыт), `dashboard-healthy` («All good»), `dashboard-payments-off` (оплата выключена);
   - `subscriptions-test` (идёт тестовая подписка: строка в списке и блок со Stop);
