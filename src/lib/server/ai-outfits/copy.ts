@@ -109,8 +109,8 @@ export interface CopyContext {
 // Built from the pieces themselves, so it is always true and always about this
 // outfit: "Beige Coat, Black Trousers" and "A beige coat, a black blouse,
 // black trousers and black loafers — a minimal outfit for autumn." The
-// builder's suggestion (lib/look-copy) names brands and a price instead,
-// which is right for a shopper's own look but not for the house style.
+// sentence of brands and price (lib/look-copy) is only for when this one comes
+// out too short.
 
 /** Garment words that are plural for one item. */
 const PLURAL_ITEMS = new Set([

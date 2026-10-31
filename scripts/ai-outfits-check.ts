@@ -16,6 +16,7 @@ import type { ColorGroup, Product } from "../src/lib/types";
 import { runGeneration, type QueuedLook, type RunInput } from "../src/lib/server/ai-outfits/run";
 import { buildMessages, outfitSchema, type ModelOutfit, type PlanRequest } from "../src/lib/server/ai-outfits/model";
 import { checkCopy } from "../src/lib/server/ai-outfits/copy";
+import { writeOutfitCopy } from "../src/lib/server/ai-outfits/write-copy";
 
 const groups: ColorGroup[] = [
   ["White", 1], ["Multicolor", 2], ["Brown", 3], ["Pink", 4], ["Yellow", 5], ["Orange", 6], ["Grey", 7],
@@ -226,6 +227,52 @@ async function main() {
   expect("candidate lines carry slot, colours, gender and price", /c\d+ \| top \| .* \| colours: .* \| for: .* \| \$\d+/.test(user));
   expect("refusals go back to the model", user.includes("were refused"));
   console.log(user.split("\n").slice(0, 8).map((l) => `     ${l}`).join("\n"));
+
+  console.log("\n7. One copywriter: the review, the studio's editor and the shopper's Suggest (write-copy.ts)");
+  // The model is answered at the network: the real request is built and sent.
+  const sent: { system: string; user: string }[] = [];
+  let reply = {
+    name: "Camel Coat Sunday",
+    description: "A beige wool overcoat over a black silk blouse and wide black trousers, finished with leather loafers — for slow autumn Sundays in town.",
+  };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (!url.includes("api.openai.com")) return realFetch(input, init);
+    const raw = input instanceof Request ? await input.clone().text() : String(init?.body ?? "{}");
+    const body = JSON.parse(raw) as { messages: { content: string }[] };
+    sent.push({ system: body.messages[0].content, user: body.messages[1].content });
+    const completion = {
+      id: "chatcmpl-test", object: "chat.completion", created: 0, model: "gpt-4.1-mini",
+      choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(reply), refusal: null } }],
+      usage: { prompt_tokens: 900, completion_tokens: 80, total_tokens: 980 },
+    };
+    return new Response(JSON.stringify(completion), { status: 200, headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+  const lookPieces = ["Wool Overcoat", "Silk Blouse", "Wide Trousers", "Leather Loafers"].map((name) => catalogue.find((p) => p.name === name)!);
+  const brief = {
+    productIds: lookPieces.map((p) => p.id),
+    products: lookPieces,
+    styles: ["minimal"],
+    seasons: ["autumn"],
+    gender: null,
+    current: { name: "Outfit 44", description: "" },
+  };
+  const written = await writeOutfitCopy(brief, "sk-test", new Set());
+  expect("the model's words come back", written.name === "Camel Coat Sunday" && written.description.startsWith("A beige wool overcoat"));
+  expect("the house style is the system prompt", sent[0]?.system.includes("HOUSE STYLE FOR NAMES AND DESCRIPTIONS"));
+  expect("the pieces, the brief and the current name go to the model",
+    Boolean(sent[0]?.user.includes("Wool Overcoat") && sent[0].user.includes("for women") && sent[0].user.includes("minimal") && sent[0].user.includes("\"Outfit 44\"")));
+  reply = { name: "Casual Look", description: "Get the whole look for $480 — a coat, a blouse, trousers and loafers that work for autumn days in the city." };
+  const checked = await writeOutfitCopy(brief, "sk-test", new Set(["camel coat sunday"]));
+  expect("a generic name and a price are replaced, with notes", checked.name !== "Casual Look" && !/\$\d/.test(checked.description) && checked.notes.some((n) => n.action === "replaced"));
+  console.log(`     ${checked.name} — ${checked.description}`);
+  reply = { name: "Camel Coat Sunday", description: written.description };
+  const takenOnce = await writeOutfitCopy(brief, "sk-test", new Set(["camel coat sunday"]));
+  expect("a name another outfit has is replaced", takenOnce.name.toLowerCase() !== "camel coat sunday");
+  const own = await writeOutfitCopy({ ...brief, current: { name: "Camel Coat Sunday", description: "" } }, "sk-test", new Set(["camel coat sunday"]));
+  expect("the outfit's own name is not taken from it", own.name === "Camel Coat Sunday");
+  globalThis.fetch = realFetch;
 
   console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
   process.exit(failures ? 1 : 0);

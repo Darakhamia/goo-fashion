@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { Gender, Season, StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { GenderPicker } from "@/components/look/GenderPicker";
@@ -22,7 +22,8 @@ export interface LookDetails {
  * One set for both places a look is described: My looks → Edit info, and the
  * Builder's Save look. Saving offered a name, seasons and "For" only, so a
  * description or styles meant saving first and editing after (CEO,
- * 2026-10-29); now both show the same fields, in the same order.
+ * 2026-10-29); now both show the same fields, in the same order. Suggest asks
+ * the studio's copywriter, not a template (CEO, 2026-10-31).
  */
 export function LookDetailsFields({
   value,
@@ -34,8 +35,12 @@ export function LookDetailsFields({
 }: {
   value: LookDetails;
   onChange: (next: LookDetails) => void;
-  /** Fill the name and description from the look's brands, style and price. */
-  onSuggest?: () => void;
+  /**
+   * Fill the name and description from the site's copywriter
+   * (lib/suggest-look-copy). Resolves to why it could not, or null once the
+   * fields are set.
+   */
+  onSuggest?: () => Promise<string | null>;
   namePlaceholder?: string;
   /** Enter in the name field. */
   onSubmit?: () => void;
@@ -43,6 +48,16 @@ export function LookDetailsFields({
 }) {
   // Both the Builder's desktop window and its phone sheet are mounted at once.
   const uid = useId();
+  // Suggest is a model call: a second or two, and it can fail.
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const suggest = async () => {
+    if (!onSuggest || suggesting) return;
+    setSuggesting(true);
+    setSuggestError(null);
+    setSuggestError(await onSuggest());
+    setSuggesting(false);
+  };
   const set = (patch: Partial<LookDetails>) => onChange({ ...value, ...patch });
   const toggleStyle = (kw: StyleKeyword) =>
     set({
@@ -63,14 +78,24 @@ export function LookDetailsFields({
         {onSuggest && (
           <button
             type="button"
-            onClick={onSuggest}
-            className="max-md:-mr-3 max-md:h-11 max-md:px-3 text-[14px] md:text-[10px] md:uppercase md:tracking-[0.12em] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-            title="Fill the name and description from this look's brands, style and price"
+            onClick={() => void suggest()}
+            disabled={suggesting}
+            aria-busy={suggesting}
+            className="max-md:-mr-3 max-md:h-11 max-md:px-3 inline-flex items-center gap-1.5 text-[14px] md:text-[10px] md:uppercase md:tracking-[0.12em] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-60 transition-colors"
+            title="Write a name and description for this look in GOO's house style"
           >
-            Suggest
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden="true" className={suggesting ? "animate-pulse" : ""}>
+              <path d="M8 1.5 9.4 6.6 14.5 8 9.4 9.4 8 14.5 6.6 9.4 1.5 8 6.6 6.6Z" />
+            </svg>
+            {suggesting ? "Writing…" : "Suggest"}
           </button>
         )}
       </div>
+      {suggestError && (
+        <p role="alert" className="-mt-0.5 mb-1.5 text-[13px] md:text-[11px] text-red-500">
+          {suggestError}
+        </p>
+      )}
       <input
         id={`${uid}-name`}
         type="text"

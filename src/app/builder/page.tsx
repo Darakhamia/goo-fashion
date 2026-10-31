@@ -9,14 +9,14 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { toCartItem } from "@/lib/cart-item";
 import { useAuth } from "@/lib/context/auth-context";
-import { applyFormat, useCurrency } from "@/lib/context/currency-context";
+import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import { StylePicker, type GenerationStyle } from "@/components/look/StylePicker";
 import { LookDetailsFields, type LookDetails } from "@/components/look/LookDetailsFields";
 import { LookDrawing } from "@/components/look/LookDrawing";
 import { LookPhotoMenu } from "@/components/look/LookPhotoMenu";
 import { generationStyleLabel } from "@/lib/look-generation";
-import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
+import { suggestLookCopy } from "@/lib/suggest-look-copy";
 import { downloadLookPhoto } from "@/lib/download-look-photo";
 import { genderOfPieces } from "@/lib/outfit-gender";
 import { displayedProduct } from "@/lib/variant-display";
@@ -883,19 +883,28 @@ export default function BuilderPage() {
     if (next.gender !== lookGender) setLookGenderPick(next.gender);
   };
 
-  /** Name and description from the pieces' brands, the chosen style and the price (lib/look-copy). */
-  const suggestCopy = () => {
-    const pieces = SLOTS.map(s => selection[s.id]).filter(Boolean) as Product[];
-    const input = {
-      brands: pieces.map(p => p.brand).filter(Boolean) as string[],
+  /**
+   * Name and description from the site's copywriter — the studio's own
+   * (lib/suggest-look-copy) — for the look as the dialog has it: the colours
+   * picked, the styles, seasons and "For" chosen. It was a template of brands,
+   * style and price (CEO, 2026-10-31).
+   */
+  const suggestCopy = async (): Promise<string | null> => {
+    const productIds = SLOTS
+      .filter(s => selection[s.id] != null)
+      .map(s => variantOverrides[s.id] || selection[s.id]!.id);
+    const result = await suggestLookCopy({
+      productIds,
+      name: pendingLookName,
+      description: lookDescription,
       styleKeywords: lookStyles,
-      pieceCount: pieces.length,
-      // In dollars, the currency a look's total is kept in (lib/look-copy).
-      price: applyFormat(totalPrice, "USD", {}),
       seasons: lookSeasons,
-    };
-    setPendingLookName(suggestLookName(input));
-    setLookDescription(suggestLookDescription(input));
+      gender: lookGender,
+    });
+    if ("error" in result) return result.error;
+    setPendingLookName(result.name);
+    setLookDescription(result.description);
+    return null;
   };
 
   /** The photo menu's "Regenerate photo": back to the style sheet, then back here. */
