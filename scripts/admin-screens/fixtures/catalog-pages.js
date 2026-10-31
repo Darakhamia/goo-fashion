@@ -374,6 +374,14 @@ module.exports = {
     "GET /api/outfits": outfits,
     "GET /api/looks/pending": pendingLooks,
     "GET /api/admin/ai-outfits": aiOutfits,
+    // Outfits → Edit → Rewrite name and description: the copywriter's answer,
+    // with one line the copy checks replaced.
+    "POST /api/outfits/*": {
+      name: "Camel Coat Sunday",
+      description: "A camel wool coat over a cream knit and black wide-leg trousers, finished with leather loafers — for slow autumn weekends in town.",
+      notes: [{ field: "name", action: "tidied", problem: "quotation marks" }],
+      costUsd: 0.0004,
+    },
   },
 
   pages: [
@@ -523,6 +531,20 @@ module.exports = {
         await page.getByRole("menuitem", { name: /^(Edit|Изменить)$/ }).click();
         await page.getByRole("dialog").waitFor();
         await page.waitForTimeout(400);
+      },
+    },
+    {
+      // The editor after "Rewrite name and description": the fields filled
+      // with the copywriter's words.
+      name: "outfits-editor-rewrite", url: "/goo-studio/outfits", fullPage: false,
+      after: async (page) => {
+        await waitRows(page);
+        await page.locator(ROW).first().hover();
+        await page.locator(ROW).first().locator('button[aria-haspopup="menu"]').click();
+        await page.getByRole("menuitem", { name: /^(Edit|Изменить)$/ }).click();
+        await page.getByRole("dialog").waitFor();
+        await page.getByRole("button", { name: /^(Rewrite name and description|Переписать название и описание)$/ }).click();
+        await page.waitForTimeout(600);
       },
     },
     {

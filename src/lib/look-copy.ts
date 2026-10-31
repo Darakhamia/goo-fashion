@@ -1,23 +1,17 @@
 /**
- * Suggested name and description for a look, derived from the look itself.
+ * A plain sentence about a look, from the look itself: its season and style,
+ * its brands, its piece count and price.
  *
- * The site has been writing this copy all along — `buildOutfitSeo` composes a
- * heading and a description for the public outfit page out of brands, style,
- * piece count and price, which is where "OUR LEGACY + BALENCIAGA MINIMAL LOOK"
- * comes from. But it runs at render time for SEO and is never stored, so the
- * outfit row underneath still holds whatever the approval step wrote.
+ * The last resort of the copy checks' standard wording (ai-outfits/copy.ts):
+ * when the copywriter's description is refused and the sentence built from
+ * the pieces comes out too short. Free, instant, cannot fail.
+ * It used to be the shopper's Suggest too, with a name in the same shape
+ * ("OUR LEGACY + BALENCIAGA minimal look"); Suggest now asks the studio's
+ * copywriter (CEO, 2026-10-31), and the name went with it.
  *
- * So this is not new cleverness, it is the same rule made available before the
- * fact: offer the shopper the text the page would have generated anyway, let
- * them keep it or write their own, and store the result. Two consequences worth
- * stating — it costs nothing and cannot fail, because there is no model call in
- * it, and the suggestion matches what the public page will actually render.
- *
- * The price goes in as dollars, the currency a look's total is kept in. It
- * used to go in already converted to the writer's currency, and the stored
- * text then told every reader "from €1,870" or "from ₴84,000" whatever they
- * had chosen; the pages that show the text now convert any price in it to the
- * reader's currency (`lib/money-text`), which only works from a known one.
+ * The price goes in as dollars, the currency a look's total is kept in; the
+ * pages that show the text convert any price in it to the reader's currency
+ * (`lib/money-text`).
  */
 import type { Season } from "@/lib/types";
 import { seasonsPhrase } from "@/lib/seasons";
@@ -35,24 +29,7 @@ export interface LookCopyInput {
 const clean = (values: string[]) =>
   [...new Set(values.map((v) => String(v ?? "").trim()).filter(Boolean))];
 
-/**
- * A name in the shape the outfit page uses: two brands, the leading style, and
- * the word "look". Falls back down the same ladder when a look has no brands or
- * no tags, so it always returns something usable rather than an empty string.
- */
-export function suggestLookName(input: LookCopyInput): string {
-  const brands = clean(input.brands);
-  const style = clean(input.styleKeywords)[0];
-  const descriptor = [brands.slice(0, 2).join(" + "), style].filter(Boolean).join(" ").trim();
-
-  if (descriptor) return `${descriptor} look`;
-  return input.pieceCount ? `${input.pieceCount}-piece look` : "New look";
-}
-
-/**
- * A sentence about what the look is, matching the public page's description so
- * a shopper who accepts the suggestion sees the same words in the catalogue.
- */
+/** "Shop this autumn minimal look featuring …. 4 pieces styled together, complete from $1,200 …" */
 export function suggestLookDescription(input: LookCopyInput): string {
   const brands = clean(input.brands);
   const byBrands = brands.length ? ` featuring ${brands.slice(0, 3).join(", ")}` : "";

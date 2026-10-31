@@ -143,7 +143,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
   },
   prompt_ai_outfits_copy: {
     label: "AI outfits — Names and descriptions",
-    description: "Правила для названий и описаний AI-образов. Сервер всё равно проверяет текст (длина, цены, эмодзи, чужие бренды, общие слова) и заменяет неудачный шаблонным.",
+    description: "Правила для названий и описаний образов — везде, где их пишет AI: генерация образов, Rewrite в очереди и в правке образа, Suggest у покупателя на сайте (Builder, «Мои образы»). Сервер всё равно проверяет текст (длина, цены, эмодзи, чужие бренды, общие слова) и заменяет неудачный шаблонным.",
     default: DEFAULT_AI_OUTFITS_COPY,
     category: "outfits",
     required: [],

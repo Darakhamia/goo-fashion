@@ -4,12 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { applyFormat, useCurrency } from "@/lib/context/currency-context";
+import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
 import { toCartRetailers } from "@/lib/cart-item";
 import type { Gender, Product } from "@/lib/types";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
-import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
+import { suggestLookCopy } from "@/lib/suggest-look-copy";
 import { normalizeSeasons, seasonsLabel } from "@/lib/seasons";
 import { genderLabel, genderOfPieces } from "@/lib/outfit-gender";
 import { LookDetailsFields, type LookDetails } from "@/components/look/LookDetailsFields";
@@ -177,34 +177,24 @@ function LookCard({
     look.gender ?? genderOfPieces(look.pieces.map((pc) => allProducts.find((prod) => prod.id === pc.productId)?.gender));
 
   /**
-   * Fill the draft with the copy the public outfit page would generate anyway.
-   *
-   * Not a model call — `buildOutfitSeo` has been composing exactly this text at
-   * render time all along (it is where "OUR LEGACY + BALENCIAGA MINIMAL LOOK"
-   * comes from), it was simply never offered before the fact or stored. So the
-   * suggestion is instant, free, cannot fail, and matches what the catalogue
-   * will show.
-   *
-   * The price goes in in dollars, the currency the look's total is kept in,
-   * not in this shopper's: the text is stored and read by everyone, and the
-   * pages that show it convert it to each reader's currency (MoneyText).
+   * Fill the draft's name and description from the site's copywriter — the
+   * one the studio writes its outfits with (lib/suggest-look-copy). It was a
+   * template of brands, style and price, and read nothing like the studio's
+   * (CEO, 2026-10-31). It writes from the draft as it stands: the styles,
+   * seasons and "For" chosen here, the colours the pieces were saved in.
    */
-  const suggestCopy = () => {
-    const resolved = look.pieces
-      .map((pc) => allProducts.find((prod) => prod.id === pc.productId))
-      .filter(Boolean) as Product[];
-    const input = {
-      brands: resolved.map((prod) => prod.brand).filter(Boolean) as string[],
+  const suggestCopy = async (): Promise<string | null> => {
+    const result = await suggestLookCopy({
+      productIds: look.pieces.map((pc) => pc.variantId || pc.productId),
+      name: draft.name,
+      description: draft.description,
       styleKeywords: draft.styleKeywords,
-      pieceCount: look.pieces.length,
-      price: applyFormat(look.totalPrice, "USD", {}),
       seasons: draft.seasons,
-    };
-    setDraft((d) => ({
-      ...d,
-      name: suggestLookName(input),
-      description: suggestLookDescription(input),
-    }));
+      gender: draft.gender,
+    });
+    if ("error" in result) return result.error;
+    setDraft((d) => ({ ...d, name: result.name, description: result.description }));
+    return null;
   };
 
   const openEditor = () => {

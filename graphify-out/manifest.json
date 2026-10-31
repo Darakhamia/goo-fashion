@@ -426,9 +426,9 @@
     "semantic_hash": ""
   },
   "src/app/builder/page.tsx": {
-    "mtime": 1793313210.132473,
-    "seen": 1793313317.6748018,
-    "ast_hash": "19ecf7e0e93adfaf7c413ca126132877",
+    "mtime": 1793445158.882086,
+    "seen": 1793445460.8870168,
+    "ast_hash": "365ec3d2d435d4414522b239a9f2a583",
     "semantic_hash": ""
   },
   "src/app/cookie/page.tsx": {
@@ -492,9 +492,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/outfits/page.tsx": {
-    "mtime": 1793312421.2296722,
-    "seen": 1793313317.6773114,
-    "ast_hash": "636c484dc46313640d89b0bc2bea1fff",
+    "mtime": 1793445006.686462,
+    "seen": 1793445460.8901713,
+    "ast_hash": "55c0298eac221ff99ab2c64c9426592a",
     "semantic_hash": ""
   },
   "src/app/goo-studio/page.tsx": {
@@ -996,9 +996,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/prompt-defaults.ts": {
-    "mtime": 1793131271.8583853,
-    "seen": 1793132344.1588323,
-    "ast_hash": "c963db787b493735c2edb2e249ac2eea",
+    "mtime": 1793445426.980049,
+    "seen": 1793445460.899945,
+    "ast_hash": "ee61f2c999823a3cdec9f44659322a2a",
     "semantic_hash": ""
   },
   "src/lib/server/rate-limit.ts": {
@@ -1250,9 +1250,9 @@
     "semantic_hash": ""
   },
   "AI_ARCHITECTURE.md": {
-    "mtime": 1793136363.6874084,
-    "seen": 1793136457.5096586,
-    "ast_hash": "c727b134cabae988a323c6cf6ad2fa66",
+    "mtime": 1793445419.83649,
+    "seen": 1793445460.9018419,
+    "ast_hash": "0c0daefbbdd2633cbf540f6bb7eee125",
     "semantic_hash": ""
   },
   "AUDIT_DEV_PLAN.md": {
@@ -1262,9 +1262,9 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1793313291.5269873,
-    "seen": 1793313317.6848714,
-    "ast_hash": "1f3ef659013b1271be2c53934b3f3450",
+    "mtime": 1793445442.4235108,
+    "seen": 1793445460.9018908,
+    "ast_hash": "28db9f2baf8ec3b620b74358147fdd62",
     "semantic_hash": ""
   },
   "BILLING.md": {
@@ -1574,9 +1574,9 @@
     "semantic_hash": ""
   },
   "src/components/look/MyLooksPanel.tsx": {
-    "mtime": 1793312872.339286,
-    "seen": 1793313317.6803694,
-    "ast_hash": "c2ab2a00374133a93b7f4793cdda6be7",
+    "mtime": 1793445158.8626986,
+    "seen": 1793445460.8938813,
+    "ast_hash": "24fb24be62c32a75a67f01bbabb1b717",
     "semantic_hash": ""
   },
   "src/components/look/StylePicker.tsx": {
@@ -1670,9 +1670,9 @@
     "semantic_hash": ""
   },
   "src/lib/look-copy.ts": {
-    "mtime": 1793117367.6221611,
-    "seen": 1793129421.7424712,
-    "ast_hash": "faff0c7f25fba223a78ffc3f08aeb80e",
+    "mtime": 1793445188.6732087,
+    "seen": 1793445460.8959188,
+    "ast_hash": "1616c8b9d580d78f94326b0b323372a5",
     "semantic_hash": ""
   },
   "src/lib/look-generation.ts": {
@@ -1940,9 +1940,9 @@
     "semantic_hash": ""
   },
   "docs/ADMIN.md": {
-    "mtime": 1793312455.5676124,
-    "seen": 1793313317.6849723,
-    "ast_hash": "627755429f7ea7769db7d51a33653402",
+    "mtime": 1793445419.8390548,
+    "seen": 1793445460.9021487,
+    "ast_hash": "237772d7c3506e652ec544aa21181abe",
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
@@ -2120,9 +2120,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/fixtures/catalog-pages.js": {
-    "mtime": 1793131937.367674,
-    "seen": 1793132344.1424155,
-    "ast_hash": "dfd2b2e75e36da92a48ceeb0a80b71a3",
+    "mtime": 1793445037.4967384,
+    "seen": 1793445460.8800657,
+    "ast_hash": "78e050983cc4813cb3610e86774cc9d4",
     "semantic_hash": ""
   },
   "scripts/admin-screens/fixtures/catalog.js": {
@@ -2180,9 +2180,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/README.md": {
-    "mtime": 1793131854.6759663,
-    "seen": 1793132344.1631694,
-    "ast_hash": "ea562e5504aa7eb7ed54f32bdcd0cfd2",
+    "mtime": 1793445044.3378098,
+    "seen": 1793445460.9085257,
+    "ast_hash": "5e8b650c565df683fcb1738426ca9bc0",
     "semantic_hash": ""
   },
   "src/app/goo-studio/_ui/recipes.ts": {
@@ -3632,9 +3632,9 @@
     "semantic_hash": ""
   },
   "scripts/ai-outfits-check.ts": {
-    "mtime": 1793136342.509213,
-    "seen": 1793136457.4923131,
-    "ast_hash": "b7b7476c764eff833a73807ca06089b1",
+    "mtime": 1793445242.8495061,
+    "seen": 1793445460.8804982,
+    "ast_hash": "8cd22ff601abbf101cfe275491f01c1f",
     "semantic_hash": ""
   },
   "src/app/api/admin/ai-outfits/route.ts": {
@@ -3656,9 +3656,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/ai-outfits/copy.ts": {
-    "mtime": 1793131522.5977974,
-    "seen": 1793132344.1567566,
-    "ast_hash": "8aa80933abebaabc5517d5749110fdda",
+    "mtime": 1793445188.6736734,
+    "seen": 1793445460.8964427,
+    "ast_hash": "b1ef5eddba81a315d53cb2066ad2fba8",
     "semantic_hash": ""
   },
   "src/lib/server/ai-outfits/model.ts": {
@@ -3722,15 +3722,15 @@
     "semantic_hash": ""
   },
   "src/lib/server/ai-outfits/review.ts": {
-    "mtime": 1793135073.4522307,
-    "seen": 1793135590.1766918,
-    "ast_hash": "ed319ad21d80424003070048133cab77",
+    "mtime": 1793444896.815113,
+    "seen": 1793445460.8965487,
+    "ast_hash": "1d42b6e5d5e9615a2970343fc518ecfc",
     "semantic_hash": ""
   },
   "src/components/look/LookDetailsFields.tsx": {
-    "mtime": 1793312735.3523169,
-    "seen": 1793313317.6803634,
-    "ast_hash": "b056c2d9cd8c15f518dbf2f39034985f",
+    "mtime": 1793445178.7844574,
+    "seen": 1793445460.8938127,
+    "ast_hash": "6c817f3388e70e8ac0165e36f4b682ec",
     "semantic_hash": ""
   },
   "src/components/look/LookDrawing.tsx": {
@@ -3755,6 +3755,30 @@
     "mtime": 1793312328.4296668,
     "seen": 1793313317.682084,
     "ast_hash": "67ed47e5cb700e61ba7610480d4995e7",
+    "semantic_hash": ""
+  },
+  "src/app/api/looks/copy/route.ts": {
+    "mtime": 1793444955.5611157,
+    "seen": 1793445460.8858457,
+    "ast_hash": "41803e42560745b24b0404e0d51d54d3",
+    "semantic_hash": ""
+  },
+  "src/app/api/outfits/[id]/copy/route.ts": {
+    "mtime": 1793444940.4836812,
+    "seen": 1793445460.8860347,
+    "ast_hash": "80d378d7a9322a155b503a5190337b67",
+    "semantic_hash": ""
+  },
+  "src/lib/server/ai-outfits/write-copy.ts": {
+    "mtime": 1793444886.1571171,
+    "seen": 1793445460.8967564,
+    "ast_hash": "a8aed6856528eb86346a16fc88a7a361",
+    "semantic_hash": ""
+  },
+  "src/lib/suggest-look-copy.ts": {
+    "mtime": 1793445130.9451115,
+    "seen": 1793445460.9009361,
+    "ast_hash": "d57c5e038441599b2b8fc2cd18eb2177",
     "semantic_hash": ""
   }
 }
