@@ -9,6 +9,7 @@ import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
 import { STYLE_KEYWORD_LIST, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { readStylistIntent, type StylistIntent } from "@/lib/server/stylist/intent";
 import { augmentQuery, candidateParams, requestText, wantsFullLook } from "@/lib/server/stylist/request";
+import { replyLanguage, STYLIST_MESSAGES } from "@/lib/server/stylist/language";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -214,24 +215,6 @@ function sanitizeHistory(
       role: m.role as "user" | "assistant",
       content: (m.content as string).slice(0, 1000),
     }));
-}
-
-// ── Language detection ────────────────────────────────────────────────────────
-
-/**
- * Detect the language the user is writing in so we can force the model to reply
- * in it. Lightweight script/keyword heuristic — good enough to pin the language.
- */
-function detectLanguage(text: string): string {
-  if (/[Ѐ-ӿ]/.test(text)) return "Russian";          // Cyrillic
-  if (/[一-鿿]/.test(text)) return "Chinese";          // CJK
-  if (/[぀-ヿ]/.test(text)) return "Japanese";         // Hiragana/Katakana
-  if (/[가-힯]/.test(text)) return "Korean";           // Hangul
-  if (/[؀-ۿ]/.test(text)) return "Arabic";
-  if (/[áéíóúñ¿¡]/i.test(text)) return "Spanish";
-  if (/[àâçéèêëîïôûùüœ]/i.test(text)) return "French";
-  if (/[äöüß]/i.test(text)) return "German";
-  return "English";
 }
 
 // Map RU/EN words to catalog category names so we can fetch a category directly
@@ -914,17 +897,16 @@ export async function POST(req: Request) {
   if (!userMessage)
     return NextResponse.json({ error: "userMessage is required." }, { status: 400 });
 
-  const language = detectLanguage(userMessage);
-  const ru = language === "Russian";
+  // The route's own messages follow the message's language; the reply's
+  // language is read again below, with the conversation, for the model.
+  const t = STYLIST_MESSAGES[replyLanguage(userMessage).ui];
 
   // ── Rate limiting ─────────────────────────────────────────────────────────
   const minuteLimit = await checkRateLimit(req);
   if (!minuteLimit.allowed) {
     return NextResponse.json(
       {
-        error: ru
-          ? "Слишком быстро — подождите немного и попробуйте снова."
-          : "Too fast — wait a moment and try again.",
+        error: t.tooFast,
         remaining: 0,
         limit: null,
       },
@@ -965,9 +947,7 @@ export async function POST(req: Request) {
     if (!anonDaily.allowed) {
       return NextResponse.json(
         {
-          error: ru
-            ? "Дневной бесплатный лимит исчерпан. Войдите в аккаунт, чтобы продолжить общение со стилистом."
-            : "You've reached today's free limit. Sign in to keep chatting with the stylist.",
+          error: t.anonLimit,
           remaining: 0,
           limit: anonLimit,
         },
@@ -980,12 +960,10 @@ export async function POST(req: Request) {
   if (userId && dailyLimit !== null) {
     usageCount = await getDailyUsage(userId);
     if (usageCount >= dailyLimit) {
-      const planLabel = userPlan === "premium" ? "Premium" : ru ? "более высокий план" : "a higher plan";
+      const planLabel = userPlan === "premium" ? "Premium" : t.higherPlan;
       return NextResponse.json(
         {
-          error: ru
-            ? `Вы использовали все ${dailyLimit} сообщений на сегодня. Оформите ${planLabel}, чтобы получить больше.`
-            : `You've used all ${dailyLimit} messages for today. Upgrade to ${planLabel} for more.`,
+          error: t.planLimit(dailyLimit, planLabel),
           remaining: 0,
           limit: dailyLimit,
         },
@@ -1046,12 +1024,18 @@ export async function POST(req: Request) {
     ? buildBrowseContext(browseContext)
     : buildOutfitContext(currentOutfit ?? undefined);
 
+  // The reply's language: this message's, or the conversation's when the
+  // message alone cannot tell ("ok", "а дешевле?").
+  const language = replyLanguage(
+    userMessage,
+    conversationHistory.filter((m) => m.role === "user").map((m) => m.content)
+  );
   const catalogBlock  = buildCatalogBlock(relevantProducts);
   const systemPrompt  = buildSystemPrompt(
     catalogBlock,
     outfitContext,
     userPersonalization,
-    language,
+    language.prompt,
     conversationHistory.length > 0,
     buildShopperBlock(intent, gender)
   );
@@ -1069,10 +1053,7 @@ export async function POST(req: Request) {
     // Diagnostic: log what the model actually returned (visible in server logs)
     console.log("[stylist/chat] raw model output:", JSON.stringify(raw).slice(0, 500));
 
-    const fallbackReply =
-      language === "Russian"
-        ? "Чем могу помочь со стилем? Опиши, что ищешь."
-        : "How can I help with your style? Tell me what you're looking for.";
+    const fallbackReply = STYLIST_MESSAGES[language.ui].fallbackReply;
 
     if (!raw) {
       return NextResponse.json<StylistChatResponse>({
