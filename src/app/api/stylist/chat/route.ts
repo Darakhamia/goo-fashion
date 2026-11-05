@@ -7,6 +7,8 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
 import { STYLE_KEYWORD_LIST, normalizeStyleKeywords } from "@/lib/style-keywords";
+import { readStylistIntent, type StylistIntent } from "@/lib/server/stylist/intent";
+import { augmentQuery, candidateParams, requestText, wantsFullLook } from "@/lib/server/stylist/request";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,10 @@ interface MatchedProduct {
   style_keywords: string[];
   description: string;
   rank: number;
+  /** Filled by stylist_candidates (migration 033); absent on the older paths. */
+  subcategory?: string | null;
+  gender?: string | null;
+  price_usd?: number | null;
 }
 
 // ── Input helpers ─────────────────────────────────────────────────────────────
@@ -228,81 +234,6 @@ function detectLanguage(text: string): string {
   return "English";
 }
 
-// ── RU→EN keyword mapping for multilingual FTS ───────────────────────────────
-
-const RU_TO_EN: Record<string, string> = {
-  // brands
-  адидас: "adidas", найк: "nike", гуччи: "gucci", прада: "prada",
-  зара: "zara", шанель: "chanel", версаче: "versace", балансиага: "balenciaga",
-  луивиттон: "louis vuitton", дольче: "dolce", армани: "armani", бурберри: "burberry",
-  // clothing
-  кроссовки: "sneakers", кеды: "sneakers", ботинки: "boots", туфли: "shoes",
-  сапоги: "boots", лоферы: "loafers", мокасины: "moccasins",
-  брюки: "pants", джинсы: "jeans", шорты: "shorts",
-  рубашка: "shirt", блузка: "blouse", топ: "top",
-  пальто: "coat", куртка: "jacket", плащ: "trench coat",
-  свитер: "sweater", худи: "hoodie", толстовка: "hoodie", кардиган: "cardigan",
-  платье: "dress", юбка: "skirt", футболка: "t-shirt",
-  пиджак: "blazer", костюм: "suit", жилет: "vest",
-  шарф: "scarf", шапка: "hat", перчатки: "gloves", сумка: "bag",
-  // style
-  спортивный: "sporty", классический: "classic", повседневный: "casual",
-  элегантный: "elegant", минималистичный: "minimal", уличный: "streetwear",
-};
-
-// Occasion / intent → style vocabulary. Many requests name an occasion ("на
-// свидание", "for the office") rather than a garment, so full-text search has
-// nothing to match. We translate the intent into style terms that DO appear in
-// product descriptions / keywords, which also gives the embedding query useful
-// signal. Keyed by stem so declensions and EN/RU both hit.
-const OCCASION_STEMS: Array<{ stem: string; terms: string }> = [
-  { stem: "свидан",   terms: "elegant romantic evening date" },
-  { stem: "date",     terms: "elegant romantic evening" },
-  { stem: "офис",     terms: "classic minimal tailored blazer office" },
-  { stem: "работ",    terms: "classic minimal tailored office" },
-  { stem: "office",   terms: "classic minimal tailored blazer" },
-  { stem: "work",     terms: "classic minimal tailored" },
-  { stem: "собесед",  terms: "classic professional tailored formal" },
-  { stem: "interview",terms: "classic professional tailored formal" },
-  { stem: "вечеринк",  terms: "statement bold evening party" },
-  { stem: "party",    terms: "statement bold evening" },
-  { stem: "спорт",    terms: "sporty athletic activewear" },
-  { stem: "трениров", terms: "sporty athletic activewear gym" },
-  { stem: "gym",      terms: "sporty athletic activewear" },
-  { stem: "workout",  terms: "sporty athletic activewear" },
-  { stem: "пляж",     terms: "coastal linen summer beach" },
-  { stem: "отпуск",   terms: "coastal linen summer vacation" },
-  { stem: "vacation", terms: "coastal linen summer" },
-  { stem: "beach",    terms: "coastal linen summer" },
-  { stem: "свадьб",   terms: "formal elegant suit dress wedding" },
-  { stem: "wedding",  terms: "formal elegant suit dress" },
-  { stem: "casual",   terms: "casual relaxed everyday" },
-  { stem: "повседнев",terms: "casual relaxed everyday" },
-  { stem: "зим",      terms: "warm coat knitwear winter" },
-  { stem: "winter",   terms: "warm coat knitwear" },
-  { stem: "лет",      terms: "light linen breathable summer" },
-  { stem: "summer",   terms: "light linen breathable" },
-];
-
-function augmentQuery(msg: string): string {
-  const words = msg.toLowerCase().split(/[\s,.!?]+/);
-  const extras: string[] = [];
-  const seen = new Set<string>();
-  for (const w of words) {
-    const en = RU_TO_EN[w];
-    if (en) extras.push(en);
-    if (w.length < 3) continue;
-    for (const { stem, terms } of OCCASION_STEMS) {
-      if (w.startsWith(stem) && !seen.has(stem)) {
-        seen.add(stem);
-        extras.push(terms);
-        break;
-      }
-    }
-  }
-  return extras.length > 0 ? `${msg} ${extras.join(" ")}` : msg;
-}
-
 // Map RU/EN words to catalog category names so we can fetch a category directly
 // even when full-text search misses it.
 const CATEGORY_HINTS: Record<string, string> = {
@@ -409,19 +340,6 @@ function detectCategories(msg: string): string[] {
 
 // ── Search intent helpers ─────────────────────────────────────────────────────
 
-// "Build me a look" intent — RU + EN stems. When detected we fetch a balanced
-// set across all core categories so the model has a top, bottom AND shoes to
-// pick from, instead of whatever the keyword search happened to return.
-const LOOK_INTENT_STEMS = [
-  "лук", "образ", "аутфит", "комплект", "собер", "собр", "ансамбл", "капсул",
-  "look", "outfit", "complete", "build", "ensemble", "capsule",
-];
-
-function wantsFullLook(msg: string): boolean {
-  const words = msg.toLowerCase().split(/[\s,.!?]+/);
-  return words.some((w) => w.length >= 3 && LOOK_INTENT_STEMS.some((s) => w.startsWith(s)));
-}
-
 // Categories a complete look draws from (dresses replace top+bottom).
 const CORE_LOOK_CATEGORIES = [
   "tops", "knitwear", "bottoms", "footwear", "outerwear", "dresses", "accessories",
@@ -429,24 +347,90 @@ const CORE_LOOK_CATEGORIES = [
 const LOOK_ITEMS_PER_CATEGORY = 6;
 
 /**
- * Catalog search runs on the CURRENT message only, which loses context on
- * follow-ups ("а подешевле?", "what else?"). When the current message carries
- * no category signal and is short, fold in the user's previous turns so the
- * search still knows what the conversation is about.
+ * Semantic search via pgvector — embed the query and find the nearest products.
+ * Best-effort: if embeddings aren't generated yet, the embed call fails, or
+ * match_products is absent, it returns nothing and keyword search decides.
+ * Catches intent the keyword path misses. Only called with
+ * STYLIST_SEMANTIC_SEARCH on.
  */
-function buildSearchQuery(
-  userMessage: string,
-  history: Array<{ role: "user" | "assistant"; content: string }>
-): string {
-  const own = augmentQuery(userMessage);
-  const hasOwnSignal = detectCategories(own).length > 0 || userMessage.length > 60;
-  if (hasOwnSignal) return own;
-  const prevUserTurns = history
-    .filter((m) => m.role === "user")
-    .slice(-2)
-    .map((m) => m.content.slice(0, 160));
-  if (prevUserTurns.length === 0) return own;
-  return augmentQuery([...prevUserTurns, userMessage].join(" "));
+async function semanticMatches(
+  query: string,
+  gender: string | null
+): Promise<{ products: MatchedProduct[]; debug: Record<string, unknown> }> {
+  const debug: Record<string, unknown> = {};
+  if (!supabase) return { products: [], debug };
+  try {
+    const queryVec = await embedText(query, { timeoutMs: SEMANTIC_EMBED_TIMEOUT_MS });
+    if (!queryVec) {
+      // null = embed failed OR timed out (cold start). Keyword search covers it.
+      debug.semantic = "embed-unavailable-or-timeout";
+      return { products: [], debug };
+    }
+    // filter_gender is only sent when there is one to apply: migration 014
+    // adds the parameter, and omitting it keeps this call working against a
+    // database where 014 has not been applied yet.
+    const { data, error } = await supabase.rpc("match_products", {
+      query_embedding: queryVec,
+      match_count: SEARCH_MATCH_COUNT,
+      ...(gender ? { filter_gender: gender } : {}),
+    });
+    if (error) throw error;
+    const products = ((data ?? []) as Array<MatchedProduct & { similarity?: number }>)
+      .filter((p) => (p.similarity ?? 0) >= SEMANTIC_MIN_SIMILARITY)
+      .map((p) => ({ ...p, rank: 1.5 }));
+    return { products, debug };
+  } catch (err) {
+    debug.semanticError = err instanceof Error ? err.message : String(err);
+    console.warn("[stylist/chat] semantic search failed:", err);
+    return { products: [], debug };
+  }
+}
+
+/**
+ * The candidates for one turn from stylist_candidates (migration 033): the
+ * request's words OR-ed and ranked, at most three pieces of one brand per
+ * category, the categories taking turns, filtered by gender and budget.
+ *
+ * Returns null when the function is not there (the migration has not run), so
+ * the caller can fall back to the older search — never an empty list for that.
+ */
+async function findCandidates(
+  searchQuery: string,
+  intent: StylistIntent,
+  fullLook: boolean,
+  gender: string | null
+): Promise<{ products: MatchedProduct[]; debug: Record<string, unknown> } | null> {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  const params = candidateParams(searchQuery, intent, fullLook, gender);
+  const debug: Record<string, unknown> = { path: "stylist_candidates", params, intent };
+
+  const { data, error } = await supabase.rpc("stylist_candidates", params);
+  if (error) {
+    console.warn("[stylist/chat] stylist_candidates failed, using the older search:", error.message);
+    return null;
+  }
+  const products = ((data ?? []) as MatchedProduct[]).map((p) => ({
+    ...p,
+    description: p.description ?? "",
+    style_keywords: p.style_keywords ?? [],
+  }));
+
+  // Semantic matches, when enabled, join the list after the keyword ones.
+  if (SEMANTIC_SEARCH_ENABLED && products.length < params.match_count) {
+    const seen = new Set(products.map((p) => p.id));
+    const semantic = await semanticMatches(searchQuery, gender);
+    for (const p of semantic.products) {
+      if (!seen.has(p.id) && (params.max_price_usd === null || p.price_min <= params.max_price_usd)) {
+        seen.add(p.id);
+        products.push(p);
+      }
+    }
+    Object.assign(debug, semantic.debug);
+  }
+
+  debug.count = products.length;
+  return { products, debug };
 }
 
 // ── Catalog search ─────────────────────────────────────────────────────────────
@@ -564,35 +548,15 @@ async function findRelevantProducts(
   //     call fails, or match_products is absent, we silently fall through to
   //     full-text search below. Catches intent the keyword path misses.
   if (SEMANTIC_SEARCH_ENABLED) {
-    try {
-      const queryVec = await embedText(query, { timeoutMs: SEMANTIC_EMBED_TIMEOUT_MS });
-      if (queryVec) {
-        // filter_gender is only sent when there is one to apply: migration 014
-        // adds the parameter, and omitting it keeps this call working against a
-        // database where 014 has not been applied yet.
-        const { data, error } = await supabase.rpc("match_products", {
-          query_embedding: queryVec,
-          match_count: SEARCH_MATCH_COUNT,
-          ...(g ? { filter_gender: g } : {}),
-        });
-        if (error) throw error;
-        let added = 0;
-        for (const p of (data ?? []) as Array<MatchedProduct & { similarity?: number }>) {
-          if ((p.similarity ?? 0) < SEMANTIC_MIN_SIMILARITY) continue;
-          if (!merged.has(p.id)) {
-            merged.set(p.id, { ...p, rank: 1.5 });
-            added++;
-          }
-        }
-        debug.semanticCount = added;
-      } else {
-        // null = embed failed OR timed out (cold start). Keyword search covers it.
-        debug.semantic = "embed-unavailable-or-timeout";
+    const semantic = await semanticMatches(query, g);
+    let added = 0;
+    for (const p of semantic.products) {
+      if (!merged.has(p.id)) {
+        merged.set(p.id, p);
+        added++;
       }
-    } catch (err) {
-      debug.semanticError = err instanceof Error ? err.message : String(err);
-      console.warn("[stylist/chat] semantic search failed:", err);
     }
+    Object.assign(debug, semantic.debug, { semanticCount: added });
   }
 
   // (3) Full-text search via RPC — fills in semantically relevant extras.
@@ -653,8 +617,13 @@ function buildCatalogBlock(products: MatchedProduct[]): string {
   ];
   for (const [cat, items] of Object.entries(byCategory)) {
     for (const p of items) {
+      // Subcategory and gender when the search gave them: a New Rock name is a
+      // code ("M-233-C6") that tells the model neither what nor whose it is.
+      const kind = p.subcategory ? `${cat}/${p.subcategory}` : cat;
+      const who = p.gender ? ` | ${p.gender}` : "";
+      const price = Math.round(p.price_usd ?? p.price_min);
       lines.push(
-        `  "${p.name}" by ${p.brand} | ${cat} | $${p.price_min} | [${normalizeStyleKeywords(p.style_keywords).join(", ")}] | ID:${p.id}`
+        `  "${p.name}" by ${p.brand} | ${kind}${who} | $${price} | [${normalizeStyleKeywords(p.style_keywords).join(", ")}] | ID:${p.id}`
       );
     }
   }
@@ -707,6 +676,30 @@ function buildFocusContext(piece: OutfitPiece): string {
   ].join("\n");
 }
 
+// ── Shopper ───────────────────────────────────────────────────────────────────
+
+/**
+ * Who the clothes are for and what they may cost, as read from the shopper's
+ * messages. The candidate list is already filtered by both; this tells the
+ * model, which otherwise ignored a budget in hryvnia and mixed genders.
+ */
+function buildShopperBlock(intent: StylistIntent, gender: string | null): string {
+  const lines: string[] = [];
+  if (gender === "women" || gender === "men") {
+    lines.push(
+      `- Shopping for: ${gender}. Suggest only ${gender}'s or unisex pieces (the column after the category says whose a piece is; no column means not stated).`
+    );
+  }
+  if (intent.budget) {
+    const { amount, currency, usd } = intent.budget;
+    const stated = currency === "USD" ? `$${amount}` : `${amount.toLocaleString("en-US")} ${currency}`;
+    lines.push(
+      `- Budget: about $${usd} in total (${stated}). The SUM of all the items you suggest must stay within it. Product prices below are in USD.`
+    );
+  }
+  return lines.length ? `SHOPPER:\n${lines.join("\n")}\n` : "";
+}
+
 // ── Personalization ───────────────────────────────────────────────────────────
 
 interface StylistPersonalization {
@@ -737,7 +730,8 @@ function buildSystemPrompt(
   outfitContext: string,
   personalization: StylistPersonalization | null,
   languageName: string,
-  hasHistory: boolean
+  hasHistory: boolean,
+  shopperBlock = ""
 ): string {
   const personalizationBlock = buildPersonalizationBlock(personalization);
   return `You are the AI Stylist for GOO, a curated fashion platform.
@@ -754,7 +748,7 @@ ${hasHistory
 - Use the conversation history: remember what the user already asked for, their budget, occasion and the items you already suggested. Short follow-ups ("а подешевле?", "what else?", "another one") refer to the PREVIOUS request — answer in that context.
 - Do not repeat suggestions you already made unless the user asks for them again.`
     : `- This is the first message of the conversation. Greet the user briefly once, then get to the point.`}
-${personalizationBlock ? `\n${personalizationBlock}` : ""}
+${personalizationBlock ? `\n${personalizationBlock}` : ""}${shopperBlock ? `\n${shopperBlock}` : ""}
 ${catalogBlock}
 
 OUTFIT CONTEXT:
@@ -1017,13 +1011,22 @@ export async function POST(req: Request) {
     : undefined;
 
   // ── Catalog search: relevant products for this turn ──────────────────────
-  const fullLook    = wantsFullLook(userMessage);
-  const searchQuery = buildSearchQuery(userMessage, conversationHistory);
-  // The gender the user picked on the browse grid also narrows what the stylist
-  // may recommend. Without it the stylist would keep suggesting menswear to a
-  // shopper who has explicitly filtered the catalog to womenswear.
+  // What the turn asks for: garments, who for, budget. A short follow-up that
+  // names none of them ("а подешевле?") is read together with the user's
+  // previous turns, so it keeps the garment and the budget it was about.
+  const ownIntent    = await readStylistIntent(userMessage);
+  const hasOwnSignal = ownIntent.garments.length > 0 || ownIntent.budget !== null;
+  const intentText   = requestText(userMessage, conversationHistory, hasOwnSignal);
+  const intent       = intentText === userMessage ? ownIntent : await readStylistIntent(intentText);
+  const fullLook     = wantsFullLook(intentText);
+  const searchQuery  = [augmentQuery(intentText), ...intent.terms].join(" ");
+  // Who the clothes are for: what the shopper says, else the gender they
+  // filtered the catalogue by. Without it the stylist offered a women's vest
+  // to a man who had just said he was a 47-year-old man.
+  const gender = intent.gender ?? normalizeGender(browseContext?.gender);
   const { products: relevantProducts, debug: searchDebug } =
-    await findRelevantProducts(searchQuery, fullLook, browseContext?.gender);
+    (await findCandidates(searchQuery, intent, fullLook, gender)) ??
+    (await findRelevantProducts(searchQuery, fullLook, gender ?? undefined));
   const catalogIds = new Set(relevantProducts.map((p) => p.id));
 
   // Diagnostic: ?debug=1 returns what the catalog search produced. Admin-only —
@@ -1049,7 +1052,8 @@ export async function POST(req: Request) {
     outfitContext,
     userPersonalization,
     language,
-    conversationHistory.length > 0
+    conversationHistory.length > 0,
+    buildShopperBlock(intent, gender)
   );
 
   // ── Call Replicate LLM ────────────────────────────────────────────────────

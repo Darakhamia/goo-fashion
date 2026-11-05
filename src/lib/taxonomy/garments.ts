@@ -874,6 +874,26 @@ export function matchGarment(text: string): GarmentMatch | undefined {
 }
 
 /**
+ * Every garment a piece of running text names, in the order it names them —
+ * for a request rather than a title. "jeans, two hoodies and sneakers" asks for
+ * three things, where `matchGarment` would read only the head noun of a title.
+ * Weak words ("knit", "denim") count only when nothing stronger is named.
+ */
+export function garmentsIn(text: string): GarmentType[] {
+  const all = hitsIn(text);
+  const strong = all.filter((h) => !h.term.weak);
+  const pool = (strong.length ? strong : all).sort((a, b) => a.start - b.start);
+  const seen = new Set<string>();
+  const types: GarmentType[] = [];
+  for (const hit of pool) {
+    if (seen.has(hit.term.type.id)) continue;
+    seen.add(hit.term.type.id);
+    types.push(hit.term.type);
+  }
+  return types;
+}
+
+/**
  * Do two titles name different garments? Only when both name one and neither is
  * a generic word: "Classic Tee" and "Classic Hoodie" do; "Etnies Shoes Emerson"
  * and "Emerson" do not — "shoes" says footwear, and "Emerson" says nothing.
