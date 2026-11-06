@@ -366,9 +366,9 @@
     "semantic_hash": "240359c6a7d2b0ec52d549a132ad5657"
   },
   "src/app/api/stylist/chat/route.ts": {
-    "mtime": 1793895946.4162512,
-    "seen": 1793896195.6398463,
-    "ast_hash": "7b14dac741704372a211cd1bf2858c6d",
+    "mtime": 1793966851.958557,
+    "seen": 1793967195.844606,
+    "ast_hash": "c9f69bfa4ada242965037fa24d674541",
     "semantic_hash": ""
   },
   "src/app/api/stylist/chat/sessions/route.ts": {
@@ -1250,9 +1250,9 @@
     "semantic_hash": ""
   },
   "AI_ARCHITECTURE.md": {
-    "mtime": 1793895860.4722462,
-    "seen": 1793896195.6403463,
-    "ast_hash": "040d68f9619c68ca495db8730cf509e0",
+    "mtime": 1793966851.9575455,
+    "seen": 1793967195.8548584,
+    "ast_hash": "47635e13c237441cd0ac7066748605ec",
     "semantic_hash": ""
   },
   "AUDIT_DEV_PLAN.md": {
@@ -3791,6 +3791,12 @@
     "mtime": 1793895953.7442517,
     "seen": 1793896195.6402898,
     "ast_hash": "3167153c73c2b2f3d00025b35790ba52",
+    "semantic_hash": ""
+  },
+  "src/lib/server/stylist/language.ts": {
+    "mtime": 1793966851.8657198,
+    "seen": 1793967195.8542898,
+    "ast_hash": "70551d51eb6b96e6d00acbafee2a6b9f",
     "semantic_hash": ""
   },
   "package-lock.json": {
