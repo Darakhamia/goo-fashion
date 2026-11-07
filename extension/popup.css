@@ -35,6 +35,11 @@
   box-sizing: border-box;
 }
 
+/* An element's own display (grid, flex) would otherwise beat the attribute. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   width: 320px;
   margin: 0;
@@ -258,7 +263,9 @@ button:disabled {
 }
 
 .item input {
+  width: auto;
   margin: 0;
+  padding: 0;
   accent-color: var(--foreground);
 }
 

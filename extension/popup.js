@@ -360,6 +360,8 @@ function unfinished() {
 
 const PICK_HINT =
   "Inside them AI checks every piece by its name before opening it, and the store's sitemaps go through the same check at the end.";
+/** The same line when AI could not choose: nothing is checked by name, and the sitemaps stay unread. */
+const PICK_HINT_NO_AI = "Every piece in the ticked categories is opened; the store's sitemaps are not read.";
 /** Which half of the list is shown: what AI took, or what it left out. */
 let pickView = "taking";
 /** The list as last drawn, so the poll does not redraw it under the admin's pointer. */
@@ -429,7 +431,9 @@ function renderPick() {
 
   const changed = items.filter((p) => !!p.keep !== !!p.ai);
   el.pickHint.textContent = !changed.length
-    ? PICK_HINT
+    ? failed
+      ? PICK_HINT_NO_AI
+      : PICK_HINT
     : changed.length === 1
       ? `You ${changed[0].keep ? "ticked" : "unticked"} ${changed[0].label || pathOf(changed[0].url)} yourself: ${num(ticked)} ${
           ticked === 1 ? "category" : "categories"
