@@ -68,6 +68,7 @@ const STANDARD_COLORS: { id: number; name: string; hex: string; matches: string[
 const MOBILE_CHIPS: Array<{ label: string; value: string | null }> = [
   { label: "All",         value: null          },
   { label: "Tops",        value: "top"         },
+  { label: "Outerwear",   value: "outerwear"   },
   { label: "Bottoms",     value: "bottom"      },
   { label: "Shoes",       value: "shoes"       },
   { label: "Accessories", value: "accessories" },
