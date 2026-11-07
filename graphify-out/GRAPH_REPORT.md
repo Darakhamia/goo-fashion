@@ -1,7 +1,7 @@
 # Graph Report - goo-fashion  (2026-11-07)
 
 ## Corpus Check
-- 564 files · ~802,329 words
+- 564 files · ~802,381 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: .ttf 3, (none) 2, .css 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a54d8694`
+- Built from commit: `653eb8e9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -20,52 +20,52 @@
 - chat/route.ts
 - mono-subscriptions.ts
 - package.json
-- normalizeSeasons
+- approve/route.ts
 - products/[id]/page.tsx
 - retailer-domains.ts
 - quality-import.js
-- run.ts
-- useFormat
+- parser/types.ts
+- analytics/page.tsx
 - product-fields.ts
 - 3. По разделам
 - react
 - getOpenAIKey
-- collect/page.tsx
+- categories.ts
 - extract.ts
 - landing.ts
 - import-product.ts
 - BUILD PROGRESS — GOO Outfit Builder Redesign
 - subscriptions.ts
-- StylistDrawer.tsx
-- locale-context.tsx
+- currency-context.tsx
+- useDict
 - write-copy.ts
 - users/page.tsx
-- csv-import/route.ts
+- csv-import.ts
 - catalogue-check/store.ts
 - compilerOptions
 - app/layout.tsx
-- recipes.ts
+- subscriptions/page.tsx
 - en.ts
-- LandingView.tsx
+- pageMetadata
 - admin/stats/route.ts
 - admin-screens/shoot.js
-- outfit-landing.ts
+- 7. Найдено сверх плана
 - build.mjs
 - SeenStore
 - dependencies
-- ai-outfits-check.ts
+- schema-check.ts
 - catalog-pages.js
-- MyLooksPanel.tsx
+- builder/page.tsx
 - plans.ts
 - product-bg-color/route.ts
 - catalogue-profile.ts
 - blog/[slug]/page.tsx
-- UX_REVIEW_2026-09.md
+- Key
 - plans/page.tsx
 - fields.ts
 - bg-color.ts
-- 2. Оболочка: меню, тема, телефон
-- btn
+- product/[id]/page.tsx
+- import/page.tsx
 - export-images/route.ts
 - copy.ts
 - restyle/route.ts
@@ -73,13 +73,13 @@
 - seo.ts
 - Полный список находок
 - card-image.ts
-- CookieConsentBanner.tsx
-- Журнал изменений
+- saved/page.tsx
+- piece-name.ts
 - migrations
 - Goo Fashion
 - plan-collection.ts
 - audit.py
-- money-text.ts
+- StylistDrawer.tsx
 - Billing — monobank (Plata by mono)
 - db.ts
 - JournalFeed.tsx
@@ -90,14 +90,14 @@
 - intent.ts
 - Роадмап: мобильная версия GOO
 - label-audit/route.ts
-- ProductClient.tsx
+- lib/types.ts
 - site.js
 - Волны выполнения
 - card-export.ts
 - system-health.ts
 - clerk-stub.tsx
-- 12. Мобильная версия сайта (вариант Б)
-- 2. Что видно на экранах
+- catalogue-check/page.tsx
+- outfit-landing.ts
 - activity/page.tsx
 - app/sitemap.ts
 - fetch.ts
@@ -106,82 +106,82 @@
 - postcss.config.mjs
 - background.js
 - data-content.js
-- lib/types.ts
+- outfit/[id]/page.tsx
 - ops.js
 - ai-outfits/store.ts
-- 7. Найдено сверх плана
-- Б0. Разблокировать оплату — P0
-- 2. Типографика
-- Мобильная версия сайта: «причесать»
-- P1 — теряем трафик и расширенные сниппеты
+- normalize.ts
+- ai.ts
+- Charts.tsx
+- ProductCard.tsx
+- SEO: анализ сайта и план работ
 - recategorize/route.ts
 - settings/page.tsx
-- catalogue-check/page.tsx
-- fx.ts
+- parser/page.tsx
+- Universal Product Parser
 - snapshot.js
 - look/[id]/page.tsx
-- parser/types.ts
-- builder/page.tsx
+- parse-page.ts
+- HeroSection.tsx
 - cookie/page.tsx
 - outfit-image.ts
 - field-mining/route.ts
-- resolveRecipients
+- AnalyticsTracker.tsx
 - opengraph-image.tsx
-- Этап I. Доработки после проверки на телефоне
+- btn
 - share/route.ts
 - i18n-check.mjs
 - Claude Code Instructions
 - Бриф агента: работа по плану аудита
 - billing-test/route.ts
-- Б10. Производительность и мобильный UX — P2
+- blog/[id]/route.ts
 - Этап 1. Админка не врёт и не даёт навредить одним нажатием
 - runSite
 - requireAdmin
 - browse/page.tsx
-- Дизайн админки goo-studio: что видно на экранах и куда идти
-- Goo Collect — расширение Chrome
+- 2. Что видно на экранах
+- ADMIN.md
 - collect/route.ts
-- Manual QA Checklist (final browser testing)
+- Журнал изменений
 - AIStylistShowcase.tsx
-- @upstash/redis
+- Дизайн админки goo-studio: что видно на экранах и куда идти
 - AuthForm.tsx
 - PROJECT ANALYSIS — GOO Fashion
 - Follow-up Phase E3 — Browse Page AI Stylist Integration ✅
 - Follow-up Phase D2 — AI Stylist Chat API Route ✅
 - useT
-- sharp
-- audit/layout.tsx
+- Часть 2. План: что поправить и что поменять
+- PageHeader
 - migrate.mjs
 - AUDIT_DEV_PLAN.md
 - zip.ts
-- checkRateLimit
-- blog/layout.tsx
+- rate-limit.ts
+- Блок Д — дизайн
 - next
 - Manual QA checklist — AI Stylist builder flow
 - Этап 0. Срочные починки — 2–3 дня
-- email/route.ts
-- HeroSection.tsx
+- audit.ts
+- HomeFullPageScroll
 - HowItWorksSection.tsx
-- 7. Движение и анимация
+- Этап 2. Импорт перестаёт портить каталог
 - duplicates/route.ts
 - Б7. Воронка, главная, SEO — P2
 - .claude/CLAUDE.md
-- HomeFullPageScroll
+- P1 — теряем трафик и расширенные сниппеты
 - ConditionalSiteLayout.tsx
-- catalogue-check/layout.tsx
-- email/layout.tsx
-- waitlist/layout.tsx
+- Этап 1. Товары, разметка, скорость — 3–4 дня
+- csv-import/route.ts
+- Б0. Разблокировать оплату — P0
 - Change 2 — Clean Up Builder Header Area
 - Change 6 — AI Stylist as a Site-Wide Real-API Feature
 - OPEN QUESTIONS
 - popup.js
-- report/layout.tsx
-- @supabase/supabase-js
-- ChatMessage
-- @upstash/ratelimit
+- Goo Collect — расширение Chrome
+- 4. Основа
+- 6. Site-Wide Integration Plan
+- Setup checklist
 - Change 5 — Clarify and Implement "Shop the Look"
 - runPage
-- 3.2 Что происходит при запросе `POST /api/stylist/chat`
+- replicate-ai.ts
 - migration-smoke.sh
 - Макеты мобильной версии
 - site-screens/setup.sh
@@ -191,13 +191,13 @@
 - looks/image/route.ts
 - 5. Типовые сценарии
 - request.ts
-- categories/route.ts
+- bulk-edit/route.ts
 - Follow-up Phase E1 — Extract StylistDrawer as Reusable Component ✅
 - Change 1 — Reduce Center Canvas Visual Dominance
 - Recommended Execution Phases
 - report/page.tsx
-- gender.ts
-- Follow-up Phase D1 — AI Stylist Key Infrastructure ✅
+- genderFromPage
+- 2. Real API Architecture
 - Б6. Партнёрская монетизация — P1/P2
 - BrowseClient.tsx
 - profile/page.tsx
@@ -207,19 +207,19 @@
 - product-images.ts
 - FOLLOWUP PLAN — GOO Post-Migration Improvements
 - health/route.ts
-- logBillingEvent
+- Часть 1. Анализ: что найдено
 - fonts/README.md
 - Стенд скриншотов админки
 - proxy.ts
 - collect
-- Б11. Решение о бизнес-модели — P0 (решение, не код)
+- blog/layout.tsx
 - scripts
-- ProductCard.tsx
-- Этап 0. Включить выключенное — сегодня
+- categories/layout.tsx
+- ADMIN_ROADMAP.md
 - Phase 3d — Right Panel Catalog Rebuild ✅
 - admin-screens/setup.sh
-- eslint.config.mjs
-- Этап B. Основа — сайт целиком становится легче
+- email/layout.tsx
+- waitlist/layout.tsx
 - Б3. Тарифы: обещания = код — P1
 - activity/layout.tsx
 - analytics/layout.tsx
@@ -279,7 +279,7 @@ Nodes (36): dynamic, POST(), alertRecipients(), esc(), render(), sendBillingAler
 Cohesion: 0.15
 Nodes (18): devDependencies, tailwindcss@^4, @tailwindcss/postcss@^4, @types/node@^20, @types/react@^19, @types/react-dom@^19, @types/sanitize-html@^2.16.1, typescript@^5 (+10 more)
 
-### Community 4 - "normalizeSeasons"
+### Community 4 - "approve/route.ts"
 Cohesion: 0.17
 Nodes (19): POST(), POST(), GET(), POST(), OPTIONAL_OUTFIT_COLUMNS, outfitPatchToDb(), seasonColumns(), normalizeGender() (+11 more)
 
@@ -295,11 +295,11 @@ Nodes (28): POST(), discoverDomains(), DiscoveredDomain, dynamic, GET(), POST(),
 Cohesion: 0.06
 Nodes (38): applied, AUDIT, auditOpen, auditSuspects, AW_ID, buildCsv(), byName(), CHECK_READY (+30 more)
 
-### Community 8 - "run.ts"
+### Community 8 - "parser/types.ts"
 Cohesion: 0.14
 Nodes (26): Candidate, GenerationBrief, poolProblem(), randomSource(), CopyNote, ModelOutfit, ModelUsage, PlanRequest (+18 more)
 
-### Community 9 - "useFormat"
+### Community 9 - "analytics/page.tsx"
 Cohesion: 0.06
 Nodes (57): BrowserPie(), CountriesChart(), COUNTRY_NAMES, countryFlag(), countryLabel(), DEVICE_LABEL, DevicePie(), EventsBarChart() (+49 more)
 
@@ -319,7 +319,7 @@ Nodes (42): Оболочка (Р17, GS4-2), Развилки — решения 
 Cohesion: 0.08
 Nodes (39): 2. Ключи и переменные окружения, 4.1 AI-образы: `src/lib/server/ai-outfits/`, 6. Генерация постов блога: `/api/admin/generate-post`, Ключ OpenAI: `getOpenAIKey()`, Переменные, Волна 2 — за что платят и чем меряем, openai, POST() (+31 more)
 
-### Community 14 - "collect/page.tsx"
+### Community 14 - "categories.ts"
 Cohesion: 0.15
 Nodes (17): CollectPage(), chooseMode(), onMessage(), detailLine(), ExtMessage, fill(), LinkSearch, LITERAL (+9 more)
 
@@ -343,11 +343,11 @@ Nodes (34): After Phase 1 (global fonts), After Phase 2 (stylist typography), BU
 Cohesion: 0.21
 Nodes (20): dynamic, GET(), maxDuration, BILLING_CCY, periodAmountMinor(), chargeWallet(), attachCardToken(), BillingEventRow (+12 more)
 
-### Community 20 - "StylistDrawer.tsx"
+### Community 20 - "currency-context.tsx"
 Cohesion: 0.15
 Nodes (20): ChatSession, applyGesture(), BrowseContext, buildLookUrl(), CATEGORY_TO_SLOT, clampRect(), cleanReplyText(), defaultRect() (+12 more)
 
-### Community 21 - "locale-context.tsx"
+### Community 21 - "useDict"
 Cohesion: 0.09
 Nodes (31): Д3. Один элемент — пять рецептов, Запуск, Имена, Как устроено, Ограничения, Стенд снимков публичного сайта, AboutPage(), DICT (+23 more)
 
@@ -359,7 +359,7 @@ Nodes (35): brandKey(), buildCandidates(), CandidatePool, NEUTRAL_NAMES, shuffle
 Cohesion: 0.14
 Nodes (32): AdminUsersPage(), Avatar(), deleteSubscriptionWarning(), describeSubscription(), Failure, fmtDuration(), initials(), isOverdue() (+24 more)
 
-### Community 24 - "csv-import/route.ts"
+### Community 24 - "csv-import.ts"
 Cohesion: 0.11
 Nodes (36): Unsaved columns — `droppedColumnsWarning`, importGroup(), isHttpUrl(), knownLinks(), LinkAnswer, LinkRow, maxDuration, Outcome (+28 more)
 
@@ -375,7 +375,7 @@ Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModu
 Cohesion: 0.11
 Nodes (28): interTight, metadata, poppins, RootLayout(), viewport, AnalyticsTracker(), Metric, reportVital() (+20 more)
 
-### Community 28 - "recipes.ts"
+### Community 28 - "subscriptions/page.tsx"
 Cohesion: 0.05
 Nodes (60): 6. Экраны, Activity, Analytics, Audit (GS6-2), Dashboard, Duplicates, Users, Телефон (+52 more)
 
@@ -383,7 +383,7 @@ Nodes (60): 6. Экраны, Activity, Analytics, Audit (GS6-2), Dashboard, Dupl
 Cohesion: 0.06
 Nodes (40): en, Key, Message, ru, activityEn, activityRu, analyticsEn, analyticsRu (+32 more)
 
-### Community 30 - "LandingView.tsx"
+### Community 30 - "pageMetadata"
 Cohesion: 0.10
 Nodes (31): BrandPage(), generateMetadata(), load, Props, revalidate, BrandSubcategoryPage(), generateMetadata(), load (+23 more)
 
@@ -395,7 +395,7 @@ Nodes (68): Этап 6. Крупные доработки — по одной, �
 Cohesion: 0.05
 Nodes (28): SEO-14. sitemap.xml · 2–3 ч · Н-12, all, args, AXE_RULES, BASE_PAGES, { chromium }, FIX, fs (+20 more)
 
-### Community 33 - "outfit-landing.ts"
+### Community 33 - "7. Найдено сверх плана"
 Cohesion: 0.20
 Nodes (16): generateMetadata(), generateMetadata(), load, OutfitStylePage(), Props, revalidate, readAllOutfits(), buildOutfitSeo() (+8 more)
 
@@ -407,7 +407,7 @@ Nodes (19): arg, esc(), inline(), lines, MD, mdText, MONTHS, nextMd (+11 more)
 Cohesion: 0.11
 Nodes (19): dependencies, @clerk/nextjs@^6.39.0, framer-motion@^12.38.0, next@16.1.6, openai@^6.25.0, posthog-js@^1.384.1, react@19.2.3, react-dom@19.2.3 (+11 more)
 
-### Community 37 - "ai-outfits-check.ts"
+### Community 37 - "schema-check.ts"
 Cohesion: 0.18
 Nodes (16): base, catalogue, expect(), fakeModel(), G(), groups, id(), main() (+8 more)
 
@@ -415,7 +415,7 @@ Nodes (16): base, catalogue, expect(), fakeModel(), G(), groups, id(), main() (+
 Cohesion: 0.06
 Nodes (36): brands, IMG(), now, AI_PIECES, AI_RUN, aiOutfits, brandNames, brands (+28 more)
 
-### Community 39 - "MyLooksPanel.tsx"
+### Community 39 - "builder/page.tsx"
 Cohesion: 0.10
 Nodes (39): 12.13 Заметки, R-15 · Конструктор: листы фильтров, сохранения и выбора стиля, framer-motion, SavedInner(), SavedOutfitCard(), SavedPage(), View, BagIcon() (+31 more)
 
@@ -435,7 +435,7 @@ Nodes (20): add(), BRAND_GENDER_MIN, BRAND_MIN_PIECES, BRAND_STYLE_SHARE, Catalo
 Cohesion: 0.12
 Nodes (25): Второй заход (11.10.2026, по ответам CEO), BlogPostPage(), formatDate(), generateMetadata(), Props, revalidate, ReadingProgress(), noHref() (+17 more)
 
-### Community 44 - "UX_REVIEW_2026-09.md"
+### Community 44 - "Key"
 Cohesion: 0.07
 Nodes (29): Блок Д — дизайн, Блок С — структура, Вердикт по гейту, Вердикт по десяти стандартам `review-animations`, Гейт упущенных моментов (переработанный А8), Д1. Клавиатурная навигация невидима на всём сайте, Д2. Светлая тема ломается в пяти местах, Д4. Токены, которых нет (+21 more)
 
@@ -451,11 +451,11 @@ Nodes (31): TreeResponse, CategoryGroup, PromptContext, CHECK_COLUMNS, CheckCont
 Cohesion: 0.07
 Nodes (34): Этап 3. Скорость, agreedBackground(), AGREEMENT_MAX, baseColourOfPixel(), BgColorResult, CornerSample, DECODE_MAX_SIDE, DecodedImage (+26 more)
 
-### Community 48 - "2. Оболочка: меню, тема, телефон"
+### Community 48 - "product/[id]/page.tsx"
 Cohesion: 0.50
 Nodes (4): 2. Оболочка: меню, тема, телефон, Меню, Телефон (экран уже 768 px), Тема
 
-### Community 49 - "btn"
+### Community 49 - "import/page.tsx"
 Cohesion: 0.06
 Nodes (50): 5.10. Боковая панель — `SidePanel`, 5.12. Подтверждение, тост, пусто, справка, 5.13. Графики, 5.14. Тексты и языки, 5.1. Оболочка, 5.2. Шапка страницы — `PageHeader`, 5.3. Кнопки (рецепты), 5.4. Бейдж — `Badge` (+42 more)
 
@@ -487,11 +487,11 @@ Nodes (30): API админки (15), Админка: analytics+activity (17), А
 Cohesion: 0.14
 Nodes (23): baselineIn(), boxColor(), CARD_MEDIA_TYPE, cardHeight(), clamp(), ensureFonts(), escapeXml(), fitOf() (+15 more)
 
-### Community 57 - "CookieConsentBanner.tsx"
+### Community 57 - "saved/page.tsx"
 Cohesion: 0.19
 Nodes (14): R-24 · Текстовые страницы, 404, ошибка, cookies, Ждёт решения CEO, PostHogTracker(), CookieConsentBanner(), DICT, POSTHOG_ENABLED, CookieSettings(), DICT (+6 more)
 
-### Community 58 - "Журнал изменений"
+### Community 58 - "piece-name.ts"
 Cohesion: 0.24
 Nodes (12): Блок 1 — релевантность поиска (2026-06-04), Блок 1 (улучшение) — эмбеддинги переведены на OpenAI (2026-06-04), Блок 1 (фикс 2) — устойчивость бэкфилла к rate limit Replicate (2026-06-04), Блок 1 (фикс 3) — таймаут на эмбеддинг запроса в чате (2026-06-04), Блок 1 (фикс) — генерация эмбеддингов падала (2026-06-04), Блок 2 — модель и формат вызова (2026-06-04), Журнал изменений, Перф 2 — анимации лендинга (по профилю Firefox) (2026-06-04) (+4 more)
 
@@ -511,7 +511,7 @@ Nodes (33): CatalogueIndex, extractProductLinks(), looksLikeProductCode(), looks
 Cohesion: 0.06
 Nodes (16): What can be reused, load_font_bytes(), main(), render(), _detect_bbox(), normalize(), Result, analyze() (+8 more)
 
-### Community 63 - "money-text.ts"
+### Community 63 - "StylistDrawer.tsx"
 Cohesion: 0.21
 Nodes (11): alternation(), CODE, CODES, currencyOf(), escape(), localizeMoney(), MONEY, NUM (+3 more)
 
@@ -555,7 +555,7 @@ Nodes (19): R-01 · Стенд снимков публичного сайта, R
 Cohesion: 0.12
 Nodes (32): claimKey(), dynamic, GET(), loadDismissed(), ruleEvidence(), Suspect, subcategoryToValue(), brandTokens() (+24 more)
 
-### Community 74 - "ProductClient.tsx"
+### Community 74 - "lib/types.ts"
 Cohesion: 0.06
 Nodes (58): Б4-2. Расставить `track()` по воронке · 1–2 дня, 10. Чеклист для нового элемента, 11. Найденные расхождения, 4. Радиусы, границы, поверхности, 5.10 Пустое состояние, 5.11 Бейдж, 5.12 Чего канонического рецепта НЕТ, 5.1 Карточка товара — `ProductCard` (+50 more)
 
@@ -579,11 +579,11 @@ Nodes (19): CRON_FIX, AttentionInput, AttentionItem, AttentionKey, pingMonobank(
 Cohesion: 0.17
 Nodes (7): 8. Доска статусов, Волна 1 — разблокировать оплату, Волна 3 — рост, Волна 4 — каталог и модель, SignedOut(), SignUp(), user
 
-### Community 80 - "12. Мобильная версия сайта (вариант Б)"
+### Community 80 - "catalogue-check/page.tsx"
 Cohesion: 0.18
 Nodes (11): 12.11 Строки и группы, 12.14 Остальные элементы, 12.1 Правила, 12.2 Глубина и токены, 12.3 Шапка-капсула, 12.4 Нижнее меню-капсула, 12.5 Карточка на плашке, 12.6 Контролы поверх фото (+3 more)
 
-### Community 81 - "2. Что видно на экранах"
+### Community 81 - "outfit-landing.ts"
 Cohesion: 0.20
 Nodes (10): 2.1. Иерархия, 2.2. Глубина и цвет, 2.3. Контраст, 2.4. Сетка, 2.5. Плотность и фото, 2.6. Длинные страницы, 2.7. Шапка и меню, 2.8. Телефон (+2 more)
 
@@ -615,7 +615,7 @@ Nodes (20): cancelPick(), COLLECT_URLS, lastRun(), loadSiteRun(), mainFrameError
 Cohesion: 0.08
 Nodes (25): Структура, analytics(), BLOG, CUSTOM, DAILY, dayKey(), fs, HOUR_W (+17 more)
 
-### Community 90 - "lib/types.ts"
+### Community 90 - "outfit/[id]/page.tsx"
 Cohesion: 0.11
 Nodes (30): BrowseInitial, loadOutfit, OutfitDetailPage(), Props, revalidate, DICT, EASE, Props (+22 more)
 
@@ -627,23 +627,23 @@ Nodes (25): ADMINS, avatar(), billingTest, billingTestRunning, customers, emailS
 Cohesion: 0.19
 Nodes (19): formOptions(), GET(), POST(), GET(), getAllColorGroups(), readAllProducts(), legacySeason(), planOutfits() (+11 more)
 
-### Community 93 - "7. Найдено сверх плана"
+### Community 93 - "normalize.ts"
 Cohesion: 0.06
 Nodes (62): 7. Найдено сверх плана, CATEGORY_VALUES, CategoryItem, isBuiltInBucket(), matchSubcategoryLabel(), SizeType, wordForms(), isNonProductPath() (+54 more)
 
-### Community 94 - "Б0. Разблокировать оплату — P0"
+### Community 94 - "ai.ts"
 Cohesion: 0.33
 Nodes (6): Б0-1. Починить ссылку на вход в воронке оплаты · 15 мин, Б0-2. Сделать настоящую страницу регистрации · 2–3 ч, Б0-3. Починить изображения каталога (429) · 2–4 ч, Б0-4. Диагностика автопродления в Supabase · 30 мин (не код), Б0-5. Проверить `CRON_SECRET` в окружении Vercel · 15 мин, Б0. Разблокировать оплату — P0
 
-### Community 95 - "2. Типографика"
+### Community 95 - "Charts.tsx"
 Cohesion: 0.40
 Nodes (5): 2. Типографика, Базовый текст, Класс `.label`, Правило tracking, Шкала
 
-### Community 96 - "Мобильная версия сайта: «причесать»"
+### Community 96 - "ProductCard.tsx"
 Cohesion: 0.15
 Nodes (12): Готово, когда, Два варианта для макетов, Зачем, Итог (2026-10-07), Как будет устроено, Мобильная версия сайта: «причесать», Не входит (и почему), Общие правила для обоих вариантов (+4 more)
 
-### Community 97 - "P1 — теряем трафик и расширенные сниппеты"
+### Community 97 - "SEO: анализ сайта и план работ"
 Cohesion: 0.08
 Nodes (24): P0 — мешает индексации, P1 — теряем трафик и расширенные сниппеты, P2 — улучшения, P3 — попутно, SEO: анализ сайта и план работ, Доска статусов, Итог 11 октября 2026, Как проверяли (+16 more)
 
@@ -655,11 +655,11 @@ Nodes (19): Phase 2 — Stylist Page Typography ✅, Step count, What was done, 
 Cohesion: 0.05
 Nodes (57): 5.11. Форма — `FormSection` и `SaveBar`, Settings, Товар (страница `/goo-studio/products/[id]`, GS6-1), AiTab(), CATEGORIES, EXAMPLE, Field(), GENDERS (+49 more)
 
-### Community 100 - "catalogue-check/page.tsx"
+### Community 100 - "parser/page.tsx"
 Cohesion: 0.05
 Nodes (74): AdminAuditPage(), APPLIABLE, appliedKey(), AuditReport, claimKey(), Failure, fallbackTitle(), FIELD_LABEL (+66 more)
 
-### Community 101 - "fx.ts"
+### Community 101 - "Universal Product Parser"
 Cohesion: 0.29
 Nodes (10): CODES, GET(), pick(), Converted, fallback(), FALLBACK_RATES, fetchRates(), round2() (+2 more)
 
@@ -671,11 +671,11 @@ Nodes (28): GS2-1. Бренд: ошибка перестаёт закрепля�
 Cohesion: 0.14
 Nodes (24): dynamic, generateMetadata(), loadLook, lookHeading(), Props, ResolvedLook, resolveLook(), SharedLookPage() (+16 more)
 
-### Community 104 - "parser/types.ts"
+### Community 104 - "parse-page.ts"
 Cohesion: 0.05
 Nodes (60): 8. AI в парсере, 1. Collecting with the browser extension, 2. Universal extractor, 3. Normalizer, 4. AI fallback — stores with no structured data, 5. Photos live on our storage, 6. Importing, After the import: the AI check (+52 more)
 
-### Community 105 - "builder/page.tsx"
+### Community 105 - "HeroSection.tsx"
 Cohesion: 0.08
 Nodes (50): Phase 3b — Left Panel Rebuild ✅, What was done, BuilderPage(), CatalogCardImages(), CatalogItem, CATEGORY_ICONS, MOBILE_CHIPS, SlotIcon() (+42 more)
 
@@ -691,7 +691,7 @@ Nodes (19): POST(), browserHeaders(), buildImagePrompt(), buildItemsList(), extr
 Cohesion: 0.12
 Nodes (34): dynamic, GET(), pct(), brandKey(), buildCatalogueProfile(), dominant(), leaning(), proposeGender() (+26 more)
 
-### Community 109 - "resolveRecipients"
+### Community 109 - "AnalyticsTracker.tsx"
 Cohesion: 0.50
 Nodes (5): GS1-11. Рассылка: команда не в аудитории, отправка — через модалку · S–M, GET(), listAllUsers(), planOf(), resolveRecipients()
 
@@ -699,7 +699,7 @@ Nodes (5): GS1-11. Рассылка: команда не в аудитории, 
 Cohesion: 0.33
 Nodes (4): alt, contentType, runtime, size
 
-### Community 111 - "Этап I. Доработки после проверки на телефоне"
+### Community 111 - "btn"
 Cohesion: 0.40
 Nodes (5): R-26 · Аватар во вкладке «Profile» нижнего меню, R-27 · Число цветов на карточке товара, R-28 · Конструктор на телефоне: карточки вещей грузятся быстро, Этап I. Доработки после проверки на телефоне, useUser()
 
@@ -723,7 +723,7 @@ Nodes (14): 1. Стартовый промт, 2. Роль и рамки, 3. Ис
 Cohesion: 0.13
 Nodes (22): describe(), GET(), PaidPlanId, POST(), realPlanRunning(), POST(), AuthUser, PlanId (+14 more)
 
-### Community 117 - "Б10. Производительность и мобильный UX — P2"
+### Community 117 - "blog/[id]/route.ts"
 Cohesion: 0.50
 Nodes (4): Б10-1. Похудеть builder · 2 дня, Б10-2. Размеры элементов на мобильном · 1 день, Б10-3. `/sitemap-page` · 4 ч, Б10. Производительность и мобильный UX — P2
 
@@ -743,11 +743,11 @@ Nodes (65): 1. Доступ, 4. Журнал действий (Activity), 6. Д�
 Cohesion: 0.10
 Nodes (18): metadata, BrowsePage(), firstScreen(), generateMetadata(), PIECE_FILTERS, Props, readCatalog, singleValues() (+10 more)
 
-### Community 122 - "Дизайн админки goo-studio: что видно на экранах и куда идти"
+### Community 122 - "2. Что видно на экранах"
 Cohesion: 0.17
 Nodes (11): 0. Коротко, 3. Принципы, 4.1. Цвет и глубина, 4.2. Типографика, 4.3. Отступы и сетка, 4.4. Радиусы, 4.5. Иконки и движение, 4. Основа (+3 more)
 
-### Community 123 - "Goo Collect — расширение Chrome"
+### Community 123 - "ADMIN.md"
 Cohesion: 0.14
 Nodes (10): AI Stylist — журнал улучшений, Исходные слабые места (аудит 2026-06-04), Goo Collect — расширение Chrome, Если что-то пошло не так, Как собрать весь магазин, Как собрать магазин, Настройки в popup, Почему так медленно (+2 more)
 
@@ -755,7 +755,7 @@ Nodes (10): AI Stylist — журнал улучшений, Исходные с�
 Cohesion: 0.06
 Nodes (62): aiModel(), chooseCategories(), choosePieces(), failed(), maxDuration, NoChoice, POST(), spent() (+54 more)
 
-### Community 125 - "Manual QA Checklist (final browser testing)"
+### Community 125 - "Журнал изменений"
 Cohesion: 0.50
 Nodes (4): Cross-cutting, Desktop (≥ 768px viewport), Manual QA Checklist (final browser testing), Mobile (< 768px viewport)
 
@@ -763,7 +763,7 @@ Nodes (4): Cross-cutting, Desktop (≥ 768px viewport), Manual QA Checklist (fin
 Cohesion: 0.10
 Nodes (36): R-20 · Тарифы, оформление подписки, окно «нужен тариф», R-21 · Главная, R-22 · Журнал и статья, R-23 · Вход и регистрация, Этап G. Тарифы, главная, журнал, служебные страницы, getData(), HomePage(), Kicker() (+28 more)
 
-### Community 127 - "@upstash/redis"
+### Community 127 - "Дизайн админки goo-studio: что видно на экранах и куда идти"
 Cohesion: 0.33
 Nodes (4): @upstash/redis@^1.37.0, engines, node, @upstash/redis
 
@@ -787,7 +787,7 @@ Nodes (5): Error handling, File added, Follow-up Phase D2 — AI Stylist Chat AP
 Cohesion: 0.04
 Nodes (136): 9. goo-studio (админка), Мобильная версия админки, Новые расхождения (сверка 2026-09-26), Общие компоненты и рецепты (GS4-3), Оверлеи: `.ov-*` и `useOverlayPresence`, Правила для нового элемента в админке, Статусы, баннеры и тосты — как в коде сейчас, Тема админки (+128 more)
 
-### Community 133 - "sharp"
+### Community 133 - "Часть 2. План: что поправить и что поменять"
 Cohesion: 0.67
 Nodes (3): sharp@^0.34.5, sharp, applyCrop()
 
@@ -803,7 +803,7 @@ Nodes (16): Б4-1. Починить Vercel Analytics · 2–4 ч, Б4-3. Даш�
 Cohesion: 0.23
 Nodes (12): centralHeader(), crc32(), CRC_TABLE, dosDateTime(), endOfCentralDirectory(), EntryMeta, localHeader(), MAX_ZIP_BYTES (+4 more)
 
-### Community 138 - "checkRateLimit"
+### Community 138 - "rate-limit.ts"
 Cohesion: 0.67
 Nodes (4): checkAnonDailyLimit(), checkRateLimit(), clientIp(), runLimit()
 
@@ -819,11 +819,11 @@ Nodes (12): Fixes applied (`src/app/builder/page.tsx`), Follow-up Phase D4 — E
 Cohesion: 0.08
 Nodes (26): SEO-01. Canonical и og:url на свой адрес · 1–2 ч · Н-1, SEO-02. Уникальные title, description и H1 · 4–6 ч · Н-3 (закрывает Б7-2), SEO-03. `rel="sponsored"` на ссылках в магазины · 1 ч · Н-5, SEO-04. Twitter-карточки · 30 мин · Н-9, SEO-05. Экранировать JSON-LD · 15 мин · Н-17, SEO-06. Meta description товаров · 2–3 ч · Н-7, SEO-07. Журнал: og:image и подписи · 1 ч · Н-8, Б7-6, SEO-08. Закрыть служебные страницы правильно · 1 ч · Н-13 (+18 more)
 
-### Community 143 - "email/route.ts"
+### Community 143 - "audit.ts"
 Cohesion: 0.29
 Nodes (12): maxDuration, POST(), sleep(), buildHtml(), buildPlainText(), EmailFooterKind, esc(), FOOTER_NOTE (+4 more)
 
-### Community 144 - "HeroSection.tsx"
+### Community 144 - "HomeFullPageScroll"
 Cohesion: 0.11
 Nodes (21): 6. Кнопки: особый случай, Одно правило для новых кнопок, А1. `PageTransition` — 350 мс налога на каждый переход, А2. Кнопка не отвечает на нажатие, А3. `transition-all` — 124 раза в 36 файлах, А4. Общая хрома сайта не умеет закрываться, А5. Четыре кривые, ноль токенов, один дубль, А6. Hover прилипает на телефоне (+13 more)
 
@@ -831,7 +831,7 @@ Nodes (21): 6. Кнопки: особый случай, Одно правило 
 Cohesion: 0.17
 Nodes (19): BuildScene(), buildSteps(), CartMark(), ChooseScene(), HandCursor(), HeartButton(), HowItWorksSection(), PCard() (+11 more)
 
-### Community 146 - "7. Движение и анимация"
+### Community 146 - "Этап 2. Импорт перестаёт портить каталог"
 Cohesion: 0.25
 Nodes (8): 7. Движение и анимация, Framer-motion: появление карточек, prefers-reduced-motion и другие системные настройки, Длительности, Классы `.animate-*` из `globals.css`, Кнопка «в понравившееся» по наведению, Кривые: токены в CSS, старый канон в JS, Отклик на нажатие
 
@@ -843,7 +843,7 @@ Nodes (31): COLUMN_SETS, dismiss(), DISMISS_FIELDS, DismissKind, dynamic, GET(),
 Cohesion: 0.29
 Nodes (7): Б7-1. Ценностное предложение на главной · 1–2 дня, Б7-2. H1 и уникальные метаданные · 4–6 ч, Б7-3. Язык и рынок · 3–4 ч, Б7-4. Починить гидратацию React #418 · 1 день, Б7-5. Поведенческие раздражители · 1 день, Б7-6. og:image для блога · 1 ч, Б7. Воронка, главная, SEO — P2
 
-### Community 150 - "HomeFullPageScroll"
+### Community 150 - "P1 — теряем трафик и расширенные сниппеты"
 Cohesion: 0.13
 Nodes (20): 3. Сетка, отступы, контейнеры, `.home-section` — экран главной, Safe area, Z-index, Брейкпоинты, Вертикальный ритм, Контейнер страницы, Сетки карточек (+12 more)
 
@@ -867,7 +867,7 @@ Nodes (9): OPEN QUESTIONS, Q1 — Builder header: does the sub-header stay at al
 Cohesion: 0.15
 Nodes (34): el, ensureCollectTab(), finishRender(), foundText(), hostOf(), init(), linksOnlyStores(), note() (+26 more)
 
-### Community 161 - "ChatMessage"
+### Community 161 - "6. Site-Wide Integration Plan"
 Cohesion: 0.12
 Nodes (16): 1. Current State Audit, 6. Site-Wide Integration Plan, 7. Safety and UX, Browse integration (Phase E — surface A), Builder integration (Phase D), Fallback if API key is missing, How the mock drawer works today, Loading states (+8 more)
 
@@ -879,7 +879,7 @@ Nodes (8): Available retailer data per product, Change 5 — Clarify and Impleme
 Cohesion: 0.28
 Nodes (12): pagePath(), runPage(), walkListing(), attr(), listingStep(), longestMatch(), patternToRegex(), PLAN_NAMES (+4 more)
 
-### Community 165 - "3.2 Что происходит при запросе `POST /api/stylist/chat`"
+### Community 165 - "replicate-ai.ts"
 Cohesion: 0.21
 Nodes (11): 3.2 Что происходит при запросе `POST /api/stylist/chat`, Блок 5 — надёжность контракта «текст + JSON» (2026-06-04), detectLanguage(), extractJsonBlock(), recoverSuggestions(), chatCompletion(), ChatTurn, client() (+3 more)
 
@@ -919,7 +919,7 @@ Nodes (6): 5.1. Добавить товары из магазина, 5.2. Раз
 Cohesion: 0.22
 Nodes (9): StylistIntent, candidateParams, ftsText(), LOOK_CATEGORIES, LOOK_INTENT_STEMS, OCCASION_STEMS, requestText(), RU_TO_EN (+1 more)
 
-### Community 179 - "categories/route.ts"
+### Community 179 - "bulk-edit/route.ts"
 Cohesion: 0.09
 Nodes (39): dynamic, GENDERS, POST(), dynamic, model(), POST(), cleanLabel(), DELETE() (+31 more)
 
@@ -939,11 +939,11 @@ Nodes (6): Phase A — Quick wins, no product decisions needed (1–2 sessions),
 Cohesion: 0.18
 Nodes (8): PRIORITIES, PRIORITY_BADGE, REPORTERS, ReportPage(), processFile(), Result, SECTIONS, StructuredBug
 
-### Community 184 - "gender.ts"
+### Community 184 - "genderFromPage"
 Cohesion: 0.10
 Nodes (22): GS1-6. Проверка пола: перейти на `genderFromPage` · S, Главное за минуту, Как читать, Отложено: оплата, Пересечения с планом аудита и код-ревью, Роадмап админки goo-studio — октябрь 2026, Сводка этапов, Что ревью увидело не так (+14 more)
 
-### Community 185 - "Follow-up Phase D1 — AI Stylist Key Infrastructure ✅"
+### Community 185 - "2. Real API Architecture"
 Cohesion: 0.33
 Nodes (6): Admin authorization, Admin settings UI changes, Files added / changed, Follow-up Phase D1 — AI Stylist Key Infrastructure ✅, How the key is stored and accessed, Schema assumptions
 
@@ -975,7 +975,7 @@ Nodes (4): ask(), onWorkerMessage(), retire(), tell()
 Cohesion: 0.26
 Nodes (11): 1.6. Ссылки на картинки хранятся в базе абсолютными — домен менять нельзя **[проверено]**, MAX_PRODUCT_IMAGES, assertFetchable(), ensureProductImagesBucket(), extFor(), fetchImageBuffer(), isOwnStorageOrigin(), mirrorImageUrl() (+3 more)
 
-### Community 198 - "logBillingEvent"
+### Community 198 - "Часть 1. Анализ: что найдено"
 Cohesion: 0.18
 Nodes (20): Б1-1. `activateSubscription()` должен падать, если строка не обновилась · 3–4 ч, Б1-2. Не терять токен карты · 2–3 ч, Б1-3. Перестать глушить журнал платежей · 1–2 ч, Б1-4. Алерты по биллингу · 1 день, Б1-5. Показать состояние биллинга в админке · 1 день, Б1. Биллинг: надёжность и наблюдаемость — P0/P1, POST(), GET() (+12 more)
 
@@ -991,7 +991,7 @@ Nodes (4): clerk, config, isProtectedRoute, proxy()
 Cohesion: 0.24
 Nodes (14): collect(), failedUnseen(), failureCap(), ingest(), politePause(), readyState(), record(), restFor() (+6 more)
 
-### Community 206 - "Б11. Решение о бизнес-модели — P0 (решение, не код)"
+### Community 206 - "blog/layout.tsx"
 Cohesion: 0.50
 Nodes (4): Б11. Решение о бизнес-модели — P0 (решение, не код), Метрики, которые смотрим после каждой волны, На что опираемся — не переделывать, Что осталось непроверенным аудитом
 
@@ -999,11 +999,11 @@ Nodes (4): Б11. Решение о бизнес-модели — P0 (решен�
 Cohesion: 0.29
 Nodes (7): scripts, build, dev, i18n:check, lint, migrate, start
 
-### Community 209 - "ProductCard.tsx"
+### Community 209 - "categories/layout.tsx"
 Cohesion: 0.14
 Nodes (17): 1. Токены — единственный источник цвета, Жёсткое правило цвета, Зачем `--*-overlay-*` и когда их брать, Риски и допущения, Props, CroppedImage(), ProductCardProps, ProductImage() (+9 more)
 
-### Community 210 - "Этап 0. Включить выключенное — сегодня"
+### Community 210 - "ADMIN_ROADMAP.md"
 Cohesion: 0.33
 Nodes (6): GS0-1. Cron продления в Coolify · 15 мин, не код, GS0-2. Две зависшие подписки · решение CEO, GS0-3. AI check: умолчание `suggest` вместо `auto` · S, код, GS0-4. Применить недостающие миграции · 30 мин, не код, с подтверждения CEO, GS0-5. Миграции применяются сами при старте приложения · M, Этап 0. Включить выключенное — сегодня
 
@@ -1011,11 +1011,11 @@ Nodes (6): GS0-1. Cron продления в Coolify · 15 мин, не код, 
 Cohesion: 0.33
 Nodes (6): Phase 3d — ✅ Done, Phase 3d — Right Panel Catalog Rebuild ✅, Phase 3e — ✅ Complete (2026-04-18), Phase 3f — ✅ Complete (2026-04-18), Phase 4 — ✅ Complete (folded into Phase 3f), What was done
 
-### Community 214 - "eslint.config.mjs"
+### Community 214 - "email/layout.tsx"
 Cohesion: 0.33
 Nodes (5): eslintConfig, eslint@^9, eslint-config-next@16.1.6, eslint, eslint-config-next
 
-### Community 215 - "Этап B. Основа — сайт целиком становится легче"
+### Community 215 - "waitlist/layout.tsx"
 Cohesion: 0.40
 Nodes (5): R-02 · Правила мобильной версии в дизайн-системе, R-03 · Шапка-капсула, R-04 · Нижнее меню-капсула, R-05 · Подвал и отступ под меню, Этап B. Основа — сайт целиком становится легче
 
@@ -1031,16 +1031,16 @@ Nodes (4): Б3-1. Привести `/plans` в соответствие с ре�
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `next` to `Navigation.tsx`, `chat/route.ts`, `mono-subscriptions.ts`, `package.json`, `normalizeSeasons`, `products/[id]/page.tsx`, `retailer-domains.ts`, `useFormat`, `react`, `getOpenAIKey`, `collect/page.tsx`, `subscriptions.ts`, `StylistDrawer.tsx`, `locale-context.tsx`, `csv-import/route.ts`, `catalogue-check/store.ts`, `app/layout.tsx`, `recipes.ts`, `LandingView.tsx`, `admin/stats/route.ts`, `outfit-landing.ts`, `dependencies`, `MyLooksPanel.tsx`, `plans.ts`, `product-bg-color/route.ts`, `blog/[slug]/page.tsx`, `plans/page.tsx`, `btn`, `export-images/route.ts`, `restyle/route.ts`, `analytics/route.ts`, `seo.ts`, `CookieConsentBanner.tsx`, `db.ts`, `JournalFeed.tsx`, `monobank.ts`, `label-audit/route.ts`, `ProductClient.tsx`, `app/sitemap.ts`, `lib/types.ts`, `ai-outfits/store.ts`, `recategorize/route.ts`, `settings/page.tsx`, `catalogue-check/page.tsx`, `fx.ts`, `look/[id]/page.tsx`, `builder/page.tsx`, `cookie/page.tsx`, `outfit-image.ts`, `field-mining/route.ts`, `opengraph-image.tsx`, `share/route.ts`, `billing-test/route.ts`, `requireAdmin`, `browse/page.tsx`, `collect/route.ts`, `AIStylistShowcase.tsx`, `AuthForm.tsx`, `useT`, `audit/layout.tsx`, `blog/layout.tsx`, `email/route.ts`, `HeroSection.tsx`, `HowItWorksSection.tsx`, `duplicates/route.ts`, `ConditionalSiteLayout.tsx`, `catalogue-check/layout.tsx`, `email/layout.tsx`, `waitlist/layout.tsx`, `report/layout.tsx`, `looks/image/route.ts`, `categories/route.ts`, `report/page.tsx`, `profile/page.tsx`, `health/route.ts`, `logBillingEvent`, `proxy.ts`, `ProductCard.tsx`, `activity/layout.tsx`, `analytics/layout.tsx`, `brands/layout.tsx`, `duplicates/layout.tsx`, `import/layout.tsx`, `outfits/layout.tsx`, `collect/layout.tsx`, `parser/layout.tsx`, `retailers/layout.tsx`, `settings/layout.tsx`, `subscriptions/layout.tsx`, `users/layout.tsx`?**
-  _High betweenness centrality (0.227) - this node is a cross-community bridge._
+- **Why does `next` connect `next` to `Navigation.tsx`, `chat/route.ts`, `mono-subscriptions.ts`, `package.json`, `approve/route.ts`, `products/[id]/page.tsx`, `retailer-domains.ts`, `analytics/page.tsx`, `react`, `getOpenAIKey`, `categories.ts`, `subscriptions.ts`, `currency-context.tsx`, `useDict`, `csv-import.ts`, `catalogue-check/store.ts`, `app/layout.tsx`, `subscriptions/page.tsx`, `pageMetadata`, `admin/stats/route.ts`, `7. Найдено сверх плана`, `dependencies`, `builder/page.tsx`, `plans.ts`, `product-bg-color/route.ts`, `blog/[slug]/page.tsx`, `plans/page.tsx`, `import/page.tsx`, `export-images/route.ts`, `restyle/route.ts`, `analytics/route.ts`, `seo.ts`, `saved/page.tsx`, `db.ts`, `JournalFeed.tsx`, `monobank.ts`, `label-audit/route.ts`, `lib/types.ts`, `app/sitemap.ts`, `outfit/[id]/page.tsx`, `ai-outfits/store.ts`, `recategorize/route.ts`, `settings/page.tsx`, `parser/page.tsx`, `Universal Product Parser`, `look/[id]/page.tsx`, `HeroSection.tsx`, `cookie/page.tsx`, `outfit-image.ts`, `field-mining/route.ts`, `opengraph-image.tsx`, `share/route.ts`, `billing-test/route.ts`, `requireAdmin`, `browse/page.tsx`, `collect/route.ts`, `AIStylistShowcase.tsx`, `AuthForm.tsx`, `useT`, `PageHeader`, `Блок Д — дизайн`, `audit.ts`, `HomeFullPageScroll`, `HowItWorksSection.tsx`, `duplicates/route.ts`, `ConditionalSiteLayout.tsx`, `Этап 1. Товары, разметка, скорость — 3–4 дня`, `csv-import/route.ts`, `Б0. Разблокировать оплату — P0`, `Goo Collect — расширение Chrome`, `looks/image/route.ts`, `bulk-edit/route.ts`, `report/page.tsx`, `profile/page.tsx`, `health/route.ts`, `Часть 1. Анализ: что найдено`, `proxy.ts`, `categories/layout.tsx`, `activity/layout.tsx`, `analytics/layout.tsx`, `brands/layout.tsx`, `duplicates/layout.tsx`, `import/layout.tsx`, `outfits/layout.tsx`, `collect/layout.tsx`, `parser/layout.tsx`, `retailers/layout.tsx`, `settings/layout.tsx`, `subscriptions/layout.tsx`, `users/layout.tsx`?**
+  _High betweenness centrality (0.186) - this node is a cross-community bridge._
 - **Are the 14 inferred relationships involving `requireAdmin()` (e.g. with `3.2 Что происходит при запросе `POST /api/stylist/chat`` and `Переменные`) actually correct?**
   _`requireAdmin()` has 14 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `ADMIN_SCREENS_DIR`, `ADMIN_SCREENS_PORT`, `NEXT_PUBLIC_POSTHOG_KEY` to the rest of the system?**
   _4 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `chat/route.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.09815078236130868 - nodes in this community are weakly interconnected._
-- **Why does `7. Найдено сверх плана` connect `7. Найдено сверх плана` to `useT`, `retailer-domains.ts`, `run.ts`, `product-fields.ts`, `checkRateLimit`, `getOpenAIKey`, `extract.ts`, `landing.ts`, `import-product.ts`, `duplicates/route.ts`, `write-copy.ts`, `ConditionalSiteLayout.tsx`, `csv-import/route.ts`, `popup.js`, `outfit-landing.ts`, `MyLooksPanel.tsx`, `fields.ts`, `bg-color.ts`, `copy.ts`, `categories/route.ts`, `seo.ts`, `BrowseClient.tsx`, `plan-collection.ts`, `run`, `db.ts`, `collect`, `ai-outfits/store.ts`, `snapshot.js`, `look/[id]/page.tsx`, `parser/types.ts`, `builder/page.tsx`, `field-mining/route.ts`, `Бриф агента: работа по плану аудита`, `collect/route.ts`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
+- **Why does `7. Найдено сверх плана` connect `normalize.ts` to `useT`, `retailer-domains.ts`, `parser/types.ts`, `product-fields.ts`, `rate-limit.ts`, `getOpenAIKey`, `extract.ts`, `landing.ts`, `import-product.ts`, `duplicates/route.ts`, `write-copy.ts`, `ConditionalSiteLayout.tsx`, `csv-import.ts`, `popup.js`, `7. Найдено сверх плана`, `builder/page.tsx`, `fields.ts`, `bg-color.ts`, `copy.ts`, `bulk-edit/route.ts`, `seo.ts`, `BrowseClient.tsx`, `plan-collection.ts`, `run`, `db.ts`, `collect`, `ai-outfits/store.ts`, `snapshot.js`, `look/[id]/page.tsx`, `parse-page.ts`, `HeroSection.tsx`, `field-mining/route.ts`, `Бриф агента: работа по плану аудита`, `collect/route.ts`?**
+  _High betweenness centrality (0.092) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `useT()` (e.g. with `Языки (GS4-8)` and `Доска статусов`) actually correct?**
   _`useT()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `mono-subscriptions.ts` be split into smaller, more focused modules?**
