@@ -29,6 +29,8 @@ import { subcategoryToValue, resolveSubcategory } from "@/lib/categories";
 import { photoBackdrop } from "@/lib/image";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { STYLE_KEYWORD_LIST, matchesStyles, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
+import ProductImage from "@/components/product/ProductImage";
+import Image from "@/components/ui/Image";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -122,6 +124,13 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
  * and the next as its end scrolls near.
  */
 const CATALOG_BATCH = 48;
+
+/**
+ * Phone row cards whose photo is fetched at once rather than when it scrolls
+ * into view: the three a 390 px screen shows and the next three, so the first
+ * swipe finds them there. The rest of a batch waits until it is near.
+ */
+const ROW_EAGER_PHOTOS = 6;
 
 /**
  * Calls `more` while `target` is within `margin` of what `root` shows.
@@ -365,12 +374,31 @@ export default function BuilderPage() {
   }, [isLoggedIn]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    fetch("/api/products")
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setProducts(d); })
-      .catch(() => {});
-  }, []);
+  // The phone row tells the catalogue still loading, and failing to, from an
+  // empty result (DESIGN_SYSTEM.md §12.12): it said "No pieces" for all three,
+  // which on a slow connection read as an empty builder for seconds.
+  //
+  // Not preloaded from the layout on purpose: Safari can download a
+  // <link rel=preload as=fetch> a second time when fetch() asks for it (WebKit
+  // bug 236009), and this is ~2.5 MB on a phone.
+  const [catalogStatus, setCatalogStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const fetchCatalog = useCallback(
+    () =>
+      fetch("/api/products")
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(d => {
+          if (!Array.isArray(d)) throw new Error("Not a product list");
+          setProducts(d);
+          setCatalogStatus("ready");
+        })
+        .catch(() => setCatalogStatus("failed")),
+    [],
+  );
+  useEffect(() => { void fetchCatalog(); }, [fetchCatalog]);
+  const retryCatalog = () => {
+    setCatalogStatus("loading");
+    void fetchCatalog();
+  };
 
   // ── Derived values ────────────────────────────────────────────────────────
   const styleKeywords = useMemo<StyleKeyword[]>(() =>
@@ -511,6 +539,22 @@ export default function BuilderPage() {
 
   const [shuffleSeed] = useState(() => Math.random());
 
+  // Each piece's place in the "featured" shuffle, worked out once per catalogue.
+  // The sort used to work it out inside its comparator, for both pieces of every
+  // comparison: some 350,000 times over 12,000 pieces, on every filter tap and
+  // every like — about 100 ms on a laptop, several times that on a phone. The
+  // order is the same as before.
+  const shuffleRank = useMemo(() => {
+    const rank = new Map<string, number>();
+    for (const p of products) {
+      let sum = 0;
+      for (let i = 0; i < p.id.length; i++) sum += p.id.charCodeAt(i);
+      const h = Math.sin(shuffleSeed + sum) * 10000;
+      rank.set(p.id, h - Math.floor(h));
+    }
+    return rank;
+  }, [products, shuffleSeed]);
+
   const catalogProducts = useMemo(() => {
     let list = filterByCategory(products, catalogCategory, selectedSubcategories);
 
@@ -565,17 +609,13 @@ export default function BuilderPage() {
       list = [...list].sort((a, b) => b.id.localeCompare(a.id));
     } else {
       // "featured" — shuffle deterministically per session so order changes on every page load
-      list = [...list].sort((a, b) => {
-        const ha = Math.sin(shuffleSeed + a.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0)) * 10000;
-        const hb = Math.sin(shuffleSeed + b.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0)) * 10000;
-        return (ha - Math.floor(ha)) - (hb - Math.floor(hb));
-      });
+      list = [...list].sort((a, b) => (shuffleRank.get(a.id) ?? 0) - (shuffleRank.get(b.id) ?? 0));
     }
 
     return list;
     // categoryTree and availableColors both arrive from the network after the
     // first paint, so the list has to recompute when they do.
-  }, [catalogCategory, selectedSubcategories, categoryTree, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, availableColors, selectedGender, filterStyles, sortBy, shuffleSeed]);
+  }, [catalogCategory, selectedSubcategories, categoryTree, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, availableColors, selectedGender, filterStyles, sortBy, shuffleRank]);
 
   const expandedCatalogItems = useMemo((): CatalogItem[] => {
     if (!selectedColors.length) {
@@ -2405,7 +2445,31 @@ export default function BuilderPage() {
             {/* Horizontal product scroll — fixed height that fits a card
                 (image + brand/name/price), keeping the catalog compact. */}
             <div ref={mobileScrollRef} className="shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar" style={{ minHeight: 204 }}>
-              {expandedCatalogItems.length === 0 ? (
+              {expandedCatalogItems.length === 0 && catalogStatus === "loading" ? (
+                // The card plaque with soft blocks, as Browse's phone skeleton.
+                <div role="status" aria-label="Loading pieces" className="flex gap-2 px-3 pt-3 pb-1 items-start">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="shrink-0 w-[124px] rounded-[14px] overflow-hidden bg-[var(--surface)] animate-pulse">
+                      <div className="h-[140px] bg-[var(--fg-overlay-08)]" />
+                      <div className="px-2.5 pt-[11px] pb-3">
+                        <div className="h-[11px] w-3/5 rounded-md bg-[var(--fg-overlay-08)]" />
+                        <div className="mt-1.5 h-[11px] w-2/5 rounded-md bg-[var(--fg-overlay-08)]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : expandedCatalogItems.length === 0 && catalogStatus === "failed" ? (
+                <div role="alert" className="h-[204px] flex flex-col items-center justify-center gap-3 px-6 text-center">
+                  <p className="text-[13px] text-[var(--foreground-muted)]">Couldn&apos;t load pieces. Check your connection.</p>
+                  <button
+                    type="button"
+                    onClick={retryCatalog}
+                    className="h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[15px] font-semibold active:scale-[0.97] transition-transform"
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : expandedCatalogItems.length === 0 ? (
                 <div className="h-[204px] flex items-center justify-center">
                   <p className="text-[13px] text-[var(--foreground-muted)]">
                     {search ? "No results" : "No pieces"}
@@ -2413,7 +2477,7 @@ export default function BuilderPage() {
                 </div>
               ) : (
                 <div className="flex gap-2 px-3 pt-3 pb-1 items-start">
-                  {rowItems.map(item => {
+                  {rowItems.map((item, cardIndex) => {
                     const { product, forcedVariant } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
                     const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
@@ -2456,12 +2520,21 @@ export default function BuilderPage() {
                           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectProduct(product); } }}
                           className="relative overflow-hidden bg-white cursor-pointer h-[140px]"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={displayImage}
-                            alt={shown.name}
-                            className="absolute inset-0 w-full h-full object-contain"
-                          />
+                          {/* Sized for the 124 px card. The row asked for every
+                              original — about 120 KB each, 48 at once, ~6 MB
+                              before the first three showed on a phone. Our own
+                              photos now come resized (a tenth of that) and
+                              only as they near the screen. */}
+                          {displayImage && (
+                            <ProductImage
+                              src={displayImage}
+                              alt={shown.name}
+                              fill
+                              sizes="124px"
+                              loading={cardIndex < ROW_EAGER_PHOTOS ? "eager" : "lazy"}
+                              className="object-contain"
+                            />
+                          )}
                           <span
                             aria-hidden="true"
                             className={`absolute right-2 bottom-2 w-[26px] h-[26px] rounded-full flex items-center justify-center pointer-events-none ${
@@ -2476,16 +2549,14 @@ export default function BuilderPage() {
                             <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 pointer-events-none">
                               {(product.variants?.length ?? 0) > 1
                                 ? product.variants!.slice(0, 3).map(sw => sw.imageUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img key={sw.id} src={sw.imageUrl} alt={sw.colorName} className="w-3.5 h-3.5 rounded-sm object-cover border border-white/60 bg-white" />
+                                    <Image key={sw.id} src={sw.imageUrl} alt={sw.colorName} width={14} height={14} className="w-3.5 h-3.5 rounded-sm object-cover border border-white/60 bg-white" />
                                   ) : (
                                     <span key={sw.id} className="w-3.5 h-3.5 rounded-sm border border-white/60" style={{ background: sw.colorHex }} />
                                   ))
                                 : Object.keys(product.colorImages!).slice(0, 3).map(c => {
                                     const img = product.colorImages![c]?.[0];
                                     return img ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img key={c} src={img} alt={c} className="w-3.5 h-3.5 rounded-sm object-cover border border-white/60" />
+                                      <Image key={c} src={img} alt={c} width={14} height={14} className="w-3.5 h-3.5 rounded-sm object-cover border border-white/60" />
                                     ) : null;
                                   })
                               }
