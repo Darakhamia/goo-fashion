@@ -31,7 +31,7 @@
  * present, so they are read with `textContent` rather than `innerText`, which
  * is empty for anything not on screen.
  */
-export function menuStep() {
+export async function menuStep(options = {}) {
   const host = location.hostname.replace(/^www\./, "");
   const NAV =
     'header, nav, [role="navigation"], [role="menubar"], [role="menu"], [role="banner"]';
@@ -133,7 +133,7 @@ export function menuStep() {
   const MAX_GROUP = 60;
   const MAX_DEPTH = 5;
 
-  const linksIn = new WeakMap();
+  let linksIn = new WeakMap();
   const linkCount = (el) => {
     let n = linksIn.get(el);
     if (n === undefined) {
@@ -158,7 +158,7 @@ export function menuStep() {
     }
   };
   /** A few words that could head something: one link at most, no list, no picture, no logo. */
-  const headWordsOf = new WeakMap();
+  let headWordsOf = new WeakMap();
   const headWords = (el) => {
     let t = headWordsOf.get(el);
     if (t !== undefined) return t;
@@ -195,7 +195,7 @@ export function menuStep() {
    * item usually does not (Burberry: `li > a > span._navContentL2` heads
    * the `li > a > span._navContentL3` under it).
    */
-  const shapes = new WeakMap();
+  let shapes = new WeakMap();
   const shapeOf = (el) => {
     let shape = shapes.get(el);
     if (shape === undefined) {
@@ -216,7 +216,7 @@ export function menuStep() {
    * each, and which come twice in a row. Counted afresh for every item, a
    * flat menu of 5,000 links (WooCommerce, Magento) took minutes.
    */
-  const listStats = new WeakMap();
+  let listStats = new WeakMap();
   const statsOf = (parent) => {
     let stats = listStats.get(parent);
     if (!stats) {
@@ -234,7 +234,7 @@ export function menuStep() {
   };
   /** How many of an element's siblings, itself included, share its markup. */
   const alike = (el) => (el.parentElement ? statsOf(el.parentElement).count.get(shapeOf(el)) || 0 : 0);
-  const nested = new WeakMap();
+  let nested = new WeakMap();
   /** Is this list a submenu inside another item, rather than the menu's top bar? */
   const isSubmenu = (list) => {
     let yes = nested.get(list);
@@ -265,7 +265,7 @@ export function menuStep() {
    * sibling before dozens of others, and asking the markup again for each
    * made a flat menu of thousands slow.
    */
-  const traitsOf = new WeakMap();
+  let traitsOf = new WeakMap();
   const traits = (el) => {
     let t = traitsOf.get(el);
     if (!t) {
@@ -350,7 +350,7 @@ export function menuStep() {
   };
   const isHidden = (el) => el.hidden || el.getAttribute("aria-hidden") === "true" || getComputedStyle(el).display === "none";
   /** Each box of panels, read once: its panels and their tabs, or null. */
-  const tabsOf = new WeakMap();
+  let tabsOf = new WeakMap();
   const tabOf = (panel) => {
     const box = panel.parentElement;
     if (!box || box.children.length < 2 || linkCount(panel) < 1) return null;
@@ -403,7 +403,7 @@ export function menuStep() {
    * The name of the group `child` opens within its parent, or "". A link is
    * named by its own words, so of a link only the heading before it counts.
    */
-  const groupNames = new WeakMap();
+  let groupNames = new WeakMap();
   const groupOf = (child) => {
     if (groupNames.has(child)) return groupNames.get(child);
     let found = "";
@@ -494,27 +494,198 @@ export function menuStep() {
     return trail;
   };
 
-  const out = [];
-  const roots = [document];
-  for (let i = 0; i < roots.length && i < 2000 && out.length < 5000; i++) {
-    for (const a of roots[i].querySelectorAll("a[href]")) {
-      let url;
-      try {
-        const u = new URL(a.getAttribute("href"), document.baseURI);
-        if (u.protocol !== "http:" && u.protocol !== "https:") continue;
-        if (u.hostname.replace(/^www\./, "") !== host) continue;
-        u.hash = "";
-        url = u.href;
-      } catch {
+  /** What is read of the markup is kept per element; the markup is new once a menu has opened. */
+  const forget = () => {
+    linksIn = new WeakMap();
+    headWordsOf = new WeakMap();
+    shapes = new WeakMap();
+    listStats = new WeakMap();
+    nested = new WeakMap();
+    traitsOf = new WeakMap();
+    tabsOf = new WeakMap();
+    groupNames = new WeakMap();
+    openers = null;
+  };
+
+  /**
+   * Every link of the page as it stands now, with where it sits and the
+   * groups around it; with `looking`, also whether it is on screen.
+   */
+  const readNow = (looking = false) => {
+    forget();
+    const links = [];
+    const roots = [document];
+    for (let i = 0; i < roots.length && i < 2000 && links.length < 5000; i++) {
+      for (const a of roots[i].querySelectorAll("a[href]")) {
+        let url;
+        try {
+          const u = new URL(a.getAttribute("href"), document.baseURI);
+          if (u.protocol !== "http:" && u.protocol !== "https:") continue;
+          if (u.hostname.replace(/^www\./, "") !== host) continue;
+          u.hash = "";
+          url = u.href;
+        } catch {
+          continue;
+        }
+        const place = where(a);
+        const link = { url, label: labelOf(a), where: place, trail: place === "page" ? [] : trailOf(a) };
+        if (looking) link.shown = shown(a);
+        links.push(link);
+        if (links.length >= 5000) break;
+      }
+      for (const el of roots[i].querySelectorAll("*")) if (el.shadowRoot) roots.push(el.shadowRoot);
+    }
+    return links;
+  };
+
+  // ── Opening the menu ────────────────────────────────────────────────────────
+  //
+  // Many stores keep a mega-menu's panels in the page only while it is open.
+  // Burberry renders them all with the page, and takes them all away the
+  // first time the pointer has been over the menu and left: an admin who had
+  // looked at "Men" before pressing the button got seven categories, and no
+  // folder in them. So the menu bar's items are opened one by one, the way a
+  // pointer opens them (pointer and mouse events; a click only for a button
+  // that says it opens something), and the menu is read while each is open.
+  // A link is never clicked: the tab must stay where it is.
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  /**
+   * Watch the page from now on; `settled(quiet, most)` then waits until it
+   * has stopped changing for a moment, or long enough, and says whether it
+   * changed. Watching starts before the menu is opened: a page may redraw
+   * in the very handler of the event.
+   */
+  const watch = () => {
+    let changed = false;
+    let kick = () => {};
+    const observer = new MutationObserver(() => {
+      changed = true;
+      kick();
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "style", "hidden", "aria-expanded", "aria-hidden"] });
+    const settled = (quiet, most) =>
+      new Promise((done) => {
+        let timer = 0;
+        const end = () => {
+          observer.disconnect();
+          clearTimeout(timer);
+          clearTimeout(cap);
+          done(changed);
+        };
+        kick = () => {
+          clearTimeout(timer);
+          timer = setTimeout(end, quiet);
+        };
+        timer = setTimeout(end, changed ? quiet : quiet * 2);
+        const cap = setTimeout(end, most);
+      });
+    return settled;
+  };
+  const shown = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+  /**
+   * The menu bar's items worth opening: on screen in the page's menu, a few
+   * words each. First those that say they open something (`aria-haspopup`,
+   * `aria-expanded`, `aria-controls`, a button, a tab), then a few plain
+   * links along the top of the page, for menus that open on hover and say
+   * nothing. Opening an item that opens nothing costs half a second.
+   */
+  const barItems = () => {
+    const says = [];
+    const plain = [];
+    const seen = new Set();
+    for (const root of document.querySelectorAll(NAV)) {
+      if (root.closest(FOOT)) continue;
+      for (const el of root.querySelectorAll('a[href], button, [role="menuitem"], [role="tab"], [aria-haspopup], [aria-expanded]')) {
+        if (seen.has(el)) continue;
+        seen.add(el);
+        if (!shown(el) || isHome(el)) continue;
+        const name = groupName(words(el, 40, true) || el.getAttribute("aria-label") || "");
+        // A name of words: not the bag's "0", not an icon's nothing.
+        if (!name || name.length > 30 || !/\p{L}/u.test(name)) continue;
+        const opens =
+          el.matches('button, [role="button"], [role="menuitem"], [role="tab"], [aria-haspopup], [aria-expanded], [aria-controls]') &&
+          el.getAttribute("aria-haspopup") !== "dialog";
+        if (opens) says.push({ el, name });
+        else if (el.getBoundingClientRect().top < 250) plain.push({ el, name });
+      }
+    }
+    return [...says.slice(0, 30), ...plain.slice(0, 12)];
+  };
+  const fire = (el, types) => {
+    for (const type of types) {
+      const init = { bubbles: !/enter|leave/.test(type), cancelable: true, composed: true, view: window, relatedTarget: document.body };
+      el.dispatchEvent(/^pointer/.test(type) ? new PointerEvent(type, { ...init, pointerType: "mouse", isPrimary: true }) : new MouseEvent(type, init));
+    }
+  };
+  /** A link that goes somewhere: never clicked, whatever role it claims (Burberry's tabs are `<a role="button">`). */
+  const goes = (el) => {
+    const a = el.closest("a[href]");
+    const href = a ? (a.getAttribute("href") || "").trim() : "";
+    return !!a && !!href && !href.startsWith("#") && !/^javascript:/i.test(href);
+  };
+  /** A control that opens a part of the menu on a click and goes nowhere: a button saying it is shut. */
+  const clickOpens = (el) =>
+    el.matches('button:not([type="submit"]), [role="button"], summary') &&
+    el.getAttribute("aria-expanded") === "false" &&
+    el.getAttribute("aria-haspopup") !== "dialog" &&
+    !goes(el) &&
+    !el.closest("form");
+  /** While the menu is opened, no click takes the tab anywhere. */
+  const stay = (event) => {
+    const a = event.target instanceof Element ? event.target.closest("a[href]") : null;
+    if (a && goes(a)) event.preventDefault();
+  };
+
+  const out = readNow();
+  // `open: false` reads the page as it stands (the tests of the reading itself).
+  if (options.open === false) return { ok: true, url: location.href, links: out };
+  const known = new Set(out.map((l) => l.url));
+  const bar = barItems();
+  const until = Date.now() + 15_000;
+  /** Links some item's opening put in the page but no item showed: kept as read. */
+  const unshown = new Map();
+  document.addEventListener("click", stay, true);
+  for (const { el, name } of bar) {
+    if (Date.now() > until || !el.isConnected) break;
+    const settled = watch();
+    fire(el, ["pointerover", "pointerenter", "mouseover", "mouseenter", "pointermove", "mousemove"]);
+    const clicked = clickOpens(el);
+    if (clicked) el.click();
+    if (!(await settled(250, 1_200))) {
+      if (clicked && el.getAttribute("aria-expanded") === "true") el.click();
+      fire(el, ["pointerout", "pointerleave", "mouseout", "mouseleave"]);
+      continue;
+    }
+    for (const link of readNow(true)) {
+      if (known.has(link.url)) continue;
+      // In the page but not on screen: another item's panel, kept hidden.
+      // That item shows it when its turn comes.
+      if (!link.shown) {
+        unshown.set(link.url, link);
         continue;
       }
-      const place = where(a);
-      out.push({ url, label: labelOf(a), where: place, trail: place === "page" ? [] : trailOf(a) });
-      if (out.length >= 5000) break;
+      known.add(link.url);
+      delete link.shown;
+      // On screen once this item is open: the item's own, wherever the page
+      // keeps it (Burberry moves the open panel out of its tab, into a box
+      // of its own, where "Bags" heads Women's bags, not the Bags tab's).
+      if (link.where !== "page" && !(link.trail[0] && link.trail[0].toLowerCase() === name.toLowerCase())) {
+        link.trail = [name, ...link.trail].slice(0, MAX_DEPTH);
+      }
+      out.push(link);
     }
-    for (const el of roots[i].querySelectorAll("*")) if (el.shadowRoot) roots.push(el.shadowRoot);
+    if (clicked && el.getAttribute("aria-expanded") === "true") el.click();
+    fire(el, ["pointerout", "pointerleave", "mouseout", "mouseleave"]);
+    await sleep(50);
   }
-  return { ok: true, url: location.href, links: out };
+  document.removeEventListener("click", stay, true);
+  for (const [url, link] of unshown) {
+    if (known.has(url)) continue;
+    delete link.shown;
+    out.push(link);
+  }
+  return { ok: true, url: location.href, links: out.slice(0, 5000) };
 }
 
 // ── Which links are categories ───────────────────────────────────────────────
