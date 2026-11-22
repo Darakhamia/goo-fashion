@@ -1346,9 +1346,9 @@
     "semantic_hash": ""
   },
   "extension/manifest.json": {
-    "mtime": 1795347032.2472925,
-    "seen": 1795351038.5320415,
-    "ast_hash": "44d8fc745519b9ccf10e528510c0d9de",
+    "mtime": 1795353832.3435526,
+    "seen": 1795354867.9799402,
+    "ast_hash": "cb21c423b8fa43285e5a887fdc190b40",
     "semantic_hash": ""
   },
   "extension/popup.js": {
@@ -1994,9 +1994,9 @@
     "semantic_hash": ""
   },
   "extension/README.md": {
-    "mtime": 1795347038.0036464,
-    "seen": 1795351038.5330663,
-    "ast_hash": "9f772804c64eb5dabf607bb9495c9c8a",
+    "mtime": 1795353832.3944564,
+    "seen": 1795354867.9944112,
+    "ast_hash": "d5559ff50a402896706b6c3522b4f904",
     "semantic_hash": ""
   },
   "extension/popup.html": {
@@ -3572,9 +3572,9 @@
     "semantic_hash": ""
   },
   "extension/site.js": {
-    "mtime": 1795350389.5743158,
-    "seen": 1795351038.532046,
-    "ast_hash": "275423b26a2cc88b4e00af3c0a125e63",
+    "mtime": 1795353823.0656264,
+    "seen": 1795354867.979964,
+    "ast_hash": "62f332ee0cfa846a6fc2803dc0ceaffe",
     "semantic_hash": ""
   },
   "extension/sitemap-pieces.js": {
