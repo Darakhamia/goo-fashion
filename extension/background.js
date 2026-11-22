@@ -1793,6 +1793,9 @@ function applyPick(run) {
   run.skipped = run.pick.filter((p) => !p.keep).map(strip);
   if (changed && run.rule) {
     run.aiNote = `Walking ${ticked.length} of the menu's ${run.pick.length} categories: AI's choice, ${changed} changed by you.`;
+  } else if (changed && run.askedRule && run.aiWhy) {
+    // AI could not choose and the admin unticked some: not "walking all" any more.
+    run.aiNote = `AI could not choose the categories (${run.aiWhy}); walking the ${ticked.length} of the menu's ${run.pick.length} you ticked.`;
   }
   run.stage = "categories";
   run.index = 0;
@@ -1957,7 +1960,10 @@ async function runSite({ tabId, storeUrl, linksOnly = false, resume = false, rul
       // out, and why it is not choosing.
       askedRule: rule || "",
       aiWhy: chosen && chosen.failed ? chosen.why : "",
-      pieceRule: chosen && !chosen.failed ? rule : "",
+      // A rule with a menu that offered no category: AI was never asked
+      // about categories, so this page's pieces and the sitemaps still go
+      // through the rule.
+      pieceRule: chosen ? (chosen.failed ? "" : rule) : rule,
       aiSkipped: 0,
       aiWarn: chosen && chosen.limit ? limitNote(chosen.why) : "",
       aiLimit: !!(chosen && chosen.limit),

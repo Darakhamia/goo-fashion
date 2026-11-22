@@ -862,7 +862,9 @@ export function categoryAddress(href, startUrl, locale = null) {
     kept.push([k, v]);
   }
   u.search = kept.length ? `?${new URLSearchParams(kept).toString()}` : "";
-  if (!segs.length && !u.search) return "";
+  // The home page, in the run's language too: `/en-us/`, the logo's link on
+  // a store whose home is also its bare domain.
+  if (segs.length <= language.split("/").filter(Boolean).length && !u.search) return "";
   return u.href;
 }
 

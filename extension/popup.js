@@ -75,6 +75,8 @@ let lastRun = null;
 let savedSite = null;
 /** Ticks changed in the list since the popup opened: a read begun before one is stale. */
 let pickEdits = 0;
+/** The list's warning is on screen (`renderPick`). */
+let pickNoted = false;
 
 async function readSavedSite() {
   const edits = pickEdits;
@@ -366,6 +368,8 @@ const PICK_HINT =
 /** Under the list of a run without a rule: everything is ticked. */
 const PICK_HINT_ALL =
   "Every category is ticked: untick what you don't want. Then the store's sitemaps, for pieces no category showed.";
+/** Under the list when AI could not choose: nothing is checked by name. */
+const FAILED_HINT = "Without AI, every piece in the ticked categories is opened, and the store's sitemaps are not read.";
 /** Without a rule, the sitemaps would bring back what was unticked. */
 const NO_SITEMAPS = "The store's sitemaps are left out: they list every category, unticked ones too.";
 
@@ -633,6 +637,8 @@ function renderPick() {
       ticked === items.length
         ? PICK_HINT_ALL
         : `${ticked ? `${num(items.length - ticked)} unticked: ${now}` : "Nothing ticked."} ${NO_SITEMAPS}`;
+  } else if (failed) {
+    el.pickHint.textContent = `${changed.length ? `${num(changed.length)} changed: ${now} ` : ""}${FAILED_HINT}`;
   } else {
     el.pickHint.textContent = !changed.length
       ? PICK_HINT
@@ -644,11 +650,16 @@ function renderPick() {
   drawTree(items);
   syncTree(items);
 
-  note(
-    failed
-      ? `AI could not choose (${run.aiWhy || "it did not answer"}). Every category is ticked and pieces will not be checked by name. Untick what you don't want, or Cancel and fix the cause.`
-      : "",
-  );
+  // Only the list's own warning: an error "Collect" just showed stays put.
+  if (failed) {
+    note(
+      `AI could not choose (${run.aiWhy || "it did not answer"}). Every category is ticked and pieces will not be checked by name. Untick what you don't want, or Cancel and fix the cause.`,
+    );
+    pickNoted = true;
+  } else if (pickNoted) {
+    note("");
+    pickNoted = false;
+  }
 }
 
 /** The popup while a run waits on the list: only the list and its two buttons. */
@@ -675,6 +686,11 @@ function showCounts(counts) {
   el.updated.textContent = c.updated ? `${c.updated} updated` : "";
   el.skipped.textContent = c.skipped ? `${c.skipped} skipped` : "";
   el.failed.textContent = c.failed ? `${c.failed} failed` : "";
+}
+
+/** "3 categories", "1 category": the menu's, without the page the run started on. */
+function listed(n) {
+  return `${num(n)} ${n === 1 ? "category" : "categories"}`;
 }
 
 /** "3,412" */
@@ -716,9 +732,9 @@ function siteWhere(site) {
     }`;
   }
   if (site.ai && !site.aiFailed) {
-    return `Whole store: the ${num(site.categories)} categories AI chose${site.skipped ? ` (${num(site.skipped)} left out)` : ""}`;
+    return `Whole store: this page and the ${listed(site.categories - 1)} AI chose${site.skipped ? ` (${num(site.skipped)} left out)` : ""}`;
   }
-  if (site.skipped) return `Whole store: the ${num(site.categories)} categories ticked (${num(site.skipped)} left out)`;
+  if (site.skipped) return `Whole store: this page and the ${listed(site.categories - 1)} ticked (${num(site.skipped)} left out)`;
   return `Whole store: all ${num(site.categories)} categories and ${num(site.sitemapsRead)} sitemaps`;
 }
 
@@ -775,6 +791,8 @@ function render(state) {
   showPick(pickNow);
   if (pickNow) {
     renderPick();
+    // "Collect" pressed and the run halted before a page: the list is back, and why with it.
+    if (state.phase === "halted" && state.message) note(state.message);
     return;
   }
   // The next list, whenever it comes, is drawn afresh.
