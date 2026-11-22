@@ -50,6 +50,450 @@ export function menuStep() {
     return "page";
   };
 
+  /**
+   * An element's own words: its text, without the CSS, scripts and icon
+   * titles some stores keep inside a link. Nike's said
+   * `.css-101v3r5{font:var(--podium-cds-typography…` before "Sale".
+   */
+  const SKIP_TEXT = "script, style, template, noscript, svg";
+  /**
+   * Words kept for screen readers only. A menu's toggles carry them ("Expand
+   * child menu", "Menu Toggle", "Show sub menu" in WordPress themes), and
+   * read as a heading they named a folder "child".
+   */
+  const OFF_SCREEN = ".screen-reader-text, .sr-only, .visually-hidden, .visuallyhidden, .sr-only-focusable, .a11y-hidden, .u-hidden-visually";
+  const words = (el, max = 80, onScreen = false) => {
+    const parts = [];
+    let size = 0;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node && size <= max; node = walker.nextNode()) {
+      const skip = node.parentElement && node.parentElement.closest(SKIP_TEXT);
+      if (skip && el.contains(skip)) continue;
+      const unseen = onScreen && node.parentElement && node.parentElement.closest(OFF_SCREEN);
+      if (unseen && unseen !== el && el.contains(unseen)) continue;
+      const t = node.nodeValue.replace(/\s+/g, " ").trim();
+      if (t) {
+        parts.push(t);
+        size += t.length + 1;
+      }
+    }
+    return parts.join(" ").slice(0, max);
+  };
+  const labelOf = (a) =>
+    ((a.getAttribute("aria-label") || "").trim() || words(a) || a.getAttribute("title") || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+
+  // ── Where in the menu a link sits ──────────────────────────────────────────
+  //
+  // A store's menu is a tree: Men › Clothes › Coats, Children › Girls › View
+  // All. Read as a flat list, a dozen links are called "View All" and nobody
+  // can tell which is whose. So each link is given the names of the groups
+  // around it, outermost first, read off the markup the way a person reads
+  // the open menu: the tab it hangs under, the column heading above it.
+  //
+  // Up from the link to the edge of the menu, each element can be named by
+  //   - `aria-labelledby`, a `<details>`' summary, or the control that opens
+  //     it from elsewhere: by `aria-controls`, by a `data-*` value the two
+  //     share (Kith), or as the n-th tab of a list whose panels sit, in the
+  //     same order, in another (`tabOf`). The trail then goes on above the
+  //     control;
+  //   - the heading before it: the nearest earlier sibling with a few words of
+  //     its own, a heading, a button, a label or a single link ("Men" before
+  //     its panel, "Clothes" before its list), up to a divider, and not one
+  //     more item of the same list, not a column of links, not a control that
+  //     opens a panel of its own, not a promotion, an announcement, the logo,
+  //     "‹ Back" or a toggle's screen-reader words. A list's first item set
+  //     apart by its markup heads the rest only inside a submenu (Burberry's
+  //     columns), never in the menu's top bar (a highlighted "Sale").
+  // No group found is no group: the link stands at the top of the tree, and
+  // the store's addresses may still group it (`menuGroups`). Everything read
+  // is kept per element, so a flat menu of thousands of links stays quick.
+
+  /** Where a group's name stops being the menu's and starts being the page's. */
+  const EDGE =
+    'nav, header, footer, aside, dialog, [role="navigation"], [role="menubar"], [role="banner"], [role="contentinfo"], [role="dialog"]';
+  const HEADING = 'h1, h2, h3, h4, h5, h6, [role="heading"], dt, summary, legend, caption, label, button, [aria-expanded], [aria-haspopup]';
+  const HEADING_INSIDE = 'h1, h2, h3, h4, h5, h6, [role="heading"], strong, b';
+  /** What says it is a heading and nothing else. */
+  const TRUE_HEADING = 'h1, h2, h3, h4, h5, h6, [role="heading"], dt, summary, legend, caption, label';
+  /** Class names a heading goes by when the markup does not say: `menu__title`, `nav-heading`, `groupLabel`. */
+  const HEADISH = /(?:^|[\s_-])(?:head|header|heading|headline|title|label|caption|group-?title|section-?title)(?:$|[\s_-]|[A-Z])/i;
+  /** Words that head nothing: the menu's own controls. */
+  const NOT_A_GROUP =
+    /^(?:skip to\b.*|(?:go )?back(?: to\b.*)?|zurück|назад|retour|atrás|volver|indietro|terug|wstecz|tillbaka|close|close menu|open menu|menu|main menu|navigation|main navigation|toggle navigation|search|account|my account|sign in|log in|cart|bag|basket|wishlist|more|see more|show more|view more|less|all|(?:view|shop|see|show|explore|discover) all\b.*|©.*|.*\ball rights reserved\b.*)$/i;
+  /** A submenu's toggle, read before its words are tidied: "Expand child menu" is not "child". */
+  const TOGGLE =
+    /^(?:(?:expand|collapse|show|hide|toggle|open|close)(?: the)?(?: child| sub| sub-| sub ?)?(?: ?menu| ?navigation| ?nav| ?dropdown| ?items?)?|(?:sub ?|sub-)?menu toggle|toggle|child|sub|submenu|dropdown)$/i;
+  /** Words an announcement or a promotion says, not a shelf: "Free UK delivery over £50", "USE CODE APP15". */
+  const PROMO = /[%$€£¥₴!?]|\b(?:free|off|code|delivery|shipping|returns|order|orders|sign up|newsletter|download)\b/i;
+  /** An item marked as the page the admin is on: styled apart, but not a heading. */
+  const CURRENT = /(?:^|[\s_-])(?:active|current|selected)(?:$|[\s_-])/i;
+  const MAX_GROUP = 60;
+  const MAX_DEPTH = 5;
+
+  const linksIn = new WeakMap();
+  const linkCount = (el) => {
+    let n = linksIn.get(el);
+    if (n === undefined) {
+      n = (el.matches("a[href]") ? 1 : 0) + el.querySelectorAll("a[href]").length;
+      linksIn.set(el, n);
+    }
+    return n;
+  };
+  const classOf = (el) => `${typeof el.className === "string" ? el.className : ""}`;
+  /** A link to the store's home page: its logo or its name, which heads nothing. */
+  const isHome = (el) => {
+    const a = el.matches("a[href]") ? el : el.querySelector("a[href]");
+    if (!a) return false;
+    // `href="#"` is a toggle's, whatever page it is on.
+    const href = (a.getAttribute("href") || "").trim();
+    if (!href || href.startsWith("#") || /^javascript:/i.test(href)) return false;
+    try {
+      const u = new URL(href, document.baseURI);
+      return u.hostname.replace(/^www\./, "") === host && /^\/(?:[a-z]{2}(?:[-_][a-z]{2,4})?\/?)?$/i.test(u.pathname);
+    } catch {
+      return false;
+    }
+  };
+  /** A few words that could head something: one link at most, no list, no picture, no logo. */
+  const headWordsOf = new WeakMap();
+  const headWords = (el) => {
+    let t = headWordsOf.get(el);
+    if (t !== undefined) return t;
+    t = "";
+    if (linkCount(el) <= 1 && !el.querySelector("ul, ol, img, picture, video, [role='menu'], [role='list']") && !isHome(el)) {
+      // The words the admin sees in the store's menu; a label only for an icon.
+      const raw = words(el, MAX_GROUP + 12, true) || (el.getAttribute("aria-label") || "").trim();
+      t = groupName(raw);
+      // An announcement is not a heading, unless the markup says it is one.
+      if (t && (PROMO.test(raw) || t.split(" ").length > 6) && !el.matches(TRUE_HEADING)) t = "";
+    }
+    headWordsOf.set(el, t);
+    return t;
+  };
+  /**
+   * A group's name as the menu reads it, or "": Nike's "Men menu" is Men,
+   * END.'s "Open Men :: Subnav" is Men.
+   */
+  const groupName = (text) => {
+    // "‹ Back", "← Back", "Women ›": the arrows are the menu's, not the name's.
+    const raw = String(text || "")
+      .replace(/\s+/g, " ")
+      .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N})]+$/gu, "");
+    if (TOGGLE.test(raw)) return "";
+    const t = raw
+      .replace(/^(?:open|show|toggle|expand)\s+/i, "")
+      .replace(/(?:\s*(?:::|[|–—-])?\s*(?:menu|navigation|nav|subnav|submenu|sub-menu|dropdown))+$/i, "")
+      .trim();
+    return t && t.length <= MAX_GROUP && !NOT_A_GROUP.test(t) ? t : "";
+  };
+  /**
+   * An element's markup, short: its tag and classes and those of its first
+   * children. Items of one list share it; a heading set as the list's first
+   * item usually does not (Burberry: `li > a > span._navContentL2` heads
+   * the `li > a > span._navContentL3` under it).
+   */
+  const shapes = new WeakMap();
+  const shapeOf = (el) => {
+    let shape = shapes.get(el);
+    if (shape === undefined) {
+      shape = "";
+      for (let n = el, d = 0; n && d < 4; n = n.firstElementChild, d++) shape += `>${n.tagName}.${classOf(n)}`;
+      shapes.set(el, shape);
+    }
+    return shape;
+  };
+  const isCurrent = (el) => {
+    for (let n = el, d = 0; n && d < 4; n = n.firstElementChild, d++) {
+      if (n.hasAttribute("aria-current") || CURRENT.test(classOf(n))) return true;
+    }
+    return false;
+  };
+  /**
+   * A list's children by their markup, counted once per list: how many share
+   * each, and which come twice in a row. Counted afresh for every item, a
+   * flat menu of 5,000 links (WooCommerce, Magento) took minutes.
+   */
+  const listStats = new WeakMap();
+  const statsOf = (parent) => {
+    let stats = listStats.get(parent);
+    if (!stats) {
+      stats = { count: new Map(), twice: new Set() };
+      let last = "";
+      for (const c of parent.children) {
+        const shape = shapeOf(c);
+        stats.count.set(shape, (stats.count.get(shape) || 0) + 1);
+        if (shape === last) stats.twice.add(shape);
+        last = shape;
+      }
+      listStats.set(parent, stats);
+    }
+    return stats;
+  };
+  /** How many of an element's siblings, itself included, share its markup. */
+  const alike = (el) => (el.parentElement ? statsOf(el.parentElement).count.get(shapeOf(el)) || 0 : 0);
+  const nested = new WeakMap();
+  /** Is this list a submenu inside another item, rather than the menu's top bar? */
+  const isSubmenu = (list) => {
+    let yes = nested.get(list);
+    if (yes === undefined) {
+      yes = !!(list.parentElement && list.parentElement.closest('li, [role="menuitem"]'));
+      nested.set(list, yes);
+    }
+    return yes;
+  };
+  /**
+   * Is `s` set apart as the heading of the items after it, as Burberry sets
+   * its column headings? It is rarer than they are, each of them is one link,
+   * it never comes twice in a row (a list of links and buttons mixed, as in
+   * Kith's drawer, is not headings and items), the list is a submenu inside
+   * another item, not the menu's top bar, and a heading that comes once comes
+   * first: a highlighted "Sale" halfway along the bar heads nothing.
+   */
+  const setApart = (s, child) => {
+    if (linkCount(child) !== 1 || linkCount(s) > 1) return false;
+    const list = s.parentElement;
+    if (!list || !isSubmenu(list)) return false;
+    if (alike(child) < 2 || alike(s) >= alike(child)) return false;
+    if (statsOf(list).twice.has(shapeOf(s))) return false;
+    return alike(s) > 1 || list.firstElementChild === s;
+  };
+  /**
+   * What an element is, read once: a menu reads each of its items as the
+   * sibling before dozens of others, and asking the markup again for each
+   * made a flat menu of thousands slow.
+   */
+  const traitsOf = new WeakMap();
+  const traits = (el) => {
+    let t = traitsOf.get(el);
+    if (!t) {
+      const inside = !!el.querySelector(HEADING_INSIDE);
+      t = {
+        current: isCurrent(el),
+        // An item that is a button opens a list of its own somewhere else
+        // (Kith's drawer: "Footwear ›"); it heads nothing after it.
+        button: !!el.querySelector(OPENER) && !inside,
+        // Says it is a heading: the tag, a bold title inside, a heading's class, or words without a link.
+        heading: el.matches(HEADING) || inside || HEADISH.test(`${classOf(el)} ${el.id || ""}`) || linkCount(el) === 0,
+        divider: isDivider(el),
+      };
+      traitsOf.set(el, t);
+    }
+    return t;
+  };
+  /** Does `s`, before `child` in one list, head it rather than being one more item? */
+  const heads = (s, child) => {
+    // Nothing heads its own kind: tabs in a row, headings in a row. Nor does
+    // the item for the page the admin is on, however bold.
+    const t = traits(s);
+    if (shapeOf(s) === shapeOf(child) || t.current || t.button) return false;
+    return t.heading || setApart(s, child);
+  };
+
+  /**
+   * Controls that open a part of the menu, and what they name it by. A panel
+   * can be anywhere in the markup: Kith keeps "Footwear ›" in one list and
+   * its links in another, the two sharing only `data-id`. So every value of
+   * an opener's `aria-controls`, `href="#…"` and `data-*` is noted, and a
+   * part of the menu whose `id` or `data-*` carries one of them is that
+   * opener's. A value two openers share names neither.
+   */
+  const OPENER = 'button, [role="button"], [role="tab"], [aria-expanded], [aria-haspopup], summary, a[href^="#"]';
+  let openers = null;
+  const tokensOf = (el) => {
+    const out = [];
+    for (const attr of el.attributes) {
+      const name = attr.name;
+      if (name !== "id" && name !== "aria-controls" && name !== "href" && !name.startsWith("data-")) continue;
+      for (let v of attr.value.split(/\s+/)) {
+        v = v.replace(/^#/, "");
+        if (name === "href" && !attr.value.startsWith("#")) continue;
+        // Values worth matching: not a number, not a flag, long enough to mean one thing.
+        if (v.length < 3 || /^\d+$/.test(v) || /^(?:true|false|null|none|open|closed|hidden)$/i.test(v)) continue;
+        // A `data-*` value must look like a name for one thing (`mens-footwear`),
+        // not a behaviour every toggle shares (`dropdown`, `collapse`).
+        if (name.startsWith("data-") && !/[-_:.\d]/.test(v)) continue;
+        out.push(v);
+      }
+    }
+    return out;
+  };
+  const openerOf = (el) => {
+    if (!openers) {
+      openers = new Map();
+      for (const o of document.querySelectorAll(OPENER)) {
+        for (const v of tokensOf(o)) openers.set(v, openers.has(v) && openers.get(v) !== o ? null : o);
+      }
+    }
+    for (const v of tokensOf(el)) {
+      const o = openers.get(v);
+      if (o && o !== el && !o.contains(el) && !el.contains(o)) return o;
+    }
+    return null;
+  };
+  /**
+   * Tabs in one list and their panels in another, in the same order and
+   * nothing else joining them: the third panel is the third tab's. Only when
+   * the box holds panels and nothing else, as many as the list has tabs, and
+   * they look like a menu's panels (tabs that are buttons, panels hidden or
+   * named so); a row of footer links over footer columns is no such thing.
+   */
+  const PANELISH = /(?:^|[\s_-])(?:mega|panel|panels|dropdown|flyout|submenu|sub-menu|subnav|tabpanel)(?:$|[\s_-]|[A-Z])/i;
+  const itemsOf = (list) => {
+    for (let l = list, d = 0; l && d < 2; l = l.children.length === 1 ? l.firstElementChild : null, d++) {
+      const kids = [...l.children];
+      if (kids.length >= 2 && kids.every((k) => shapeOf(k) === shapeOf(kids[0]))) return kids;
+    }
+    return null;
+  };
+  const isHidden = (el) => el.hidden || el.getAttribute("aria-hidden") === "true" || getComputedStyle(el).display === "none";
+  /** Each box of panels, read once: its panels and their tabs, or null. */
+  const tabsOf = new WeakMap();
+  const tabOf = (panel) => {
+    const box = panel.parentElement;
+    if (!box || box.children.length < 2 || linkCount(panel) < 1) return null;
+    if (!tabsOf.has(box)) {
+      let found = null;
+      const panels = [...box.children];
+      if (panels.every((p) => shapeOf(p) === shapeOf(panel))) {
+        for (let s = box.previousElementSibling, n = 0; s && n < 3; s = s.previousElementSibling, n++) {
+          const tabs = itemsOf(s);
+          if (!tabs || tabs.length !== panels.length || !tabs.every((t) => linkCount(t) <= 1 && headWords(t))) continue;
+          const menuish =
+            tabs.some((t) => t.matches(OPENER) || t.querySelector(OPENER)) ||
+            panels.filter(isHidden).length >= panels.length - 1 ||
+            PANELISH.test(`${classOf(panel)} ${classOf(box)}`);
+          if (menuish) found = new Map(panels.map((p, i) => [p, tabs[i]]));
+          break;
+        }
+      }
+      tabsOf.set(box, found);
+    }
+    const found = tabsOf.get(box);
+    return (found && found.get(panel)) || null;
+  };
+  /** A line between parts of a list: `<hr>`, Bootstrap's `.dropdown-divider`, `li > hr`. */
+  const isDivider = (el) =>
+    el.matches('hr, [role="separator"]') ||
+    /(?:^|[\s_-])(?:divider|separator)(?:$|[\s_-])/i.test(classOf(el)) ||
+    (el.children.length === 1 && !el.textContent.trim() && el.firstElementChild.matches('hr, [role="separator"]'));
+  /** Is `s` a control for a panel other than `child`? */
+  const opensElsewhere = (s, child) => {
+    const own = s.matches(OPENER) ? s : s.children.length === 1 && s.firstElementChild.matches(OPENER) ? s.firstElementChild : null;
+    if (!own) return false;
+    const controls = (own.getAttribute("aria-controls") || "").split(/\s+/).filter(Boolean);
+    if (controls.length) return !controls.some((id) => id === child.id || (child.querySelector && child.querySelector(`[id="${id.replace(/"/g, "")}"]`)));
+    // Kith: the panel is found by a value they share, and it is not this one.
+    openerOf(child);
+    const shared = tokensOf(own).filter((v) => v !== own.id && openers.get(v) === own);
+    return shared.length > 0 && !tokensOf(child).some((v) => shared.includes(v));
+  };
+  const named = (ids) =>
+    ids
+      .split(/\s+/)
+      .map((id) => (id ? document.getElementById(id) : null))
+      .filter(Boolean)
+      .map((x) => words(x, MAX_GROUP + 1))
+      .join(" ")
+      .trim();
+
+  /**
+   * The name of the group `child` opens within its parent, or "". A link is
+   * named by its own words, so of a link only the heading before it counts.
+   */
+  const groupNames = new WeakMap();
+  const groupOf = (child) => {
+    if (groupNames.has(child)) return groupNames.get(child);
+    let found = "";
+    /** The control that opens this part of the menu from elsewhere: the trail goes on above it. */
+    let from = null;
+    const isLink = child.matches("a[href]");
+    const labelledBy = !isLink && child.getAttribute("aria-labelledby");
+    if (labelledBy) {
+      found = groupName(named(labelledBy));
+      const label = found ? document.getElementById(labelledBy.split(/\s+/)[0]) : null;
+      if (label && !child.contains(label)) from = label;
+    }
+    if (!found && child.tagName === "DETAILS") {
+      const summary = child.querySelector(":scope > summary");
+      if (summary) found = headWords(summary);
+    }
+    if (!found && !isLink) {
+      const opener = openerOf(child) || tabOf(child);
+      if (opener) {
+        found = headWords(opener);
+        if (found) from = opener;
+      }
+    }
+    if (!found) {
+      // A control that opens a panel is an item of its list: only a heading,
+      // not the link beside it, heads it ("New In" before the "Women" tab).
+      // (A panel that says `aria-expanded` itself, as jQuery UI's do, is a panel.)
+      const opener =
+        child.matches(OPENER) &&
+        !child.matches('ul, ol, [role="menu"], [role="menubar"], [role="list"], [role="group"]') &&
+        linkCount(child) <= 1 &&
+        !child.querySelector("ul, ol");
+      let n = 0;
+      for (let s = child.previousElementSibling; s && n < 60; s = s.previousElementSibling, n++) {
+        // One more item of the same kind: never its heading, and cheap to pass.
+        if (shapeOf(s) === shapeOf(child)) continue;
+        // A divider ends the part of the list a heading heads.
+        if (traits(s).divider) break;
+        // A tab or a toggle that opens a panel of its own heads that panel only.
+        if (opensElsewhere(s, child)) continue;
+        const t = headWords(s);
+        if (!t) {
+          // A column of links before this one: the column has no heading of its own.
+          if (linkCount(s) > 1) break;
+          continue;
+        }
+        if (opener && !s.matches(TRUE_HEADING) && !s.querySelector(HEADING_INSIDE) && !HEADISH.test(`${classOf(s)} ${s.id || ""}`)) continue;
+        // One more item of the same list, not its heading.
+        if (s.tagName === child.tagName && !heads(s, child)) continue;
+        found = t;
+        break;
+      }
+    }
+    const group = { name: found, from };
+    groupNames.set(child, group);
+    return group;
+  };
+  /** The menu's edge above a link: its landmark, else its outermost menu-ish container. */
+  const edgeOf = (a) => {
+    const landmark = a.closest(EDGE);
+    if (landmark) return landmark;
+    let top = null;
+    for (let el = a.parentElement; el && el !== document.body; el = el.parentElement) {
+      if (NAVISH.test(`${classOf(el)} ${el.id || ""}`)) top = el;
+    }
+    return top;
+  };
+  /** The groups a link sits in, outermost first. */
+  const trailOf = (a) => {
+    let edge = edgeOf(a);
+    if (!edge) return [];
+    const trail = [];
+    const been = new Set();
+    for (let child = a; child && !been.has(child) && trail.length < MAX_DEPTH; ) {
+      been.add(child);
+      const { name, from } = groupOf(child);
+      if (name && (!trail.length || trail[0].toLowerCase() !== name.toLowerCase())) trail.unshift(name);
+      if (from) {
+        // Opened from elsewhere: what holds the opener holds this too.
+        child = from;
+        edge = edgeOf(from) || edge;
+        continue;
+      }
+      const el = child.parentElement;
+      if (!el || el === edge || el === document.body) break;
+      child = el;
+    }
+    return trail;
+  };
+
   const out = [];
   const roots = [document];
   for (let i = 0; i < roots.length && i < 2000 && out.length < 5000; i++) {
@@ -64,11 +508,8 @@ export function menuStep() {
       } catch {
         continue;
       }
-      const label = (a.getAttribute("aria-label") || a.textContent || a.getAttribute("title") || "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 80);
-      out.push({ url, label, where: where(a) });
+      const place = where(a);
+      out.push({ url, label: labelOf(a), where: place, trail: place === "page" ? [] : trailOf(a) });
       if (out.length >= 5000) break;
     }
     for (const el of roots[i].querySelectorAll("*")) if (el.shadowRoot) roots.push(el.shadowRoot);
@@ -224,16 +665,39 @@ export function categoryCandidates(links, startUrl, max = MAX_CATEGORIES) {
 
   const pick = (pool) => {
     const out = [];
-    const keys = new Set([startKey]);
+    const byKey = new Map([[startKey, null]]);
+    // The menu's outermost folders: a link named like one is that tab's own page.
+    const tabs = [...new Set(pool.map((l) => cleanTrail(l && l.trail)[0]).filter(Boolean))];
     for (const link of pool) {
       if (!link || typeof link.url !== "string") continue;
       const url = categoryAddress(link.url, startUrl);
       if (!url) continue;
       const key = keyOf(url);
-      if (keys.has(key)) continue;
-      keys.add(key);
-      out.push({ url, label: cleanLabel(link.label) || labelFromPath(url), where: link.where || "page" });
-      if (out.length >= max) break;
+      const trail = cleanTrail(link.trail);
+      if (byKey.has(key)) {
+        // The same link listed again in the same part of the page (Kith: once
+        // in the header, alone, then in the drawer under "Mens"): it keeps its
+        // place and takes the first groups it has. Not a different link to the
+        // same page ("New coats" in Sale's panel, to Coats), not a copy in the
+        // footer or a brand list, and never a tab's own page: "Children" stays
+        // with the Children folder, wherever else the footer lists it.
+        const seen = byKey.get(key);
+        if (
+          seen &&
+          !seen.trail.length &&
+          trail.length &&
+          seen.where === (link.where || "page") &&
+          sameName(seen.label, cleanLabel(link.label) || labelFromPath(url)) &&
+          !tabs.some((t) => sameName(t, seen.label))
+        ) {
+          seen.trail = trail;
+        }
+        continue;
+      }
+      if (out.length >= max) continue;
+      const category = { url, label: cleanLabel(link.label) || labelFromPath(url), where: link.where || "page", trail };
+      byKey.set(key, category);
+      out.push(category);
     }
     return out;
   };
@@ -254,6 +718,241 @@ function keyOf(url) {
 
 function cleanLabel(label) {
   return typeof label === "string" ? label.replace(/\s+/g, " ").trim().slice(0, 60) : "";
+}
+
+/** The groups `menuStep` read around a link, as names: at most five, none empty. */
+function cleanTrail(trail) {
+  return (Array.isArray(trail) ? trail : []).map(cleanLabel).filter(Boolean).slice(0, 5);
+}
+
+// ── The menu as a tree ───────────────────────────────────────────────────────
+//
+// The popup lists the categories as folders, the way the store's menu holds
+// them: Men › Clothes › Coats. A folder is ticked or unticked as a whole, so
+// "Children" goes with one tick, not forty.
+
+/** A folder this big, all of one level, is split by the store's addresses. */
+const SPLIT_AT = 12;
+/** Folders made from addresses, at most this deep under where they start. */
+const SPLIT_DEPTH = 2;
+
+/** Names compared as a person compares them: case, accents of punctuation and spaces aside. */
+function sameName(a, b) {
+  const norm = (s) => String(s || "").toLowerCase().replace(/[’']/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return norm(a) === norm(b);
+}
+
+/**
+ * A category's address as folders: the path after the language part, each
+ * segment without the store's number on it (`bekleidung-20204` is
+ * `bekleidung`), the last one apart.
+ */
+function pathParts(url) {
+  try {
+    const u = new URL(url);
+    const prefix = localePrefix(u.pathname).split("/").filter(Boolean).length;
+    const segs = u.pathname
+      .split("/")
+      .filter(Boolean)
+      .slice(prefix)
+      .map((s) => {
+        let d = s;
+        try {
+          d = decodeURIComponent(s);
+        } catch {
+          /* a malformed escape stays as written */
+        }
+        return d.toLowerCase().replace(/\.[a-z]+$/, "").replace(/[-_]\d{3,}$/, "");
+      });
+    // A category named by its query (`/c/shoes?brand=nike`): the whole path is its folder.
+    if (u.search) return { dirs: segs, last: u.search };
+    return { dirs: segs.slice(0, -1), last: segs[segs.length - 1] || "" };
+  } catch {
+    return { dirs: [], last: "" };
+  }
+}
+
+/** A name that says "everything here", which names no folder. */
+const GENERIC =
+  /^(?:(?:view|shop|see|show|explore|discover|browse)\s+(?:all|everything)\b.*|all|everything|entdecke alles|alles(?: ansehen| anzeigen)?|tout voir|voir tout|ver todo|vedi tutto|bekijk alles|zobacz wszystko|смотреть все|все|усі|переглянути все)$/i;
+
+/** "mens-clothing" → "Mens clothing": a folder named from an address. */
+function folderName(segment) {
+  const t = String(segment || "").replace(/[-_+]+/g, " ").replace(/\s+/g, " ").trim();
+  return t ? (t[0].toUpperCase() + t.slice(1)).slice(0, 60) : "";
+}
+
+/**
+ * Split one folder's categories by their addresses: About You keeps ninety
+ * of them under one heading, "Shop by category", while its addresses say
+ * `/c/frauen/bekleidung/…`, `/c/frauen/schuhe/…`. Returns the extra folder
+ * names for each category, or null when the addresses do not split them.
+ */
+function splitByPath(items, depth) {
+  if (depth >= SPLIT_DEPTH || items.length < 4) return null;
+  // Small folders are left as the menu has them, unless two of their
+  // categories go by one name (About You's "Highlights": "Neu" three times).
+  const twins = items.some((c, i) => items.findIndex((d) => sameName(d.label, c.label)) !== i);
+  if (items.length < SPLIT_AT && !twins) return null;
+  const parts = items.map((c) => pathParts(c.url));
+  // The folders they all share say nothing: `/c/frauen/…`.
+  let common = parts[0].dirs.length;
+  for (const p of parts) {
+    let i = 0;
+    while (i < common && i < p.dirs.length && p.dirs[i] === parts[0].dirs[i]) i++;
+    common = i;
+  }
+  // A store's shorthand (`/c/`, `/l/`, `/s/`) names no folder.
+  const keyOf = (p) => (p.dirs.length > common && /^(?=.*\p{L}).{3,}$/u.test(p.dirs[common]) ? p.dirs[common] : "");
+  const sizes = new Map();
+  for (const p of parts) {
+    const k = keyOf(p);
+    if (k) sizes.set(k, (sizes.get(k) || 0) + 1);
+  }
+  const kept = [...sizes].filter(([, n]) => n >= 2).map(([k]) => k);
+  if (kept.length < 2) return null;
+  const names = new Map();
+  for (const k of kept) {
+    // Named as the store names it, when the folder's own page is in the menu
+    // and its name is its own: not "View all" or "Entdecke alles", and not a
+    // name another of these categories also goes by.
+    const own = items.find((c, i) => !keyOf(parts[i]) && parts[i].dirs.length === common && parts[i].last === k);
+    const mine = own && !GENERIC.test(own.label) && !items.some((c) => c !== own && sameName(c.label, own.label));
+    names.set(k, mine ? own.label : folderName(k));
+  }
+  // Two parts named alike would be one folder: they go by their addresses.
+  for (const k of kept) {
+    if (kept.some((o) => o !== k && sameName(names.get(o), names.get(k)))) names.set(k, folderName(k));
+  }
+  return parts.map((p) => {
+    const k = keyOf(p);
+    if (names.has(k)) return { name: names.get(k), key: k };
+    // A folder's own page goes in with it.
+    if (!k && p.dirs.length === common && names.has(p.last)) return { name: names.get(p.last), key: p.last, own: true };
+    return null;
+  });
+}
+
+/**
+ * The categories with the folders each sits in, `group`, outermost first:
+ * the groups `menuStep` read off the menu, tidied.
+ *
+ * - The footer's links are a folder of their own, "Footer".
+ * - A category named like a folder beside it is that folder's own page and
+ *   goes in it: the link "Men" in the folder "Men".
+ * - A big folder whose categories' addresses fall into parts is split by them,
+ *   and so are the categories no group was found for.
+ * - A folder holding only one folder is one folder: "Black Friday › Open Black
+ *   Friday" is "Black Friday". The whole menu in one folder is no folder.
+ *
+ * Order is the menu's. Nothing is dropped; a category without folders stands
+ * at the top.
+ */
+export function menuGroups(categories) {
+  const list = (Array.isArray(categories) ? categories : []).filter((c) => c && typeof c.url === "string");
+  let groups = list.map((c) => {
+    const trail = cleanTrail(c.trail);
+    return c.where === "footer" && !sameName(trail[0], "Footer") ? ["Footer", ...trail] : trail;
+  });
+  const keyOf = (g) => g.map((n) => n.toLowerCase()).join("\u0000");
+
+  // A folder's own page, named like it, goes in it. Folders by where they
+  // hang, with their names as the menu spells them.
+  const subfolders = new Map();
+  for (const g of groups) {
+    for (let i = 0; i < g.length; i++) {
+      const at = keyOf(g.slice(0, i));
+      if (!subfolders.has(at)) subfolders.set(at, []);
+      if (!subfolders.get(at).some((n) => n.toLowerCase() === g[i].toLowerCase())) subfolders.get(at).push(g[i]);
+    }
+  }
+  groups = groups.map((g, i) => {
+    const own = (subfolders.get(keyOf(g)) || []).find((n) => sameName(n, list[i].label));
+    return own ? [...g, own] : g;
+  });
+
+  // Big flat folders, split by the addresses.
+  const split = (indexes, depth) => {
+    const extra = splitByPath(
+      indexes.map((i) => list[i]),
+      depth,
+    );
+    if (!extra) return;
+    const byKey = new Map();
+    indexes.forEach((i, j) => {
+      if (!extra[j]) return;
+      groups[i] = [...groups[i], extra[j].name];
+      // A folder's own page is in it, not one of its parts.
+      if (extra[j].own) return;
+      if (!byKey.has(extra[j].key)) byKey.set(extra[j].key, []);
+      byKey.get(extra[j].key).push(i);
+    });
+    for (const sub of byKey.values()) split(sub, depth + 1);
+  };
+  const byGroup = new Map();
+  groups.forEach((g, i) => {
+    const k = keyOf(g);
+    if (!byGroup.has(k)) byGroup.set(k, []);
+    byGroup.get(k).push(i);
+  });
+  for (const indexes of byGroup.values()) split(indexes, 0);
+
+  // A folder holding only one folder and nothing else is one folder.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const leaves = new Map();
+    const kids = new Map();
+    for (const g of groups) {
+      leaves.set(keyOf(g), (leaves.get(keyOf(g)) || 0) + 1);
+      for (let i = 1; i <= g.length; i++) {
+        const parent = keyOf(g.slice(0, i - 1));
+        if (!kids.has(parent)) kids.set(parent, new Set());
+        kids.get(parent).add(keyOf(g.slice(0, i)));
+      }
+    }
+    for (const [parent, set] of kids) {
+      // The footer is a folder of its own: the menu in one folder beside it is still no folder.
+      const only = parent ? set : new Set([...set].filter((k) => k !== "footer"));
+      if (only.size !== 1 || leaves.get(parent)) continue;
+      if (!parent && only.size !== set.size && [...only][0] === "footer") continue;
+      const depth = parent ? parent.split("\u0000").length : 0;
+      // The menu as a whole in one folder: no folder. Else the outer name stays.
+      const folder = [...only][0];
+      groups = groups.map((g) =>
+        g.length > depth && keyOf(g.slice(0, depth)) === parent && keyOf(g.slice(0, depth + 1)) === folder
+          ? depth
+            ? [...g.slice(0, depth), ...g.slice(depth + 1)]
+            : g.slice(1)
+          : g,
+      );
+      changed = true;
+      break;
+    }
+  }
+
+  return list.map((c, i) => ({ ...c, group: groups[i] }));
+}
+
+/**
+ * A category as the menu places it: "Men › Clothes › View All". The folders
+ * go first; a folder's own page ("Men" in the folder "Men") is said once.
+ */
+export function categoryName(category, max = 120) {
+  const group = cleanTrail(category && category.group);
+  const label = cleanLabel(category && category.label);
+  const names = label && group.length && sameName(group[group.length - 1], label) ? group : [...group, label].filter(Boolean);
+  // The site reads 120 characters of a name (`rule-choice.ts`): the middle
+  // folders give way, never the outermost or the category itself.
+  const long = () => names.join(" › ").length > max;
+  while (long() && names.length > 2) {
+    if (names[1] !== "…") names[1] = "…";
+    else if (names.length > 3) names.splice(2, 1);
+    else names.splice(1, 1);
+  }
+  // Still too long, two names: the outer one gives way, the category never.
+  if (long() && names.length === 2) names[0] = `${names[0].slice(0, Math.max(1, max - names[1].length - 4))}…`;
+  return names.join(" › ").slice(0, max);
 }
 
 /** "Men · Jackets" out of `/men/jackets`, for a link that says nothing itself. */

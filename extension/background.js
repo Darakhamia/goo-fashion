@@ -42,6 +42,8 @@ import { listingStep, robotsRules, robotsAllows, planHtml, planPieces } from "./
 import {
   menuStep,
   categoryCandidates,
+  menuGroups,
+  categoryName,
   sitemapChildren,
   isSitemapIndex,
   localePrefix,
@@ -1671,7 +1673,9 @@ async function chooseCategories(found, rule, startUrl, robotsTxt, linksOnly) {
     limit: 1,
     linksOnly,
     categoryRule: rule,
-    categories: found.map((c) => ({ url: c.url, label: c.label })),
+    // Named with the menu's folders around them: a dozen "View All"s are
+    // a dozen different shelves, "Men › Clothes › View All" is one.
+    categories: found.map((c) => ({ url: c.url, label: categoryName(c) })),
   });
   const choice = asked.ok ? asked.data?.categoryChoice : null;
   if (!choice || !Array.isArray(choice.keep)) {
@@ -1694,7 +1698,7 @@ async function chooseCategories(found, rule, startUrl, robotsTxt, linksOnly) {
   const broad = new Set((Array.isArray(choice.mixed) ? choice.mixed : []).filter((n) => Number.isInteger(n)));
   const keep = found.filter((_, i) => kept.has(i));
   const drop = found.filter((_, i) => !kept.has(i));
-  const names = drop.slice(0, 6).map((c) => c.label).join(", ");
+  const names = drop.slice(0, 6).map((c) => categoryName(c)).join(", ");
   return {
     keep,
     drop,
@@ -1886,7 +1890,11 @@ async function runSite({ tabId, storeUrl, linksOnly = false, resume = false, rul
     // The page the admin started on comes first: it is a category too, or
     // the home page with its own pieces. The menu's categories go only where
     // robots.txt lets the run go, and, with a rule, where AI says it fits.
-    const found = categoryCandidates(menu && menu.links, startUrl).filter((c) => robotsAllows(rules, c.url));
+    // Each with the folders the menu keeps it in (`group`), for the popup's
+    // tree and for AI; the raw trail they came from is not kept.
+    const found = menuGroups(categoryCandidates(menu && menu.links, startUrl).filter((c) => robotsAllows(rules, c.url))).map(
+      (c) => ({ url: c.url, label: c.label, where: c.where, group: c.group }),
+    );
     const chosen = rule && found.length ? await chooseCategories(found, rule, startUrl, robotsTxt, linksOnly) : null;
     if (state.stopped) return finish();
     const categories = [{ url: startUrl, label: "This page", where: "start" }, ...(chosen ? chosen.keep : found)];
@@ -2059,7 +2067,7 @@ async function runSite({ tabId, storeUrl, linksOnly = false, resume = false, rul
       stage: "categories",
       categories: run.categories.length,
       index: run.index,
-      label: cat.label,
+      label: categoryName(cat),
       url: cat.url,
     });
     state.phase = "listing";
@@ -2089,11 +2097,11 @@ async function runSite({ tabId, storeUrl, linksOnly = false, resume = false, rul
           halt(`The store refused two pages in a row (HTTP ${status}). The run stopped so your address does not end up blocked. Try again later.`);
           return;
         }
-        state.message = `The store refused ${cat.label} (HTTP ${status}); going on to the next category.`;
+        state.message = `The store refused ${categoryName(cat)} (HTTP ${status}); going on to the next category.`;
         continue;
       }
       if (!loaded) {
-        state.message = `${cat.label} did not load; going on to the next category.`;
+        state.message = `${categoryName(cat)} did not load; going on to the next category.`;
         continue;
       }
       ctx.refusals = 0;
@@ -2117,7 +2125,7 @@ async function runSite({ tabId, storeUrl, linksOnly = false, resume = false, rul
     // Out of sight until a walk finds the tab in front again.
     unseen = !!walk.unseen || (unseen && !walk.seenTab);
     if (walk.error) {
-      state.message = `${cat.label}: ${walk.error} Going on to the next category.`;
+      state.message = `${categoryName(cat)}: ${walk.error} Going on to the next category.`;
     } else if (walk.product) {
       // A menu link to one piece: the walk recognised a product page.
       if (!(await collectNew([pagePath(target)]))) {
