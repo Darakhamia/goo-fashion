@@ -38,7 +38,7 @@
  */
 
 import { sitemapPieces, takePieces, queuedBytes, PLAN_SITEMAP_BUDGET, PLAN_SITEMAP_DOCS } from "./sitemap-pieces.js";
-import { listingStep, robotsRules, robotsAllows, planHtml, planPieces } from "./listing.js";
+import { listingStep, robotsRules, robotsAllows, planHtml, planPieces, sameListing } from "./listing.js";
 import {
   menuStep,
   categoryCandidates,
@@ -1184,6 +1184,11 @@ function navigate(tabId, url) {
  * need no scrolling; it waits `site.hiddenMs` only where the page has to be
  * scrolled to show more.
  */
+/** Longest one step of a walk takes (a screen, a wait at the end, a click), and then some. */
+const STEP_TIMEOUT_MS = 20_000;
+
+const LEFT_LISTING = "The store's page sent the tab to another listing; collecting what this one had shown by then.";
+
 async function walkListing(tabId, startUrl, limit, rules, robotsTxt, linksOnly, site = null) {
   const links = [];
   const known = new Set();
@@ -1234,6 +1239,15 @@ async function walkListing(tabId, startUrl, limit, rules, robotsTxt, linksOnly, 
   let partial = false;
   /** The walk ended because the tab stayed out of sight; and whether it was ever in sight. */
   let unseen = false;
+  /** A click took the tab off this listing. */
+  let left = false;
+  /**
+   * The listing's pages: those of the address asked for, and of the one the
+   * tab was on when the walk first read it (a category may redirect to its
+   * own address first).
+   */
+  let home = null;
+  const onListing = (url) => sameListing(startUrl, url) || (!!home && sameListing(home, url));
   let seenTab = false;
 
   // A run that asked for a number of pieces takes them from the page as the
@@ -1272,13 +1286,20 @@ async function walkListing(tabId, startUrl, limit, rules, robotsTxt, linksOnly, 
 
     let res = null;
     try {
-      const [out] = await chrome.scripting.executeScript({
-        target: { tabId },
-        func: listingStep,
-        // The run's first look starts the page's memory afresh, and in a
-        // counting run does not scroll.
-        args: [{ first, reset: initial < 0, scroll: !(counting && initial < 0), hiddenNext: !!site }],
-      });
+      // A step whose page goes away under it (a button whose script sends the
+      // tab elsewhere) may never answer: it is given up on, and where the tab
+      // went is looked at below.
+      const [out] = await withTimeout(
+        chrome.scripting.executeScript({
+          target: { tabId },
+          func: listingStep,
+          // The run's first look starts the page's memory afresh, and in a
+          // counting run does not scroll.
+          args: [{ first, reset: initial < 0, scroll: !(counting && initial < 0), hiddenNext: !!site }],
+        }),
+        STEP_TIMEOUT_MS,
+        [],
+      );
       res = out?.result ?? null;
     } catch (err) {
       lastError = err?.message ?? "";
@@ -1291,9 +1312,19 @@ async function walkListing(tabId, startUrl, limit, rules, robotsTxt, linksOnly, 
         note = "The store tab was closed; collecting what it had shown by then.";
         break;
       }
+      const loading = tab.status === "loading";
+      if (loading) await waitForLoad(tabId);
+      // A click the page answered by going elsewhere (a "See more" to similar
+      // designers): that page is not this listing, and nothing on it is read.
+      // The tab goes back to where the admin started.
+      const there = loading ? await chrome.tabs.get(tabId).catch(() => null) : tab;
+      if (there && there.url && !onListing(there.url)) {
+        note = LEFT_LISTING;
+        left = true;
+        break;
+      }
       // A "Show more" that is a real link takes the tab to the next page.
-      if (tab.status === "loading") {
-        await waitForLoad(tabId);
+      if (loading) {
         await sleep(SETTLE_MS);
         first = true;
         continue;
@@ -1304,6 +1335,13 @@ async function walkListing(tabId, startUrl, limit, rules, robotsTxt, linksOnly, 
       }
       await sleep(500);
       continue;
+    }
+    // A step the page had already left for another listing reads nothing of it.
+    home = home || res.url;
+    if (res.url && !onListing(res.url)) {
+      note = LEFT_LISTING;
+      left = true;
+      break;
     }
     misses = 0;
     if (res.visible) seenTab = true;
@@ -1410,7 +1448,7 @@ async function walkListing(tabId, startUrl, limit, rules, robotsTxt, linksOnly, 
   if (site && !halted && !state.stopped) await flush();
   // Back where the admin started, rather than on the listing's last page. A
   // whole-store run goes on to its next category instead.
-  if (pages > 1 && !site) chrome.tabs.update(tabId, { url: startUrl }).catch(() => {});
+  if ((pages > 1 || left) && !site) chrome.tabs.update(tabId, { url: startUrl }).catch(() => {});
   return { links, names, heads, pages, partial, note, product: false, halted, unseen, seenTab, walked: [...visited].map(pagePath) };
 }
 

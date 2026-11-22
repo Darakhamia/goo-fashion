@@ -304,6 +304,36 @@ export function listingStep(opts) {
   /** "Next", "Next page", an arrow, as a pager's link or button names it. */
   const NEXT_LABEL = /^(?:next(?:\s+page)?|go to next page|›|»|→|>|далее|вперёд|вперед|следующая(?:\s+страница)?|наступна(?:\s+сторінка)?|далі|weiter|nächste(?:\s+seite)?|suivant(?:e)?(?:\s+page)?|page suivante|siguiente|página siguiente|avanti|pagina successiva)$/i;
   const PAGE_PARAMS = ["page", "p", "pg", "pagenumber", "pageindex", "page_number"];
+  /**
+   * Is this address a page of the listing the tab is on? The same path, or
+   * the same with `/page/N`, and no parameter but page, view and order with
+   * another value. "See more" under Farfetch's grid led to similar designers, a
+   * "Next" in their slider to Prada's page two: neither is this listing.
+   * (`sameListing` below says the same for the worker.)
+   */
+  const VIEW_PARAMS = ["view", "sort", "sortby", "sort_by", "order", "orderby", "order_by", "dir", "limit", "per_page", "perpage", "show", "rows"];
+  const listingOf = (u) => {
+    const params = {};
+    for (const [k, v] of u.searchParams) {
+      const key = k.toLowerCase();
+      if (PAGE_PARAMS.includes(key) || VIEW_PARAMS.includes(key) || key.startsWith("utm_")) continue;
+      (params[key] = params[key] || []).push(v);
+    }
+    for (const key in params) params[key] = params[key].sort().join("\n");
+    const path = u.pathname.replace(/\/page\/\d+\/?$/i, "").replace(/\/+$/, "") || "/";
+    return { at: `${u.hostname.replace(/^www\./, "")}${path}`, params };
+  };
+  const ofThisListing = (url) => {
+    try {
+      const a = listingOf(new URL(url, document.baseURI));
+      const b = listingOf(new URL(location.href));
+      // A parameter only one side has (a tracking tag the tab arrived with)
+      // is no difference; the same one with another value is.
+      return a.at === b.at && Object.keys(a.params).every((k) => !(k in b.params) || b.params[k] === a.params[k]);
+    } catch {
+      return false;
+    }
+  };
 
   const labelOf = (el) =>
     (el.getAttribute("aria-label") || el.innerText || el.value || el.getAttribute("title") || "")
@@ -332,6 +362,9 @@ export function listingStep(opts) {
       if (el.closest('header, nav, footer, aside, dialog, [role="dialog"], [aria-modal="true"], [role="navigation"]')) continue;
       if (docTop(el) < middle) continue;
       if (isSuggested(el)) continue;
+      // A "Show more" that is a link to another listing is that listing's door.
+      const href = el.matches("a[href]") ? (el.getAttribute("href") || "").trim() : "";
+      if (href && !href.startsWith("#") && !/^javascript:/i.test(href) && !ofThisListing(href)) continue;
       if (pager && !pager.contains(el) && pager.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) continue;
       if (!pick || docTop(el) > docTop(pick)) pick = el;
     }
@@ -385,7 +418,7 @@ export function listingStep(opts) {
 
     for (const el of document.querySelectorAll('link[rel~="next"][href], a[rel~="next"][href]')) {
       const url = fresh(el.getAttribute("href"));
-      if (url) return url;
+      if (url && ofThisListing(url)) return url;
     }
 
     // `?page=3` → `?page=4`, or `/page/3` → `/page/4`.
@@ -411,9 +444,7 @@ export function listingStep(opts) {
     for (const a of document.querySelectorAll("a[href]")) {
       if (!NEXT_LABEL.test(labelOf(a)) || a.closest(CAROUSEL)) continue;
       const url = fresh(a.getAttribute("href"));
-      if (!url) continue;
-      const u = new URL(url);
-      if (u.pathname === here.pathname || pageOf(u)) return url;
+      if (url && ofThisListing(url)) return url;
     }
     return "";
   };
@@ -489,6 +520,42 @@ export function listingStep(opts) {
     result.exhausted = true;
     return result;
   })();
+}
+
+// ── Where the walk may go ─────────────────────────────────────────────────────
+
+const PAGE_KEYS = ["page", "p", "pg", "pagenumber", "pageindex", "page_number"];
+const VIEW_KEYS = ["view", "sort", "sortby", "sort_by", "order", "orderby", "order_by", "dir", "limit", "per_page", "perpage", "show", "rows"];
+
+/**
+ * Is `url` a page of the listing at `startUrl`: the same store and path (or
+ * the path with `/page/N`), and no parameter but page, view and order that
+ * both carry with different values (one only the tab arrived with, a tracking
+ * tag, is no difference)? A
+ * click that takes the walk anywhere else (Farfetch's "See more" under the
+ * grid, to similar designers) ends it: that page is not this listing. The
+ * walk's own reading of the page applies the same rule (`listingStep`).
+ */
+export function sameListing(startUrl, url) {
+  const listingOf = (href) => {
+    const u = new URL(href);
+    const params = {};
+    for (const [k, v] of u.searchParams) {
+      const key = k.toLowerCase();
+      if (PAGE_KEYS.includes(key) || VIEW_KEYS.includes(key) || key.startsWith("utm_")) continue;
+      (params[key] = params[key] || []).push(v);
+    }
+    for (const key in params) params[key] = params[key].sort().join("\n");
+    const path = u.pathname.replace(/\/page\/\d+\/?$/i, "").replace(/\/+$/, "") || "/";
+    return { at: `${u.hostname.replace(/^www\./, "")}${path}`, params };
+  };
+  try {
+    const a = listingOf(startUrl);
+    const b = listingOf(url);
+    return a.at === b.at && Object.keys(a.params).every((k) => !(k in b.params) || b.params[k] === a.params[k]);
+  } catch {
+    return false;
+  }
 }
 
 // ── robots.txt ────────────────────────────────────────────────────────────────
