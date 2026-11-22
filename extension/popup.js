@@ -363,6 +363,11 @@ function unfinished() {
 
 const PICK_HINT =
   "Inside them AI checks every piece by its name before opening it, and the store's sitemaps go through the same check at the end.";
+/** Under the list of a run without a rule: everything is ticked. */
+const PICK_HINT_ALL =
+  "Every category is ticked: untick what you don't want. Then the store's sitemaps, for pieces no category showed.";
+/** Without a rule, the sitemaps would bring back what was unticked. */
+const NO_SITEMAPS = "The store's sitemaps are left out: they list every category, unticked ones too.";
 
 /** A whole-store run of this store waiting for its categories to be confirmed. */
 function picking(running) {
@@ -607,23 +612,34 @@ function renderPick() {
   const items = run.pick;
   const byAi = items.filter((p) => p.ai).length;
   const ticked = items.filter((p) => p.keep).length;
-  const failed = !run.rule;
-  el.pickFound.textContent = failed
-    ? `All ${num(items.length)} of the menu's categories`
-    : `AI picked ${num(byAi)} of the menu's ${num(items.length)} categories`;
+  // No rule asked: every category, for the admin to untick. A rule AI could
+  // not apply: the same list, and the note says why.
+  const asked = !!run.askedRule;
+  const failed = asked && !run.rule;
+  el.pickFound.textContent = !asked
+    ? `The menu's ${num(items.length)} ${items.length === 1 ? "category" : "categories"}`
+    : failed
+      ? `All ${num(items.length)} of the menu's categories`
+      : `AI picked ${num(byAi)} of the menu's ${num(items.length)} categories`;
   el.pickRule.textContent = run.askedRule ? `Rule: «${run.askedRule}»` : "";
   el.pickTicked.textContent = `${num(ticked)} of ${num(items.length)} ticked`;
   el.pickGo.textContent = `Collect ${num(ticked)} ${ticked === 1 ? "category" : "categories"}`;
   el.pickGo.disabled = !ticked;
 
   const changed = items.filter((p) => !!p.keep !== !!p.ai);
-  el.pickHint.textContent = !changed.length
-    ? PICK_HINT
-    : changed.length === 1
-      ? `You ${changed[0].keep ? "ticked" : "unticked"} ${fullName(changed[0])} yourself: ${num(ticked)} ${
-          ticked === 1 ? "category" : "categories"
-        } now.`
-      : `You changed ${changed.length} of AI's choices: ${num(ticked)} ${ticked === 1 ? "category" : "categories"} now.`;
+  const now = `${num(ticked)} ${ticked === 1 ? "category" : "categories"} now.`;
+  if (!asked) {
+    el.pickHint.textContent =
+      ticked === items.length
+        ? PICK_HINT_ALL
+        : `${ticked ? `${num(items.length - ticked)} unticked: ${now}` : "Nothing ticked."} ${NO_SITEMAPS}`;
+  } else {
+    el.pickHint.textContent = !changed.length
+      ? PICK_HINT
+      : changed.length === 1
+        ? `You ${changed[0].keep ? "ticked" : "unticked"} ${fullName(changed[0])} yourself: ${now}`
+        : `You changed ${changed.length} of AI's choices: ${now}`;
+  }
 
   drawTree(items);
   syncTree(items);
@@ -687,7 +703,12 @@ function siteWarning(site) {
 function siteWhere(site) {
   if (site.stage === "menu") return "Whole store: reading the store's menu…";
   if (site.stage === "categories") {
-    return `Category ${site.index + 1} of ${site.categories}${site.skipped ? ` (AI left out ${site.skipped})` : ""}: ${site.label}`;
+    const left = site.skipped
+      ? ` (${site.ai && !site.aiFailed ? "AI " : ""}left out ${site.skipped})`
+      : site.menuEmpty
+        ? " (the store's menu offered no categories)"
+        : "";
+    return `Category ${site.index + 1} of ${site.categories}${left}: ${site.label}`;
   }
   if (site.stage === "sitemaps") {
     return `Sitemaps, for pieces no category showed: ${num(site.sitemapsRead)} read${
@@ -697,6 +718,7 @@ function siteWhere(site) {
   if (site.ai && !site.aiFailed) {
     return `Whole store: the ${num(site.categories)} categories AI chose${site.skipped ? ` (${num(site.skipped)} left out)` : ""}`;
   }
+  if (site.skipped) return `Whole store: the ${num(site.categories)} categories ticked (${num(site.skipped)} left out)`;
   return `Whole store: all ${num(site.categories)} categories and ${num(site.sitemapsRead)} sitemaps`;
 }
 

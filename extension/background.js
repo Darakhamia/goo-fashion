@@ -395,7 +395,7 @@ function siteLine() {
   const sofar = `${state.done} piece${state.done === 1 ? "" : "s"} so far`;
   if (s.stage === "menu") return "Whole store: reading the store's menu…";
   if (s.stage === "categories") {
-    const left = s.skipped ? ` (AI left out ${s.skipped})` : "";
+    const left = s.skipped ? ` (${s.ai && !s.aiFailed ? "AI " : ""}left out ${s.skipped})` : s.menuEmpty ? " (the store's menu offered no categories)" : "";
     return `Whole store: category ${s.index + 1} of ${s.categories}${left}, ${s.label}. ${sofar}.`;
   }
   if (s.stage === "sitemaps") {
@@ -1885,6 +1885,7 @@ async function runSite({ tabId, storeUrl, linksOnly = false, resume = false, rul
     // Pieces AI left out by the rule, and why it is not choosing them now.
     aiSkipped: run ? run.aiSkipped || 0 : 0,
     aiWarn: run ? run.aiWarn || "" : "",
+    menuEmpty: !!(run && run.menuEmpty),
   };
   if (run) {
     state.done = run.done || 0;
@@ -1967,18 +1968,22 @@ async function runSite({ tabId, storeUrl, linksOnly = false, resume = false, rul
       done: 0,
       counts: { ...state.counts },
       status: "running",
+      // The menu gave no category: the run is this page and the sitemaps.
+      menuEmpty: !found.length,
     };
     Object.assign(state.site, {
       skipped: run.skipped.length,
       ai: run.aiNote,
       aiFailed: !!(chosen && chosen.failed),
       aiWarn: run.aiWarn,
+      menuEmpty: run.menuEmpty,
     });
-    // With a rule the admin sees AI's choice before a page is walked, and
-    // changes it if need be (plan 001, decision 4b).
-    if (chosen) {
-      const keep = new Set(chosen.keep);
-      const broad = new Set(chosen.mixed);
+    // The admin sees the menu's categories before a page is walked, ticked
+    // as AI chose them (plan 001, decision 4b) or, with "What to collect"
+    // left empty, all of them, and unticks what is not wanted.
+    if (found.length) {
+      const keep = new Set(chosen ? chosen.keep : found);
+      const broad = new Set(chosen ? chosen.mixed : []);
       run.stage = "pick";
       run.pick = found.map((c) => ({ ...c, ai: keep.has(c), mixed: broad.has(c), keep: keep.has(c) }));
       await keepSite(run, "awaiting");
@@ -2180,9 +2185,12 @@ async function runSite({ tabId, storeUrl, linksOnly = false, resume = false, rul
   if (run.stage === "categories") {
     // A sitemap lists the whole store, what the rule leaves out with it. With
     // a rule its pieces go through AI like a category's; when AI is not
-    // choosing them (the limit, an error), it is not read.
+    // choosing them (the limit, an error), it is not read. Nor is it without
+    // a rule once the admin has unticked categories: nothing could keep
+    // their pieces out of it.
     const ruled = !!(run.askedRule || run.rule);
-    run.stage = ruled && (!run.pieceRule || run.aiWarn) ? "done" : "sitemaps";
+    const narrowed = !ruled && Array.isArray(run.skipped) && run.skipped.length > 0;
+    run.stage = (ruled && (!run.pieceRule || run.aiWarn)) || narrowed ? "done" : "sitemaps";
     run.pageUrl = "";
     run.sweep = null;
     await keepSite(run);
