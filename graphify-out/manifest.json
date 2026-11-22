@@ -1334,9 +1334,9 @@
     "semantic_hash": ""
   },
   "extension/background.js": {
-    "mtime": 1795367016.5339408,
-    "seen": 1795367415.4662287,
-    "ast_hash": "3fb8e3bb991e60c6cb6284ea3493250a",
+    "mtime": 1795369356.6776824,
+    "seen": 1795369610.4773917,
+    "ast_hash": "e2bac0978d28d3168ff8c939a43d2dbf",
     "semantic_hash": ""
   },
   "extension/bridge.js": {
@@ -3566,9 +3566,9 @@
     "semantic_hash": ""
   },
   "extension/listing.js": {
-    "mtime": 1795367195.3993726,
-    "seen": 1795367415.4662578,
-    "ast_hash": "2b40a231f4168595c3a9019493a20ae7",
+    "mtime": 1795369356.6759021,
+    "seen": 1795369610.4774215,
+    "ast_hash": "90185e3bea8612cc7f61b5d3e193881d",
     "semantic_hash": ""
   },
   "extension/site.js": {
