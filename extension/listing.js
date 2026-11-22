@@ -48,7 +48,7 @@ export function listingStep(opts) {
   // page does, so without it a second run on the same tab, unreloaded, took
   // the cards the first one had seen for old news and never reported them.
   if (o.reset || !globalThis.__gooListing || !globalThis.__gooListing.furniture) {
-    globalThis.__gooListing = { seen: new Set(), names: new Set(), dead: new WeakSet(), furniture: new WeakSet() };
+    globalThis.__gooListing = { seen: new Set(), names: new Set(), dead: new WeakSet(), furniture: new WeakSet(), idleTurns: 0 };
   }
   const st = globalThis.__gooListing;
   /** Names found by this step, by address: the card's text, for the AI's choice of pieces. */
@@ -522,13 +522,16 @@ export function listingStep(opts) {
       await sleep(200);
       turn.click();
       if (await waitForMore(o.clickWaitMs)) {
+        st.idleTurns = 0;
         result.grew = true;
         return result;
       }
       st.dead.add(turn);
       // A slider's arrow said "Next" and paged nothing; the listing's own may
-      // come after it.
-      if (nextButton()) return result;
+      // come after it. Not when the pager redrew itself under the click (its
+      // "Next" is a new button, and the same dead end), and not past a few.
+      st.idleTurns = (st.idleTurns || 0) + 1;
+      if (turn.isConnected && st.idleTurns < 3 && nextButton()) return result;
     }
     result.exhausted = true;
     return result;
