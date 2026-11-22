@@ -757,6 +757,48 @@ export function localePrefix(pathname) {
   return out.length ? `/${out.join("/")}` : "";
 }
 
+/**
+ * The language a run keeps to: the start page's, or, when its address names
+ * none, the one most of the menu's links name. Tom Ford's home is its bare
+ * domain and every link in its menu starts `/en-us/`: kept to the start
+ * page's "no language", the run found no category at all.
+ */
+export function storeLocale(links, startUrl) {
+  let start;
+  try {
+    start = new URL(startUrl);
+  } catch {
+    return "";
+  }
+  const own = localePrefix(start.pathname);
+  if (own) return own;
+  const list = (Array.isArray(links) ? links : []).filter((l) => l && typeof l.url === "string");
+  const menu = list.filter((l) => l.where === "menu" || l.where === "footer");
+  const counts = new Map();
+  for (const l of menu.length ? menu : list) {
+    let u;
+    try {
+      u = new URL(l.url, start);
+    } catch {
+      continue;
+    }
+    if (hostOf(u.href) !== hostOf(start.href)) continue;
+    const prefix = localePrefix(u.pathname);
+    counts.set(prefix, (counts.get(prefix) || 0) + 1);
+  }
+  // A language only when more links name it than name none: a menu without
+  // languages, with a footer offering a few, stays without.
+  let best = "";
+  let most = counts.get("") || 0;
+  for (const [prefix, n] of counts) {
+    if (prefix && n > most) {
+      best = prefix;
+      most = n;
+    }
+  }
+  return best;
+}
+
 /** Is this address in the same language as the start page? */
 export function sameLocale(url, prefix) {
   try {
@@ -790,9 +832,10 @@ export function pagePath(url) {
  * Tracking tags and sort or filter parameters are taken off, so "Jackets" and
  * "Jackets, newest first" are one category. A link that switches country or
  * language, leads to the cart, an account page, help, the blog, or a file, is
- * not a category at all.
+ * not a category at all. The language is the start page's, unless `locale`
+ * says which (`storeLocale`).
  */
-export function categoryAddress(href, startUrl) {
+export function categoryAddress(href, startUrl, locale = null) {
   let u;
   let start;
   try {
@@ -801,6 +844,7 @@ export function categoryAddress(href, startUrl) {
   } catch {
     return "";
   }
+  const language = locale ?? localePrefix(start.pathname);
   if (u.protocol !== "http:" && u.protocol !== "https:") return "";
   if (hostOf(u.href) !== hostOf(start.href)) return "";
   u.hash = "";
@@ -809,7 +853,7 @@ export function categoryAddress(href, startUrl) {
   if (!segs.length && !u.search) return ""; // the home page
   if (segs.some((s) => NOT_A_CATEGORY.has(s))) return "";
   if (segs.length && NOT_A_PAGE.test(segs[segs.length - 1])) return "";
-  if (localePrefix(u.pathname) !== localePrefix(start.pathname)) return "";
+  if (localePrefix(u.pathname) !== language) return "";
 
   const kept = [];
   for (const [k, v] of u.searchParams) {
@@ -818,7 +862,9 @@ export function categoryAddress(href, startUrl) {
     kept.push([k, v]);
   }
   u.search = kept.length ? `?${new URLSearchParams(kept).toString()}` : "";
-  if (!segs.length && !u.search) return "";
+  // The home page, in the run's language too: `/en-us/`, the logo's link on
+  // a store whose home is also its bare domain.
+  if (segs.length <= language.split("/").filter(Boolean).length && !u.search) return "";
   return u.href;
 }
 
@@ -833,6 +879,7 @@ export function categoryAddress(href, startUrl) {
 export function categoryCandidates(links, startUrl, max = MAX_CATEGORIES) {
   const list = Array.isArray(links) ? links : [];
   const startKey = keyOf(categoryAddress(startUrl, startUrl) || startUrl.split("#")[0]);
+  const locale = storeLocale(list, startUrl);
 
   const pick = (pool) => {
     const out = [];
@@ -841,7 +888,7 @@ export function categoryCandidates(links, startUrl, max = MAX_CATEGORIES) {
     const tabs = [...new Set(pool.map((l) => cleanTrail(l && l.trail)[0]).filter(Boolean))];
     for (const link of pool) {
       if (!link || typeof link.url !== "string") continue;
-      const url = categoryAddress(link.url, startUrl);
+      const url = categoryAddress(link.url, startUrl, locale);
       if (!url) continue;
       const key = keyOf(url);
       const trail = cleanTrail(link.trail);

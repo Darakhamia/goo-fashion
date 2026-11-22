@@ -48,7 +48,7 @@ export function listingStep(opts) {
   // page does, so without it a second run on the same tab, unreloaded, took
   // the cards the first one had seen for old news and never reported them.
   if (o.reset || !globalThis.__gooListing || !globalThis.__gooListing.furniture) {
-    globalThis.__gooListing = { seen: new Set(), names: new Set(), dead: new WeakSet(), furniture: new WeakSet() };
+    globalThis.__gooListing = { seen: new Set(), names: new Set(), dead: new WeakSet(), furniture: new WeakSet(), idleTurns: 0 };
   }
   const st = globalThis.__gooListing;
   /** Names found by this step, by address: the card's text, for the AI's choice of pieces. */
@@ -305,31 +305,36 @@ export function listingStep(opts) {
   const NEXT_LABEL = /^(?:next(?:\s+page)?|go to next page|›|»|→|>|далее|вперёд|вперед|следующая(?:\s+страница)?|наступна(?:\s+сторінка)?|далі|weiter|nächste(?:\s+seite)?|suivant(?:e)?(?:\s+page)?|page suivante|siguiente|página siguiente|avanti|pagina successiva)$/i;
   const PAGE_PARAMS = ["page", "p", "pg", "pagenumber", "pageindex", "page_number"];
   /**
-   * Is this address a page of the listing the tab is on? The same path, or
-   * the same with `/page/N`, and no parameter but page, view and order with
-   * another value. "See more" under Farfetch's grid led to similar designers, a
-   * "Next" in their slider to Prada's page two: neither is this listing.
+   * Is this address a page of the listing the walk is on? The same path, or
+   * the same with its page in the path (`/page/2`, `/page-2/`, `/page=2/`),
+   * and no parameter that names what is listed with another value. Page
+   * counters (`page`, `PAGEN_1`, `start`, `offset`, a Shopify `phcursor`),
+   * view and order, and tracking tags do not name it, and a parameter only one
+   * side has (a tag the tab arrived with) is no difference. "See more" under
+   * Farfetch's grid led to similar designers, a "Next" in their slider to
+   * Prada's page two: neither is this listing. The walk's own pages (where it
+   * started, the page it last opened) count as well as the one the tab is on.
    * (`sameListing` below says the same for the worker.)
    */
   const VIEW_PARAMS = ["view", "sort", "sortby", "sort_by", "order", "orderby", "order_by", "dir", "limit", "per_page", "perpage", "show", "rows"];
+  const NOT_WHAT = /^(?:start|offset|from|skip|sz|no|paged|_pgn|currentpage|beginindex|baseindex|startindex|pagesize|page_size|phcursor|cursor|after|pagen_\d+|page[-_]?(?:no|num|size|index)|[a-z0-9_-]*[-_]page|utm_.*|gclid|fbclid|msclkid|yclid|srsltid|ref|_ga)$/;
   const listingOf = (u) => {
     const params = {};
     for (const [k, v] of u.searchParams) {
       const key = k.toLowerCase();
-      if (PAGE_PARAMS.includes(key) || VIEW_PARAMS.includes(key) || key.startsWith("utm_")) continue;
+      if (PAGE_PARAMS.includes(key) || VIEW_PARAMS.includes(key) || NOT_WHAT.test(key)) continue;
       (params[key] = params[key] || []).push(v);
     }
     for (const key in params) params[key] = params[key].sort().join("\n");
-    const path = u.pathname.replace(/\/page\/\d+\/?$/i, "").replace(/\/+$/, "") || "/";
+    const path = u.pathname.replace(/\/(?:page|pageindex|pagina|seite|strana)[-_=/]?\d+(?:-\d+)?\/?$/i, "").replace(/\/+$/, "") || "/";
     return { at: `${u.hostname.replace(/^www\./, "")}${path}`, params };
   };
+  const sameAs = (a, b) =>
+    a.at === b.at && Object.keys(a.params).every((k) => !(k in b.params) || b.params[k] === a.params[k]);
   const ofThisListing = (url) => {
     try {
       const a = listingOf(new URL(url, document.baseURI));
-      const b = listingOf(new URL(location.href));
-      // A parameter only one side has (a tracking tag the tab arrived with)
-      // is no difference; the same one with another value is.
-      return a.at === b.at && Object.keys(a.params).every((k) => !(k in b.params) || b.params[k] === a.params[k]);
+      return [location.href, ...(o.listing || [])].some((h) => h && sameAs(a, listingOf(new URL(h))));
     } catch {
       return false;
     }
@@ -362,8 +367,10 @@ export function listingStep(opts) {
       if (el.closest('header, nav, footer, aside, dialog, [role="dialog"], [aria-modal="true"], [role="navigation"]')) continue;
       if (docTop(el) < middle) continue;
       if (isSuggested(el)) continue;
-      // A "Show more" that is a link to another listing is that listing's door.
-      const href = el.matches("a[href]") ? (el.getAttribute("href") || "").trim() : "";
+      // A "Show more" that is a link to another listing, or sits in one, is
+      // that listing's door.
+      const link = el.closest("a[href]");
+      const href = link ? (link.getAttribute("href") || "").trim() : "";
       if (href && !href.startsWith("#") && !/^javascript:/i.test(href) && !ofThisListing(href)) continue;
       if (pager && !pager.contains(el) && pager.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) continue;
       if (!pick || docTop(el) > docTop(pick)) pick = el;
@@ -463,8 +470,11 @@ export function listingStep(opts) {
     const n = st.seen.size;
     for (let t = 0; t < ms; t += 250) {
       await sleep(250);
-      result.links.push(...harvest());
+      // A click that changed the address (a router taking the tab to another
+      // listing, or this one's page two) is read by the next step, which the
+      // worker checks against the listing first.
       if (location.href !== result.url) return true;
+      result.links.push(...harvest());
       if (height() > h + 4 || st.seen.size > n) return true;
     }
     return false;
@@ -512,10 +522,16 @@ export function listingStep(opts) {
       await sleep(200);
       turn.click();
       if (await waitForMore(o.clickWaitMs)) {
+        st.idleTurns = 0;
         result.grew = true;
         return result;
       }
       st.dead.add(turn);
+      // A slider's arrow said "Next" and paged nothing; the listing's own may
+      // come after it. Not when the pager redrew itself under the click (its
+      // "Next" is a new button, and the same dead end), and not past a few.
+      st.idleTurns = (st.idleTurns || 0) + 1;
+      if (turn.isConnected && st.idleTurns < 3 && nextButton()) return result;
     }
     result.exhausted = true;
     return result;
@@ -526,15 +542,19 @@ export function listingStep(opts) {
 
 const PAGE_KEYS = ["page", "p", "pg", "pagenumber", "pageindex", "page_number"];
 const VIEW_KEYS = ["view", "sort", "sortby", "sort_by", "order", "orderby", "order_by", "dir", "limit", "per_page", "perpage", "show", "rows"];
+/** Page counters, page sizes and tracking tags: none of them says what is listed. */
+const NOT_WHAT_KEYS = /^(?:start|offset|from|skip|sz|no|paged|_pgn|currentpage|beginindex|baseindex|startindex|pagesize|page_size|phcursor|cursor|after|pagen_\d+|page[-_]?(?:no|num|size|index)|[a-z0-9_-]*[-_]page|utm_.*|gclid|fbclid|msclkid|yclid|srsltid|ref|_ga)$/;
 
 /**
  * Is `url` a page of the listing at `startUrl`: the same store and path (or
- * the path with `/page/N`), and no parameter but page, view and order that
- * both carry with different values (one only the tab arrived with, a tracking
- * tag, is no difference)? A
- * click that takes the walk anywhere else (Farfetch's "See more" under the
- * grid, to similar designers) ends it: that page is not this listing. The
- * walk's own reading of the page applies the same rule (`listingStep`).
+ * the path with its page in it: `/page/2`, `/page-2/`, `/page=2/`), and no
+ * parameter that names what is listed with another value on both? Page
+ * counters (`page`, `PAGEN_1`, `start`, `offset`, `phcursor`), view and order
+ * and tracking tags do not name it, and a parameter only one carries (a tag
+ * the tab arrived with) is no difference. A click that takes the walk
+ * anywhere else (Farfetch's "See more" under the grid, to similar designers)
+ * ends it: that page is not this listing. The walk's own reading of the page
+ * applies the same rule (`listingStep`).
  */
 export function sameListing(startUrl, url) {
   const listingOf = (href) => {
@@ -542,11 +562,11 @@ export function sameListing(startUrl, url) {
     const params = {};
     for (const [k, v] of u.searchParams) {
       const key = k.toLowerCase();
-      if (PAGE_KEYS.includes(key) || VIEW_KEYS.includes(key) || key.startsWith("utm_")) continue;
+      if (PAGE_KEYS.includes(key) || VIEW_KEYS.includes(key) || NOT_WHAT_KEYS.test(key)) continue;
       (params[key] = params[key] || []).push(v);
     }
     for (const key in params) params[key] = params[key].sort().join("\n");
-    const path = u.pathname.replace(/\/page\/\d+\/?$/i, "").replace(/\/+$/, "") || "/";
+    const path = u.pathname.replace(/\/(?:page|pageindex|pagina|seite|strana)[-_=/]?\d+(?:-\d+)?\/?$/i, "").replace(/\/+$/, "") || "/";
     return { at: `${u.hostname.replace(/^www\./, "")}${path}`, params };
   };
   try {
