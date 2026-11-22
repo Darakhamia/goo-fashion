@@ -1334,9 +1334,9 @@
     "semantic_hash": ""
   },
   "extension/background.js": {
-    "mtime": 1795373046.594759,
-    "seen": 1795373422.7459385,
-    "ast_hash": "2eea5d9c74756678a0c61ead4c867b4f",
+    "mtime": 1795374269.1631043,
+    "seen": 1795374402.172592,
+    "ast_hash": "a4c48f18b2c24b7dd2079c1ab18dbeaf",
     "semantic_hash": ""
   },
   "extension/bridge.js": {
@@ -1352,9 +1352,9 @@
     "semantic_hash": ""
   },
   "extension/popup.js": {
-    "mtime": 1795373063.4704003,
-    "seen": 1795373422.7459898,
-    "ast_hash": "648a4f49081141c69679d52c2897caba",
+    "mtime": 1795374274.5471644,
+    "seen": 1795374402.1726992,
+    "ast_hash": "b93770e78e3f359ba054dda4f844cf09",
     "semantic_hash": ""
   },
   "extension/snapshot.js": {
@@ -3572,9 +3572,9 @@
     "semantic_hash": ""
   },
   "extension/site.js": {
-    "mtime": 1795372981.1244276,
-    "seen": 1795373422.7459927,
-    "ast_hash": "da0482f6d782ae1851367f554c866023",
+    "mtime": 1795374269.1617775,
+    "seen": 1795374402.1727018,
+    "ast_hash": "4e3c66b75f58da4752220820f4ba8a9b",
     "semantic_hash": ""
   },
   "extension/sitemap-pieces.js": {
