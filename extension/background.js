@@ -1242,12 +1242,14 @@ async function walkListing(tabId, startUrl, limit, rules, robotsTxt, linksOnly, 
   /** A click took the tab off this listing. */
   let left = false;
   /**
-   * The listing's pages: those of the address asked for, and of the one the
-   * tab was on when the walk first read it (a category may redirect to its
-   * own address first).
+   * The listing's pages: those of the address asked for, of the one the tab
+   * was on when the walk first read it (a category may redirect to its own
+   * address first), and of the page the walk itself opened last (`onPageNow`,
+   * which may carry a per-page token the start does not).
    */
   let home = null;
-  const onListing = (url) => sameListing(startUrl, url) || (!!home && sameListing(home, url));
+  const listingPages = () => [startUrl, home, onPageNow].filter(Boolean);
+  const onListing = (url) => listingPages().some((h) => sameListing(h, url));
   let seenTab = false;
 
   // A run that asked for a number of pieces takes them from the page as the
@@ -1295,7 +1297,9 @@ async function walkListing(tabId, startUrl, limit, rules, robotsTxt, linksOnly, 
           func: listingStep,
           // The run's first look starts the page's memory afresh, and in a
           // counting run does not scroll.
-          args: [{ first, reset: initial < 0, scroll: !(counting && initial < 0), hiddenNext: !!site }],
+          // `listing`: the walk's own pages, which the page's links are
+          // compared with as well as with the page the tab is on.
+          args: [{ first, reset: initial < 0, scroll: !(counting && initial < 0), hiddenNext: !!site, listing: listingPages() }],
         }),
         STEP_TIMEOUT_MS,
         [],
