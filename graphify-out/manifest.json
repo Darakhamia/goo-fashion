@@ -1778,9 +1778,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/gallery.ts": {
-    "mtime": 1795380379.8758578,
-    "seen": 1795380483.309639,
-    "ast_hash": "864d68af7fe1ed5f2fe98a8bedaf7313",
+    "mtime": 1795381349.049822,
+    "seen": 1795381363.3062382,
+    "ast_hash": "464f6b2a0caee9fa059a97813ad68cc3",
     "semantic_hash": ""
   },
   "src/lib/server/parser/import-product.ts": {

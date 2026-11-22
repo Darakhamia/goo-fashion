@@ -1,7 +1,7 @@
 # Graph Report - goo-fashion  (2026-11-22)
 
 ## Corpus Check
-- 564 files · ~812,910 words
+- 564 files · ~813,006 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: .ttf 3, (none) 2, .css 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bbdf5638`
+- Built from commit: `eed68fad`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
