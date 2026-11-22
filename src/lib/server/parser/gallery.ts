@@ -62,25 +62,33 @@ const SCENE7_SIDE = 2000;
 
 /**
  * A Scene7 query with the size asked for. A width and height the page gave
- * are scaled up together to `SCENE7_SIDE` on the long side (never down): the
- * box the store frames its photos in, larger. With one of them or none, the
- * photo is fitted into `SCENE7_SIDE` both ways keeping its own proportions
- * (`fit=constrain`): a width alone would be boxed by the preset's own height
- * (Burberry's `wid=2000` came back 2000×500). Everything else, the preset
- * first, stays as the page wrote it.
+ * are scaled up together to `SCENE7_SIDE` on the long side (never down), with
+ * the page's own `fit` (constrain, crop) after them: the box the store frames
+ * its photos in, larger. Without its `fit` Scene7 pads that box with white.
+ * With one of them or none, the photo is fitted into `SCENE7_SIDE` both ways
+ * keeping its own proportions (`fit=constrain`): a width alone would be boxed
+ * by the preset's own height (Burberry's `wid=2000` came back 2000×500).
+ * `crop` is in the photo's own pixels and holds at any size. Everything else,
+ * the preset first, stays as the page wrote it.
+ *
+ * An address goes through `upgradeImageUrl` more than once (the gallery, then
+ * the normaliser), so this must give back what it is given: a second pass
+ * reads its own `wid`, `hei` and `fit` and writes them again.
  */
 function scene7Query(parts: string[]): string[] {
+  const keyOf = (part: string) => part.split("=")[0].toLowerCase();
   const value = (key: string): number => {
-    const part = parts.find((p) => p.split("=")[0].toLowerCase() === key);
+    const part = parts.find((p) => keyOf(p) === key);
     const n = part ? Number(part.split("=")[1]) : NaN;
     return Number.isFinite(n) && n > 0 ? n : 0;
   };
   const wid = value("wid");
   const hei = value("hei");
-  const kept = parts.filter((p) => !SIZE_PARAMS.includes(p.split("=")[0].toLowerCase()));
+  const kept = parts.filter((p) => keyOf(p) === "crop" || !SIZE_PARAMS.includes(keyOf(p)));
   if (wid && hei) {
     const scale = Math.max(1, SCENE7_SIDE / Math.max(wid, hei));
-    kept.push(`wid=${Math.round(wid * scale)}`, `hei=${Math.round(hei * scale)}`);
+    const fit = parts.find((p) => keyOf(p) === "fit");
+    kept.push(`wid=${Math.round(wid * scale)}`, `hei=${Math.round(hei * scale)}`, ...(fit ? [fit] : []));
   } else {
     kept.push(`wid=${SCENE7_SIDE}`, `hei=${SCENE7_SIDE}`, "fit=constrain");
   }
