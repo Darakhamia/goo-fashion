@@ -1280,9 +1280,9 @@
     "semantic_hash": ""
   },
   "PARSER.md": {
-    "mtime": 1792846992.820982,
-    "seen": 1795351038.5329356,
-    "ast_hash": "b393f4f972bff2b93af352e018d33a8c",
+    "mtime": 1795380397.9001741,
+    "seen": 1795380483.3109696,
+    "ast_hash": "d01a5d52f17f2e18fbef32e8f3f2775c",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1334,8 +1334,8 @@
     "semantic_hash": ""
   },
   "extension/background.js": {
-    "mtime": 1795374269.1631043,
-    "seen": 1795374402.172592,
+    "mtime": 1795376885.3121297,
+    "seen": 1795380483.2981894,
     "ast_hash": "a4c48f18b2c24b7dd2079c1ab18dbeaf",
     "semantic_hash": ""
   },
@@ -1346,14 +1346,14 @@
     "semantic_hash": ""
   },
   "extension/manifest.json": {
-    "mtime": 1795373267.1840706,
-    "seen": 1795373422.7459867,
+    "mtime": 1795376885.1121297,
+    "seen": 1795380483.2982187,
     "ast_hash": "1c49956fe606bdeaf8d199b2694cb618",
     "semantic_hash": ""
   },
   "extension/popup.js": {
-    "mtime": 1795374274.5471644,
-    "seen": 1795374402.1726992,
+    "mtime": 1795376885.3121297,
+    "seen": 1795380483.2982213,
     "ast_hash": "b93770e78e3f359ba054dda4f844cf09",
     "semantic_hash": ""
   },
@@ -1778,9 +1778,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/gallery.ts": {
-    "mtime": 1792846993.0222764,
-    "seen": 1795351038.5328534,
-    "ast_hash": "43a262b2a1da8b1001a2ba6305dd5ff0",
+    "mtime": 1795380379.8758578,
+    "seen": 1795380483.309639,
+    "ast_hash": "864d68af7fe1ed5f2fe98a8bedaf7313",
     "semantic_hash": ""
   },
   "src/lib/server/parser/import-product.ts": {
@@ -1994,14 +1994,14 @@
     "semantic_hash": ""
   },
   "extension/README.md": {
-    "mtime": 1795373374.342335,
-    "seen": 1795373422.7631528,
+    "mtime": 1795376885.1121297,
+    "seen": 1795380483.3134866,
     "ast_hash": "402c9e4cc8aba90b4a9bc430546de1d5",
     "semantic_hash": ""
   },
   "extension/popup.html": {
-    "mtime": 1795373267.1836443,
-    "seen": 1795373422.763156,
+    "mtime": 1795376885.1121297,
+    "seen": 1795380483.3134904,
     "ast_hash": "2d0dd82a63fbd9ea879c60255f9af025",
     "semantic_hash": ""
   },
@@ -3566,14 +3566,14 @@
     "semantic_hash": ""
   },
   "extension/listing.js": {
-    "mtime": 1795370528.5737402,
-    "seen": 1795370769.5450695,
+    "mtime": 1795376884.9212196,
+    "seen": 1795380483.2982159,
     "ast_hash": "b5c0e7d9983b1dac2f02c4951763c6fd",
     "semantic_hash": ""
   },
   "extension/site.js": {
-    "mtime": 1795374269.1617775,
-    "seen": 1795374402.1727018,
+    "mtime": 1795376885.3121297,
+    "seen": 1795380483.2982247,
     "ast_hash": "4e3c66b75f58da4752220820f4ba8a9b",
     "semantic_hash": ""
   },
