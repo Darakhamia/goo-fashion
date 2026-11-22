@@ -9,11 +9,14 @@
  * first dozen.
  *
  * So the page is walked the way a person walks it: a screen at a time, down to
- * the end, a moment's wait there for the next cards, "Show more" when the store
- * offers one, then the next page. Every link is noted at every step, so a card
- * that has already scrolled away still counts. Nothing here decides which links
- * are products. The planner on the server does that, with the same rules as
- * ever, once the walk is over.
+ * the end, a moment's wait there for the next cards, the grid's "Show more"
+ * when the store offers one, then the next page, by its link or by its "Next"
+ * button. Every link is noted at every step, so a card that has already
+ * scrolled away still counts; the shelves a store adds under its listing
+ * (recommendations, recently viewed) are not the listing, and their buttons
+ * are not pressed. Nothing here decides which links are products. The
+ * planner on the server does that, with the same rules as ever, once the walk
+ * is over.
  *
  * The walk happens in the tab the admin is looking at, not in a background
  * copy. Chrome does not load anything for a page nobody can see: in a hidden
@@ -123,6 +126,42 @@ export function listingStep(opts) {
     return edge;
   };
   /**
+   * The shelves a store adds to its listing: recommendations, what the admin
+   * viewed lately, "You may also like". Farfetch keeps one under the grid,
+   * below its pages, with a "Show more" of its own; up to 1.5.1 the walk took
+   * its pieces for the category's and pressed its button instead of going on
+   * to the next page. Known by what the markup calls the shelf (`data-testid`,
+   * `id`, `class`, `aria-label`) or by its own heading.
+   */
+  const SUGGESTED =
+    /(?:recommend|recently[-_ ]?viewed|last[-_ ]?viewed|you[-_ ]?(?:may|might)[-_ ]?(?:also[-_ ]?)?like|also[-_ ]?(?:bought|viewed)|cross[-_ ]?sell|upsell|similar[-_ ]?(?:items|products|styles)|related[-_ ]?products|inspired[-_ ]?by|complete[-_ ]?the[-_ ]?look|shop[-_ ]?the[-_ ]?look)/i;
+  const SUGGESTED_HEADING =
+    /^(?:recommended(?: for you)?|recommendations?(?: for you)?|recently viewed(?: items)?|you (?:may|might) (?:also )?like|we think you'?ll (?:also )?like|inspired by .*|(?:customers|people) (?:also )?(?:bought|viewed)(?: .*)?|similar (?:items|products|styles)|complete the look|shop the look|zuletzt angesehen|das könnte dir (?:auch )?gefallen|empfehlungen(?: für dich)?|недавно просмотренн.*|вы (?:недавно )?смотрели|вам может понравиться|вам також може сподобатися|вам може сподобатися|рекомендуем.*|рекомендації.*|нещодавно переглянут.*|vus récemment|vous aimerez (?:aussi|peut-être)|visti di recente|potrebbe(?:ro)? piacerti|vistos recientemente|(?:también )?te puede gustar)$/i;
+  const suggestedOf = new WeakMap();
+  const isSuggestedShelf = (node) => {
+    let yes = suggestedOf.get(node);
+    if (yes === undefined) {
+      const named = [node.getAttribute("data-testid"), node.getAttribute("data-component"), node.id, typeof node.className === "string" ? node.className : "", node.getAttribute("aria-label")];
+      yes = named.some((v) => v && SUGGESTED.test(v));
+      if (!yes && node.matches("section, div, aside, article, ul")) {
+        const heading = node.querySelector(":scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > header :is(h1, h2, h3, h4), :scope > div > :is(h2, h3)");
+        const words = heading ? heading.textContent.replace(/\s+/g, " ").trim().toLowerCase() : "";
+        yes = !!words && words.length <= 60 && SUGGESTED_HEADING.test(words);
+      }
+      suggestedOf.set(node, yes);
+    }
+    return yes;
+  };
+  const isSuggested = (el) => {
+    for (let node = el; node && node !== document.body; ) {
+      if (node.nodeType === 1 && isSuggestedShelf(node)) return true;
+      const root = node.parentElement ? null : node.getRootNode();
+      node = node.parentElement || (root instanceof ShadowRoot ? root.host : null);
+    }
+    return false;
+  };
+
+  /**
    * Is the link on the page as the admin sees it? One with no box at all is
    * in a menu that is not open, a tab not shown, or a card the page's own
    * filter has hidden. A link that only lays out its children
@@ -149,7 +188,7 @@ export function listingStep(opts) {
       // Nothing left to learn from it: the cheap test before the costly ones.
       if (st.seen.has(url) && st.names.has(url)) return;
       if (st.furniture.has(el)) return;
-      if (isFurniture(el)) {
+      if (isFurniture(el) || isSuggested(el)) {
         st.furniture.add(el);
         return;
       }
@@ -262,8 +301,8 @@ export function listingStep(opts) {
 
   const MORE =
     /^(?:load|show|view|see)\s+more\b|^more\s+(?:products|items|results|styles)\b|^(?:показать|загрузить)\s+(?:ещ[её]|больше)|^(?:показати|завантажити)\s+(?:ще|більше)|^mehr\s+(?:anzeigen|laden)|^voir\s+plus|^(?:cargar|mostrar|ver)\s+más|^(?:carica|mostra)\s+altri/i;
-  const NEXT =
-    /^(?:next(?:\s+page)?|›|»|→|>|далее|вперёд|вперед|следующая(?:\s+страница)?|наступна|далі|weiter|suivant|siguiente|avanti)$/i;
+  /** "Next", "Next page", an arrow, as a pager's link or button names it. */
+  const NEXT_LABEL = /^(?:next(?:\s+page)?|go to next page|›|»|→|>|далее|вперёд|вперед|следующая(?:\s+страница)?|наступна(?:\s+сторінка)?|далі|weiter|nächste(?:\s+seite)?|suivant(?:e)?(?:\s+page)?|page suivante|siguiente|página siguiente|avanti|pagina successiva)$/i;
   const PAGE_PARAMS = ["page", "p", "pg", "pagenumber", "pageindex", "page_number"];
 
   const labelOf = (el) =>
@@ -277,10 +316,14 @@ export function listingStep(opts) {
    * The store's own "Show more" under the grid, if it has one. Only below the
    * middle of the page and outside the header, menus, footer, side panels and
    * pop-ups: a filter list's "Show more" sits at the top or in a side panel,
-   * and opening it adds links that are not cards.
+   * and opening it adds links that are not cards. Not a shelf's of
+   * recommendations either, nor one below the listing's own pages: the grid's
+   * button comes before them (it fills this page, the pages go on from it),
+   * Farfetch's "Show more" under its pages is the recently viewed.
    */
   const moreButton = () => {
     const middle = height() * 0.5;
+    const pager = pagerOf();
     let pick = null;
     for (const el of document.querySelectorAll('button, a, [role="button"], input[type="button"], input[type="submit"]')) {
       if (st.dead.has(el) || el.disabled || !shown(el)) continue;
@@ -288,9 +331,47 @@ export function listingStep(opts) {
       if (!label || label.length > 60 || !MORE.test(label)) continue;
       if (el.closest('header, nav, footer, aside, dialog, [role="dialog"], [aria-modal="true"], [role="navigation"]')) continue;
       if (docTop(el) < middle) continue;
+      if (isSuggested(el)) continue;
+      if (pager && !pager.contains(el) && pager.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) continue;
       if (!pick || docTop(el) > docTop(pick)) pick = el;
     }
     return pick;
+  };
+
+  /** The listing's own pages: a box its markup calls so, or its "Next". */
+  const PAGER = '[data-testid*="paginat" i], [class*="paginat" i], [id*="paginat" i], [aria-label*="paginat" i], [aria-label*="pages" i], [role="navigation"][aria-label*="page" i]';
+  /** A slider's arrows say "›" and "Next" too, and page nothing. */
+  const CAROUSEL = '[class*="carousel" i], [class*="slider" i], [class*="swiper" i], [class*="slick" i], [aria-roledescription*="carousel" i], [aria-roledescription*="slide" i]';
+  /**
+   * A "Next" of the listing's pages: in a box of pages, or one that says so
+   * in words below the middle of the page. An arrow alone outside a box of
+   * pages is a slider's.
+   */
+  const isPagesNext = (el) => {
+    if (!shown(el) || el.closest(CAROUSEL)) return false;
+    const label = labelOf(el);
+    if (!NEXT_LABEL.test(label)) return false;
+    if (el.closest(PAGER)) return true;
+    return /\p{L}{2,}/u.test(label) && docTop(el) > height() * 0.5;
+  };
+  const pagerOf = () => {
+    for (const el of document.querySelectorAll(PAGER)) if (shown(el) && !el.closest(CAROUSEL)) return el;
+    for (const el of document.querySelectorAll('a[href], button, [role="button"]')) if (isPagesNext(el)) return el;
+    return null;
+  };
+
+  /**
+   * The next page's control when it is a button and not a link: the listing
+   * pages itself in place. Not one that says it is disabled (the last page).
+   */
+  const nextButton = () => {
+    for (const el of document.querySelectorAll('button, [role="button"], a:not([href]), a[href="#"], a[href^="javascript:"]')) {
+      if (st.dead.has(el) || el.disabled || el.getAttribute("aria-disabled") === "true") continue;
+      if (!isPagesNext(el)) continue;
+      if (el.closest('header, footer, dialog, [role="dialog"], [aria-modal="true"]') || isSuggested(el)) continue;
+      return el;
+    }
+    return null;
   };
 
   /** The page after this one, when the listing has numbered pages. */
@@ -326,9 +407,9 @@ export function listingStep(opts) {
       if (p && p.n === want && (p.base.replace(/\/$/, "") || "/") === (base.replace(/\/$/, "") || "/")) return url;
     }
 
-    // A link that only says "Next", on this same listing.
+    // A link that only says "Next" (or "Next page"), on this same listing.
     for (const a of document.querySelectorAll("a[href]")) {
-      if (!NEXT.test(labelOf(a))) continue;
+      if (!NEXT_LABEL.test(labelOf(a)) || a.closest(CAROUSEL)) continue;
       const url = fresh(a.getAttribute("href"));
       if (!url) continue;
       const u = new URL(url);
@@ -391,8 +472,21 @@ export function listingStep(opts) {
       st.dead.add(more);
     }
 
-    result.exhausted = true;
     result.next = nextPage();
+    // No next page to open, but a "Next" that pages the listing in place.
+    const turn = !result.next && nextButton();
+    if (turn) {
+      result.clicked = labelOf(turn);
+      turn.scrollIntoView({ block: "center" });
+      await sleep(200);
+      turn.click();
+      if (await waitForMore(o.clickWaitMs)) {
+        result.grew = true;
+        return result;
+      }
+      st.dead.add(turn);
+    }
+    result.exhausted = true;
     return result;
   })();
 }
