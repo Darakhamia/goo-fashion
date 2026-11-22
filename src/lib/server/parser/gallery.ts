@@ -44,6 +44,50 @@ const SIZE_PARAMS = [
 ];
 
 /**
+ * Scene7, Adobe's image server (`/is/image/<company>/<asset>`): Burberry,
+ * Timberland, department stores. On the other CDNs an address without a size
+ * is the original; on Scene7 it is the catalogue's default rendition, a few
+ * hundred pixels. Burberry, measured 2026-11-22: its `og:image` with no query
+ * came back 356×400, with only its preset (`?$BBY_V3_SL_1$`) 500×500, while the
+ * page itself asks for 1501×1500 and the photo behind it is 4200×4725. So on
+ * Scene7 the size is asked for rather than dropped (`scene7Query`).
+ */
+const SCENE7_PATH = /\/is\/image\//i;
+/**
+ * The long side asked of Scene7. Its default limit on a reply (`MaxPix`) is
+ * 2000×2000: every company on it serves this much, and more is refused where
+ * the limit was left as it came.
+ */
+const SCENE7_SIDE = 2000;
+
+/**
+ * A Scene7 query with the size asked for. A width and height the page gave
+ * are scaled up together to `SCENE7_SIDE` on the long side (never down): the
+ * box the store frames its photos in, larger. With one of them or none, the
+ * photo is fitted into `SCENE7_SIDE` both ways keeping its own proportions
+ * (`fit=constrain`): a width alone would be boxed by the preset's own height
+ * (Burberry's `wid=2000` came back 2000×500). Everything else, the preset
+ * first, stays as the page wrote it.
+ */
+function scene7Query(parts: string[]): string[] {
+  const value = (key: string): number => {
+    const part = parts.find((p) => p.split("=")[0].toLowerCase() === key);
+    const n = part ? Number(part.split("=")[1]) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+  const wid = value("wid");
+  const hei = value("hei");
+  const kept = parts.filter((p) => !SIZE_PARAMS.includes(p.split("=")[0].toLowerCase()));
+  if (wid && hei) {
+    const scale = Math.max(1, SCENE7_SIDE / Math.max(wid, hei));
+    kept.push(`wid=${Math.round(wid * scale)}`, `hei=${Math.round(hei * scale)}`);
+  } else {
+    kept.push(`wid=${SCENE7_SIDE}`, `hei=${SCENE7_SIDE}`, "fit=constrain");
+  }
+  return kept;
+}
+
+/**
  * Shopify (and friends) append a rendition suffix right before the extension:
  *   photo_1024x.jpg · photo_600x600_crop_center.jpg · photo_grande.jpg
  * Stripping it yields the original, full-resolution file. Anchored to the end
@@ -343,7 +387,10 @@ export function upgradeImageUrl(src: string, baseUrl: string): string | null {
   // Edited as text rather than through `searchParams`, which re-serialises the
   // whole query on any mutation: that turns Scene7's `?$pdp$` preset into
   // `?%24pdp%24=` and asks the CDN for a rendition it does not have.
-  if (u.search) {
+  // Scene7 is the exception: there no size means a small one (`scene7Query`).
+  if (SCENE7_PATH.test(u.pathname)) {
+    u.search = scene7Query(u.search.slice(1).split("&").filter(Boolean)).join("&");
+  } else if (u.search) {
     const kept = u.search
       .slice(1)
       .split("&")

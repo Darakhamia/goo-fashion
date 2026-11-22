@@ -260,14 +260,26 @@ structured data had handed us. Anything whose extension is positively *not* an
 image (`.js`, `.css`, `.svg`, `.woff2`, …) is still rejected.
 
 **Resolution.** Harvested URLs carry whatever size the page asked for
-(`?width=300`, and the CDN dialects of it: `wid`/`hei` on Scene7, `sw`/`sh` on
-Demandware, `imwidth` on Akamai), and CDNs serve renditions (`_1024x`,
-`_600x600_crop_center`, `_grande`). `upgradeImageUrl()` strips both to fetch the
-original — measured 34 KB → 642 KB on Allbirds. The query is edited as text rather than
-through `URLSearchParams`, which re-serialises the whole thing and turns
-Scene7's `?$pdp$` preset into a rendition that does not exist. The same
-normalisation is the dedupe key, so one photo offered at three sizes is stored
-once instead of three times.
+(`?width=300`, and the CDN dialects of it: `sw`/`sh` on Demandware, `imwidth`
+on Akamai), and CDNs serve renditions (`_1024x`, `_600x600_crop_center`,
+`_grande`). `upgradeImageUrl()` strips both to fetch the original — measured
+34 KB → 642 KB on Allbirds. The query is edited as text rather than through
+`URLSearchParams`, which re-serialises the whole thing and turns Scene7's
+`?$pdp$` preset into a rendition that does not exist. The same normalisation is
+the dedupe key, so one photo offered at three sizes is stored once instead of
+three times.
+
+**Scene7 is the exception** (`/is/image/…`: Burberry, Timberland, department
+stores). There an address without a size is not the original but the
+catalogue's default rendition. Burberry, measured 2026-11-22: its `og:image`
+(no query) came back 356×400, the preset alone (`?$BBY_V3_SL_1$`) 500×500,
+while the page asks for 1501×1500 and the photo behind it is 4200×4725 —
+every Burberry photo we had stored was the 356×400 one. So on Scene7 the size
+is asked for: a width and height the page gave are scaled up together to 2000
+on the long side (the store's own framing, larger); with one or none, the photo
+is fitted into 2000×2000 in its own proportions (`fit=constrain`). A width
+alone would be boxed by the preset's height (2000×500). 2000 is Scene7's
+default reply limit, so every company on it serves it.
 
 ## 3. Normalizer
 
