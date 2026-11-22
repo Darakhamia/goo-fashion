@@ -71,11 +71,12 @@
     <section id="pick" class="pick" hidden>
       <p class="found" id="pickFound"></p>
       <p class="small" id="pickRule"></p>
-      <div class="chips">
-        <button type="button" class="chip on" id="showTaking" aria-pressed="true">Taking 0</button>
-        <button type="button" class="chip" id="showSkipped" aria-pressed="false">Show skipped 0</button>
+      <div class="treebar">
+        <span class="small" id="pickTicked"></span>
+        <button type="button" class="link" id="expandAll">Expand all</button>
+        <button type="button" class="link" id="collapseAll">Collapse all</button>
       </div>
-      <div class="list" id="pickList"></div>
+      <div class="list tree" id="pickList" aria-label="The store's categories"></div>
       <div class="stack">
         <button id="pickGo" class="primary">Collect 0 categories</button>
         <button id="pickCancel" class="ghost">Cancel</button>

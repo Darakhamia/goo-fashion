@@ -55,8 +55,9 @@ const el = {
   pick: document.getElementById("pick"),
   pickFound: document.getElementById("pickFound"),
   pickRule: document.getElementById("pickRule"),
-  showTaking: document.getElementById("showTaking"),
-  showSkipped: document.getElementById("showSkipped"),
+  pickTicked: document.getElementById("pickTicked"),
+  expandAll: document.getElementById("expandAll"),
+  collapseAll: document.getElementById("collapseAll"),
   pickList: document.getElementById("pickList"),
   pickGo: document.getElementById("pickGo"),
   pickCancel: document.getElementById("pickCancel"),
@@ -84,6 +85,8 @@ async function readSavedSite() {
   } catch {
     savedSite = null;
   }
+  // The folders the admin opened in this store's list, before the list is drawn.
+  if (savedSite && savedSite.stage === "pick") await loadOpen(savedSite.store);
 }
 
 /**
@@ -360,10 +363,6 @@ function unfinished() {
 
 const PICK_HINT =
   "Inside them AI checks every piece by its name before opening it, and the store's sitemaps go through the same check at the end.";
-/** Which half of the list is shown: what AI took, or what it left out. */
-let pickView = "taking";
-/** The list as last drawn, so the poll does not redraw it under the admin's pointer. */
-let pickKey = "";
 
 /** A whole-store run of this store waiting for its categories to be confirmed. */
 function picking(running) {
@@ -386,28 +385,223 @@ function pathOf(url) {
   }
 }
 
-function pickRow(item, index) {
-  const row = document.createElement("label");
-  row.className = item.keep ? "item" : "item off";
+// ── The list as folders ──────────────────────────────────────────────────────
+//
+// Each category comes with the folders the store's menu keeps it in, `group`
+// ("Men", "Clothes"), read by the worker (site.js, `menuGroups`). The list
+// shows them as a file browser shows a disk: a folder opens with its chevron,
+// and its tick is the tick of everything in it, so "Children" goes with one
+// click and not forty. A category without folders stands at the top.
+
+/** Folders the admin has opened, by key, for the store the list is of. */
+let openFolders = new Set();
+/** The store whose folders `openFolders` holds. */
+let openStore = "";
+/** Whether the admin has opened or shut any folder of this store's list: then nothing opens by itself. */
+let openKnown = false;
+/** The tree as drawn: its folders, its leaves' rows, and which list it is of. */
+let drawn = null;
+
+const OPEN_KEY = "pickOpen";
+/** "Men", "Clothes" → one key; names are compared as the menu spells them. */
+const folderKey = (names) => names.join("\u0000");
+
+const SVG = "http://www.w3.org/2000/svg";
+function icon(paths, cls) {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.25");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("stroke-linecap", "round");
+  if (cls) svg.setAttribute("class", cls);
+  for (const d of paths) {
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
+const CHEVRON = ["M6 4l4 4-4 4"];
+const FOLDER_SHUT = ["M2 4.5A1 1 0 0 1 3 3.5h3.2l1.3 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"];
+const FOLDER_OPEN = ["M2 12V4.5a1 1 0 0 1 1-1h3.2l1.3 1.5H12a1 1 0 0 1 1 1V7", "M2 12l1.6-4.3a1 1 0 0 1 .9-.7H14l-1.7 5.3a1 1 0 0 1-1 .7H3a1 1 0 0 1-1-1z"];
+const PAGE = ["M4 2.5h5l3 3v8H4z", "M9 2.5v3h3"];
+
+/**
+ * The folders of a list of categories, in the order the menu lists them:
+ * `{ key, names, name, kids: [{ folder } | { leaf: index }], leaves: [index…] }`,
+ * the root being the folder with no name.
+ */
+function buildTree(items) {
+  const root = { key: "", names: [], name: "", kids: [], leaves: [] };
+  const folders = new Map([["", root]]);
+  items.forEach((item, index) => {
+    const names = Array.isArray(item.group) ? item.group.filter((n) => typeof n === "string" && n) : [];
+    let at = root;
+    root.leaves.push(index);
+    for (let depth = 1; depth <= names.length; depth++) {
+      const key = folderKey(names.slice(0, depth).map((n) => n.toLowerCase()));
+      let folder = folders.get(key);
+      if (!folder) {
+        folder = { key, names: names.slice(0, depth), name: names[depth - 1], kids: [], leaves: [] };
+        folders.set(key, folder);
+        at.kids.push({ folder });
+      }
+      folder.leaves.push(index);
+      at = folder;
+    }
+    at.kids.push({ leaf: index });
+  });
+  return { root, folders };
+}
+
+/** One row of the tree: a folder with what it holds, or one category. */
+function treeRow(depth, entry, items) {
+  const row = document.createElement(entry.folder ? "div" : "label");
+  row.className = "row";
+  const at = drawn.rows++;
+  row.style.setProperty("--depth", String(depth));
   const box = document.createElement("input");
   box.type = "checkbox";
-  box.checked = !!item.keep;
-  box.dataset.index = String(index);
+  const pic = document.createElement("span");
+  pic.className = "icon";
   const name = document.createElement("span");
   name.className = "name";
+  const end = document.createElement("span");
+
+  if (entry.folder) {
+    const folder = entry.folder;
+    const node = document.createElement("div");
+    node.className = "node folder";
+    node.dataset.key = folder.key;
+    // The chevron is the folder's open-and-shut button, for a keyboard too.
+    const twisty = document.createElement("button");
+    twisty.type = "button";
+    twisty.className = "twisty";
+    twisty.setAttribute("aria-label", folder.names.join(" › "));
+    twisty.setAttribute("aria-controls", `pick-folder-${at}`);
+    twisty.append(icon(CHEVRON));
+    box.dataset.folder = folder.key;
+    box.setAttribute("aria-label", folder.name);
+    pic.append(icon(FOLDER_SHUT, "shut"), icon(FOLDER_OPEN, "open"));
+    name.textContent = folder.name;
+    name.title = folder.names.join(" › ");
+    end.className = "count";
+    row.append(twisty, box, pic, name, end);
+    const kids = document.createElement("div");
+    kids.id = `pick-folder-${at}`;
+    for (const kid of folder.kids) kids.append(treeRow(depth + 1, kid, items));
+    node.append(row, kids);
+    drawn.nodes.set(folder.key, { node, box, count: end, kids, folder, twisty });
+    return node;
+  }
+
+  const item = items[entry.leaf];
+  row.classList.add("node", "leaf");
+  box.dataset.index = String(entry.leaf);
+  pic.append(icon(PAGE));
   name.textContent = item.label || pathOf(item.url);
+  name.title = `${fullName(item)}\n${pathOf(item.url)}`;
   const path = document.createElement("span");
   path.className = "path";
   path.textContent = pathOf(item.url);
   name.append(path);
-  const tag = document.createElement("span");
-  tag.className = "tag";
-  tag.textContent = item.mixed ? "mixed" : "";
-  row.append(box, name, tag);
+  end.className = "tag";
+  end.textContent = item.mixed ? "mixed" : "";
+  row.append(document.createElement("span"), box, pic, name, end);
+  drawn.leaves.set(entry.leaf, { row, box });
   return row;
 }
 
-/** The list, the counts on the chips and the button, and why AI could not choose. */
+/**
+ * A category as the menu places it, "Men › Clothes › View All", and a
+ * folder's own page ("Men" in the folder "Men") said once: as the worker
+ * names it (`categoryName` in site.js).
+ */
+function fullName(item) {
+  const group = Array.isArray(item.group) ? item.group.filter((n) => typeof n === "string" && n) : [];
+  const label = item.label || pathOf(item.url);
+  const last = group[group.length - 1];
+  return last && last.toLowerCase() === String(label).toLowerCase() ? group.join(" › ") : [...group, label].join(" › ");
+}
+
+/** Draw the tree of this list, unless it is drawn already: a redraw would take the focus away. */
+function drawTree(items) {
+  const key = JSON.stringify([savedSite.store, items.map((p) => [p.url, p.label, p.group || [], !!p.mixed])]);
+  if (drawn && drawn.key === key) return;
+  drawn = { key, nodes: new Map(), leaves: new Map(), tree: buildTree(items), rows: 0 };
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "The store's menu offered no categories.";
+    el.pickList.replaceChildren(empty);
+    return;
+  }
+  el.pickList.replaceChildren(...drawn.tree.root.kids.map((kid) => treeRow(0, kid, items)));
+  // A small menu, or one folder in all, is shown open, until the admin has
+  // opened or shut a folder of this list themselves.
+  const folders = [...drawn.nodes.keys()];
+  if (!openKnown && (items.length <= 15 || drawn.tree.root.kids.filter((k) => k.folder).length === 1)) {
+    const top = drawn.tree.root.kids.filter((k) => k.folder).map((k) => k.folder.key);
+    openFolders = new Set(items.length <= 15 ? folders : top);
+  }
+  showOpen();
+}
+
+/** Open and shut folders as `openFolders` says. */
+function showOpen() {
+  if (!drawn) return;
+  for (const [key, n] of drawn.nodes) {
+    const open = openFolders.has(key);
+    n.node.setAttribute("aria-expanded", String(open));
+    n.twisty.setAttribute("aria-expanded", String(open));
+    n.kids.hidden = !open;
+  }
+}
+
+/** Ticks, dashes and counts as the list now stands, without drawing it again. */
+function syncTree(items) {
+  if (!drawn) return;
+  for (const [index, leaf] of drawn.leaves) {
+    const keep = !!items[index]?.keep;
+    leaf.box.checked = keep;
+    leaf.row.classList.toggle("unticked", !keep);
+  }
+  for (const n of drawn.nodes.values()) {
+    const all = n.folder.leaves.length;
+    const ticked = n.folder.leaves.filter((i) => items[i]?.keep).length;
+    n.box.checked = ticked === all;
+    n.box.indeterminate = ticked > 0 && ticked < all;
+    n.node.classList.toggle("none", ticked === 0);
+    n.count.textContent = ticked === all ? num(all) : `${num(ticked)}/${num(all)}`;
+    n.box.setAttribute("aria-label", `${n.folder.name}: ${ticked} of ${all} ticked`);
+  }
+}
+
+async function loadOpen(store) {
+  if (openStore === hostOf(store)) return;
+  openStore = hostOf(store);
+  try {
+    const { [OPEN_KEY]: kept } = await chrome.storage.local.get(OPEN_KEY);
+    openKnown = !!(kept && kept.store === openStore && Array.isArray(kept.keys));
+    openFolders = new Set(openKnown ? kept.keys : []);
+  } catch {
+    openKnown = false;
+    openFolders = new Set();
+  }
+}
+
+/** The folders as the admin left them, all shut included. */
+function saveOpen() {
+  openKnown = true;
+  chrome.storage.local.set({ [OPEN_KEY]: { store: openStore, keys: [...openFolders] } }).catch(() => {});
+}
+
+/** The list, the counts and the button, and why AI could not choose. */
 function renderPick() {
   const run = savedSite;
   const items = run.pick;
@@ -418,12 +612,7 @@ function renderPick() {
     ? `All ${num(items.length)} of the menu's categories`
     : `AI picked ${num(byAi)} of the menu's ${num(items.length)} categories`;
   el.pickRule.textContent = run.askedRule ? `Rule: «${run.askedRule}»` : "";
-  el.showTaking.textContent = `Taking ${num(byAi)}`;
-  el.showSkipped.textContent = `Show skipped ${num(items.length - byAi)}`;
-  el.showTaking.classList.toggle("on", pickView === "taking");
-  el.showSkipped.classList.toggle("on", pickView === "skipped");
-  el.showTaking.setAttribute("aria-pressed", String(pickView === "taking"));
-  el.showSkipped.setAttribute("aria-pressed", String(pickView === "skipped"));
+  el.pickTicked.textContent = `${num(ticked)} of ${num(items.length)} ticked`;
   el.pickGo.textContent = `Collect ${num(ticked)} ${ticked === 1 ? "category" : "categories"}`;
   el.pickGo.disabled = !ticked;
 
@@ -431,23 +620,13 @@ function renderPick() {
   el.pickHint.textContent = !changed.length
     ? PICK_HINT
     : changed.length === 1
-      ? `You ${changed[0].keep ? "ticked" : "unticked"} ${changed[0].label || pathOf(changed[0].url)} yourself: ${num(ticked)} ${
+      ? `You ${changed[0].keep ? "ticked" : "unticked"} ${fullName(changed[0])} yourself: ${num(ticked)} ${
           ticked === 1 ? "category" : "categories"
         } now.`
       : `You changed ${changed.length} of AI's choices: ${num(ticked)} ${ticked === 1 ? "category" : "categories"} now.`;
 
-  const shown = items.map((p, i) => [p, i]).filter(([p]) => (pickView === "taking" ? p.ai : !p.ai));
-  const key = JSON.stringify([pickView, shown.map(([p, i]) => [i, !!p.keep])]);
-  if (key !== pickKey) {
-    pickKey = key;
-    if (shown.length) el.pickList.replaceChildren(...shown.map(([p, i]) => pickRow(p, i)));
-    else {
-      const empty = document.createElement("p");
-      empty.className = "empty";
-      empty.textContent = pickView === "taking" ? "AI took none of them." : "AI left none out.";
-      el.pickList.replaceChildren(empty);
-    }
-  }
+  drawTree(items);
+  syncTree(items);
 
   note(
     failed
@@ -576,6 +755,8 @@ function render(state) {
     renderPick();
     return;
   }
+  // The next list, whenever it comes, is drawn afresh.
+  drawn = null;
 
   // A worker that has slept since its last run remembers nothing; what that
   // run came to was kept for exactly this.
@@ -694,27 +875,66 @@ el.resume.addEventListener("click", () => {
   });
 });
 
-el.showTaking.addEventListener("click", () => {
-  pickView = "taking";
-  if (picking(false)) renderPick();
-});
-
-el.showSkipped.addEventListener("click", () => {
-  pickView = "skipped";
-  if (picking(false)) renderPick();
-});
-
-// A tick is kept as it is made: a popup closed and opened again finds it.
-el.pickList.addEventListener("change", (event) => {
-  const box = event.target;
-  if (!(box instanceof HTMLInputElement) || !savedSite || !Array.isArray(savedSite.pick)) return;
-  const item = savedSite.pick[Number(box.dataset.index)];
-  if (!item) return;
-  item.keep = box.checked;
-  box.closest(".item")?.classList.toggle("off", !box.checked);
+/** Keep the list as it is now: a popup closed and opened again finds it. */
+function keepTicks() {
   pickEdits++;
   chrome.storage.local.set({ siteRun: savedSite }).catch(() => {});
   renderPick();
+}
+
+// A tick is kept as it is made. A folder's tick is the tick of all it holds.
+el.pickList.addEventListener("change", (event) => {
+  const box = event.target;
+  if (!(box instanceof HTMLInputElement) || !savedSite || !Array.isArray(savedSite.pick)) return;
+  if (box.dataset.folder !== undefined) {
+    const n = drawn && drawn.nodes.get(box.dataset.folder);
+    if (!n) return;
+    for (const i of n.folder.leaves) if (savedSite.pick[i]) savedSite.pick[i].keep = box.checked;
+  } else {
+    const item = savedSite.pick[Number(box.dataset.index)];
+    if (!item) return;
+    item.keep = box.checked;
+  }
+  keepTicks();
+});
+
+function toggleFolder(key, open = !openFolders.has(key)) {
+  if (open) openFolders.add(key);
+  else openFolders.delete(key);
+  showOpen();
+  saveOpen();
+}
+
+// A folder opens from its chevron, its icon or its name; its tick only ticks.
+el.pickList.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof Element) || target.closest("input")) return;
+  const row = target.closest(".folder > .row");
+  if (!row) return;
+  toggleFolder(row.parentElement.dataset.key);
+});
+
+// From a folder's tick or chevron, → opens it and ← shuts it, as in a file browser.
+el.pickList.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+  const target = event.target;
+  const folder = target instanceof Element && target.matches("input[data-folder], .twisty") ? target.closest(".folder") : null;
+  if (!folder) return;
+  event.preventDefault();
+  toggleFolder(folder.dataset.key, event.key === "ArrowRight");
+});
+
+el.expandAll.addEventListener("click", () => {
+  if (!drawn) return;
+  openFolders = new Set(drawn.nodes.keys());
+  showOpen();
+  saveOpen();
+});
+
+el.collapseAll.addEventListener("click", () => {
+  openFolders = new Set();
+  showOpen();
+  saveOpen();
 });
 
 el.pickGo.addEventListener("click", () => {
@@ -731,7 +951,7 @@ el.pickCancel.addEventListener("click", async () => {
   pickEdits++;
   savedSite = null;
   lastRun = null;
-  pickKey = "";
+  drawn = null;
   el.pickCancel.disabled = false;
   note("");
   render(await send("state"));

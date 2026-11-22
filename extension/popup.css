@@ -8,6 +8,7 @@
  */
 
 :root {
+  color-scheme: light dark;
   --surface: #ffffff;
   --background: #fafafa;
   --foreground: #111111;
@@ -33,6 +34,15 @@
 
 * {
   box-sizing: border-box;
+}
+
+/*
+ * Hidden is hidden. `.rows` and `.actions` lay out as grid and flex, which
+ * outranks the browser's own `[hidden]`: up to 1.4.1 the settings and
+ * "Collect this page" stayed in view above the list of categories.
+ */
+[hidden] {
+  display: none !important;
 }
 
 body {
@@ -209,80 +219,160 @@ button:disabled {
   color: var(--foreground-subtle);
 }
 
-.chips {
+.treebar {
   display: flex;
-  gap: 6px;
-  margin-top: 8px;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-.chip {
-  flex: none;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--foreground-muted);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.treebar .small {
+  flex: 1;
+  margin: 0;
   font-variant-numeric: tabular-nums;
 }
 
-.chip.on {
-  background: var(--foreground);
-  border-color: var(--foreground);
-  color: var(--surface);
+/* A button that reads as a word: the tree's Expand all and Collapse all. */
+.link {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--foreground-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.link:hover:not(:disabled) {
+  color: var(--foreground);
 }
 
 .list {
-  margin-top: 8px;
-  max-height: 236px;
+  margin-top: 6px;
+  max-height: 300px;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--background);
 }
 
-.item {
+/*
+ * The menu as folders, the way a file browser shows a disk: a chevron that
+ * opens a folder, the folder's tick for everything in it (a dash when only
+ * part is ticked), its name and how many of its categories are ticked.
+ */
+.tree {
+  padding: 4px 0;
+}
+
+.tree .row {
+  /* Not the settings rows' uppercase labels: a tree reads as plain names. */
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 16px auto 16px minmax(0, 1fr) auto;
   align-items: center;
-  padding: 7px 10px;
-  border-top: 1px solid var(--border);
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px 2px calc(6px + var(--depth, 0) * 16px);
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--foreground);
   cursor: pointer;
 }
 
-.item:first-child {
-  border-top: 0;
+.tree .row:hover {
+  background: var(--surface);
 }
 
-.item input {
+.tree input {
+  width: auto;
   margin: 0;
+  padding: 0;
   accent-color: var(--foreground);
 }
 
-.item .name {
-  min-width: 0;
-  font-size: 12px;
-  color: var(--foreground);
-}
-
-.item.off .name {
+.tree .twisty {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
   color: var(--foreground-subtle);
 }
 
-.item .path {
+.tree .twisty:hover {
+  color: var(--foreground);
+}
+
+/* Where the keyboard is: the inputs above say `outline: none`. */
+.tree input:focus-visible,
+.tree .twisty:focus-visible,
+.link:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+.tree .twisty svg {
+  transition: transform 0.15s;
+}
+
+.tree [aria-expanded="true"] > .row .twisty svg {
+  transform: rotate(90deg);
+}
+
+.tree .icon {
+  display: grid;
+  place-items: center;
+  color: var(--foreground-muted);
+}
+
+.tree .leaf .icon {
+  color: var(--foreground-subtle);
+}
+
+.tree .icon .open,
+.tree [aria-expanded="true"] > .row .icon .shut {
+  display: none;
+}
+
+.tree [aria-expanded="true"] > .row .icon .open {
   display: block;
+}
+
+.tree .name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tree .folder > .row .name {
+  font-weight: 500;
+}
+
+.tree .path {
+  margin-left: 6px;
   font-size: 10px;
   color: var(--foreground-subtle);
 }
 
-.item .tag {
-  font-size: 9px;
+.tree .unticked > .name,
+.tree .none > .row .name {
+  color: var(--foreground-subtle);
+}
+
+.tree .count,
+.tree .tag {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground-subtle);
+}
+
+.tree .tag {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--warn);
